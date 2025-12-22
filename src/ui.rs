@@ -532,8 +532,8 @@ fn compare_option_str(a: Option<&str>, b: Option<&str>) -> Ordering {
 fn compare_option_date(a: Option<NaiveDate>, b: Option<NaiveDate>) -> Ordering {
     match (a, b) {
         (Some(a), Some(b)) => a.cmp(&b),
-        (Some(_), None) => Ordering::Less,
-        (None, Some(_)) => Ordering::Greater,
+        (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
         (None, None) => Ordering::Equal,
     }
 }
