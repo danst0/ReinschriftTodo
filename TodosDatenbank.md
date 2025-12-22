@@ -2,31 +2,31 @@
 *Sortiert nach Projekt > Ort > Datum.*
 
 ### +DanielIntelligence
-- [ ] Ziele für Entwicklung des KI Modells +DanielIntelligence @Computer [[2025 Todos Weihnachten.md]] ^lrje26
+- [ ] Ziele für Entwicklung des KI Modells +DanielIntelligence @Computer due:2025-12-23 [[2025 Todos Weihnachten.md]] ^lrje26
 
 ### +Kinder
-- [ ] Mit Raphael etwas lesen +Kinder [[Tagebuch/2025-12-20.md]] ^tiqhyo
-- [ ] Morgen möchte ich gerne mit den Kindern schwimmen gehen +Kinder [[Tagebuch/2025-12-20.md]] ^kt00la
+- [ ] Mit Raphael etwas lesen due:2025-12-22 +Kinder [[Tagebuch/2025-12-20.md]] ^tiqhyo
+- [ ] Morgen möchte ich gerne mit den Kindern schwimmen gehen +Kinder due:2025-12-29 [[Tagebuch/2025-12-20.md]] ^kt00la
 
 ### +MasterBad
-- [ ] Kabel im Bad abdecken @Bad +MasterBad [[2025 Todos Weihnachten.md]] ^o6flmt
-- [ ] Lichter im Bad austauschen @Bad +MasterBad [[2025 Todos Weihnachten.md]] ^izoptt
-- [ ] Waage im Bad reparieren @Bad +MasterBad [[2025 Todos Weihnachten.md]] ^v73pu9
+- [ ] Kabel im Bad abdecken +MasterBad @Bad due:2025-12-23 [[2025 Todos Weihnachten.md]] ^o6flmt
+- [ ] Lichter im Bad austauschen +MasterBad @Bad due:2025-12-23 [[2025 Todos Weihnachten.md]] ^izoptt
+- [ ] Waage im Bad reparieren +MasterBad @Bad due:2025-12-23 [[2025 Todos Weihnachten.md]] ^v73pu9
 
 ### +PW
-- [ ] Passwortgenerator für Gnome @Computer +PW [[2025 Todos Weihnachten.md]] ^mwro7b
-- [ ] Passwortgenerator für Gnome auf Flathub veröffentlichen @Computer +PW [[2025 Todos Weihnachten.md]] ^tp0ygy
+- [ ] Passwortgenerator für Gnome due:2025-12-22 @Computer +PW [[2025 Todos Weihnachten.md]] ^mwro7b
+- [ ] Passwortgenerator für Gnome auf Flathub veröffentlichen due:2025-12-22 @Computer +PW [[2025 Todos Weihnachten.md]] ^tp0ygy
 
 ### +Sense
-- [ ] Sense im Keller entrosten +Sense @Keller [[2025 Todos Weihnachten.md]] ^swbu95
-- [ ] Chemikalien für die Sense kaufen +Sense [[2025 Todos Weihnachten.md]] ^1otozr
+- [ ] Sense im Keller entrosten +Sense @Keller due:2025-12-25 [[2025 Todos Weihnachten.md]] ^swbu95
+- [ ] Chemikalien für die Sense kaufen +Sense due:2025-12-25 [[2025 Todos Weihnachten.md]] ^1otozr
 
 ### +z_Andetag
 - [ ] E-Mails schreiben Werbung versenden, aber erst im nächsten Jahr due:2026-01-31 +z_Andetag @Computer [[2025 Todos Weihnachten.md]] ^jmo4t2
-- [ ] Vermarktung Andetag mit Gemini +z_Andetag [[2025 Todos Weihnachten.md]] ^kb69m9
+- [ ] Vermarktung Andetag mit Gemini +z_Andetag due:2025-12-25 [[2025 Todos Weihnachten.md]] ^kb69m9
 
 ### +z_später
-- [ ] Doktorarbeit aktualisieren @Computer +z_später [[2025 Todos Weihnachten.md]] ^zqt34o
+- [ ] Doktorarbeit aktualisieren due:2025-12-22 @Computer +z_später [[2025 Todos Weihnachten.md]] ^zqt34o
 - [ ] Unifi Kameras aus dem Keller im Haus aufhängen +z_später @Keller [[2025 Todos Weihnachten.md]] ^09bt7z
 
 ### Ohne Projekt
