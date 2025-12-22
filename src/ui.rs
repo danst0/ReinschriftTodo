@@ -74,6 +74,8 @@ struct Preferences {
     show_done: bool,
     #[serde(default)]
     db_path: Option<String>,
+    #[serde(default)]
+    show_due_only: bool,
 }
 
 pub fn build_ui(app: &Application) -> Result<()> {
@@ -128,6 +130,11 @@ pub fn build_ui(app: &Application) -> Result<()> {
     sort_selector.set_selected(state.sort_mode().to_index());
     controls.append(&sort_selector);
 
+    let due_filter = gtk::CheckButton::with_label("Nur fällige anzeigen");
+    due_filter.set_margin_start(18);
+    due_filter.set_active(state.show_due_only());
+    controls.append(&due_filter);
+
     let list_view = create_list_view(&state);
     let scrolled = gtk::ScrolledWindow::builder()
         .child(&list_view)
@@ -178,6 +185,10 @@ pub fn build_ui(app: &Application) -> Result<()> {
     sort_selector.connect_selected_notify(clone!(@weak state => move |dropdown| {
         let mode = SortMode::from_index(dropdown.selected());
         state.set_sort_mode(mode);
+    }));
+
+    due_filter.connect_toggled(clone!(@weak state => move |btn| {
+        state.set_show_due_only(btn.is_active());
     }));
 
     if let Err(err) = state.install_monitor() {
@@ -488,6 +499,10 @@ impl AppState {
         self.preferences.borrow().show_done
     }
 
+    fn show_due_only(&self) -> bool {
+        self.preferences.borrow().show_due_only
+    }
+
     fn reload(&self) -> Result<()> {
         let items = data::load_todos()?;
         *self.cached_items.borrow_mut() = items;
@@ -671,6 +686,24 @@ impl AppState {
         show_row.append(&show_switch);
         content.append(&show_row);
 
+        let due_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        let due_label = gtk::Label::builder()
+            .label("Nur fällige (<= heute) anzeigen")
+            .xalign(0.0)
+            .hexpand(true)
+            .build();
+        let due_switch = gtk::Switch::new();
+        due_switch.set_halign(gtk::Align::End);
+        due_switch.set_active(self.show_due_only());
+        let due_state = Rc::clone(self);
+        due_switch.connect_state_set(move |_, value| {
+            due_state.set_show_due_only(value);
+            glib::Propagation::Proceed
+        });
+        due_row.append(&due_label);
+        due_row.append(&due_switch);
+        content.append(&due_row);
+
         let file_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         file_row.append(&gtk::Label::builder().label("Datenbankdatei").xalign(0.0).build());
         let path_label = gtk::Label::builder()
@@ -775,6 +808,19 @@ impl AppState {
         self.repopulate_store();
     }
 
+    fn set_show_due_only(&self, show: bool) {
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.show_due_only == show {
+                return;
+            }
+            prefs.show_due_only = show;
+        }
+
+        self.persist_preferences();
+        self.repopulate_store();
+    }
+
     fn set_sort_mode(&self, mode: SortMode) {
         {
             let mut current = self.sort_mode.borrow_mut();
@@ -801,7 +847,17 @@ impl AppState {
         let mode = *self.sort_mode.borrow();
         let mut last_group: Option<String> = None;
         let include_done = self.show_completed();
-        for item in items.into_iter().filter(|todo| include_done || !todo.done) {
+        let due_only = self.show_due_only();
+        let today = Local::now().date_naive();
+        for item in items.into_iter().filter(|todo| {
+            let status_ok = include_done || !todo.done;
+            let due_ok = if !due_only {
+                true
+            } else {
+                todo.due.map(|d| d <= today).unwrap_or(true)
+            };
+            status_ok && due_ok
+        }) {
             if let Some(label) = self.group_label(mode, &item) {
                 if last_group.as_ref() != Some(&label) {
                     self.store
