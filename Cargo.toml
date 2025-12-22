@@ -1,0 +1,15 @@
+[package]
+name = "todos_extension"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+adw = { version = "0.6", features = ["v1_4"], package = "libadwaita" }
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+gio = "0.19"
+glib = "0.19"
+gtk = { version = "0.8", package = "gtk4", features = ["v4_10"] }
+once_cell = "1.19"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
