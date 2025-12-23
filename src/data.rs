@@ -128,7 +128,7 @@ pub fn test_webdav_connection(url: &str, username: Option<&str>, password: Optio
     // Let's just do a GET. If it's a huge file, it might be slow, but for a todo list it's fine.
     let resp_get = req_get.send()?;
     if !resp_get.status().is_success() {
-         bail!("Verbindung fehlgeschlagen: {}", resp_get.status());
+         bail!("Verbindung zu '{}' fehlgeschlagen: {}", url, resp_get.status());
     }
     Ok(())
 }
