@@ -105,5 +105,19 @@
             </div>
         {% endfor %}
     </div>
+
+    <script>
+        function scheduleReload() {
+            setTimeout(function() {
+                var input = document.querySelector('input[name="title"]');
+                if (document.activeElement === input || input.value.length > 0) {
+                    scheduleReload();
+                    return;
+                }
+                window.location.reload();
+            }, 10000);
+        }
+        scheduleReload();
+    </script>
 </body>
 </html>
