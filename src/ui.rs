@@ -271,6 +271,13 @@ pub fn build_ui(app: &Application) -> Result<()> {
         let _ = app.activate_action("app.reload", None);
     }));
 
+    // Keep state alive for the window lifetime so weak references can upgrade.
+    unsafe {
+        window.set_data("app-state", state.clone());
+    }
+
+    window.present();
+
     if let Err(err) = state.reload() {
         state.show_error(&format!("Konnte To-dos nicht laden: {err}\nBitte wählen Sie eine gültige Datei in den Einstellungen."));
         state.show_settings_dialog();
@@ -288,13 +295,6 @@ pub fn build_ui(app: &Application) -> Result<()> {
     if let Err(err) = state.install_monitor() {
         state.show_error(&format!("Dateiüberwachung nicht verfügbar: {err}"));
     }
-
-    // Keep state alive for the window lifetime so weak references can upgrade.
-    unsafe {
-        window.set_data("app-state", state.clone());
-    }
-
-    window.present();
 
     Ok(())
 }

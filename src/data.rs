@@ -91,7 +91,9 @@ fn read_content() -> Result<String> {
                 .with_context(|| format!("Konnte {} nicht lesen", path.display()))
         }
         BackendConfig::WebDav { url, username, password } => {
-            let client = Client::new();
+            let client = Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()?;
             let mut req = client.get(&url);
             if let (Some(u), Some(p)) = (username, password) {
                 req = req.basic_auth(u, Some(p));
@@ -106,7 +108,9 @@ fn read_content() -> Result<String> {
 }
 
 pub fn test_webdav_connection(url: &str, username: Option<&str>, password: Option<&str>) -> Result<()> {
-    let client = Client::new();
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()?;
     // Try HEAD first
     let mut req = client.head(url);
     if let (Some(u), Some(p)) = (username, password) {
@@ -141,7 +145,9 @@ fn write_content(content: String) -> Result<()> {
                 .with_context(|| format!("Konnte {} nicht schreiben", path.display()))
         }
         BackendConfig::WebDav { url, username, password } => {
-            let client = Client::new();
+            let client = Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()?;
             let mut req = client.put(&url);
             if let (Some(u), Some(p)) = (username, password) {
                 req = req.basic_auth(u, Some(p));
