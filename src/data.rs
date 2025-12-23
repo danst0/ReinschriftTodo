@@ -117,6 +117,38 @@ pub fn update_todo_details(item: &TodoItem) -> Result<()> {
     update_line(&item.key, |_| Ok(rendered))
 }
 
+pub fn add_todo(title: &str) -> Result<()> {
+    let title = title.trim();
+    if title.is_empty() {
+        bail!("Titel darf nicht leer sein");
+    }
+
+    let path = todo_path();
+    let content = fs::read_to_string(&path)
+        .with_context(|| format!("Konnte {} nicht lesen", path.display()))?;
+    let mut lines: Vec<String> = content.lines().map(|line| line.to_string()).collect();
+
+    let insert_index = lines
+        .iter()
+        .position(|line| line.trim() == "---")
+        .unwrap_or(lines.len());
+    let today = Local::now().date_naive();
+    lines.insert(
+        insert_index,
+        format!("- [ ] {} due:{}", title, today.format("%Y-%m-%d")),
+    );
+
+    let mut output = lines.join("\n");
+    if content.ends_with('\n') {
+        output.push('\n');
+    }
+
+    fs::write(&path, output)
+        .with_context(|| format!("Konnte {} nicht schreiben", path.display()))?;
+
+    Ok(())
+}
+
 fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> {
     let trimmed = line.trim_start();
     let (done, rest) = if let Some(body) = trimmed.strip_prefix("- [x]") {

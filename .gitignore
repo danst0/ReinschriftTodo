@@ -1,2 +1,7 @@
 /target
 TodosDatenbank.md
+.cache/
+.flatpak-builder/
+build-dir/
+.cargo/
+vendor/

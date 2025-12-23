@@ -135,6 +135,79 @@ pub fn build_ui(app: &Application) -> Result<()> {
     due_filter.set_active(state.show_due_only());
     controls.append(&due_filter);
 
+    // Neue To-do Eingabezeile unter den Filtereinstellungen
+    let new_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    new_row.set_margin_start(12);
+    new_row.set_margin_end(12);
+    new_row.set_margin_top(6);
+    new_row.set_margin_bottom(6);
+
+    let new_entry = gtk::Entry::new();
+    new_entry.set_placeholder_text(Some("Neues To-do…"));
+    new_entry.set_hexpand(true);
+    new_row.append(&new_entry);
+
+    let add_btn = gtk::Button::with_label("Hinzufügen");
+    add_btn.add_css_class("suggested-action");
+    new_row.append(&add_btn);
+
+    let state_for_add = Rc::clone(&state);
+    let new_entry_for_add = new_entry.clone();
+    add_btn.connect_clicked(move |_| {
+        let title_text = new_entry_for_add.text().trim().to_string();
+        if title_text.is_empty() {
+            state_for_add.show_error("Titel darf nicht leer sein");
+            return;
+        }
+
+        match data::add_todo(&title_text) {
+            Ok(_) => {
+                new_entry_for_add.set_text("");
+                if let Err(err) = state_for_add.reload() {
+                    state_for_add.show_error(&format!("Konnte To-dos nicht neu laden: {err}"));
+                } else {
+                    state_for_add.show_info("Aufgabe hinzugefügt");
+                }
+            }
+            Err(err) => {
+                state_for_add.show_error(&format!("Konnte To-do nicht anlegen: {err}"));
+            }
+        }
+    });
+
+    // Enter im Textfeld soll ebenfalls das To-do anlegen
+    let state_for_add2 = Rc::clone(&state);
+    let new_entry_for_add2 = new_entry.clone();
+    new_entry.connect_activate(move |_| {
+        let title_text = new_entry_for_add2.text().trim().to_string();
+        if title_text.is_empty() {
+            state_for_add2.show_error("Titel darf nicht leer sein");
+            return;
+        }
+
+        match data::add_todo(&title_text) {
+            Ok(_) => {
+                new_entry_for_add2.set_text("");
+                if let Err(err) = state_for_add2.reload() {
+                    state_for_add2.show_error(&format!("Konnte To-dos nicht neu laden: {err}"));
+                } else {
+                    state_for_add2.show_info("Aufgabe hinzugefügt");
+                }
+            }
+            Err(err) => {
+                state_for_add2.show_error(&format!("Konnte To-do nicht anlegen: {err}"));
+            }
+        }
+    });
+
+    // Erzeuge das vertikale Content-Layout noch vor dem Einfügen der neuen Zeile
+    let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    content.append(&controls);
+    content.append(&overlay);
+
+    // Füge die neue Eingabezeile unter den Filtereinstellungen ein
+    content.append(&new_row);
+
     let list_view = create_list_view(&state);
     let scrolled = gtk::ScrolledWindow::builder()
         .child(&list_view)
@@ -143,15 +216,14 @@ pub fn build_ui(app: &Application) -> Result<()> {
         .build();
     overlay.set_child(Some(&scrolled));
 
-    let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    content.append(&controls);
-    content.append(&overlay);
-
     let toolbar_view = adw::ToolbarView::new();
     toolbar_view.add_top_bar(&header);
     toolbar_view.set_content(Some(&content));
 
     window.set_content(Some(&toolbar_view));
+
+    // Setze Fokus direkt ins neue Eingabefeld beim Start
+    new_entry.grab_focus();
 
     let refresh_action = gio::SimpleAction::new("reload", None);
     refresh_action.connect_activate(clone!(@weak state => move |_, _| {

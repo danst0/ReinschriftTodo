@@ -1,0 +1,26 @@
+app-id: org.example.TodosExtension
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: todos_extension
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=home
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+modules:
+  - name: todos_extension
+    buildsystem: simple
+    build-commands:
+      - cargo build --release --offline
+      - install -D target/release/todos_extension /app/bin/todos_extension
+      - install -D todos_extension.desktop /app/share/applications/org.example.TodosExtension.desktop
+      - install -D icon/todos.png /app/share/icons/hicolor/512x512/apps/org.example.TodosExtension.png
+    sources:
+      - type: dir
+        path: .
