@@ -88,6 +88,20 @@ struct Preferences {
     webdav_password: Option<String>,
 }
 
+fn schedule_poll(state: Rc<AppState>, interval: u32) {
+    glib::timeout_add_seconds_local(interval, clone!(@weak state => @default-return glib::ControlFlow::Break, move || {
+        let next_interval = match state.reload() {
+            Ok(_) => 10,
+            Err(e) => {
+                eprintln!("Auto-reload failed: {e}");
+                std::cmp::min(interval * 2, 300)
+            }
+        };
+        schedule_poll(state, next_interval);
+        glib::ControlFlow::Break
+    }));
+}
+
 pub fn build_ui(app: &Application) -> Result<()> {
     let window = adw::ApplicationWindow::builder()
         .application(app)
@@ -295,6 +309,8 @@ pub fn build_ui(app: &Application) -> Result<()> {
     if let Err(err) = state.install_monitor() {
         state.show_error(&format!("Dateiüberwachung nicht verfügbar: {err}"));
     }
+
+    schedule_poll(state, 10);
 
     Ok(())
 }
