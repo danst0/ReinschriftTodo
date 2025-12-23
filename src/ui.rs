@@ -921,7 +921,10 @@ impl AppState {
                     Ok(result) => {
                         match result {
                             Ok(_) => state_bg.show_info("Verbindung erfolgreich!"),
-                            Err(e) => state_bg.show_error(&format!("Verbindung fehlgeschlagen: {}", e)),
+                            Err(e) => {
+                                eprintln!("WebDAV Connection Error: {}", e);
+                                state_bg.show_error(&format!("Verbindung fehlgeschlagen: {}", e));
+                            }
                         }
                         glib::ControlFlow::Break
                     }
