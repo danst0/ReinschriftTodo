@@ -105,6 +105,34 @@ fn read_content() -> Result<String> {
     }
 }
 
+pub fn test_webdav_connection(url: &str, username: Option<&str>, password: Option<&str>) -> Result<()> {
+    let client = Client::new();
+    // Try HEAD first
+    let mut req = client.head(url);
+    if let (Some(u), Some(p)) = (username, password) {
+        req = req.basic_auth(u, Some(p));
+    }
+    
+    let resp = req.send()?;
+    if resp.status().is_success() {
+        return Ok(());
+    }
+
+    // Fallback to GET if HEAD fails (e.g. 405 Method Not Allowed)
+    let mut req_get = client.get(url);
+    if let (Some(u), Some(p)) = (username, password) {
+        req_get = req_get.basic_auth(u, Some(p));
+    }
+    // Use a range header to avoid downloading the whole file if possible? 
+    // But standard WebDAV might not support it or it might be complicated.
+    // Let's just do a GET. If it's a huge file, it might be slow, but for a todo list it's fine.
+    let resp_get = req_get.send()?;
+    if !resp_get.status().is_success() {
+         bail!("Verbindung fehlgeschlagen: {}", resp_get.status());
+    }
+    Ok(())
+}
+
 fn write_content(content: String) -> Result<()> {
     let config = get_backend_config();
     match config {

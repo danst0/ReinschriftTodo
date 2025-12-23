@@ -886,6 +886,52 @@ impl AppState {
         webdav_box.append(&user_entry);
         webdav_box.append(&gtk::Label::builder().label("Passwort").xalign(0.0).build());
         webdav_box.append(&pass_entry);
+
+        let check_btn = gtk::Button::with_label("Verbindung prüfen");
+        check_btn.set_margin_top(8);
+        let state_for_check = Rc::clone(self);
+        check_btn.connect_clicked(move |_| {
+            let (_, url, path, user, pass) = state_for_check.get_webdav_prefs();
+            
+            let Some(u) = url else {
+                state_for_check.show_error("Keine URL angegeben.");
+                return;
+            };
+            if u.trim().is_empty() {
+                state_for_check.show_error("Keine URL angegeben.");
+                return;
+            }
+
+            let full_url = if let Some(p) = path {
+                format!("{}/{}", u.trim_end_matches('/'), p.trim_start_matches('/'))
+            } else {
+                u
+            };
+
+            let state_bg = state_for_check.clone();
+            let (sender, receiver) = std::sync::mpsc::channel();
+            
+            std::thread::spawn(move || {
+                let result = data::test_webdav_connection(&full_url, user.as_deref(), pass.as_deref());
+                let _ = sender.send(result);
+            });
+
+            glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                match receiver.try_recv() {
+                    Ok(result) => {
+                        match result {
+                            Ok(_) => state_bg.show_info("Verbindung erfolgreich!"),
+                            Err(e) => state_bg.show_error(&format!("Verbindung fehlgeschlagen: {}", e)),
+                        }
+                        glib::ControlFlow::Break
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => glib::ControlFlow::Break,
+                }
+            });
+        });
+        webdav_box.append(&check_btn);
+
         content.append(&webdav_box);
 
         // Visibility logic
