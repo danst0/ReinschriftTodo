@@ -13,6 +13,7 @@ pub enum BackendConfig {
     Local(PathBuf),
     WebDav {
         url: String,
+        path: Option<String>,
         username: Option<String>,
         password: Option<String>,
     },
@@ -90,27 +91,67 @@ fn read_content() -> Result<String> {
              fs::read_to_string(&path)
                 .with_context(|| format!("Konnte {} nicht lesen", path.display()))
         }
-        BackendConfig::WebDav { url, username, password } => {
+        BackendConfig::WebDav { url, path, username, password } => {
             let client = Client::builder()
                 .timeout(std::time::Duration::from_secs(10))
                 .build()?;
-            let mut req = client.get(&url);
-            if let (Some(u), Some(p)) = (username, password) {
-                req = req.basic_auth(u, Some(p));
-            }
-            let resp = req.send()?;
-            if !resp.status().is_success() {
-                if resp.status() == reqwest::StatusCode::NOT_FOUND {
-                    bail!("WebDAV error: 404 Not Found. (Hint: For Nextcloud, ensure URL ends with /remote.php/dav/files/USERNAME)");
+
+            let construct_url = |base: &str| -> String {
+                if let Some(p) = &path {
+                    format!("{}/{}", base.trim_end_matches('/'), p.trim_start_matches('/'))
+                } else {
+                    base.to_string()
                 }
-                bail!("WebDAV error: {}", resp.status());
+            };
+
+            let try_request = |target_url: &str| -> Result<String> {
+                let mut req = client.get(target_url);
+                if let (Some(u), Some(p)) = (&username, &password) {
+                    req = req.basic_auth(u, Some(p));
+                }
+                let resp = req.send()?;
+                if !resp.status().is_success() {
+                    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+                        bail!("404 Not Found");
+                    }
+                    bail!("WebDAV error: {}", resp.status());
+                }
+                Ok(resp.text()?)
+            };
+
+            let full_url = construct_url(&url);
+            match try_request(&full_url) {
+                Ok(content) => Ok(content),
+                Err(e) => {
+                    // Fallback logic
+                    if let Some(user) = &username {
+                        if !url.contains("remote.php/dav/files") {
+                            let candidate_base = format!("{}/remote.php/dav/files/{}", url.trim_end_matches('/'), user);
+                            let candidate_full = construct_url(&candidate_base);
+                            if let Ok(content) = try_request(&candidate_full) {
+                                // Update internal config to use this working base URL for future requests
+                                set_backend_config(BackendConfig::WebDav {
+                                    url: candidate_base,
+                                    path: path.clone(),
+                                    username: username.clone(),
+                                    password: password.clone(),
+                                });
+                                return Ok(content);
+                            }
+                        }
+                    }
+                    // Return original error
+                    if e.to_string().contains("404 Not Found") {
+                         bail!("WebDAV error: 404 Not Found. (Hint: For Nextcloud, ensure URL ends with /remote.php/dav/files/USERNAME)");
+                    }
+                    Err(e)
+                }
             }
-            Ok(resp.text()?)
         }
     }
 }
 
-pub fn test_webdav_connection(base_url: &str, path: Option<&str>, username: Option<&str>, password: Option<&str>) -> Result<Option<String>> {
+pub fn test_webdav_connection(base_url: &str, path: Option<&str>, username: Option<&str>, password: Option<&str>) -> Result<()> {
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
@@ -152,7 +193,7 @@ pub fn test_webdav_connection(base_url: &str, path: Option<&str>, username: Opti
 
     let full_url = construct_url(base_url);
     match try_connect(&full_url) {
-        Ok(_) => return Ok(None),
+        Ok(_) => return Ok(()),
         Err(e) => {
             // If it failed, and we have a username, try to guess Nextcloud path
             if let Some(user) = username {
@@ -160,7 +201,10 @@ pub fn test_webdav_connection(base_url: &str, path: Option<&str>, username: Opti
                     let candidate_base = format!("{}/remote.php/dav/files/{}", base_url.trim_end_matches('/'), user);
                     let candidate_full = construct_url(&candidate_base);
                     if try_connect(&candidate_full).is_ok() {
-                        return Ok(Some(candidate_base));
+                        // Success with fallback!
+                        // We don't update config here because this is just a test function.
+                        // But we return Ok to indicate connection is possible.
+                        return Ok(());
                     }
                 }
             }
@@ -177,23 +221,62 @@ fn write_content(content: String) -> Result<()> {
              fs::write(&path, content)
                 .with_context(|| format!("Konnte {} nicht schreiben", path.display()))
         }
-        BackendConfig::WebDav { url, username, password } => {
+        BackendConfig::WebDav { url, path, username, password } => {
             let client = Client::builder()
                 .timeout(std::time::Duration::from_secs(10))
                 .build()?;
-            let mut req = client.put(&url);
-            if let (Some(u), Some(p)) = (username, password) {
-                req = req.basic_auth(u, Some(p));
-            }
-            req = req.body(content);
-            let resp = req.send()?;
-            if !resp.status().is_success() {
-                if resp.status() == reqwest::StatusCode::NOT_FOUND {
-                    bail!("WebDAV error: 404 Not Found. (Hint: For Nextcloud, ensure URL ends with /remote.php/dav/files/USERNAME)");
+
+            let construct_url = |base: &str| -> String {
+                if let Some(p) = &path {
+                    format!("{}/{}", base.trim_end_matches('/'), p.trim_start_matches('/'))
+                } else {
+                    base.to_string()
                 }
-                bail!("WebDAV error: {}", resp.status());
+            };
+
+            let try_request = |target_url: &str| -> Result<()> {
+                let mut req = client.put(target_url);
+                if let (Some(u), Some(p)) = (&username, &password) {
+                    req = req.basic_auth(u, Some(p));
+                }
+                req = req.body(content.clone());
+                let resp = req.send()?;
+                if !resp.status().is_success() {
+                    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+                        bail!("404 Not Found");
+                    }
+                    bail!("WebDAV error: {}", resp.status());
+                }
+                Ok(())
+            };
+
+            let full_url = construct_url(&url);
+            match try_request(&full_url) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    // Fallback logic
+                    if let Some(user) = &username {
+                        if !url.contains("remote.php/dav/files") {
+                            let candidate_base = format!("{}/remote.php/dav/files/{}", url.trim_end_matches('/'), user);
+                            let candidate_full = construct_url(&candidate_base);
+                            if try_request(&candidate_full).is_ok() {
+                                // Update internal config
+                                set_backend_config(BackendConfig::WebDav {
+                                    url: candidate_base,
+                                    path: path.clone(),
+                                    username: username.clone(),
+                                    password: password.clone(),
+                                });
+                                return Ok(());
+                            }
+                        }
+                    }
+                    if e.to_string().contains("404 Not Found") {
+                         bail!("WebDAV error: 404 Not Found. (Hint: For Nextcloud, ensure URL ends with /remote.php/dav/files/USERNAME)");
+                    }
+                    Err(e)
+                }
             }
-            Ok(())
         }
     }
 }

@@ -567,13 +567,9 @@ impl AppState {
 
         if prefs.use_webdav {
              if let Some(url) = &prefs.webdav_url {
-                 let full_url = if let Some(p) = &prefs.webdav_path {
-                     format!("{}/{}", url.trim_end_matches('/'), p.trim_start_matches('/'))
-                 } else {
-                     url.clone()
-                 };
                  data::set_backend_config(data::BackendConfig::WebDav {
-                     url: full_url,
+                     url: url.clone(),
+                     path: prefs.webdav_path.clone(),
                      username: prefs.webdav_username.clone(),
                      password: prefs.webdav_password.clone(),
                  });
@@ -890,7 +886,6 @@ impl AppState {
         let check_btn = gtk::Button::with_label("Verbindung prüfen");
         check_btn.set_margin_top(8);
         let state_for_check = Rc::clone(self);
-        let url_entry_for_update = url_entry.clone();
         check_btn.connect_clicked(move |_| {
             let (_, url, path, user, pass) = state_for_check.get_webdav_prefs();
             
@@ -916,16 +911,11 @@ impl AppState {
                 let _ = sender.send(result);
             });
 
-            let url_entry_update = url_entry_for_update.clone();
             glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
                 match receiver.try_recv() {
                     Ok(result) => {
                         match result {
-                            Ok(None) => state_bg.show_info("Verbindung erfolgreich!"),
-                            Ok(Some(new_url)) => {
-                                url_entry_update.set_text(&new_url);
-                                state_bg.show_info("Verbindung erfolgreich! URL wurde automatisch korrigiert.");
-                            }
+                            Ok(_) => state_bg.show_info("Verbindung erfolgreich!"),
                             Err(e) => {
                                 eprintln!("WebDAV Connection Error: {}", e);
                                 state_bg.show_error(&format!("Verbindung fehlgeschlagen: {}", e));
@@ -1071,13 +1061,9 @@ impl AppState {
         if use_webdav {
             let (_, url, path, user, pass) = self.get_webdav_prefs();
             if let Some(u) = url {
-                let full_url = if let Some(p) = path {
-                    format!("{}/{}", u.trim_end_matches('/'), p.trim_start_matches('/'))
-                } else {
-                    u
-                };
                 data::set_backend_config(data::BackendConfig::WebDav {
-                    url: full_url,
+                    url: u,
+                    path: path,
                     username: user,
                     password: pass,
                 });
@@ -1101,13 +1087,9 @@ impl AppState {
         
         let (use_webdav, _, path, user, pass) = self.get_webdav_prefs();
         if use_webdav {
-            let full_url = if let Some(p) = path {
-                format!("{}/{}", url.trim_end_matches('/'), p.trim_start_matches('/'))
-            } else {
-                url
-            };
              data::set_backend_config(data::BackendConfig::WebDav {
-                url: full_url,
+                url: url,
+                path: path,
                 username: user,
                 password: pass,
             });
@@ -1124,9 +1106,9 @@ impl AppState {
         let (use_webdav, url, _, user, pass) = self.get_webdav_prefs();
         if use_webdav {
             if let Some(u) = url {
-                let full_url = format!("{}/{}", u.trim_end_matches('/'), path.trim_start_matches('/'));
                 data::set_backend_config(data::BackendConfig::WebDav {
-                    url: full_url,
+                    url: u,
+                    path: Some(path),
                     username: user,
                     password: pass,
                 });
@@ -1144,13 +1126,9 @@ impl AppState {
         let (use_webdav, url, path, _, pass) = self.get_webdav_prefs();
         if use_webdav {
             if let Some(u) = url {
-                let full_url = if let Some(p) = path {
-                    format!("{}/{}", u.trim_end_matches('/'), p.trim_start_matches('/'))
-                } else {
-                    u
-                };
                 data::set_backend_config(data::BackendConfig::WebDav {
-                    url: full_url,
+                    url: u,
+                    path: path,
                     username: Some(username),
                     password: pass,
                 });
@@ -1168,13 +1146,9 @@ impl AppState {
         let (use_webdav, url, path, user, _) = self.get_webdav_prefs();
         if use_webdav {
             if let Some(u) = url {
-                let full_url = if let Some(p) = path {
-                    format!("{}/{}", u.trim_end_matches('/'), p.trim_start_matches('/'))
-                } else {
-                    u
-                };
                 data::set_backend_config(data::BackendConfig::WebDav {
-                    url: full_url,
+                    url: u,
+                    path: path,
                     username: user,
                     password: Some(password),
                 });
