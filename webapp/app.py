@@ -1,12 +1,13 @@
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import requests
 from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
+app.permanent_session_lifetime = timedelta(days=30)
 
 TODO_PATH = os.environ.get('TODOS_DB_PATH', 'TodosDatenbank.md')
 
@@ -279,6 +280,7 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         if username == os.environ.get('APP_USER') and password == os.environ.get('APP_PASSWORD'):
+            session.permanent = True
             session['logged_in'] = True
             return redirect(url_for('index'))
         else:

@@ -769,6 +769,17 @@ impl AppState {
             .build();
         dialog.set_destroy_with_parent(true);
 
+        let controller = gtk::EventControllerKey::new();
+        let dialog_clone = dialog.clone();
+        controller.connect_key_pressed(move |_, key, _, _| {
+            if key == gtk::gdk::Key::Escape {
+                dialog_clone.close();
+                return glib::Propagation::Stop;
+            }
+            glib::Propagation::Proceed
+        });
+        dialog.add_controller(controller);
+
         let content = gtk::Box::new(gtk::Orientation::Vertical, 16);
         content.set_margin_start(20);
         content.set_margin_end(20);

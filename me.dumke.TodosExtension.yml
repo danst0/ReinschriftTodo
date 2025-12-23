@@ -11,6 +11,7 @@ finish-args:
   - --socket=wayland
   - --device=dri
   - --filesystem=home
+  - --share=network
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
 modules:
