@@ -81,6 +81,8 @@ struct Preferences {
     #[serde(default)]
     webdav_url: Option<String>,
     #[serde(default)]
+    webdav_path: Option<String>,
+    #[serde(default)]
     webdav_username: Option<String>,
     #[serde(default)]
     webdav_password: Option<String>,
@@ -565,8 +567,13 @@ impl AppState {
 
         if prefs.use_webdav {
              if let Some(url) = &prefs.webdav_url {
+                 let full_url = if let Some(p) = &prefs.webdav_path {
+                     format!("{}/{}", url.trim_end_matches('/'), p.trim_start_matches('/'))
+                 } else {
+                     url.clone()
+                 };
                  data::set_backend_config(data::BackendConfig::WebDav {
-                     url: url.clone(),
+                     url: full_url,
                      username: prefs.webdav_username.clone(),
                      password: prefs.webdav_password.clone(),
                  });
@@ -816,7 +823,7 @@ impl AppState {
             .build();
         let storage_switch = gtk::Switch::new();
         storage_switch.set_halign(gtk::Align::End);
-        let (use_webdav, wd_url, wd_user, wd_pass) = self.get_webdav_prefs();
+        let (use_webdav, wd_url, wd_path, wd_user, wd_pass) = self.get_webdav_prefs();
         storage_switch.set_active(use_webdav);
         
         storage_row.append(&storage_label);
@@ -861,6 +868,9 @@ impl AppState {
         
         let url_entry = gtk::Entry::builder().placeholder_text("WebDAV URL").build();
         if let Some(url) = wd_url { url_entry.set_text(&url); }
+
+        let path_entry = gtk::Entry::builder().placeholder_text("Pfad (relativ)").build();
+        if let Some(path) = wd_path { path_entry.set_text(&path); }
         
         let user_entry = gtk::Entry::builder().placeholder_text("Benutzername").build();
         if let Some(user) = wd_user { user_entry.set_text(&user); }
@@ -870,6 +880,8 @@ impl AppState {
 
         webdav_box.append(&gtk::Label::builder().label("WebDAV URL").xalign(0.0).build());
         webdav_box.append(&url_entry);
+        webdav_box.append(&gtk::Label::builder().label("Pfad (relativ)").xalign(0.0).build());
+        webdav_box.append(&path_entry);
         webdav_box.append(&gtk::Label::builder().label("Benutzername").xalign(0.0).build());
         webdav_box.append(&user_entry);
         webdav_box.append(&gtk::Label::builder().label("Passwort").xalign(0.0).build());
@@ -896,6 +908,9 @@ impl AppState {
         // Connect entries
         let url_state = Rc::clone(self);
         url_entry.connect_changed(move |e| url_state.set_webdav_url(e.text().to_string()));
+
+        let path_state = Rc::clone(self);
+        path_entry.connect_changed(move |e| path_state.set_webdav_path(e.text().to_string()));
         
         let user_state = Rc::clone(self);
         user_entry.connect_changed(move |e| user_state.set_webdav_username(e.text().to_string()));
@@ -1000,10 +1015,15 @@ impl AppState {
         self.persist_preferences();
         
         if use_webdav {
-            let (_, url, user, pass) = self.get_webdav_prefs();
+            let (_, url, path, user, pass) = self.get_webdav_prefs();
             if let Some(u) = url {
+                let full_url = if let Some(p) = path {
+                    format!("{}/{}", u.trim_end_matches('/'), p.trim_start_matches('/'))
+                } else {
+                    u
+                };
                 data::set_backend_config(data::BackendConfig::WebDav {
-                    url: u,
+                    url: full_url,
                     username: user,
                     password: pass,
                 });
@@ -1025,14 +1045,38 @@ impl AppState {
         }
         self.persist_preferences();
         
-        let (use_webdav, _, user, pass) = self.get_webdav_prefs();
+        let (use_webdav, _, path, user, pass) = self.get_webdav_prefs();
         if use_webdav {
+            let full_url = if let Some(p) = path {
+                format!("{}/{}", url.trim_end_matches('/'), p.trim_start_matches('/'))
+            } else {
+                url
+            };
              data::set_backend_config(data::BackendConfig::WebDav {
-                url,
+                url: full_url,
                 username: user,
                 password: pass,
             });
-            // Maybe reload?
+        }
+    }
+
+    fn set_webdav_path(&self, path: String) {
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            prefs.webdav_path = Some(path.clone());
+        }
+        self.persist_preferences();
+        
+        let (use_webdav, url, _, user, pass) = self.get_webdav_prefs();
+        if use_webdav {
+            if let Some(u) = url {
+                let full_url = format!("{}/{}", u.trim_end_matches('/'), path.trim_start_matches('/'));
+                data::set_backend_config(data::BackendConfig::WebDav {
+                    url: full_url,
+                    username: user,
+                    password: pass,
+                });
+            }
         }
     }
 
@@ -1043,11 +1087,16 @@ impl AppState {
         }
         self.persist_preferences();
 
-        let (use_webdav, url, _, pass) = self.get_webdav_prefs();
+        let (use_webdav, url, path, _, pass) = self.get_webdav_prefs();
         if use_webdav {
             if let Some(u) = url {
+                let full_url = if let Some(p) = path {
+                    format!("{}/{}", u.trim_end_matches('/'), p.trim_start_matches('/'))
+                } else {
+                    u
+                };
                 data::set_backend_config(data::BackendConfig::WebDav {
-                    url: u,
+                    url: full_url,
                     username: Some(username),
                     password: pass,
                 });
@@ -1062,11 +1111,16 @@ impl AppState {
         }
         self.persist_preferences();
 
-        let (use_webdav, url, user, _) = self.get_webdav_prefs();
+        let (use_webdav, url, path, user, _) = self.get_webdav_prefs();
         if use_webdav {
             if let Some(u) = url {
+                let full_url = if let Some(p) = path {
+                    format!("{}/{}", u.trim_end_matches('/'), p.trim_start_matches('/'))
+                } else {
+                    u
+                };
                 data::set_backend_config(data::BackendConfig::WebDav {
-                    url: u,
+                    url: full_url,
                     username: user,
                     password: Some(password),
                 });
@@ -1074,9 +1128,9 @@ impl AppState {
         }
     }
 
-    fn get_webdav_prefs(&self) -> (bool, Option<String>, Option<String>, Option<String>) {
+    fn get_webdav_prefs(&self) -> (bool, Option<String>, Option<String>, Option<String>, Option<String>) {
         let prefs = self.preferences.borrow();
-        (prefs.use_webdav, prefs.webdav_url.clone(), prefs.webdav_username.clone(), prefs.webdav_password.clone())
+        (prefs.use_webdav, prefs.webdav_url.clone(), prefs.webdav_path.clone(), prefs.webdav_username.clone(), prefs.webdav_password.clone())
     }
 
 
