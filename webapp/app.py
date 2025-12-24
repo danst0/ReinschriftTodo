@@ -470,10 +470,14 @@ def edit(line_index):
         new_line += title.strip()
         
         if project and project.strip():
-            new_line += f" +{project.strip()}"
+            clean_project = project.strip().lstrip('+')
+            if clean_project:
+                new_line += f" +{clean_project}"
             
         if context and context.strip():
-            new_line += f" @{context.strip()}"
+            clean_context = context.strip().lstrip('@')
+            if clean_context:
+                new_line += f" @{clean_context}"
             
         if due_str and due_str.strip():
             new_line += f" due:{due_str.strip()}"
