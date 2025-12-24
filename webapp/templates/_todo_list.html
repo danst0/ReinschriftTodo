@@ -1,0 +1,25 @@
+{% set current_section = namespace(value=None) %}
+{% for todo in todos %}
+    {% if todo.section != current_section.value %}
+        <div class="section-header">{{ todo.section }}</div>
+        {% set current_section.value = todo.section %}
+    {% endif %}
+    
+    <div class="todo-item {% if todo.done %}done{% endif %}" onclick="openEditModal({{ todo.line_index }})" style="cursor: pointer;">
+        <a href="{{ url_for('toggle', line_index=todo.line_index, show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="event.stopPropagation()">
+            {% if todo.done %}☑{% else %}☐{% endif %}
+        </a>
+        <div class="content">
+            <div class="title">{{ todo.title }}</div>
+            <div class="meta">
+                {% if todo.project %}<span class="tag project">+{{ todo.project }}</span>{% endif %}
+                {% if todo.context %}<span class="tag context">@{{ todo.context }}</span>{% endif %}
+                {% if todo.due %}<span class="due">Due: {{ todo.due }}</span>{% endif %}
+            </div>
+        </div>
+        <div class="actions" style="margin-left: auto; display: flex; gap: 0.5rem;">
+            <a href="{{ url_for('postpone', line_index=todo.line_index, target='today') }}" class="btn-action" onclick="event.stopPropagation()" title="Today">📅</a>
+            <a href="{{ url_for('postpone', line_index=todo.line_index, target='tomorrow') }}" class="btn-action" onclick="event.stopPropagation()" title="Tomorrow">➡️</a>
+        </div>
+    </div>
+{% endfor %}

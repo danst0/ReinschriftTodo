@@ -326,6 +326,9 @@ def index():
         
         display_todos.append(display_item)
 
+    if request.args.get('partial'):
+        return render_template('_todo_list.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode)
+
     return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode)
 
 @app.route('/login', methods=['GET', 'POST'])

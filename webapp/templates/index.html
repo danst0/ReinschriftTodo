@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Todos</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 1rem; background-color: #fafafa; color: #333; }
@@ -27,6 +28,8 @@
         
         .filter-link { text-decoration: none; color: #999; font-weight: normal; }
         .filter-link.active { color: #3584e4; font-weight: bold; }
+        .refresh-button { background: #e0e0e0; border: 1px solid #ccc; border-radius: 6px; padding: 0.4rem 0.8rem; cursor: pointer; font-weight: 500; font-size: 0.9rem; color: #333; }
+        .refresh-button:hover { background: #d8d8d8; }
         
         /* Mobile improvements */
         input { font-size: 16px; }
@@ -48,14 +51,6 @@
             .section-header { color: #e0e0e0; border-bottom-color: #444; }
             .filter-link { color: #888; }
             .filter-link.active { color: #78aeed; }
-            
-            /* Modal Dark Mode */
-            .modal-content { background-color: #2d2d2d; color: #e0e0e0; }
-            .close { color: #aaa; }
-            .close:hover, .close:focus { color: #fff; }
-            .modal input[type="text"], .modal input[type="date"] { background: #3d3d3d; border-color: #555; color: #e0e0e0; }
-            .btn-secondary { background: #3d3d3d; color: #e0e0e0; }
-            .btn-action { background: #3d3d3d; border-color: #555; color: #e0e0e0; }
         }
 
         /* Modal Styles */
@@ -107,6 +102,19 @@
         .btn-secondary { background: #e0e0e0; color: #333; padding: 0.8rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: bold; text-decoration: none; text-align: center; }
         .btn-action { background: #f6f5f4; border: 1px solid #ddd; color: #333; padding: 0.5rem; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; line-height: 1; }
         .btn-action:hover { background: #e0e0e0; }
+
+        @media (prefers-color-scheme: dark) {
+            .modal-content { background-color: #2d2d2d; color: #e0e0e0; border-color: #555; }
+            .modal { background-color: rgba(0,0,0,0.8); }
+            .close { color: #ccc; }
+            .close:hover, .close:focus { color: #fff; }
+            .modal input[type="text"], .modal input[type="date"] { background: #3d3d3d; border-color: #555; color: #e0e0e0; }
+            .btn-secondary { background: #3d3d3d; color: #e0e0e0; }
+            .btn-primary { background: #4a90e2; }
+            .btn-action { background: #3d3d3d; border-color: #555; color: #e0e0e0; }
+            .refresh-button { background: #333; border-color: #555; color: #e0e0e0; }
+            .refresh-button:hover { background: #3d3d3d; }
+        }
     </style>
 </head>
 <body>
@@ -157,7 +165,7 @@
 
     <h1>Todos</h1>
     
-    <div class="filters" style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+    <div class="filters" style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: center;">
         <a href="{{ url_for('index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" 
            class="filter-link {% if show_done %}active{% endif %}">
            {% if show_done %}☑ Show Done{% else %}☐ Show Done{% endif %}
@@ -182,6 +190,8 @@
            class="filter-link {% if sort_mode == 'date' %}active{% endif %}">
            Date
         </a>
+
+          <button type="button" class="refresh-button" onclick="manualReload()">↻ Reload</button>
     </div>
     
     <form class="add-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post">
@@ -190,31 +200,7 @@
     </form>
 
     <div class="todo-list">
-        {% set current_section = namespace(value=None) %}
-        {% for todo in todos %}
-            {% if todo.section != current_section.value %}
-                <div class="section-header">{{ todo.section }}</div>
-                {% set current_section.value = todo.section %}
-            {% endif %}
-            
-            <div class="todo-item {% if todo.done %}done{% endif %}" onclick="openEditModal({{ todo.line_index }})" style="cursor: pointer;">
-                <a href="{{ url_for('toggle', line_index=todo.line_index, show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="event.stopPropagation()">
-                    {% if todo.done %}☑{% else %}☐{% endif %}
-                </a>
-                <div class="content">
-                    <div class="title">{{ todo.title }}</div>
-                    <div class="meta">
-                        {% if todo.project %}<span class="tag project">+{{ todo.project }}</span>{% endif %}
-                        {% if todo.context %}<span class="tag context">@{{ todo.context }}</span>{% endif %}
-                        {% if todo.due %}<span class="due">Due: {{ todo.due }}</span>{% endif %}
-                    </div>
-                </div>
-                <div class="actions" style="margin-left: auto; display: flex; gap: 0.5rem;">
-                    <a href="{{ url_for('postpone', line_index=todo.line_index, target='today') }}" class="btn-action" onclick="event.stopPropagation()" title="Today">📅</a>
-                    <a href="{{ url_for('postpone', line_index=todo.line_index, target='tomorrow') }}" class="btn-action" onclick="event.stopPropagation()" title="Tomorrow">➡️</a>
-                </div>
-            </div>
-        {% endfor %}
+        {% include '_todo_list.html' %}
     </div>
 
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;">
@@ -271,17 +257,25 @@
             }
         }
 
-        function scheduleReload() {
-            setTimeout(function() {
-                var input = document.querySelector('input[name="title"]');
-                if (document.activeElement === input || input.value.length > 0) {
-                    scheduleReload();
-                    return;
-                }
-                window.location.reload();
-            }, 10000);
+        function manualReload() {
+            window.location.reload();
         }
-        scheduleReload();
+
+        function autoReload() {
+            // Construct URL with current params + partial=1
+            const url = new URL(window.location.href);
+            url.searchParams.set('partial', '1');
+            
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    document.querySelector('.todo-list').innerHTML = html;
+                })
+                .catch(err => console.error('Auto-reload failed', err));
+        }
+        
+        // Reload every 10 seconds
+        setInterval(autoReload, 10000);
     </script>
 </body>
 </html>
