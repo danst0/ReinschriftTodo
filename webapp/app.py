@@ -180,7 +180,15 @@ def rewrite_line(line, done):
         updated = updated.replace("- [ ]", "- [x]", 1)
         updated = updated.replace("- [X]", "- [x]", 1)
         today = datetime.now().strftime("%Y-%m-%d")
-        updated = updated.rstrip() + f" ✅ {today}"
+        done_marker = f" ✅ {today}"
+        
+        # Place Done Date before ID if ID exists
+        marker_match = ID_RE.search(updated)
+        if marker_match:
+            start = marker_match.start()
+            updated = updated[:start].rstrip() + done_marker + " " + updated[start:].lstrip()
+        else:
+            updated = updated.rstrip() + done_marker
     else:
         updated = updated.replace("- [x]", "- [ ]", 1)
         updated = updated.replace("- [X]", "- [ ]", 1)
