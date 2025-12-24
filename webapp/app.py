@@ -312,6 +312,67 @@ def toggle(line_index):
     
     return redirect(url_for('index', show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode))
 
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
+@app.route('/edit/<int:line_index>', methods=['GET', 'POST'])
+def edit(line_index):
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    
+    content = read_content()
+    lines = content.splitlines()
+    
+    if line_index >= len(lines):
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        title = request.form.get('title')
+        project = request.form.get('project')
+        context = request.form.get('context')
+        due_str = request.form.get('due')
+        reference = request.form.get('reference')
+        done = request.form.get('done') == 'on'
+        
+        # Reconstruct line
+        original_line = lines[line_index]
+        marker = capture_token(ID_RE, original_line)
+        
+        new_line = "- [x] " if done else "- [ ] "
+        new_line += title.strip()
+        
+        if project and project.strip():
+            new_line += f" +{project.strip()}"
+            
+        if context and context.strip():
+            new_line += f" @{context.strip()}"
+            
+        if due_str and due_str.strip():
+            new_line += f" due:{due_str.strip()}"
+            
+        if reference and reference.strip():
+            new_line += f" [[{reference.strip()}]]"
+            
+        if marker:
+            new_line += f" ^{marker}"
+            
+        lines[line_index] = new_line
+        write_content('\n'.join(lines) + '\n')
+        
+        return redirect(url_for('index'))
+    
+    # GET request
+    line = lines[line_index]
+    # We need to parse it to pre-fill the form
+    # We can reuse parse_line but we need a dummy section
+    item = parse_line(line, line_index, "")
+    if not item:
+        return redirect(url_for('index'))
+        
+    return render_template('edit.html', todo=item)
+
 @app.route('/add', methods=['POST'])
 def add():
     if 'logged_in' not in session:

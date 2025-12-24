@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Todo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 1rem; background-color: #fafafa; color: #333; }
+        h2 { color: #333; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        input[type="text"], input[type="date"] { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
+        input[type="checkbox"] { transform: scale(1.5); margin-right: 0.5rem; }
+        .buttons { display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap; }
+        button { padding: 0.8rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: bold; }
+        .btn-primary { background: #3584e4; color: white; }
+        .btn-secondary { background: #e0e0e0; color: #333; }
+        .btn-action { background: #f6f5f4; border: 1px solid #ddd; color: #333; }
+        
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #1e1e1e; color: #e0e0e0; }
+            h2 { color: #e0e0e0; }
+            input[type="text"], input[type="date"] { background: #2d2d2d; border-color: #444; color: #e0e0e0; }
+            .btn-secondary { background: #3d3d3d; color: #e0e0e0; }
+            .btn-action { background: #2d2d2d; border-color: #444; color: #e0e0e0; }
+        }
+    </style>
+    <script>
+        function setDate(offset) {
+            const dateInput = document.getElementById('due');
+            const today = new Date();
+            today.setDate(today.getDate() + offset);
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            dateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+    </script>
+</head>
+<body>
+    <h2>Edit Todo</h2>
+    <form method="post">
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" value="{{ todo.title }}" required>
+        </div>
+        <div class="form-group">
+            <label for="project">Project (+)</label>
+            <input type="text" id="project" name="project" value="{{ todo.project or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="context">Context (@)</label>
+            <input type="text" id="context" name="context" value="{{ todo.context or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="due">Due Date</label>
+            <div style="display: flex; gap: 0.5rem;">
+                <input type="date" id="due" name="due" value="{{ todo.due or '' }}">
+                <button type="button" class="btn-action" onclick="setDate(0)" title="Today">📅</button>
+                <button type="button" class="btn-action" onclick="setDate(1)" title="Tomorrow">➡️</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="reference">Reference ([[ ]])</label>
+            <input type="text" id="reference" name="reference" value="{{ todo.reference or '' }}">
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="done" {% if todo.done %}checked{% endif %}>
+                Done
+            </label>
+        </div>
+        
+        <div class="buttons">
+            <button type="submit" class="btn-primary">Save</button>
+            <a href="{{ url_for('index') }}" class="btn-secondary" style="text-decoration: none; display: inline-block; text-align: center;">Cancel</a>
+        </div>
+    </form>
+</body>
+</html>

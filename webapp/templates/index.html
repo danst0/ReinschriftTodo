@@ -27,6 +27,10 @@
         
         .filter-link { text-decoration: none; color: #999; font-weight: normal; }
         .filter-link.active { color: #3584e4; font-weight: bold; }
+        
+        /* Mobile improvements */
+        input { font-size: 16px; }
+        button, .checkbox, .filter-link { touch-action: manipulation; }
 
         @media (prefers-color-scheme: dark) {
             body { background-color: #1e1e1e; color: #e0e0e0; }
@@ -95,7 +99,7 @@
                     {% if todo.done %}☑{% else %}☐{% endif %}
                 </a>
                 <div class="content">
-                    <div class="title">{{ todo.title }}</div>
+                    <div class="title"><a href="{{ url_for('edit', line_index=todo.line_index) }}" style="color: inherit; text-decoration: none; display: block;">{{ todo.title }}</a></div>
                     <div class="meta">
                         {% if todo.project %}<span class="tag project">+{{ todo.project }}</span>{% endif %}
                         {% if todo.context %}<span class="tag context">@{{ todo.context }}</span>{% endif %}
@@ -104,6 +108,10 @@
                 </div>
             </div>
         {% endfor %}
+    </div>
+
+    <div style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;">
+        <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">Logout</a>
     </div>
 
     <script>

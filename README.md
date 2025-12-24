@@ -40,7 +40,10 @@ Login-Daten (konfigurierbar in `docker-compose.yml`):
 - Passwort: `secret`
 
 ## Offene Todos
-- [ ] make the webapp mobile first compliant
+- [x] make the webapp mobile first compliant
+- [x] webapp: add the details edit view
+- [x] webapp: add the postpone functions as with the rust app
+- [x] webapp: logout button on the bottom of the page
 
 ## Erledigte Todos
 - [x] Esc closes the Preferences Window
