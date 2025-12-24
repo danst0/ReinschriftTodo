@@ -31,6 +31,9 @@
         .refresh-button { background: #e0e0e0; border: 1px solid #ccc; border-radius: 6px; padding: 0.4rem 0.8rem; cursor: pointer; font-weight: 500; font-size: 0.9rem; color: #333; }
         .refresh-button:hover { background: #d8d8d8; }
         
+        .lang-link { text-decoration: none; font-size: 1.5rem; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+        .lang-link.active { border-bottom-color: #3584e4; }
+        
         /* Mobile improvements */
         input { font-size: 16px; }
         button, .checkbox, .filter-link { touch-action: manipulation; }
@@ -204,13 +207,13 @@
     </div>
 
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;">
-        <div style="margin-bottom: 1rem;">
-            <a href="{{ url_for('set_language', lang='de') }}" style="text-decoration: none; {% if current_lang == 'de' %}font-weight: bold;{% endif %}">DE</a> |
-            <a href="{{ url_for('set_language', lang='en') }}" style="text-decoration: none; {% if current_lang == 'en' %}font-weight: bold;{% endif %}">EN</a> |
-            <a href="{{ url_for('set_language', lang='es') }}" style="text-decoration: none; {% if current_lang == 'es' %}font-weight: bold;{% endif %}">ES</a> |
-            <a href="{{ url_for('set_language', lang='fr') }}" style="text-decoration: none; {% if current_lang == 'fr' %}font-weight: bold;{% endif %}">FR</a> |
-            <a href="{{ url_for('set_language', lang='sv') }}" style="text-decoration: none; {% if current_lang == 'sv' %}font-weight: bold;{% endif %}">SV</a> |
-            <a href="{{ url_for('set_language', lang='ja') }}" style="text-decoration: none; {% if current_lang == 'ja' %}font-weight: bold;{% endif %}">JA</a>
+        <div style="margin-bottom: 1rem; display: flex; justify-content: center; gap: 1rem;">
+            <a href="{{ url_for('set_language', lang='de') }}" title="Deutsch" class="lang-link {% if current_lang == 'de' %}active{% endif %}">🇩🇪</a>
+            <a href="{{ url_for('set_language', lang='en') }}" title="English" class="lang-link {% if current_lang == 'en' %}active{% endif %}">🇺🇸</a>
+            <a href="{{ url_for('set_language', lang='es') }}" title="Español" class="lang-link {% if current_lang == 'es' %}active{% endif %}">🇪🇸</a>
+            <a href="{{ url_for('set_language', lang='fr') }}" title="Français" class="lang-link {% if current_lang == 'fr' %}active{% endif %}">🇫🇷</a>
+            <a href="{{ url_for('set_language', lang='sv') }}" title="Svenska" class="lang-link {% if current_lang == 'sv' %}active{% endif %}">🇸🇪</a>
+            <a href="{{ url_for('set_language', lang='ja') }}" title="日本語" class="lang-link {% if current_lang == 'ja' %}active{% endif %}">🇯🇵</a>
         </div>
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
     </div>
