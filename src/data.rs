@@ -529,7 +529,21 @@ fn render_line(item: &TodoItem) -> Result<String> {
 
 fn normalize_token(value: Option<&str>) -> Option<String> {
     value
-        .map(|s| s.trim().replace(' ', ""))
+        .map(|s| {
+            let trimmed = s.trim().replace(' ', "");
+            // Remove all leading + or @
+            let mut chars = trimmed.chars();
+            let mut out = String::new();
+            let mut found = false;
+            for c in chars {
+                if !found && (c == '+' || c == '@') {
+                    continue;
+                }
+                found = true;
+                out.push(c);
+            }
+            out
+        })
         .filter(|s| !s.is_empty())
 }
 
@@ -544,7 +558,9 @@ fn apply_completion_marker(line: &str, done: bool) -> String {
         if COMPLETION_RE.is_match(line) {
             line.to_string()
         } else {
-            line.to_string()
+            // Add completion date if not present
+            let today = Local::now().date_naive().format("%Y-%m-%d");
+            format!("{line} ✅ {today}")
         }
     } else {
         COMPLETION_RE.replace(line, "").to_string()
