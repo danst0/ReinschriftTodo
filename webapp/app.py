@@ -173,15 +173,17 @@ def toggle_todo(line_index, done):
 
 def rewrite_line(line, done):
     updated = line
+    # Remove existing completion marker first
+    updated = COMPLETION_RE.sub("", updated)
+    
     if done:
         updated = updated.replace("- [ ]", "- [x]", 1)
         updated = updated.replace("- [X]", "- [x]", 1)
+        today = datetime.now().strftime("%Y-%m-%d")
+        updated = updated.rstrip() + f" ✅ {today}"
     else:
         updated = updated.replace("- [x]", "- [ ]", 1)
         updated = updated.replace("- [X]", "- [ ]", 1)
-    
-    # Handle completion marker (remove it as per recent changes)
-    updated = COMPLETION_RE.sub("", updated)
     
     return updated
 
@@ -410,6 +412,12 @@ def postpone(line_index, target):
     if item['reference'] and item['reference'].strip():
         new_line += f" [[{item['reference'].strip()}]]"
         
+    # Preserve completion date if done
+    if item['done']:
+         match = COMPLETION_RE.search(original_line)
+         if match:
+             new_line += match.group(0)
+
     if marker:
         new_line += f" ^{marker}"
         
@@ -446,6 +454,18 @@ def edit(line_index):
         original_line = lines[line_index]
         marker = capture_token(ID_RE, original_line)
         
+        # Handle completion date
+        completion_str = ""
+        if done:
+            match = COMPLETION_RE.search(original_line)
+            # If it was already done, preserve the date
+            if match and ("- [x]" in original_line or "- [X]" in original_line):
+                 completion_str = match.group(0)
+            else:
+                 # Otherwise add today's date
+                 today = datetime.now().strftime("%Y-%m-%d")
+                 completion_str = f" ✅ {today}"
+
         new_line = "- [x] " if done else "- [ ] "
         new_line += title.strip()
         
@@ -461,6 +481,9 @@ def edit(line_index):
         if reference and reference.strip():
             new_line += f" [[{reference.strip()}]]"
             
+        if completion_str:
+            new_line += completion_str
+
         if marker:
             new_line += f" ^{marker}"
             
