@@ -14,11 +14,12 @@ services:
       - APP_USER=admin
       - APP_PASSWORD=secret
 
-volumes:
-  todo_config:
+
       # WebDAV Configuration (Optional)
       - USE_WEBDAV=false
       - WEBDAV_URL=https://your-nextcloud-instance.com/remote.php/dav/files/username/path/to/TodosDatenbank.md
       - WEBDAV_USERNAME=your_username
       - WEBDAV_PASSWORD=your_password
 
+volumes:
+  todo_config:
