@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=ReinschriftTodo
-Comment=Manage your todos
-Exec=reinschrift_todo
-Icon=me.dumke.ReinschriftTodo
-Terminal=false
-Type=Application
-Categories=Utility;GTK;
-StartupNotify=true

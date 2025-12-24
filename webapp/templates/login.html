@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Login - Todos</title>
+    <title>{{ t.login_title }}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -15,16 +15,16 @@
 </head>
 <body>
     <div class="login-box">
-        <h2>Login</h2>
+        <h2>{{ t.login }}</h2>
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 <div class="flash">{{ messages[0] }}</div>
             {% endif %}
         {% endwith %}
         <form method="post">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
+            <input type="text" name="username" placeholder="{{ t.username }}" required>
+            <input type="password" name="password" placeholder="{{ t.password }}" required>
+            <button type="submit">{{ t.login }}</button>
         </form>
     </div>
 </body>

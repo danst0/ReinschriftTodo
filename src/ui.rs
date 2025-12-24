@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::data::{self, TodoItem};
+use crate::i18n::t;
 
 #[derive(Clone)]
 enum ListEntry {
@@ -93,7 +94,7 @@ fn schedule_poll(state: Rc<AppState>, interval: u32) {
         let next_interval = match state.reload() {
             Ok(_) => 10,
             Err(e) => {
-                eprintln!("Auto-reload failed: {e}");
+                eprintln!("{}", t("auto_reload_error").replace("{}", &e.to_string()));
                 std::cmp::min(interval * 2, 300)
             }
         };
@@ -105,25 +106,25 @@ fn schedule_poll(state: Rc<AppState>, interval: u32) {
 pub fn build_ui(app: &Application) -> Result<()> {
     let window = adw::ApplicationWindow::builder()
         .application(app)
-        .title("Todos Datenbank")
+        .title(&t("app_title"))
         .default_width(560)
         .default_height(780)
         .build();
 
     let header = adw::HeaderBar::builder()
-        .title_widget(&gtk::Label::builder().label("Todos Datenbank").xalign(0.0).build())
+        .title_widget(&gtk::Label::builder().label(&t("app_title")).xalign(0.0).build())
         .build();
 
     let settings_btn = gtk::Button::builder()
         .icon_name("open-menu-symbolic")
-        .tooltip_text("Einstellungen")
+        .tooltip_text(&t("settings"))
         .build();
     settings_btn.add_css_class("flat");
     header.pack_start(&settings_btn);
 
     let refresh_btn = gtk::Button::builder()
         .icon_name("view-refresh-symbolic")
-        .tooltip_text("Neu laden (Ctrl+R)")
+        .tooltip_text(&t("reload"))
         .build();
     header.pack_end(&refresh_btn);
 
@@ -145,16 +146,16 @@ pub fn build_ui(app: &Application) -> Result<()> {
     controls.set_margin_bottom(6);
 
     let sort_label = gtk::Label::builder()
-        .label("Sortieren nach:")
+        .label(&t("sort_by"))
         .xalign(0.0)
         .build();
     controls.append(&sort_label);
 
-    let sort_selector = gtk::DropDown::from_strings(&["+ Themen", "@ Orte", "Datum"]);
+    let sort_selector = gtk::DropDown::from_strings(&[&t("topics"), &t("locations"), &t("date")]);
     sort_selector.set_selected(state.sort_mode().to_index());
     controls.append(&sort_selector);
 
-    let due_filter = gtk::CheckButton::with_label("Nur fällige anzeigen");
+    let due_filter = gtk::CheckButton::with_label(&t("show_due_only"));
     due_filter.set_margin_start(18);
     due_filter.set_active(state.show_due_only());
     controls.append(&due_filter);
@@ -167,11 +168,11 @@ pub fn build_ui(app: &Application) -> Result<()> {
     new_row.set_margin_bottom(6);
 
     let new_entry = gtk::Entry::new();
-    new_entry.set_placeholder_text(Some("Neues To-do…"));
+    new_entry.set_placeholder_text(Some(&t("new_todo_placeholder")));
     new_entry.set_hexpand(true);
     new_row.append(&new_entry);
 
-    let add_btn = gtk::Button::with_label("Hinzufügen");
+    let add_btn = gtk::Button::with_label(&t("add"));
     add_btn.add_css_class("suggested-action");
     new_row.append(&add_btn);
 
@@ -180,7 +181,7 @@ pub fn build_ui(app: &Application) -> Result<()> {
     add_btn.connect_clicked(move |_| {
         let title_text = new_entry_for_add.text().trim().to_string();
         if title_text.is_empty() {
-            state_for_add.show_error("Titel darf nicht leer sein");
+            state_for_add.show_error(&t("title_empty_error"));
             return;
         }
 
@@ -188,13 +189,13 @@ pub fn build_ui(app: &Application) -> Result<()> {
             Ok(_) => {
                 new_entry_for_add.set_text("");
                 if let Err(err) = state_for_add.reload() {
-                    state_for_add.show_error(&format!("Konnte To-dos nicht neu laden: {err}"));
+                    state_for_add.show_error(&t("reload_error").replace("{}", &err.to_string()));
                 } else {
-                    state_for_add.show_info("Aufgabe hinzugefügt");
+                    state_for_add.show_info(&t("task_added"));
                 }
             }
             Err(err) => {
-                state_for_add.show_error(&format!("Konnte To-do nicht anlegen: {err}"));
+                state_for_add.show_error(&t("create_error").replace("{}", &err.to_string()));
             }
         }
     });
@@ -205,7 +206,7 @@ pub fn build_ui(app: &Application) -> Result<()> {
     new_entry.connect_activate(move |_| {
         let title_text = new_entry_for_add2.text().trim().to_string();
         if title_text.is_empty() {
-            state_for_add2.show_error("Titel darf nicht leer sein");
+            state_for_add2.show_error(&t("title_empty_error"));
             return;
         }
 
@@ -213,13 +214,13 @@ pub fn build_ui(app: &Application) -> Result<()> {
             Ok(_) => {
                 new_entry_for_add2.set_text("");
                 if let Err(err) = state_for_add2.reload() {
-                    state_for_add2.show_error(&format!("Konnte To-dos nicht neu laden: {err}"));
+                    state_for_add2.show_error(&t("reload_error").replace("{}", &err.to_string()));
                 } else {
-                    state_for_add2.show_info("Aufgabe hinzugefügt");
+                    state_for_add2.show_info(&t("task_added"));
                 }
             }
             Err(err) => {
-                state_for_add2.show_error(&format!("Konnte To-do nicht anlegen: {err}"));
+                state_for_add2.show_error(&t("create_error").replace("{}", &err.to_string()));
             }
         }
     });
@@ -260,7 +261,7 @@ pub fn build_ui(app: &Application) -> Result<()> {
     let refresh_action = gio::SimpleAction::new("reload", None);
     refresh_action.connect_activate(clone!(@weak state => move |_, _| {
         if let Err(err) = state.reload() {
-            state.show_error(&format!("Konnte To-dos nicht laden: {err}"));
+            state.show_error(&t("load_error").replace("{}", &err.to_string()));
         }
     }));
     app.add_action(&refresh_action);
@@ -293,7 +294,7 @@ pub fn build_ui(app: &Application) -> Result<()> {
     window.present();
 
     if let Err(err) = state.reload() {
-        state.show_error(&format!("Konnte To-dos nicht laden: {err}\nBitte wählen Sie eine gültige Datei in den Einstellungen."));
+        state.show_error(&format!("{}\n{}", t("load_error").replace("{}", &err.to_string()), t("select_valid_file")));
         state.show_settings_dialog();
     }
 
@@ -307,7 +308,7 @@ pub fn build_ui(app: &Application) -> Result<()> {
     }));
 
     if let Err(err) = state.install_monitor() {
-        state.show_error(&format!("Dateiüberwachung nicht verfügbar: {err}"));
+        state.show_error(&t("monitor_error").replace("{}", &err.to_string()));
     }
 
     schedule_poll(state, 10);
@@ -382,7 +383,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
         let today_btn = gtk::Button::builder()
             .icon_name("x-office-calendar-symbolic")
-            .tooltip_text("Fälligkeit auf heute setzen")
+            .tooltip_text(&t("set_due_today"))
             .build();
         today_btn.set_valign(gtk::Align::Center);
         today_btn.add_css_class("flat");
@@ -390,7 +391,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
         let postpone_btn = gtk::Button::builder()
             .icon_name("go-next-symbolic")
-            .tooltip_text("Auf morgen verschieben")
+            .tooltip_text(&t("postpone_tomorrow"))
             .build();
         postpone_btn.set_valign(gtk::Align::Center);
         postpone_btn.add_css_class("flat");
@@ -431,7 +432,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
             if let Some(state) = state_for_handler.upgrade() {
                 if let Err(err) = state.toggle_item(&todo, btn.is_active()) {
-                    state.show_error(&format!("Konnte Eintrag nicht aktualisieren: {err}"));
+                    state.show_error(&t("update_error").replace("{}", &err.to_string()));
                 }
             }
         });
@@ -479,7 +480,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
             if let Some(state) = today_state.upgrade() {
                 if let Err(err) = state.set_due_today(&todo) {
-                    state.show_error(&format!("Konnte Fälligkeit setzen: {err}"));
+                    state.show_error(&t("set_due_error").replace("{}", &err.to_string()));
                 }
             }
         });
@@ -773,12 +774,12 @@ impl AppState {
 
     fn show_settings_dialog(self: &Rc<Self>) {
         let Some(parent) = self.window.upgrade() else {
-            self.show_error("Kein Fenster verfügbar");
+            self.show_error(&t("no_window"));
             return;
         };
 
         let dialog = adw::Window::builder()
-            .title("Einstellungen")
+            .title(&t("settings"))
             .transient_for(&parent)
             .modal(true)
             .default_width(420)
@@ -804,7 +805,7 @@ impl AppState {
 
         let show_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
         let show_label = gtk::Label::builder()
-            .label("Erledigte Aufgaben anzeigen")
+            .label(&t("show_completed"))
             .xalign(0.0)
             .hexpand(true)
             .build();
@@ -822,7 +823,7 @@ impl AppState {
 
         let due_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
         let due_label = gtk::Label::builder()
-            .label("Nur fällige (<= heute) anzeigen")
+            .label(&t("show_due_only_settings"))
             .xalign(0.0)
             .hexpand(true)
             .build();
@@ -840,7 +841,7 @@ impl AppState {
 
         let storage_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
         let storage_label = gtk::Label::builder()
-            .label("WebDAV verwenden")
+            .label(&t("use_webdav"))
             .xalign(0.0)
             .hexpand(true)
             .build();
@@ -855,7 +856,7 @@ impl AppState {
 
         // Local File UI
         let file_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        file_box.append(&gtk::Label::builder().label("Datenbankdatei").xalign(0.0).build());
+        file_box.append(&gtk::Label::builder().label(&t("database_file")).xalign(0.0).build());
         let path_label = gtk::Label::builder()
             .xalign(0.0)
             .wrap(true)
@@ -866,7 +867,7 @@ impl AppState {
         let file_buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         file_buttons.set_hexpand(true);
         file_buttons.append(&path_label);
-        let choose_btn = gtk::Button::with_label("Datei auswählen…");
+        let choose_btn = gtk::Button::with_label(&t("select_file"));
         let label_ref = path_label.downgrade();
         let state_for_file = Rc::clone(self);
         let dialog_ref = dialog.downgrade();
@@ -889,39 +890,39 @@ impl AppState {
         // WebDAV UI
         let webdav_box = gtk::Box::new(gtk::Orientation::Vertical, 8);
         
-        let url_entry = gtk::Entry::builder().placeholder_text("WebDAV URL").build();
+        let url_entry = gtk::Entry::builder().placeholder_text(&t("webdav_url")).build();
         if let Some(url) = wd_url { url_entry.set_text(&url); }
 
-        let path_entry = gtk::Entry::builder().placeholder_text("Pfad (relativ)").build();
+        let path_entry = gtk::Entry::builder().placeholder_text(&t("path_relative")).build();
         if let Some(path) = wd_path { path_entry.set_text(&path); }
         
-        let user_entry = gtk::Entry::builder().placeholder_text("Benutzername").build();
+        let user_entry = gtk::Entry::builder().placeholder_text(&t("username")).build();
         if let Some(user) = wd_user { user_entry.set_text(&user); }
 
-        let pass_entry = gtk::PasswordEntry::builder().placeholder_text("Passwort").build();
+        let pass_entry = gtk::PasswordEntry::builder().placeholder_text(&t("password")).build();
         if let Some(pass) = wd_pass { pass_entry.set_text(&pass); }
 
-        webdav_box.append(&gtk::Label::builder().label("WebDAV URL").xalign(0.0).build());
+        webdav_box.append(&gtk::Label::builder().label(&t("webdav_url")).xalign(0.0).build());
         webdav_box.append(&url_entry);
-        webdav_box.append(&gtk::Label::builder().label("Pfad (relativ)").xalign(0.0).build());
+        webdav_box.append(&gtk::Label::builder().label(&t("path_relative")).xalign(0.0).build());
         webdav_box.append(&path_entry);
-        webdav_box.append(&gtk::Label::builder().label("Benutzername").xalign(0.0).build());
+        webdav_box.append(&gtk::Label::builder().label(&t("username")).xalign(0.0).build());
         webdav_box.append(&user_entry);
-        webdav_box.append(&gtk::Label::builder().label("Passwort").xalign(0.0).build());
+        webdav_box.append(&gtk::Label::builder().label(&t("password")).xalign(0.0).build());
         webdav_box.append(&pass_entry);
 
-        let check_btn = gtk::Button::with_label("Verbindung prüfen");
+        let check_btn = gtk::Button::with_label(&t("check_connection"));
         check_btn.set_margin_top(8);
         let state_for_check = Rc::clone(self);
         check_btn.connect_clicked(move |_| {
             let (_, url, path, user, pass) = state_for_check.get_webdav_prefs();
             
             let Some(u) = url else {
-                state_for_check.show_error("Keine URL angegeben.");
+                state_for_check.show_error(&t("no_url_error"));
                 return;
             };
             if u.trim().is_empty() {
-                state_for_check.show_error("Keine URL angegeben.");
+                state_for_check.show_error(&t("no_url_error"));
                 return;
             }
 
@@ -942,10 +943,10 @@ impl AppState {
                 match receiver.try_recv() {
                     Ok(result) => {
                         match result {
-                            Ok(_) => state_bg.show_info("Verbindung erfolgreich!"),
+                            Ok(_) => state_bg.show_info(&t("connection_success")),
                             Err(e) => {
-                                eprintln!("WebDAV Connection Error: {}", e);
-                                state_bg.show_error(&format!("Verbindung fehlgeschlagen: {}", e));
+                                eprintln!("{}", t("webdav_conn_error").replace("{}", &e.to_string()));
+                                state_bg.show_error(&t("connection_failed").replace("{}", &e.to_string()));
                             }
                         }
                         glib::ControlFlow::Break
@@ -990,7 +991,7 @@ impl AppState {
         pass_entry.connect_changed(move |e| pass_state.set_webdav_password(e.text().to_string()));
 
 
-        let close_btn = gtk::Button::with_label("Schließen");
+        let close_btn = gtk::Button::with_label(&t("close"));
         close_btn.set_halign(gtk::Align::End);
         let dialog_close = dialog.clone();
         close_btn.connect_clicked(move |_| {
@@ -1004,21 +1005,21 @@ impl AppState {
 
     fn set_database_path(self: &Rc<Self>, path: PathBuf) -> bool {
         if !path.exists() {
-            self.show_error("Datei existiert nicht");
+            self.show_error(&t("file_not_exists"));
             return false;
         }
 
         let canonical = match path.canonicalize() {
             Ok(p) => p,
             Err(err) => {
-                self.show_error(&format!("Konnte Pfad nicht öffnen: {err}"));
+                self.show_error(&t("open_path_error").replace("{}", &err.to_string()));
                 return false;
             }
         };
 
         let previous = data::todo_path();
         if previous == canonical {
-            self.show_info("Diese Datei ist bereits aktiv");
+            self.show_info(&t("file_already_active"));
             return false;
         }
 
@@ -1026,9 +1027,9 @@ impl AppState {
         if let Err(err) = self.reload() {
             data::set_todo_path(previous);
             if let Err(rollback_err) = self.reload() {
-                eprintln!("Rollback fehlgeschlagen: {rollback_err}");
+                eprintln!("{}", t("rollback_failed").replace("{}", &rollback_err.to_string()));
             }
-            self.show_error(&format!("Konnte Datei nicht laden: {err}"));
+            self.show_error(&t("load_error").replace("{}", &err.to_string()));
             return false;
         }
 
@@ -1042,10 +1043,10 @@ impl AppState {
             drop(old_monitor);
         }
         if let Err(err) = self.install_monitor() {
-            self.show_error(&format!("Dateiüberwachung nicht verfügbar: {err}"));
+            self.show_error(&t("monitor_error").replace("{}", &err.to_string()));
         }
 
-        self.show_info(&format!("Nutze {}", canonical.display()));
+        self.show_info(&t("using_file").replace("{}", &canonical.display().to_string()));
         true
     }
 
@@ -1101,7 +1102,7 @@ impl AppState {
         }
 
         if let Err(err) = self.reload() {
-             self.show_error(&format!("Konnte Daten nicht laden: {err}"));
+             self.show_error(&t("load_data_error").replace("{}", &err.to_string()));
         }
     }
 
@@ -1240,14 +1241,14 @@ impl AppState {
     fn persist_preferences(&self) {
         let prefs = self.preferences.borrow().clone();
         if let Err(err) = write_preferences(&prefs) {
-            eprintln!("Konnte Einstellungen nicht speichern: {err}");
+            eprintln!("{}: {err}", t("save_settings_error"));
         }
     }
 
     fn save_item(&self, updated: &TodoItem) -> Result<()> {
         data::update_todo_details(updated)?;
         self.reload()?;
-        self.show_info(&format!("Aktualisiert: {}", updated.title));
+        self.show_info(&t("updated_task").replace("{}", &updated.title));
         Ok(())
     }
 
@@ -1269,12 +1270,12 @@ impl AppState {
 
     fn show_details_dialog(self: &Rc<Self>, todo: &TodoItem) {
         let Some(parent) = self.window.upgrade() else {
-            self.show_error("Kein Fenster verfügbar");
+            self.show_error(&t("no_window"));
             return;
         };
 
         let dialog = adw::Window::builder()
-            .title("Aufgabe bearbeiten")
+            .title(&t("edit_task"))
             .transient_for(&parent)
             .modal(true)
             .default_width(420)
@@ -1288,7 +1289,7 @@ impl AppState {
         content.set_margin_end(20);
 
         let section_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        section_row.append(&gtk::Label::builder().label("Bereich").xalign(0.0).build());
+        section_row.append(&gtk::Label::builder().label(&t("section")).xalign(0.0).build());
         let section_value = gtk::Label::builder()
             .label(&todo.section)
             .xalign(0.0)
@@ -1299,7 +1300,7 @@ impl AppState {
 
         let title_entry = gtk::Entry::builder().text(&todo.title).hexpand(true).build();
         let title_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        title_row.append(&gtk::Label::builder().label("Titel").xalign(0.0).build());
+        title_row.append(&gtk::Label::builder().label(&t("title")).xalign(0.0).build());
         title_row.append(&title_entry);
         content.append(&title_row);
 
@@ -1308,7 +1309,7 @@ impl AppState {
             project_entry.set_text(project);
         }
         let project_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        project_row.append(&gtk::Label::builder().label("Projekt (+)").xalign(0.0).build());
+        project_row.append(&gtk::Label::builder().label(&t("project_plus")).xalign(0.0).build());
         project_row.append(&project_entry);
         content.append(&project_row);
 
@@ -1317,7 +1318,7 @@ impl AppState {
             context_entry.set_text(context);
         }
         let context_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        context_row.append(&gtk::Label::builder().label("Ort (@)").xalign(0.0).build());
+        context_row.append(&gtk::Label::builder().label(&t("location_at")).xalign(0.0).build());
         context_row.append(&context_entry);
         content.append(&context_row);
 
@@ -1328,24 +1329,24 @@ impl AppState {
             due_entry.set_text(&due_string);
         }
         let due_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        due_row.append(&gtk::Label::builder().label("Fälligkeitsdatum").xalign(0.0).build());
+        due_row.append(&gtk::Label::builder().label(&t("due_date")).xalign(0.0).build());
         let due_inputs = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         due_entry.set_hexpand(true);
         due_inputs.append(&due_entry);
-        let due_today_btn = gtk::Button::with_label("Heute");
+        let due_today_btn = gtk::Button::with_label(&t("today"));
         due_today_btn.add_css_class("flat");
         due_inputs.append(&due_today_btn);
         due_row.append(&due_inputs);
         content.append(&due_row);
 
-        let done_check = gtk::CheckButton::with_label("Erledigt");
+        let done_check = gtk::CheckButton::with_label(&t("done"));
         done_check.set_active(todo.done);
         content.append(&done_check);
 
         let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         buttons.set_halign(gtk::Align::End);
-        let cancel_btn = gtk::Button::with_label("Abbrechen");
-        let save_btn = gtk::Button::with_label("Speichern");
+        let cancel_btn = gtk::Button::with_label(&t("cancel"));
+        let save_btn = gtk::Button::with_label(&t("save"));
         save_btn.add_css_class("suggested-action");
         buttons.append(&cancel_btn);
         buttons.append(&save_btn);
@@ -1374,7 +1375,7 @@ impl AppState {
         save_btn.connect_clicked(move |_| {
             let title_text = title_entry_save.text().trim().to_string();
             if title_text.is_empty() {
-                state_for_save.show_error("Titel darf nicht leer sein");
+                state_for_save.show_error(&t("title_empty_error"));
                 return;
             }
 
@@ -1399,7 +1400,7 @@ impl AppState {
                 match NaiveDate::parse_from_str(&due_text, "%Y-%m-%d") {
                     Ok(date) => Some(date),
                     Err(_) => {
-                        state_for_save.show_error("Ungültiges Datum. Erwartet YYYY-MM-DD");
+                        state_for_save.show_error(&t("invalid_date_error"));
                         return;
                     }
                 }
@@ -1414,7 +1415,7 @@ impl AppState {
             updated.done = done_check_save.is_active();
 
             if let Err(err) = state_for_save.save_item(&updated) {
-                state_for_save.show_error(&format!("Konnte Aufgabe nicht speichern: {err}"));
+                state_for_save.show_error(&t("save_task_error").replace("{}", &err.to_string()));
             } else {
                 dialog_save.close();
             }
@@ -1433,19 +1434,19 @@ impl AppState {
 
     fn group_label(&self, mode: SortMode, item: &TodoItem) -> Option<String> {
         match mode {
-            SortMode::Topic => Some(format!(
-                "Thema: {}",
+            SortMode::Topic => Some(t("topic_group").replace(
+                "{}",
                 item.project
                     .as_deref()
                     .filter(|s| !s.is_empty())
-                    .unwrap_or("Ohne Projekt")
+                    .unwrap_or(&t("no_project"))
             )),
-            SortMode::Location => Some(format!(
-                "Ort: {}",
+            SortMode::Location => Some(t("location_group").replace(
+                "{}",
                 item.context
                     .as_deref()
                     .filter(|s| !s.is_empty())
-                    .unwrap_or("Ohne Ort")
+                    .unwrap_or(&t("no_location"))
             )),
             SortMode::Date => None,
         }
@@ -1487,11 +1488,11 @@ impl AppState {
             match state.reload() {
                 Ok(_) => {
                     if matches!(event, Event::ChangesDoneHint | Event::Changed | Event::Created) {
-                        state.show_info("Änderungen aus Datei übernommen");
+                        state.show_info(&t("changes_applied"));
                     }
                 }
                 Err(err) => {
-                    state.show_error(&format!("Aktualisierung fehlgeschlagen: {err}"));
+                    state.show_error(&t("update_failed").replace("{}", &err.to_string()));
                 }
             }
         }));
@@ -1512,7 +1513,7 @@ fn format_metadata(item: &TodoItem) -> String {
         parts.push(format!("@{}", context));
     }
     if let Some(due) = item.due {
-        parts.push(format!("Fällig: {}", due));
+        parts.push(t("due_label").replace("{}", &due.to_string()));
     }
     if let Some(reference) = &item.reference {
         parts.push(format!("↗ {}", reference));

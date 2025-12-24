@@ -1,27 +1,27 @@
 mod data;
 mod ui;
+mod i18n;
 
 use anyhow::{bail, Context, Result};
 use adw::prelude::*;
 use gtk::glib;
-
-const APP_ID: &str = "me.dumke.ReinschriftTodo";
+use i18n::t;
 
 fn main() -> Result<()> {
-    gtk::glib::set_application_name("Todos Datenbank");
-    adw::init().context("Konnte libadwaita nicht initialisieren")?;
+    gtk::glib::set_application_name(&t("app_title"));
+    adw::init().context(t("init_adw_error"))?;
 
     let app = adw::Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(|app| {
         if let Err(err) = ui::build_ui(app) {
-            eprintln!("Fehler beim Aufbau der Oberfläche: {err:?}");
+            eprintln!("{}: {err:?}", t("build_ui_error"));
         }
     });
 
     let status = app.run();
     if status != glib::ExitCode::SUCCESS {
-        bail!("Anwendung wurde mit Status {:?} beendet", status);
+        bail!("{}: {:?}", t("app_exit_status"), status);
     }
 
     Ok(())

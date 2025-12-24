@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Reinschrift Todo
+Comment=Manage your todos in Markdown
+Exec=reinschrift_todo
+Icon=me.dumke.ReinschriftTodo
+Terminal=false
+Type=Application
+Categories=Utility;GTK;GNOME;Office;
+StartupNotify=true
+Keywords=todo;task;markdown;
+X-GNOME-UsesNotifications=true

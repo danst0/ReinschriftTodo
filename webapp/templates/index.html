@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Todos</title>
+    <title>{{ t.todos }}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -122,81 +122,81 @@
     <div id="editModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
-            <h2>Edit Todo</h2>
+            <h2>{{ t.edit_todo }}</h2>
             <form id="editForm" method="post">
                 <div class="form-group">
-                    <label for="edit-title">Title</label>
+                    <label for="edit-title">{{ t.title }}</label>
                     <input type="text" id="edit-title" name="title" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-project">Project (+)</label>
+                    <label for="edit-project">{{ t.project }}</label>
                     <input type="text" id="edit-project" name="project">
                 </div>
                 <div class="form-group">
-                    <label for="edit-context">Context (@)</label>
+                    <label for="edit-context">{{ t.context }}</label>
                     <input type="text" id="edit-context" name="context">
                 </div>
                 <div class="form-group">
-                    <label for="edit-due">Due Date</label>
+                    <label for="edit-due">{{ t.due_date }}</label>
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="date" id="edit-due" name="due">
-                        <button type="button" class="btn-action" onclick="setModalDate(0)" title="Today">📅</button>
-                        <button type="button" class="btn-action" onclick="setModalDate(1)" title="Tomorrow">➡️</button>
+                        <button type="button" class="btn-action" onclick="setModalDate(0)" title="{{ t.today }}">📅</button>
+                        <button type="button" class="btn-action" onclick="setModalDate(1)" title="{{ t.tomorrow }}">➡️</button>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="edit-reference">Reference ([[ ]])</label>
+                    <label for="edit-reference">{{ t.reference }}</label>
                     <input type="text" id="edit-reference" name="reference">
                 </div>
                 <div class="form-group">
                     <label>
                         <input type="checkbox" id="edit-done" name="done">
-                        Done
+                        {{ t.done }}
                     </label>
                 </div>
                 
                 <div class="buttons">
-                    <button type="submit" class="btn-primary">Save</button>
-                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">{{ t.save }}</button>
+                    <button type="button" class="btn-secondary" onclick="closeModal()">{{ t.cancel }}</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <h1>Todos</h1>
+    <h1>{{ t.todos }}</h1>
     
     <div class="filters" style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: center;">
         <a href="{{ url_for('index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" 
            class="filter-link {% if show_done %}active{% endif %}">
-           {% if show_done %}☑ Show Done{% else %}☐ Show Done{% endif %}
+           {% if show_done %}☑ {{ t.show_done }}{% else %}☐ {{ t.show_done }}{% endif %}
         </a>
         
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=0 if show_due_only else 1, sort_mode=sort_mode) }}"
            class="filter-link {% if show_due_only %}active{% endif %}">
-           {% if show_due_only %}☑ Hide Future{% else %}☐ Hide Future{% endif %}
+           {% if show_due_only %}☑ {{ t.hide_future }}{% else %}☐ {{ t.hide_future }}{% endif %}
         </a>
 
         <span style="color: #ccc;">|</span>
 
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='topic') }}"
            class="filter-link {% if sort_mode == 'topic' %}active{% endif %}">
-           Topic
+           {{ t.topic }}
         </a>
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='location') }}"
            class="filter-link {% if sort_mode == 'location' %}active{% endif %}">
-           Location
+           {{ t.location }}
         </a>
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='date') }}"
            class="filter-link {% if sort_mode == 'date' %}active{% endif %}">
-           Date
+           {{ t.date }}
         </a>
 
-          <button type="button" class="refresh-button" onclick="manualReload()">↻ Reload</button>
+          <button type="button" class="refresh-button" onclick="manualReload()">↻ {{ t.reload }}</button>
     </div>
     
     <form class="add-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post">
-        <input type="text" name="title" placeholder="New task..." required>
-        <button type="submit">Add</button>
+        <input type="text" name="title" placeholder="{{ t.new_task }}" required>
+        <button type="submit">{{ t.add }}</button>
     </form>
 
     <div class="todo-list">
@@ -204,7 +204,15 @@
     </div>
 
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;">
-        <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">Logout</a>
+        <div style="margin-bottom: 1rem;">
+            <a href="{{ url_for('set_language', lang='de') }}" style="text-decoration: none; {% if current_lang == 'de' %}font-weight: bold;{% endif %}">DE</a> |
+            <a href="{{ url_for('set_language', lang='en') }}" style="text-decoration: none; {% if current_lang == 'en' %}font-weight: bold;{% endif %}">EN</a> |
+            <a href="{{ url_for('set_language', lang='es') }}" style="text-decoration: none; {% if current_lang == 'es' %}font-weight: bold;{% endif %}">ES</a> |
+            <a href="{{ url_for('set_language', lang='fr') }}" style="text-decoration: none; {% if current_lang == 'fr' %}font-weight: bold;{% endif %}">FR</a> |
+            <a href="{{ url_for('set_language', lang='sv') }}" style="text-decoration: none; {% if current_lang == 'sv' %}font-weight: bold;{% endif %}">SV</a> |
+            <a href="{{ url_for('set_language', lang='ja') }}" style="text-decoration: none; {% if current_lang == 'ja' %}font-weight: bold;{% endif %}">JA</a>
+        </div>
+        <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
     </div>
 
     <script>
@@ -215,7 +223,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
-                        alert('Error loading todo: ' + data.error);
+                        alert('{{ t.error_loading }} ' + data.error);
                         return;
                     }
                     
@@ -232,7 +240,7 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Failed to load todo details');
+                    alert('{{ t.failed_details }}');
                 });
         }
 

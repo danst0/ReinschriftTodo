@@ -2,6 +2,7 @@ use std::{env, fs};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use crate::i18n::t;
 use anyhow::{anyhow, bail, Context, Result};
 use chrono::{Local, NaiveDate};
 use once_cell::sync::Lazy;
@@ -89,7 +90,7 @@ fn read_content() -> Result<String> {
     match config {
         BackendConfig::Local(path) => {
              fs::read_to_string(&path)
-                .with_context(|| format!("Konnte {} nicht lesen", path.display()))
+                .with_context(|| t("read_error").replace("{}", &path.display().to_string()))
         }
         BackendConfig::WebDav { url, path, username, password } => {
             let client = Client::builder()
@@ -209,7 +210,7 @@ pub fn test_webdav_connection(base_url: &str, path: Option<&str>, username: Opti
                 }
             }
             // Return original error with context
-            bail!("Verbindung zu '{}' fehlgeschlagen: {}", full_url, e);
+            bail!(t("connection_error").replace("{}", full_url).replace("{}", &e.to_string()));
         }
     }
 }
@@ -219,7 +220,7 @@ fn write_content(content: String) -> Result<()> {
     match config {
         BackendConfig::Local(path) => {
              fs::write(&path, content)
-                .with_context(|| format!("Konnte {} nicht schreiben", path.display()))
+                .with_context(|| t("write_error").replace("{}", &path.display().to_string()))
         }
         BackendConfig::WebDav { url, path, username, password } => {
             let client = Client::builder()
@@ -285,7 +286,7 @@ pub fn load_todos() -> Result<Vec<TodoItem>> {
     let content = read_content()?;
 
     let mut items = Vec::new();
-    let mut current_section = String::from("Ohne Abschnitt");
+    let mut current_section = t("no_section");
 
     for (line_index, line) in content.lines().enumerate() {
         let trimmed = line.trim();
@@ -315,9 +316,9 @@ pub fn toggle_todo(key: &TodoKey, done: bool) -> Result<()> {
         target_index = Some(key.line_index);
     }
 
-    let index = target_index.ok_or_else(|| anyhow!("Konnte To-do in der Datei nicht finden"))?;
+    let index = target_index.ok_or_else(|| anyhow!(t("todo_not_found")))?;
     let updated_line = rewrite_line(&lines[index], done)
-        .with_context(|| format!("Konnte Zeile {} nicht aktualisieren", index + 1))?;
+        .with_context(|| t("line_update_error").replace("{}", &(index + 1).to_string()))?;
     lines[index] = updated_line;
 
     let mut output = lines.join("\n");
@@ -344,7 +345,7 @@ pub fn update_todo_details(item: &TodoItem) -> Result<()> {
 pub fn add_todo(title: &str) -> Result<()> {
     let title = title.trim();
     if title.is_empty() {
-        bail!("Titel darf nicht leer sein");
+        bail!(t("title_empty_error"));
     }
 
     let content = read_content()?;
@@ -454,9 +455,9 @@ where
         target_index = Some(key.line_index);
     }
 
-    let index = target_index.ok_or_else(|| anyhow!("Konnte To-do in der Datei nicht finden"))?;
+    let index = target_index.ok_or_else(|| anyhow!(t("todo_not_found")))?;
     let updated_line = rewrite(&lines[index])
-        .with_context(|| format!("Konnte Zeile {} nicht aktualisieren", index + 1))?;
+        .with_context(|| t("line_update_error").replace("{}", &(index + 1).to_string()))?;
     lines[index] = updated_line;
 
     let mut output = lines.join("\n");
@@ -479,7 +480,7 @@ fn rewrite_line(line: &str, done: bool) -> Result<String> {
             if has_unchecked {
                 updated = updated.replacen("- [ ]", "- [x]", 1);
             } else {
-                bail!("Zeile enthält keine Checkbox");
+                bail!(t("no_checkbox_error"));
             }
         } else if updated.contains("- [X]") {
             updated = updated.replacen("- [X]", "- [x]", 1);
@@ -488,7 +489,7 @@ fn rewrite_line(line: &str, done: bool) -> Result<String> {
         updated = updated.replacen("- [x]", "- [ ]", 1);
         updated = updated.replacen("- [X]", "- [ ]", 1);
     } else if !has_unchecked {
-        bail!("Zeile enthält keine Checkbox");
+        bail!(t("no_checkbox_error"));
     }
 
     updated = apply_completion_marker(&updated, done);
@@ -499,7 +500,7 @@ fn rewrite_line(line: &str, done: bool) -> Result<String> {
 fn render_line(item: &TodoItem) -> Result<String> {
     let title = item.title.trim();
     if title.is_empty() {
-        bail!("Titel darf nicht leer sein");
+        bail!(t("title_empty_error"));
     }
 
     let checkbox = if item.done { "- [x]" } else { "- [ ]" };

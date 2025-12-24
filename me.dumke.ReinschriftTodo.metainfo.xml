@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>me.dumke.ReinschriftTodo</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>CC-BY-NC-SA-4.0</project_license>
+  <name>Reinschrift Todo</name>
+  <summary>Manage your todos in Markdown</summary>
+  <description>
+    <p>
+      ReinschriftTodo combines a native GNOME interface with the simplicity of plain text.
+      Your tasks remain a normal Markdown file – easy to back up, versionable via Git,
+      and editable on any device with your favorite editor.
+    </p>
+    <p>
+      Whether you share the file via Nextcloud/WebDAV, edit it in the terminal, or run
+      automations over it: the format remains open, portable, and transparent.
+      The app reads changes live, writes directly back, and thus makes classic to-do
+      lists in plain text suitable for everyday use – without proprietary silos.
+    </p>
+  </description>
+  <launchable type="desktop-id">me.dumke.ReinschriftTodo.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <caption>The main window showing the todo list</caption>
+      <image>https://raw.githubusercontent.com/dumke/ReinschriftTodo/main/screenshots/main.png</image>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/dumke/ReinschriftTodo</url>
+  <provides>
+    <binary>reinschrift_todo</binary>
+  </provides>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.1.0" date="2025-12-24" />
+  </releases>
+</component>

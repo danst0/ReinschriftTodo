@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Edit Todo</title>
+    <title>{{ t.edit_todo }}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -38,42 +38,42 @@
     </script>
 </head>
 <body>
-    <h2>Edit Todo</h2>
+    <h2>{{ t.edit_todo }}</h2>
     <form method="post">
         <div class="form-group">
-            <label for="title">Title</label>
+            <label for="title">{{ t.title }}</label>
             <input type="text" id="title" name="title" value="{{ todo.title }}" required>
         </div>
         <div class="form-group">
-            <label for="project">Project (+)</label>
+            <label for="project">{{ t.project }}</label>
             <input type="text" id="project" name="project" value="{{ todo.project or '' }}">
         </div>
         <div class="form-group">
-            <label for="context">Context (@)</label>
+            <label for="context">{{ t.context }}</label>
             <input type="text" id="context" name="context" value="{{ todo.context or '' }}">
         </div>
         <div class="form-group">
-            <label for="due">Due Date</label>
+            <label for="due">{{ t.due_date }}</label>
             <div style="display: flex; gap: 0.5rem;">
                 <input type="date" id="due" name="due" value="{{ todo.due or '' }}">
-                <button type="button" class="btn-action" onclick="setDate(0)" title="Today">📅</button>
-                <button type="button" class="btn-action" onclick="setDate(1)" title="Tomorrow">➡️</button>
+                <button type="button" class="btn-action" onclick="setDate(0)" title="{{ t.today }}">📅</button>
+                <button type="button" class="btn-action" onclick="setDate(1)" title="{{ t.tomorrow }}">➡️</button>
             </div>
         </div>
         <div class="form-group">
-            <label for="reference">Reference ([[ ]])</label>
+            <label for="reference">{{ t.reference }}</label>
             <input type="text" id="reference" name="reference" value="{{ todo.reference or '' }}">
         </div>
         <div class="form-group">
             <label>
                 <input type="checkbox" name="done" {% if todo.done %}checked{% endif %}>
-                Done
+                {{ t.done }}
             </label>
         </div>
         
         <div class="buttons">
-            <button type="submit" class="btn-primary">Save</button>
-            <a href="{{ url_for('index') }}" class="btn-secondary" style="text-decoration: none; display: inline-block; text-align: center;">Cancel</a>
+            <button type="submit" class="btn-primary">{{ t.save }}</button>
+            <a href="{{ url_for('index') }}" class="btn-secondary" style="text-decoration: none; display: inline-block; text-align: center;">{{ t.cancel }}</a>
         </div>
     </form>
 </body>

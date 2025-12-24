@@ -5,10 +5,31 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import requests
 from requests.auth import HTTPBasicAuth
+from translations import TRANSLATIONS
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 app.permanent_session_lifetime = timedelta(days=30)
+
+def get_locale():
+    # Check session first
+    if 'lang' in session:
+        return session['lang']
+    
+    # Check Accept-Language header
+    accept_languages = request.accept_languages.best_match(TRANSLATIONS.keys())
+    if accept_languages:
+        return accept_languages
+    
+    return 'de' # Default language
+
+@app.context_processor
+def inject_translations():
+    lang = get_locale()
+    return {
+        't': TRANSLATIONS.get(lang, TRANSLATIONS['de']),
+        'current_lang': lang
+    }
 
 TODO_PATH = os.environ.get('TODOS_DB_PATH', 'TodosDatenbank.md')
 CONFIG_PATH = os.environ.get('CONFIG_PATH', '/config/settings.json')
@@ -87,7 +108,8 @@ def load_todos():
         return []
     
     items = []
-    current_section = "Ohne Abschnitt"
+    lang = get_locale()
+    current_section = TRANSLATIONS.get(lang, TRANSLATIONS['de']).get('no_section', 'Ohne Abschnitt')
     
     for line_index, line in enumerate(content.splitlines()):
         trimmed = line.strip()
@@ -351,7 +373,8 @@ def login():
             session['logged_in'] = True
             return redirect(url_for('index'))
         else:
-            flash('Invalid credentials')
+            lang = get_locale()
+            flash(TRANSLATIONS.get(lang, TRANSLATIONS['de'])['invalid_credentials'])
     return render_template('login.html')
 
 @app.route('/toggle/<int:line_index>')
@@ -438,6 +461,12 @@ def postpone(line_index, target):
 def logout():
     session.pop('logged_in', None)
     return redirect(url_for('login'))
+
+@app.route('/set_language/<lang>')
+def set_language(lang):
+    if lang in TRANSLATIONS:
+        session['lang'] = lang
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/edit/<int:line_index>', methods=['GET', 'POST'])
 def edit(line_index):

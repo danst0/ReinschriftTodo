@@ -10,8 +10,8 @@ finish-args:
   - --socket=fallback-x11
   - --socket=wayland
   - --device=dri
-  - --filesystem=home
   - --share=network
+  - --metadata=X-Allow-Can-Open-External-Files=true
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
 modules:
@@ -20,7 +20,8 @@ modules:
     build-commands:
       - cargo build --release --offline
       - install -D target/release/reinschrift_todo /app/bin/reinschrift_todo
-      - install -D reinschrift_todo.desktop /app/share/applications/me.dumke.ReinschriftTodo.desktop
+      - install -D me.dumke.ReinschriftTodo.desktop /app/share/applications/me.dumke.ReinschriftTodo.desktop
+      - install -D me.dumke.ReinschriftTodo.metainfo.xml /app/share/metainfo/me.dumke.ReinschriftTodo.metainfo.xml
       - install -D icon/todos.png /app/share/icons/hicolor/512x512/apps/me.dumke.ReinschriftTodo.png
     sources:
       - type: dir
