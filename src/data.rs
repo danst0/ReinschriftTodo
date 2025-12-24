@@ -517,14 +517,19 @@ fn render_line(item: &TodoItem) -> Result<String> {
     if let Some(reference) = normalize_reference(item.reference.as_deref()) {
         parts.push(format!("[[{reference}]]"));
     }
+
+    if item.done {
+        let today = Local::now().date_naive().format("%Y-%m-%d");
+        parts.push(format!("✅ {today}"));
+    }
+
     if let Some(marker) = &item.key.marker {
         if !marker.is_empty() {
             parts.push(format!("^{marker}"));
         }
     }
 
-    let line = parts.join(" ");
-    Ok(apply_completion_marker(&line, item.done))
+    Ok(parts.join(" "))
 }
 
 fn normalize_token(value: Option<&str>) -> Option<String> {
@@ -555,12 +560,31 @@ fn normalize_reference(value: Option<&str>) -> Option<String> {
 
 fn apply_completion_marker(line: &str, done: bool) -> String {
     if done {
-        if COMPLETION_RE.is_match(line) {
+        if let Some(m) = COMPLETION_RE.find(line) {
+            // Bereits vorhanden. Prüfen, ob es nach der ID steht.
+            if let Some(id_m) = ID_RE.find(line) {
+                if m.start() > id_m.start() {
+                    let done_str = m.as_str().to_string();
+                    let mut s = line.to_string();
+                    s.replace_range(m.range(), "");
+                    if let Some(new_id_m) = ID_RE.find(&s) {
+                        s.insert_str(new_id_m.start(), &done_str);
+                        return s;
+                    }
+                }
+            }
             line.to_string()
         } else {
-            // Add completion date if not present
+            // Hinzufügen
             let today = Local::now().date_naive().format("%Y-%m-%d");
-            format!("{line} ✅ {today}")
+            let done_marker = format!(" ✅ {today}");
+            if let Some(id_m) = ID_RE.find(line) {
+                let mut s = line.to_string();
+                s.insert_str(id_m.start(), &done_marker);
+                s
+            } else {
+                format!("{line}{done_marker}")
+            }
         }
     } else {
         COMPLETION_RE.replace(line, "").to_string()
