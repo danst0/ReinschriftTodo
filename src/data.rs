@@ -532,7 +532,7 @@ fn normalize_token(value: Option<&str>) -> Option<String> {
         .map(|s| {
             let trimmed = s.trim().replace(' ', "");
             // Remove all leading + or @
-            let mut chars = trimmed.chars();
+            let chars = trimmed.chars();
             let mut out = String::new();
             let mut found = false;
             for c in chars {
