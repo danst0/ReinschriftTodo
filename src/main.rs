@@ -5,7 +5,7 @@ use anyhow::{bail, Context, Result};
 use adw::prelude::*;
 use gtk::glib;
 
-const APP_ID: &str = "me.dumke.TodosExtension";
+const APP_ID: &str = "me.dumke.ReinschriftTodo";
 
 fn main() -> Result<()> {
     gtk::glib::set_application_name("Todos Datenbank");

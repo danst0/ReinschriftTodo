@@ -1,9 +1,9 @@
-# Todos Extension
+# ReinschriftTodo
 
 Rust/libadwaita Anwendung, die die Aufgaben aus deiner Markdown-Datei `TodosDatenbank.md` lädt, sie in einer GNOME-Oberfläche anzeigt und das Abhaken direkt zurück in dieselbe Datei schreibt.
 
 ## Beschreibung für Flathub
-Todos Extension kombiniert eine native GNOME-Oberfläche mit der Einfachheit von reinem Text. Deine Aufgaben bleiben eine ganz normale Markdown-Datei – leicht zu sichern, per Git versionierbar und auf jedem Gerät mit deinem Lieblingseditor editierbar. Ob du die Datei über Nextcloud/WebDAV teilst, im Terminal bearbeitest oder Automationen darüber laufen lässt: Das Format bleibt offen, portabel und transparent. Die App liest Änderungen live ein, schreibt direkt zurück und macht damit klassische To-do-Listen im Klartext alltagstauglich – ohne proprietäre Silos.
+ReinschriftTodo kombiniert eine native GNOME-Oberfläche mit der Einfachheit von reinem Text. Deine Aufgaben bleiben eine ganz normale Markdown-Datei – leicht zu sichern, per Git versionierbar und auf jedem Gerät mit deinem Lieblingseditor editierbar. Ob du die Datei über Nextcloud/WebDAV teilst, im Terminal bearbeitest oder Automationen darüber laufen lässt: Das Format bleibt offen, portabel und transparent. Die App liest Änderungen live ein, schreibt direkt zurück und macht damit klassische To-do-Listen im Klartext alltagstauglich – ohne proprietäre Silos.
 
 ## Voraussetzungen
 - Rust Toolchain (Edition 2024)
@@ -11,7 +11,7 @@ Todos Extension kombiniert eine native GNOME-Oberfläche mit der Einfachheit von
 
 ## Entwicklung
 ```bash
-cd "/home/danst/Nextcloud/Projekte/2025-12 Todos Extension"
+cd "/home/danst/Nextcloud/Projekte/2025-12 ReinschriftTodo"
 cargo run --release
 ```
 

@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Todos Extension
+Name=ReinschriftTodo
 Comment=Manage your todos
-Exec=todos_extension
-Icon=me.dumke.TodosExtension
+Exec=reinschrift_todo
+Icon=me.dumke.ReinschriftTodo
 Terminal=false
 Type=Application
 Categories=Utility;GTK;

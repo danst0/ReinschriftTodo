@@ -1,5 +1,5 @@
 [package]
-name = "todos_extension"
+name = "reinschrift_todo"
 version = "0.1.0"
 edition = "2024"
 

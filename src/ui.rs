@@ -1541,7 +1541,7 @@ fn write_preferences(prefs: &Preferences) -> std::io::Result<()> {
 
 fn preferences_path() -> PathBuf {
     let mut dir = glib::user_config_dir();
-    dir.push("todos_extension");
+    dir.push("reinschrift_todo");
     dir.push("preferences.json");
     dir
 }

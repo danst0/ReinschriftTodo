@@ -9,15 +9,15 @@ flatpak install --user --noninteractive --or-update org.gnome.Platform//49 org.g
 # Build the Flatpak
 echo "Building Flatpak..."
 # --force-clean ensures a fresh build
-flatpak-builder --force-clean --repo=repo build-dir me.dumke.TodosExtension.yml
+flatpak-builder --force-clean --repo=repo build-dir me.dumke.ReinschriftTodo.yml
 
 # Create a bundle
 echo "Creating Bundle..."
-flatpak build-bundle repo todos_extension.flatpak me.dumke.TodosExtension
+flatpak build-bundle repo reinschrift_todo.flatpak me.dumke.ReinschriftTodo
 
 # Install the Flatpak
 echo "Installing Flatpak..."
-flatpak install --user --noninteractive --or-update todos_extension.flatpak
+flatpak install --user --noninteractive --or-update reinschrift_todo.flatpak
 
 echo "Build and install complete! You can run the app with:"
-echo "flatpak run me.dumke.TodosExtension"
+echo "flatpak run me.dumke.ReinschriftTodo"

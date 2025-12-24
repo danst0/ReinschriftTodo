@@ -1,10 +1,10 @@
-app-id: me.dumke.TodosExtension
+app-id: me.dumke.ReinschriftTodo
 runtime: org.gnome.Platform
 runtime-version: '49'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
-command: todos_extension
+command: reinschrift_todo
 finish-args:
   - --share=ipc
   - --socket=fallback-x11
@@ -15,13 +15,13 @@ finish-args:
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
 modules:
-  - name: todos_extension
+  - name: reinschrift_todo
     buildsystem: simple
     build-commands:
       - cargo build --release --offline
-      - install -D target/release/todos_extension /app/bin/todos_extension
-      - install -D todos_extension.desktop /app/share/applications/me.dumke.TodosExtension.desktop
-      - install -D icon/todos.png /app/share/icons/hicolor/512x512/apps/me.dumke.TodosExtension.png
+      - install -D target/release/reinschrift_todo /app/bin/reinschrift_todo
+      - install -D reinschrift_todo.desktop /app/share/applications/me.dumke.ReinschriftTodo.desktop
+      - install -D icon/todos.png /app/share/icons/hicolor/512x512/apps/me.dumke.ReinschriftTodo.png
     sources:
       - type: dir
         path: .
