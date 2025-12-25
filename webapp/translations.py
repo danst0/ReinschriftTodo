@@ -1,8 +1,8 @@
 
 TRANSLATIONS = {
     'de': {
-        'todos': 'Todos',
-        'edit_todo': 'Todo bearbeiten',
+        'todos': 'Reinschrift',
+        'edit_todo': 'Eintrag bearbeiten',
         'title': 'Titel',
         'project': 'Projekt (+)',
         'context': 'Kontext (@)',
@@ -29,12 +29,12 @@ TRANSLATIONS = {
         'due': 'Fällig:',
         'error_loading': 'Fehler beim Laden des Todos:',
         'failed_details': 'Details konnten nicht geladen werden',
-        'login_title': 'Anmelden - Todos',
+        'login_title': 'Anmelden - Reinschrift',
         'no_section': 'Ohne Abschnitt'
     },
     'en': {
-        'todos': 'Todos',
-        'edit_todo': 'Edit Todo',
+        'todos': 'Reinschrift',
+        'edit_todo': 'Edit Entry',
         'title': 'Title',
         'project': 'Project (+)',
         'context': 'Context (@)',
@@ -61,11 +61,11 @@ TRANSLATIONS = {
         'due': 'Due:',
         'error_loading': 'Error loading todo:',
         'failed_details': 'Failed to load todo details',
-        'login_title': 'Login - Todos',
+        'login_title': 'Login - Reinschrift',
         'no_section': 'No Section'
     },
     'es': {
-        'todos': 'Tareas',
+        'todos': 'Reinschrift',
         'edit_todo': 'Editar Tarea',
         'title': 'Título',
         'project': 'Proyecto (+)',
@@ -93,11 +93,11 @@ TRANSLATIONS = {
         'due': 'Vence:',
         'error_loading': 'Error al cargar la tarea:',
         'failed_details': 'No se pudieron cargar los detalles',
-        'login_title': 'Iniciar sesión - Tareas',
+        'login_title': 'Iniciar sesión - Reinschrift',
         'no_section': 'Sin sección'
     },
     'sv': {
-        'todos': 'Att göra',
+        'todos': 'Reinschrift',
         'edit_todo': 'Redigera uppgift',
         'title': 'Titel',
         'project': 'Projekt (+)',
@@ -125,11 +125,11 @@ TRANSLATIONS = {
         'due': 'Förfaller:',
         'error_loading': 'Fel vid laddning av uppgift:',
         'failed_details': 'Kunde inte ladda detaljer',
-        'login_title': 'Logga in - Att göra',
+        'login_title': 'Logga in - Reinschrift',
         'no_section': 'Ingen sektion'
     },
     'fr': {
-        'todos': 'Tâches',
+        'todos': 'Reinschrift',
         'edit_todo': 'Modifier la tâche',
         'title': 'Titre',
         'project': 'Projet (+)',
@@ -157,11 +157,11 @@ TRANSLATIONS = {
         'due': 'Échéance :',
         'error_loading': 'Erreur lors du chargement de la tâche :',
         'failed_details': 'Échec du chargement des détails',
-        'login_title': 'Connexion - Tâches',
+        'login_title': 'Connexion - Reinschrift',
         'no_section': 'Sans section'
     },
     'ja': {
-        'todos': 'ToDo',
+        'todos': 'Reinschrift',
         'edit_todo': 'ToDoを編集',
         'title': 'タイトル',
         'project': 'プロジェクト (+)',
@@ -189,7 +189,7 @@ TRANSLATIONS = {
         'due': '期限:',
         'error_loading': 'ToDoの読み込みエラー:',
         'failed_details': '詳細の読み込みに失敗しました',
-        'login_title': 'ログイン - ToDo',
+        'login_title': 'ログイン - Reinschrift',
         'no_section': 'セクションなし'
     }
 }

@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Reinschrift Todo
+Name=Reinschrift
 Comment=Manage your todos in Markdown
-Exec=reinschrift_todo
-Icon=me.dumke.ReinschriftTodo
+Exec=reinschrift
+Icon=me.dumke.Reinschrift
 Terminal=false
 Type=Application
 Categories=Utility;GTK;GNOME;Office;

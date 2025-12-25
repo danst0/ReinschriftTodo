@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>me.dumke.ReinschriftTodo</id>
+  <id>me.dumke.Reinschrift</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>CC-BY-NC-SA-4.0</project_license>
-  <name>Reinschrift Todo</name>
+  <name>Reinschrift</name>
   <summary>Manage your todos in Markdown</summary>
   <description>
     <p>
-      ReinschriftTodo combines a native GNOME interface with the simplicity of plain text.
+      Reinschrift combines a native GNOME interface with the simplicity of plain text.
       Your tasks remain a normal Markdown file – easy to back up, versionable via Git,
       and editable on any device with your favorite editor.
     </p>
@@ -18,16 +18,16 @@
       lists in plain text suitable for everyday use – without proprietary silos.
     </p>
   </description>
-  <launchable type="desktop-id">me.dumke.ReinschriftTodo.desktop</launchable>
+  <launchable type="desktop-id">me.dumke.Reinschrift.desktop</launchable>
   <screenshots>
     <screenshot type="default">
       <caption>The main window showing the todo list</caption>
-      <image>https://raw.githubusercontent.com/dumke/ReinschriftTodo/main/screenshots/main.png</image>
+      <image>https://raw.githubusercontent.com/dumke/Reinschrift/main/screenshots/main.png</image>
     </screenshot>
   </screenshots>
-  <url type="homepage">https://github.com/dumke/ReinschriftTodo</url>
+  <url type="homepage">https://github.com/dumke/Reinschrift</url>
   <provides>
-    <binary>reinschrift_todo</binary>
+    <binary>reinschrift</binary>
   </provides>
   <content_rating type="oars-1.1" />
   <releases>

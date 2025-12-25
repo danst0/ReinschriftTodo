@@ -8,7 +8,7 @@ pub fn t(key: &str) -> String {
         let mut m = std::collections::HashMap::new();
         
         let mut de = std::collections::HashMap::new();
-        de.insert("app_title", "Todos Datenbank");
+        de.insert("app_title", "Reinschrift");
         de.insert("settings", "Einstellungen");
         de.insert("reload", "Neu laden (Ctrl+R)");
         de.insert("sort_by", "Sortieren nach:");
@@ -86,7 +86,7 @@ pub fn t(key: &str) -> String {
         m.insert("de", de);
 
         let mut en = std::collections::HashMap::new();
-        en.insert("app_title", "Todos Database");
+        en.insert("app_title", "Reinschrift");
         en.insert("settings", "Settings");
         en.insert("reload", "Reload (Ctrl+R)");
         en.insert("sort_by", "Sort by:");

@@ -1,10 +1,10 @@
-app-id: me.dumke.ReinschriftTodo
+app-id: me.dumke.Reinschrift
 runtime: org.gnome.Platform
 runtime-version: '49'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
-command: reinschrift_todo
+command: reinschrift
 finish-args:
   - --share=ipc
   - --socket=fallback-x11
@@ -15,14 +15,14 @@ finish-args:
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
 modules:
-  - name: reinschrift_todo
+  - name: reinschrift
     buildsystem: simple
     build-commands:
       - cargo build --release --offline
-      - install -D target/release/reinschrift_todo /app/bin/reinschrift_todo
-      - install -D me.dumke.ReinschriftTodo.desktop /app/share/applications/me.dumke.ReinschriftTodo.desktop
-      - install -D me.dumke.ReinschriftTodo.metainfo.xml /app/share/metainfo/me.dumke.ReinschriftTodo.metainfo.xml
-      - install -D icon/todos.png /app/share/icons/hicolor/512x512/apps/me.dumke.ReinschriftTodo.png
+      - install -D target/release/reinschrift_todo /app/bin/reinschrift
+      - install -D me.dumke.Reinschrift.desktop /app/share/applications/me.dumke.Reinschrift.desktop
+      - install -D me.dumke.Reinschrift.metainfo.xml /app/share/metainfo/me.dumke.Reinschrift.metainfo.xml
+      - install -D icon/todos.png /app/share/icons/hicolor/512x512/apps/me.dumke.Reinschrift.png
     sources:
       - type: dir
         path: .
