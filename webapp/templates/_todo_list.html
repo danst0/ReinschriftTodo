@@ -6,7 +6,7 @@
     {% endif %}
     
     <div class="todo-item {% if todo.done %}done{% endif %}" onclick="openEditModal({{ todo.line_index }})" style="cursor: pointer;">
-        <a href="{{ url_for('toggle', line_index=todo.line_index, show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="event.stopPropagation()">
+        <a href="javascript:void(0)" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="toggleTodo(event, {{ todo.line_index }})">
             {% if todo.done %}☑{% else %}☐{% endif %}
         </a>
         <div class="content">
@@ -18,8 +18,8 @@
             </div>
         </div>
         <div class="actions" style="margin-left: auto; display: flex; gap: 0.5rem;">
-            <a href="{{ url_for('postpone', line_index=todo.line_index, target='today') }}" class="btn-action" onclick="event.stopPropagation()" title="{{ t.today }}">📅</a>
-            <a href="{{ url_for('postpone', line_index=todo.line_index, target='tomorrow') }}" class="btn-action" onclick="event.stopPropagation()" title="{{ t.tomorrow }}">➡️</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'today')" title="{{ t.today }}">📅</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow')" title="{{ t.tomorrow }}">➡️</a>
         </div>
     </div>
 {% endfor %}

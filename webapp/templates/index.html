@@ -170,34 +170,34 @@
     
     <div class="filters" style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: center;">
         <a href="{{ url_for('index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" 
-           class="filter-link {% if show_done %}active{% endif %}">
+           class="filter-link {% if show_done %}active{% endif %}" onclick="applyFilter(event, this.href)">
            {% if show_done %}☑ {{ t.show_done }}{% else %}☐ {{ t.show_done }}{% endif %}
         </a>
         
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=0 if show_due_only else 1, sort_mode=sort_mode) }}"
-           class="filter-link {% if show_due_only %}active{% endif %}">
+           class="filter-link {% if show_due_only %}active{% endif %}" onclick="applyFilter(event, this.href)">
            {% if show_due_only %}☑ {{ t.hide_future }}{% else %}☐ {{ t.hide_future }}{% endif %}
         </a>
 
         <span style="color: #ccc;">|</span>
 
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='topic') }}"
-           class="filter-link {% if sort_mode == 'topic' %}active{% endif %}">
+           class="filter-link {% if sort_mode == 'topic' %}active{% endif %}" onclick="applyFilter(event, this.href)">
            {{ t.topic }}
         </a>
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='location') }}"
-           class="filter-link {% if sort_mode == 'location' %}active{% endif %}">
+           class="filter-link {% if sort_mode == 'location' %}active{% endif %}" onclick="applyFilter(event, this.href)">
            {{ t.location }}
         </a>
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='date') }}"
-           class="filter-link {% if sort_mode == 'date' %}active{% endif %}">
+           class="filter-link {% if sort_mode == 'date' %}active{% endif %}" onclick="applyFilter(event, this.href)">
            {{ t.date }}
         </a>
 
           <button type="button" class="refresh-button" onclick="manualReload()">↻ {{ t.reload }}</button>
     </div>
     
-    <form class="add-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post">
+    <form id="addForm" class="add-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post">
         <input type="text" name="title" placeholder="{{ t.new_task }}" required>
         <button type="submit">{{ t.add }}</button>
     </form>
@@ -220,6 +220,116 @@
 
     <script>
         var modal = document.getElementById("editModal");
+
+        function toggleTodo(event, lineIndex) {
+            event.stopPropagation();
+            fetch('/toggle/' + lineIndex)
+                .then(() => autoReload());
+        }
+
+        function postponeTodo(event, lineIndex, target) {
+            event.stopPropagation();
+            fetch('/postpone/' + lineIndex + '/' + target)
+                .then(() => autoReload());
+        }
+
+        document.getElementById('editForm').onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            }).then(() => {
+                closeModal();
+                autoReload();
+            });
+        };
+
+        document.getElementById('addForm').onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            }).then(() => {
+                this.reset();
+                autoReload();
+            });
+        };
+
+        function applyFilter(event, url) {
+            event.preventDefault();
+            // Update URL without reload
+            window.history.pushState({}, '', url);
+            
+            // Fetch partial content
+            const fetchUrl = new URL(url);
+            fetchUrl.searchParams.set('partial', '1');
+            
+            fetch(fetchUrl)
+                .then(response => response.text())
+                .then(html => {
+                    document.querySelector('.todo-list').innerHTML = html;
+                    // Update active classes in filters
+                    updateFilterUI(url);
+                });
+        }
+
+        function updateFilterUI(currentUrl) {
+            const url = new URL(currentUrl);
+            const showDone = url.searchParams.get('show_done') === '1';
+            const showDueOnly = url.searchParams.get('show_due_only') === '1';
+            const sortMode = url.searchParams.get('sort_mode') || 'topic';
+
+            document.querySelectorAll('.filter-link').forEach(link => {
+                const linkUrl = new URL(link.href);
+                const linkSort = linkUrl.searchParams.get('sort_mode');
+                const linkShowDone = linkUrl.searchParams.get('show_done');
+                const linkShowDueOnly = linkUrl.searchParams.get('show_due_only');
+
+                link.classList.remove('active');
+
+                // Check if it's a sort link
+                if (linkSort && linkSort === sortMode) {
+                    link.classList.add('active');
+                }
+                // Check if it's a toggle link
+                if (linkShowDone !== null && linkShowDone !== (showDone ? '1' : '0')) {
+                     // This is the toggle link for show_done
+                     if (showDone) link.classList.add('active');
+                     link.innerHTML = showDone ? '☑ {{ t.show_done }}' : '☐ {{ t.show_done }}';
+                }
+                if (linkShowDueOnly !== null && linkShowDueOnly !== (showDueOnly ? '1' : '0')) {
+                     // This is the toggle link for show_due_only
+                     if (showDueOnly) link.classList.add('active');
+                     link.innerHTML = showDueOnly ? '☑ {{ t.hide_future }}' : '☐ {{ t.hide_future }}';
+                }
+                
+                // Update href to reflect new state
+                const newHref = new URL(link.href);
+                if (linkSort) {
+                    newHref.searchParams.set('show_done', showDone ? '1' : '0');
+                    newHref.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
+                } else if (linkShowDone !== null) {
+                    newHref.searchParams.set('show_done', showDone ? '0' : '1');
+                    newHref.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
+                    newHref.searchParams.set('sort_mode', sortMode);
+                } else if (linkShowDueOnly !== null) {
+                    newHref.searchParams.set('show_done', showDone ? '1' : '0');
+                    newHref.searchParams.set('show_due_only', showDueOnly ? '0' : '1');
+                    newHref.searchParams.set('sort_mode', sortMode);
+                }
+                link.href = newHref.toString();
+            });
+            
+            // Update the Add form action to preserve filters
+            const addForm = document.getElementById('addForm');
+            const addUrl = new URL(addForm.action);
+            addUrl.searchParams.set('show_done', showDone ? '1' : '0');
+            addUrl.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
+            addUrl.searchParams.set('sort_mode', sortMode);
+            addForm.action = addUrl.toString();
+        }
 
         function openEditModal(lineIndex) {
             fetch('/api/todo/' + lineIndex)
@@ -287,6 +397,19 @@
         
         // Reload every 10 seconds
         setInterval(autoReload, 10000);
+
+        // Scroll position persistence
+        window.addEventListener('beforeunload', () => {
+            sessionStorage.setItem('scrollPos', window.scrollY);
+        });
+
+        window.addEventListener('load', () => {
+            const scrollPos = sessionStorage.getItem('scrollPos');
+            if (scrollPos) {
+                window.scrollTo(0, parseInt(scrollPos));
+                sessionStorage.removeItem('scrollPos');
+            }
+        });
     </script>
 </body>
 </html>
