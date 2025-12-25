@@ -210,7 +210,7 @@ pub fn test_webdav_connection(base_url: &str, path: Option<&str>, username: Opti
                 }
             }
             // Return original error with context
-            bail!(t("connection_error").replace("{}", full_url).replace("{}", &e.to_string()));
+            bail!(t("connection_error").replace("{}", &full_url).replace("{}", &e.to_string()));
         }
     }
 }

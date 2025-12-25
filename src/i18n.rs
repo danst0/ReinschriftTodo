@@ -1,5 +1,5 @@
 use std::sync::OnceLock;
-use glib::get_language_names;
+use glib::language_names;
 
 pub fn t(key: &str) -> String {
     static TRANSLATIONS: OnceLock<std::collections::HashMap<&'static str, std::collections::HashMap<&'static str, &'static str>>> = OnceLock::new();
@@ -488,9 +488,10 @@ pub fn t(key: &str) -> String {
         m
     });
 
-    let langs = get_language_names();
+    let langs = language_names();
     for lang in langs {
-        let lang_code = lang.split('_').next().unwrap_or(&lang).split('.').next().unwrap_or(&lang);
+        let lang_str = lang.as_str();
+        let lang_code = lang_str.split('_').next().unwrap_or(lang_str).split('.').next().unwrap_or(lang_str);
         if let Some(map) = translations.get(lang_code) {
             if let Some(val) = map.get(key) {
                 return val.to_string();

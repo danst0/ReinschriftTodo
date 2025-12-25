@@ -7,6 +7,8 @@ use adw::prelude::*;
 use gtk::glib;
 use i18n::t;
 
+const APP_ID: &str = "me.dumke.Reinschrift";
+
 fn main() -> Result<()> {
     gtk::glib::set_application_name(&t("app_title"));
     adw::init().context(t("init_adw_error"))?;
