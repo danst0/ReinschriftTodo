@@ -64,17 +64,31 @@
             <label for="reference">{{ t.reference }}</label>
             <input type="text" id="reference" name="reference" value="{{ todo.reference or '' }}">
         </div>
+        <div class="form-group" id="comment-group" style="display: none;">
+            <label for="comment">{{ t.comment }}</label>
+            <input type="text" id="comment" name="comment" placeholder="{{ t.comment }}">
+        </div>
         <div class="form-group">
             <label>
-                <input type="checkbox" name="done" {% if todo.done %}checked{% endif %}>
+                <input type="checkbox" id="done-checkbox" name="done" {% if todo.done %}checked{% endif %}>
                 {{ t.done }}
             </label>
         </div>
         
         <div class="buttons">
             <button type="submit" class="btn-primary">{{ t.save }}</button>
+            <button type="button" class="btn-action" id="close-with-comment-btn" onclick="showCommentField()">{{ t.close_with_comment }}</button>
             <a href="{{ url_for('index') }}" class="btn-secondary" style="text-decoration: none; display: inline-block; text-align: center;">{{ t.cancel }}</a>
         </div>
     </form>
+
+    <script>
+        function showCommentField() {
+            document.getElementById('comment-group').style.display = 'block';
+            document.getElementById('done-checkbox').checked = true;
+            document.getElementById('close-with-comment-btn').style.display = 'none';
+            document.getElementById('comment').focus();
+        }
+    </script>
 </body>
 </html>

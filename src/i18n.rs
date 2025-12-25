@@ -83,6 +83,8 @@ pub fn t(key: &str) -> String {
         de.insert("auto_reload_error", "Automatisches Neuladen fehlgeschlagen: {}");
         de.insert("webdav_conn_error", "WebDAV-Verbindungsfehler: {}");
         de.insert("rollback_failed", "Rollback fehlgeschlagen: {}");
+        de.insert("close_with_comment", "Mit Kommentar abschließen");
+        de.insert("comment", "Kommentar");
         m.insert("de", de);
 
         let mut en = std::collections::HashMap::new();
@@ -160,8 +162,8 @@ pub fn t(key: &str) -> String {
         en.insert("no_checkbox_error", "Line contains no checkbox");
         en.insert("auto_reload_error", "Auto-reload failed: {}");
         en.insert("webdav_conn_error", "WebDAV Connection Error: {}");
-        en.insert("rollback_failed", "Rollback failed: {}");
-        m.insert("en", en);
+        en.insert("rollback_failed", "Rollback failed: {}");        en.insert("close_with_comment", "Close with comment");
+        en.insert("comment", "Comment");        m.insert("en", en);
 
         let mut es = std::collections::HashMap::new();
         es.insert("app_title", "Base de datos de tareas");
@@ -239,6 +241,8 @@ pub fn t(key: &str) -> String {
         es.insert("auto_reload_error", "Fallo en la recarga automática: {}");
         es.insert("webdav_conn_error", "Error de conexión WebDAV: {}");
         es.insert("rollback_failed", "Fallo en la reversión: {}");
+        es.insert("close_with_comment", "Cerrar con comentario");
+        es.insert("comment", "Comentario");
         m.insert("es", es);
 
         let mut sv = std::collections::HashMap::new();
@@ -317,6 +321,8 @@ pub fn t(key: &str) -> String {
         sv.insert("auto_reload_error", "Automatisk omladdning misslyckades: {}");
         sv.insert("webdav_conn_error", "WebDAV-anslutningsfel: {}");
         sv.insert("rollback_failed", "Återställning misslyckades: {}");
+        sv.insert("close_with_comment", "Stäng med kommentar");
+        sv.insert("comment", "Kommentar");
         m.insert("sv", sv);
 
         let mut fr = std::collections::HashMap::new();
@@ -395,6 +401,8 @@ pub fn t(key: &str) -> String {
         fr.insert("auto_reload_error", "Échec du rechargement automatique : {}");
         fr.insert("webdav_conn_error", "Erreur de connexion WebDAV : {}");
         fr.insert("rollback_failed", "Échec de la restauration : {}");
+        fr.insert("close_with_comment", "Fermer avec commentaire");
+        fr.insert("comment", "Commentaire");
         m.insert("fr", fr);
 
         let mut ja = std::collections::HashMap::new();
@@ -473,6 +481,8 @@ pub fn t(key: &str) -> String {
         ja.insert("auto_reload_error", "自動再読み込みに失敗しました: {}");
         ja.insert("webdav_conn_error", "WebDAV 接続エラー: {}");
         ja.insert("rollback_failed", "ロールバックに失敗しました: {}");
+        ja.insert("close_with_comment", "コメント付きで終了");
+        ja.insert("comment", "コメント");
         m.insert("ja", ja);
 
         m

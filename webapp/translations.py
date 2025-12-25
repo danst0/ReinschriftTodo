@@ -30,7 +30,9 @@ TRANSLATIONS = {
         'error_loading': 'Fehler beim Laden des Todos:',
         'failed_details': 'Details konnten nicht geladen werden',
         'login_title': 'Anmelden - Reinschrift',
-        'no_section': 'Ohne Abschnitt'
+        'no_section': 'Ohne Abschnitt',
+        'close_with_comment': 'Mit Kommentar abschließen',
+        'comment': 'Kommentar'
     },
     'en': {
         'todos': 'Reinschrift',
@@ -62,7 +64,9 @@ TRANSLATIONS = {
         'error_loading': 'Error loading todo:',
         'failed_details': 'Failed to load todo details',
         'login_title': 'Login - Reinschrift',
-        'no_section': 'No Section'
+        'no_section': 'No Section',
+        'close_with_comment': 'Close with comment',
+        'comment': 'Comment'
     },
     'es': {
         'todos': 'Reinschrift',
@@ -94,7 +98,9 @@ TRANSLATIONS = {
         'error_loading': 'Error al cargar la tarea:',
         'failed_details': 'No se pudieron cargar los detalles',
         'login_title': 'Iniciar sesión - Reinschrift',
-        'no_section': 'Sin sección'
+        'no_section': 'Sin sección',
+        'close_with_comment': 'Cerrar con comentario',
+        'comment': 'Comentario'
     },
     'sv': {
         'todos': 'Reinschrift',
@@ -126,7 +132,9 @@ TRANSLATIONS = {
         'error_loading': 'Fel vid laddning av uppgift:',
         'failed_details': 'Kunde inte ladda detaljer',
         'login_title': 'Logga in - Reinschrift',
-        'no_section': 'Ingen sektion'
+        'no_section': 'Ingen sektion',
+        'close_with_comment': 'Stäng med kommentar',
+        'comment': 'Kommentar'
     },
     'fr': {
         'todos': 'Reinschrift',
@@ -158,7 +166,9 @@ TRANSLATIONS = {
         'error_loading': 'Erreur lors du chargement de la tâche :',
         'failed_details': 'Échec du chargement des détails',
         'login_title': 'Connexion - Reinschrift',
-        'no_section': 'Sans section'
+        'no_section': 'Sans section',
+        'close_with_comment': 'Fermer avec commentaire',
+        'comment': 'Commentaire'
     },
     'ja': {
         'todos': 'Reinschrift',
@@ -190,6 +200,8 @@ TRANSLATIONS = {
         'error_loading': 'ToDoの読み込みエラー:',
         'failed_details': '詳細の読み込みに失敗しました',
         'login_title': 'ログイン - Reinschrift',
-        'no_section': 'セクションなし'
+        'no_section': 'セクションなし',
+        'close_with_comment': 'コメント付きで終了',
+        'comment': 'コメント'
     }
 }

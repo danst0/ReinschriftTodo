@@ -481,11 +481,15 @@ def edit(line_index):
         
     if request.method == 'POST':
         title = request.form.get('title')
+        comment = request.form.get('comment')
         project = request.form.get('project')
         context = request.form.get('context')
         due_str = request.form.get('due')
         reference = request.form.get('reference')
         done = request.form.get('done') == 'on'
+
+        if comment and comment.strip():
+            title = f"{title.strip()} ({comment.strip()})"
         
         # Reconstruct line
         original_line = lines[line_index]

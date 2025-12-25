@@ -117,6 +117,7 @@
             .btn-action { background: #3d3d3d; border-color: #555; color: #e0e0e0; }
             .refresh-button { background: #333; border-color: #555; color: #e0e0e0; }
             .refresh-button:hover { background: #3d3d3d; }
+            #comment-section { background: #3d3d3d !important; border-color: #555 !important; }
         }
     </style>
 </head>
@@ -157,9 +158,18 @@
                         {{ t.done }}
                     </label>
                 </div>
+
+                <div id="comment-section" style="display: none; margin-top: 1rem; padding: 1rem; background: #f6f5f4; border-radius: 8px; border: 1px solid #ddd;">
+                    <div class="form-group">
+                        <label for="edit-comment">{{ t.comment }}</label>
+                        <input type="text" id="edit-comment" name="comment" placeholder="...">
+                    </div>
+                    <button type="button" class="btn-primary" style="width: 100%;" onclick="submitWithComment()">{{ t.save }}</button>
+                </div>
                 
                 <div class="buttons">
                     <button type="submit" class="btn-primary">{{ t.save }}</button>
+                    <button type="button" id="btn-close-comment" class="btn-secondary" onclick="showCommentField()">{{ t.close_with_comment }}</button>
                     <button type="button" class="btn-secondary" onclick="closeModal()">{{ t.cancel }}</button>
                 </div>
             </form>
@@ -359,6 +369,20 @@
 
         function closeModal() {
             modal.style.display = "none";
+            document.getElementById('comment-section').style.display = 'none';
+            document.getElementById('edit-comment').value = '';
+        }
+
+        function showCommentField() {
+            document.getElementById('comment-section').style.display = 'block';
+            document.getElementById('edit-done').checked = true;
+            document.getElementById('btn-close-comment').style.display = 'none';
+            document.getElementById('edit-comment').focus();
+        }
+
+        function submitWithComment() {
+            const form = document.getElementById('editForm');
+            form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
         }
 
         function setModalDate(offset) {

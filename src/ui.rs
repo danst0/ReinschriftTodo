@@ -1343,12 +1343,21 @@ impl AppState {
         done_check.set_active(todo.done);
         content.append(&done_check);
 
+        let comment_entry = gtk::Entry::new();
+        let comment_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        comment_row.append(&gtk::Label::builder().label(&t("comment")).xalign(0.0).build());
+        comment_row.append(&comment_entry);
+        comment_row.set_visible(false);
+        content.append(&comment_row);
+
         let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         buttons.set_halign(gtk::Align::End);
         let cancel_btn = gtk::Button::with_label(&t("cancel"));
+        let close_with_comment_btn = gtk::Button::with_label(&t("close_with_comment"));
         let save_btn = gtk::Button::with_label(&t("save"));
         save_btn.add_css_class("suggested-action");
         buttons.append(&cancel_btn);
+        buttons.append(&close_with_comment_btn);
         buttons.append(&save_btn);
         content.append(&buttons);
         dialog.set_content(Some(&content));
@@ -1418,6 +1427,73 @@ impl AppState {
                 state_for_save.show_error(&t("save_task_error").replace("{}", &err.to_string()));
             } else {
                 dialog_save.close();
+            }
+        });
+
+        let dialog_close_comment = dialog.clone();
+        let state_for_close_comment = Rc::clone(self);
+        let base_item_close = todo.clone();
+        let title_entry_close = title_entry.clone();
+        let project_entry_close = project_entry.clone();
+        let context_entry_close = context_entry.clone();
+        let due_entry_close = due_entry.clone();
+        let comment_entry_close = comment_entry.clone();
+        let comment_row_close = comment_row.clone();
+        let close_btn_ref = close_with_comment_btn.clone();
+        close_with_comment_btn.connect_clicked(move |_| {
+            if !comment_row_close.is_visible() {
+                comment_row_close.set_visible(true);
+                comment_entry_close.grab_focus();
+                close_btn_ref.add_css_class("suggested-action");
+                return;
+            }
+
+            let comment = comment_entry_close.text().trim().to_string();
+            if comment.is_empty() {
+                return;
+            }
+
+            let title_text = title_entry_close.text().trim().to_string();
+            let full_title = format!("{} ({})", title_text, comment);
+
+            let project_text = project_entry_close.text().trim().to_string();
+            let project_value = if project_text.is_empty() {
+                None
+            } else {
+                Some(project_text)
+            };
+
+            let context_text = context_entry_close.text().trim().to_string();
+            let context_value = if context_text.is_empty() {
+                None
+            } else {
+                Some(context_text)
+            };
+
+            let due_text = due_entry_close.text().trim().to_string();
+            let due_value = if due_text.is_empty() {
+                None
+            } else {
+                match NaiveDate::parse_from_str(&due_text, "%Y-%m-%d") {
+                    Ok(date) => Some(date),
+                    Err(_) => {
+                        state_for_close_comment.show_error(&t("invalid_date_error"));
+                        return;
+                    }
+                }
+            };
+
+            let mut updated = base_item_close.clone();
+            updated.title = full_title;
+            updated.project = project_value;
+            updated.context = context_value;
+            updated.due = due_value;
+            updated.done = true;
+
+            if let Err(err) = state_for_close_comment.save_item(&updated) {
+                state_for_close_comment.show_error(&t("save_task_error").replace("{}", &err.to_string()));
+            } else {
+                dialog_close_comment.close();
             }
         });
 
