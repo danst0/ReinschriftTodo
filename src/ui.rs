@@ -1917,19 +1917,6 @@ impl AppState {
             }
         });
     }
-            if !final_text.is_empty() {
-                glib::idle_add_local(clone!(@strong entry_clone => move || {
-                    let current = entry_clone.text().to_string();
-                    if current.is_empty() {
-                        entry_clone.set_text(&final_text);
-                    } else {
-                        entry_clone.set_text(&format!("{} {}", current, final_text));
-                    }
-                    glib::ControlFlow::Break
-                }));
-            }
-        });
-    }
 
     fn open_entry_at(self: &Rc<Self>, position: u32) {
         let Some(obj) = self.store.item(position) else {
