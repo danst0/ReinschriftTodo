@@ -314,6 +314,7 @@ def index():
     show_done = show_done_val == '1'
     show_due_only = show_due_only_val == '1'
     sort_mode = sort_mode_val
+    q = request.args.get('q', '').lower()
     
     today = datetime.now().date()
     filtered_todos = []
@@ -328,6 +329,31 @@ def index():
         
         filtered_todos.append(todo)
     
+    if q:
+        # Search logic
+        # 1. Current list results
+        current_results = [t.copy() for t in filtered_todos if q in t['title'].lower()]
+        for t in current_results: t['section'] = None
+        
+        # 2. All open todos (excluding those already in current_results)
+        open_results = [t.copy() for t in todos if not t['done'] and q in t['title'].lower()]
+        open_results = [t for t in open_results if not any(c['line_index'] == t['line_index'] and c['marker'] == t['marker'] for c in current_results)]
+        for t in open_results: t['section'] = None
+        
+        # 3. All completed todos (excluding those already in current_results)
+        done_results = [t.copy() for t in todos if t['done'] and q in t['title'].lower()]
+        done_results = [t for t in done_results if not any(c['line_index'] == t['line_index'] and c['marker'] == t['marker'] for c in current_results)]
+        for t in done_results: t['section'] = None
+        
+        return render_template('index.html', 
+                               current_results=current_results,
+                               open_results=open_results,
+                               done_results=done_results,
+                               q=q,
+                               show_done=show_done,
+                               show_due_only=show_due_only,
+                               sort_mode=sort_mode)
+
     # Sorting logic
     if sort_mode == 'location':
         filtered_todos.sort(key=sort_key_location)
@@ -361,7 +387,7 @@ def index():
     if request.args.get('partial'):
         return render_template('_todo_list.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode)
 
-    return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode)
+    return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode, q=q)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

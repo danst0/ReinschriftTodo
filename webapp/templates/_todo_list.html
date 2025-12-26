@@ -1,6 +1,6 @@
 {% set current_section = namespace(value=None) %}
 {% for todo in todos %}
-    {% if todo.section != current_section.value %}
+    {% if todo.section and todo.section != current_section.value %}
         <div class="section-header">{{ todo.section }}</div>
         {% set current_section.value = todo.section %}
     {% endif %}

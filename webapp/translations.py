@@ -33,7 +33,11 @@ TRANSLATIONS = {
         'login_title': 'Anmelden - Reinschrift',
         'no_section': 'Ohne Abschnitt',
         'close_with_comment': 'Mit Kommentar abschließen',
-        'comment': 'Kommentar'
+        'comment': 'Kommentar',
+        'search_placeholder': 'Suchen…',
+        'search_results_current': 'Suchergebnisse in aktueller Liste',
+        'search_results_open': 'Suchergebnisse in allen offenen To-dos',
+        'search_results_done': 'Suchergebnisse in abgeschlossenen To-dos'
     },
     'en': {
         'todos': 'Reinschrift',
@@ -68,7 +72,11 @@ TRANSLATIONS = {
         'login_title': 'Login - Reinschrift',
         'no_section': 'No Section',
         'close_with_comment': 'Close with comment',
-        'comment': 'Comment'
+        'comment': 'Comment',
+        'search_placeholder': 'Search…',
+        'search_results_current': 'Search results in current list',
+        'search_results_open': 'Search results in all open todos',
+        'search_results_done': 'Search results in completed todos'
     },
     'es': {
         'todos': 'Reinschrift',
@@ -103,7 +111,11 @@ TRANSLATIONS = {
         'login_title': 'Iniciar sesión - Reinschrift',
         'no_section': 'Sin sección',
         'close_with_comment': 'Cerrar con comentario',
-        'comment': 'Comentario'
+        'comment': 'Comentario',
+        'search_placeholder': 'Buscar…',
+        'search_results_current': 'Resultados en la lista actual',
+        'search_results_open': 'Resultados en todas las tareas abiertas',
+        'search_results_done': 'Resultados en tareas completadas'
     },
     'sv': {
         'todos': 'Reinschrift',
@@ -138,7 +150,11 @@ TRANSLATIONS = {
         'login_title': 'Logga in - Reinschrift',
         'no_section': 'Ingen sektion',
         'close_with_comment': 'Stäng med kommentar',
-        'comment': 'Kommentar'
+        'comment': 'Kommentar',
+        'search_placeholder': 'Sök…',
+        'search_results_current': 'Sökresultat i aktuell lista',
+        'search_results_open': 'Sökresultat i alla öppna uppgifter',
+        'search_results_done': 'Sökresultat i klara uppgifter'
     },
     'fr': {
         'todos': 'Reinschrift',
@@ -173,7 +189,11 @@ TRANSLATIONS = {
         'login_title': 'Connexion - Reinschrift',
         'no_section': 'Sans section',
         'close_with_comment': 'Fermer avec commentaire',
-        'comment': 'Commentaire'
+        'comment': 'Commentaire',
+        'search_placeholder': 'Rechercher…',
+        'search_results_current': 'Résultats dans la liste actuelle',
+        'search_results_open': 'Résultats dans toutes les tâches ouvertes',
+        'search_results_done': 'Résultats dans les tâches terminées'
     },
     'ja': {
         'todos': 'Reinschrift',
@@ -208,6 +228,10 @@ TRANSLATIONS = {
         'login_title': 'ログイン - Reinschrift',
         'no_section': 'セクションなし',
         'close_with_comment': 'コメント付きで終了',
-        'comment': 'コメント'
+        'comment': 'コメント',
+        'search_placeholder': '検索…',
+        'search_results_current': '現在のリスト内の検索結果',
+        'search_results_open': 'すべての未完了タスク内の検索結果',
+        'search_results_done': '完了したタスク内の検索結果'
     }
 }

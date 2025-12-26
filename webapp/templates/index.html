@@ -208,13 +208,44 @@
           <button type="button" class="refresh-button" onclick="manualReload()">↻ {{ t.reload }}</button>
     </div>
     
+    <form action="{{ url_for('index') }}" method="get" style="margin-bottom: 1rem; display: flex; gap: 0.5rem;">
+        <input type="text" name="q" value="{{ q or '' }}" placeholder="{{ t.search_placeholder }}" style="flex-grow: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+        <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
+        <input type="hidden" name="show_due_only" value="{{ '1' if show_due_only else '0' }}">
+        <input type="hidden" name="sort_mode" value="{{ sort_mode }}">
+        <button type="submit" style="padding: 0.5rem 1rem; background: #3584e4; color: white; border: none; border-radius: 6px; cursor: pointer;">{{ t.search_placeholder.strip('…') }}</button>
+    </form>
+
     <form id="addForm" class="add-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post">
         <input type="text" name="title" placeholder="{{ t.new_task }}" required>
         <button type="submit">{{ t.add }}</button>
     </form>
 
     <div class="todo-list">
-        {% include '_todo_list.html' %}
+        {% if q %}
+            {% if current_results %}
+                <div class="section-header">{{ t.search_results_current }}</div>
+                {% with todos=current_results %}
+                    {% include '_todo_list.html' %}
+                {% endwith %}
+            {% endif %}
+            
+            {% if open_results %}
+                <div class="section-header">{{ t.search_results_open }}</div>
+                {% with todos=open_results %}
+                    {% include '_todo_list.html' %}
+                {% endwith %}
+            {% endif %}
+            
+            {% if done_results %}
+                <div class="section-header">{{ t.search_results_done }}</div>
+                {% with todos=done_results %}
+                    {% include '_todo_list.html' %}
+                {% endwith %}
+            {% endif %}
+        {% else %}
+            {% include '_todo_list.html' %}
+        {% endif %}
     </div>
 
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;">

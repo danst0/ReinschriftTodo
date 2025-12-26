@@ -101,6 +101,10 @@ pub fn t(key: &str) -> String {
         de.insert("rollback_failed", "Rollback fehlgeschlagen: {}");
         de.insert("close_with_comment", "Mit Kommentar abschließen");
         de.insert("comment", "Kommentar");
+        de.insert("search_placeholder", "Suchen…");
+        de.insert("search_results_current", "Suchergebnisse in aktueller Liste");
+        de.insert("search_results_open", "Suchergebnisse in allen offenen To-dos");
+        de.insert("search_results_done", "Suchergebnisse in abgeschlossenen To-dos");
         m.insert("de", de);
 
         let mut en = std::collections::HashMap::new();
@@ -185,8 +189,14 @@ pub fn t(key: &str) -> String {
         en.insert("no_checkbox_error", "Line contains no checkbox");
         en.insert("auto_reload_error", "Auto-reload failed: {}");
         en.insert("webdav_conn_error", "WebDAV Connection Error: {}");
-        en.insert("rollback_failed", "Rollback failed: {}");        en.insert("close_with_comment", "Close with comment");
-        en.insert("comment", "Comment");        m.insert("en", en);
+        en.insert("rollback_failed", "Rollback failed: {}");
+        en.insert("close_with_comment", "Close with comment");
+        en.insert("comment", "Comment");
+        en.insert("search_placeholder", "Search…");
+        en.insert("search_results_current", "Search results in current list");
+        en.insert("search_results_open", "Search results in all open To-dos");
+        en.insert("search_results_done", "Search results in completed To-dos");
+        m.insert("en", en);
 
         let mut es = std::collections::HashMap::new();
         es.insert("app_title", "Base de datos de tareas");
@@ -239,35 +249,10 @@ pub fn t(key: &str) -> String {
         es.insert("title", "Título");
         es.insert("project_plus", "Proyecto (+)");
         es.insert("location_at", "Lugar (@)");
-        es.insert("due_date", "Fecha de vencimiento");
-        es.insert("today", "Hoy");
-        es.insert("done", "Hecho");
-        es.insert("cancel", "Cancelar");
-        es.insert("save", "Guardar");
-        es.insert("invalid_date_error", "Fecha no válida. Se espera AAAA-MM-DD");
-        es.insert("save_task_error", "No se pudo guardar la tarea: {}");
-        es.insert("topic_group", "Tema: {}");
-        es.insert("location_group", "Lugar: {}");
-        es.insert("no_project", "Sin proyecto");
-        es.insert("no_location", "Sin lugar");
-        es.insert("changes_applied", "Cambios del archivo aplicados");
-        es.insert("update_failed", "Fallo al actualizar: {}");
-        es.insert("due_label", "Vence: {}");
-        es.insert("init_adw_error", "No se pudo inicializar libadwaita");
-        es.insert("build_ui_error", "Error al construir la interfaz: {:?}");
-        es.insert("app_exit_status", "La aplicación finalizó con el estado {:?}");
-        es.insert("read_error", "No se pudo leer {}");
-        es.insert("write_error", "No se pudo escribir {}");
-        es.insert("connection_error", "Conexión a '{}' fallida: {}");
-        es.insert("no_section", "Sin sección");
-        es.insert("todo_not_found", "No se pudo encontrar la tarea en el archivo");
-        es.insert("line_update_error", "No se pudo actualizar la línea {}");
-        es.insert("no_checkbox_error", "La línea no contiene ninguna casilla");
-        es.insert("auto_reload_error", "Fallo en la recarga automática: {}");
-        es.insert("webdav_conn_error", "Error de conexión WebDAV: {}");
-        es.insert("rollback_failed", "Fallo en la reversión: {}");
-        es.insert("close_with_comment", "Cerrar con comentario");
-        es.insert("comment", "Comentario");
+        es.insert("search_placeholder", "Buscar…");
+        es.insert("search_results_current", "Resultados en la lista actual");
+        es.insert("search_results_open", "Resultados en todas las tareas abiertas");
+        es.insert("search_results_done", "Resultados en tareas completadas");
         m.insert("es", es);
 
         let mut sv = std::collections::HashMap::new();
@@ -350,6 +335,10 @@ pub fn t(key: &str) -> String {
         sv.insert("rollback_failed", "Återställning misslyckades: {}");
         sv.insert("close_with_comment", "Stäng med kommentar");
         sv.insert("comment", "Kommentar");
+        sv.insert("search_placeholder", "Sök…");
+        sv.insert("search_results_current", "Sökresultat i aktuell lista");
+        sv.insert("search_results_open", "Sökresultat i alla öppna uppgifter");
+        sv.insert("search_results_done", "Sökresultat i klara uppgifter");
         m.insert("sv", sv);
 
         let mut fr = std::collections::HashMap::new();
@@ -432,6 +421,10 @@ pub fn t(key: &str) -> String {
         fr.insert("rollback_failed", "Échec de la restauration : {}");
         fr.insert("close_with_comment", "Fermer avec commentaire");
         fr.insert("comment", "Commentaire");
+        fr.insert("search_placeholder", "Rechercher…");
+        fr.insert("search_results_current", "Résultats dans la liste actuelle");
+        fr.insert("search_results_open", "Résultats dans toutes les tâches ouvertes");
+        fr.insert("search_results_done", "Résultats dans les tâches terminées");
         m.insert("fr", fr);
 
         let mut ja = std::collections::HashMap::new();
@@ -514,6 +507,10 @@ pub fn t(key: &str) -> String {
         ja.insert("rollback_failed", "ロールバックに失敗しました: {}");
         ja.insert("close_with_comment", "コメント付きで終了");
         ja.insert("comment", "コメント");
+        ja.insert("search_placeholder", "検索…");
+        ja.insert("search_results_current", "現在のリスト内の検索結果");
+        ja.insert("search_results_open", "すべての未完了タスク内の検索結果");
+        ja.insert("search_results_done", "完了したタスク内の検索結果");
         m.insert("ja", ja);
 
         m

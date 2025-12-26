@@ -112,8 +112,12 @@ pub fn build_ui(app: &Application) -> Result<()> {
         .build();
 
     let header = adw::HeaderBar::builder()
-        .title_widget(&gtk::Label::builder().label(&t("app_title")).xalign(0.0).build())
         .build();
+
+    let search_entry = gtk::SearchEntry::builder()
+        .placeholder_text(&t("search_placeholder"))
+        .build();
+    header.set_title_widget(Some(&search_entry));
 
     let settings_btn = gtk::Button::builder()
         .icon_name("open-menu-symbolic")
@@ -133,6 +137,13 @@ pub fn build_ui(app: &Application) -> Result<()> {
     overlay.set_vexpand(true);
     let store = gio::ListStore::new::<BoxedAnyObject>();
     let state = Rc::new(AppState::new(&window, &overlay, &store));
+
+    let state_for_search = Rc::clone(&state);
+    search_entry.connect_search_changed(move |entry| {
+        let text = entry.text().to_string();
+        *state_for_search.search_term.borrow_mut() = text;
+        state_for_search.repopulate_store();
+    });
 
     let state_for_settings_btn = Rc::clone(&state);
     settings_btn.connect_clicked(move |_| {
@@ -603,6 +614,7 @@ struct AppState {
     sort_mode: RefCell<SortMode>,
     window: glib::WeakRef<adw::ApplicationWindow>,
     preferences: RefCell<Preferences>,
+    search_term: RefCell<String>,
 }
 
 impl AppState {
@@ -649,6 +661,7 @@ impl AppState {
             sort_mode: RefCell::new(sort_mode),
             window: window.downgrade(),
             preferences: RefCell::new(prefs),
+            search_term: RefCell::new(String::new()),
         }
     }
 
@@ -1250,31 +1263,86 @@ impl AppState {
     }
 
     fn repopulate_store(&self) {
+        let search_term = self.search_term.borrow().to_lowercase();
         let mut items = self.cached_items.borrow().clone();
         self.sort_items(&mut items);
         self.store.remove_all();
-        let mode = *self.sort_mode.borrow();
-        let mut last_group: Option<String> = None;
+        
         let include_done = self.show_completed();
         let due_only = self.show_due_only();
         let today = Local::now().date_naive();
-        for item in items.into_iter().filter(|todo| {
-            let status_ok = include_done || !todo.done;
-            let due_ok = if !due_only {
-                true
-            } else {
-                todo.due.map(|d| d <= today).unwrap_or(true)
-            };
-            status_ok && due_ok
-        }) {
-            if let Some(label) = self.group_label(mode, &item) {
-                if last_group.as_ref() != Some(&label) {
-                    self.store
-                        .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
-                    last_group = Some(label);
+
+        if search_term.is_empty() {
+            let mode = *self.sort_mode.borrow();
+            let mut last_group: Option<String> = None;
+            for item in items.into_iter().filter(|todo| {
+                let status_ok = include_done || !todo.done;
+                let due_ok = if !due_only {
+                    true
+                } else {
+                    todo.due.map(|d| d <= today).unwrap_or(true)
+                };
+                status_ok && due_ok
+            }) {
+                if let Some(label) = self.group_label(mode, &item) {
+                    if last_group.as_ref() != Some(&label) {
+                        self.store
+                            .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
+                        last_group = Some(label);
+                    }
+                }
+                self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+            }
+        } else {
+            // 1. Suchergebnisse in aktueller Liste
+            let current_list_results: Vec<_> = items.iter().filter(|todo| {
+                let status_ok = include_done || !todo.done;
+                let due_ok = if !due_only {
+                    true
+                } else {
+                    todo.due.map(|d| d <= today).unwrap_or(true)
+                };
+                status_ok && due_ok && todo.title.to_lowercase().contains(&search_term)
+            }).cloned().collect();
+
+            if !current_list_results.is_empty() {
+                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("search_results_current"))));
+                for item in current_list_results.clone() {
+                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
                 }
             }
-            self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+
+            // 2. Suchergebnisse bei allen offenen Todos
+            let open_results: Vec<_> = items.iter().filter(|todo| {
+                !todo.done && todo.title.to_lowercase().contains(&search_term)
+            }).cloned().collect();
+            
+            let open_results_filtered: Vec<_> = open_results.into_iter().filter(|todo| {
+                !current_list_results.iter().any(|c| c.key.line_index == todo.key.line_index && c.key.marker == todo.key.marker)
+            }).collect();
+
+            if !open_results_filtered.is_empty() {
+                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("search_results_open"))));
+                for item in open_results_filtered {
+                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                }
+            }
+
+            // 3. Suchergebnisse bei den abgeschlossenen Todos
+            let done_results: Vec<_> = items.iter().filter(|todo| {
+                todo.done && todo.title.to_lowercase().contains(&search_term)
+            }).cloned().collect();
+
+            let done_results_filtered: Vec<_> = done_results.into_iter().filter(|todo| {
+                !current_list_results.iter().any(|c| c.key.line_index == todo.key.line_index && c.key.marker == todo.key.marker)
+            }).collect();
+
+            if !done_results_filtered.is_empty() {
+                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("search_results_done"))));
+                for item in done_results_filtered {
+                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                }
+            }
         }
     }
 
