@@ -4,6 +4,7 @@ runtime-version: '49'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.llvm18
 command: reinschrift
 finish-args:
   - --share=ipc
@@ -11,11 +12,24 @@ finish-args:
   - --socket=wayland
   - --device=dri
   - --share=network
+  - --socket=pulseaudio
 build-options:
-  append-path: /usr/lib/sdk/rust-stable/bin
+  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm18/bin
   env:
     CARGO_HOME: /run/build/reinschrift/cargo
+    LIBCLANG_PATH: /usr/lib/sdk/llvm18/lib
 modules:
+  - name: alsa-lib
+    sources:
+      - type: archive
+        url: https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.10.tar.bz2
+        sha256: c86a45a846331b1b0aa6e6be100be2a7aef92efd405cf6bac7eef8174baa920e
+    cleanup:
+      - /bin
+      - /sbin
+      - /share/alsa/alsa.conf.d
+      - /include
+
   - name: reinschrift
     buildsystem: simple
     build-commands:
@@ -27,9 +41,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        tag: v0.6.0
-      - type: file
-        path: generated-sources.json
+        tag: v0.8.0
+      - generated-sources.json
       - type: shell
         commands:
           - mkdir -p .cargo
@@ -41,4 +54,3 @@ modules:
             [source.vendored-sources]
             directory = "cargo/vendor"
             EOF
-      - generated-sources.json
