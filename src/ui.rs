@@ -9,6 +9,7 @@ use adw::{self, Application};
 use anyhow::Result;
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use glib::{clone, BoxedAnyObject};
+use gtk::gdk;
 use gtk::gio;
 use gtk::{AlertDialog, FileDialog, FileFilter};
 use gtk::gio::prelude::*;
@@ -112,12 +113,22 @@ pub fn build_ui(app: &Application) -> Result<()> {
         .build();
 
     let header = adw::HeaderBar::builder()
+        .title_widget(&gtk::Label::builder().label(&t("app_title")).build())
         .build();
 
     let search_entry = gtk::SearchEntry::builder()
         .placeholder_text(&t("search_placeholder"))
+        .hexpand(true)
+        .margin_start(12)
+        .margin_end(12)
+        .margin_top(6)
+        .margin_bottom(6)
         .build();
-    header.set_title_widget(Some(&search_entry));
+
+    let search_revealer = gtk::Revealer::builder()
+        .child(&search_entry)
+        .transition_type(gtk::RevealerTransitionType::SlideDown)
+        .build();
 
     let settings_btn = gtk::Button::builder()
         .icon_name("open-menu-symbolic")
@@ -126,10 +137,25 @@ pub fn build_ui(app: &Application) -> Result<()> {
     settings_btn.add_css_class("flat");
     header.pack_start(&settings_btn);
 
+    let add_task_btn = gtk::ToggleButton::builder()
+        .icon_name("list-add-symbolic")
+        .tooltip_text(&t("add"))
+        .build();
+    add_task_btn.add_css_class("flat");
+    header.pack_end(&add_task_btn);
+
+    let search_btn = gtk::ToggleButton::builder()
+        .icon_name("system-search-symbolic")
+        .tooltip_text(&t("search_placeholder"))
+        .build();
+    search_btn.add_css_class("flat");
+    header.pack_end(&search_btn);
+
     let refresh_btn = gtk::Button::builder()
         .icon_name("view-refresh-symbolic")
         .tooltip_text(&t("reload"))
         .build();
+    refresh_btn.add_css_class("flat");
     header.pack_end(&refresh_btn);
 
     let overlay = adw::ToastOverlay::new();
@@ -145,8 +171,22 @@ pub fn build_ui(app: &Application) -> Result<()> {
         state_for_search.repopulate_store();
     });
 
+    let search_btn_clone = search_btn.clone();
     search_entry.connect_stop_search(move |entry| {
         entry.set_text("");
+        search_btn_clone.set_active(false);
+    });
+
+    let search_revealer_clone = search_revealer.clone();
+    let search_entry_clone = search_entry.clone();
+    let add_task_btn_clone = add_task_btn.clone();
+    search_btn.connect_toggled(move |btn| {
+        let active = btn.is_active();
+        search_revealer_clone.set_reveal_child(active);
+        if active {
+            search_entry_clone.grab_focus();
+            add_task_btn_clone.set_active(false);
+        }
     });
 
     let state_for_settings_btn = Rc::clone(&state);
@@ -190,6 +230,23 @@ pub fn build_ui(app: &Application) -> Result<()> {
     let add_btn = gtk::Button::with_label(&t("add"));
     add_btn.add_css_class("suggested-action");
     new_row.append(&add_btn);
+
+    let add_revealer = gtk::Revealer::builder()
+        .child(&new_row)
+        .transition_type(gtk::RevealerTransitionType::SlideDown)
+        .build();
+
+    let add_revealer_clone = add_revealer.clone();
+    let new_entry_clone = new_entry.clone();
+    let search_btn_clone2 = search_btn.clone();
+    add_task_btn.connect_toggled(move |btn| {
+        let active = btn.is_active();
+        add_revealer_clone.set_reveal_child(active);
+        if active {
+            new_entry_clone.grab_focus();
+            search_btn_clone2.set_active(false);
+        }
+    });
 
     let state_for_add = Rc::clone(&state);
     let new_entry_for_add = new_entry.clone();
@@ -243,10 +300,9 @@ pub fn build_ui(app: &Application) -> Result<()> {
     // Erzeuge das vertikale Content-Layout noch vor dem Einfügen der neuen Zeile
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content.append(&controls);
+    content.append(&search_revealer);
+    content.append(&add_revealer);
     content.append(&overlay);
-
-    // Füge die neue Eingabezeile unter den Filtereinstellungen ein
-    content.append(&new_row);
 
     let list_view = create_list_view(&state);
     let scrolled = gtk::ScrolledWindow::builder()
@@ -262,16 +318,31 @@ pub fn build_ui(app: &Application) -> Result<()> {
 
     window.set_content(Some(&toolbar_view));
 
-    // Setze Fokus direkt ins neue Eingabefeld beim Start
-    new_entry.grab_focus();
-
-    // Wenn das Fenster den Fokus erhält, setze den Cursor in das Eingabefeld
-    let new_entry_for_focus = new_entry.clone();
-    window.connect_notify_local(Some("is-active"), move |window, _| {
-        if window.is_active() {
-            new_entry_for_focus.grab_focus();
+    // ESC-Taste zum Schließen der Revealer
+    let key_controller = gtk::EventControllerKey::new();
+    let search_btn_esc = search_btn.clone();
+    let add_task_btn_esc = add_task_btn.clone();
+    key_controller.connect_key_pressed(move |_, key, _, _| {
+        if key == gdk::Key::Escape {
+            search_btn_esc.set_active(false);
+            add_task_btn_esc.set_active(false);
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
         }
     });
+    window.add_controller(key_controller);
+
+    // Setze Fokus direkt ins neue Eingabefeld beim Start
+    // new_entry.grab_focus();
+
+    // Wenn das Fenster den Fokus erhält, setze den Cursor in das Eingabefeld
+    // let new_entry_for_focus = new_entry.clone();
+    // window.connect_notify_local(Some("is-active"), move |window, _| {
+    //     if window.is_active() {
+    //         new_entry_for_focus.grab_focus();
+    //     }
+    // });
 
     let refresh_action = gio::SimpleAction::new("reload", None);
     refresh_action.connect_activate(clone!(@weak state => move |_, _| {
