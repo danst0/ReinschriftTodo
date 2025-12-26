@@ -28,6 +28,12 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 use crate::data::{self, TodoItem};
 use crate::i18n::t;
 
+enum VoiceMsg {
+    Error(String),
+    Transcription(String),
+    Finished,
+}
+
 #[derive(Clone)]
 enum ListEntry {
     Header(String),
@@ -1002,7 +1008,7 @@ impl AppState {
 
         for (i, (key, shortcut)) in shortcuts.iter().enumerate() {
             let key_label = gtk::Label::builder()
-                .label(shortcut)
+                .label(*shortcut)
                 .xalign(1.0)
                 .build();
             key_label.add_css_class("dim-label");
@@ -1261,7 +1267,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.7.1", t("version")))
+            .label(&format!("{} 0.8.0", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -1285,7 +1291,8 @@ impl AppState {
             .activatable(true)
             .build();
         site_row.connect_activated(|_| {
-            let _ = gtk::show_uri(None::<&gtk::Window>, "https://github.com/danst0/ReinschriftTodo", 0);
+            let launcher = gtk::FileLauncher::new(Some(&gio::File::for_uri("https://github.com/danst0/ReinschriftTodo")));
+            launcher.launch(None::<&gtk::Window>, gio::Cancellable::NONE, |_| {});
         });
         info_group.add(&site_row);
 
@@ -1771,22 +1778,46 @@ impl AppState {
         voice_btn.add_css_class("destructive-action");
         voice_btn.set_icon_name("media-record-symbolic");
 
-        let state = Rc::clone(self);
-        let voice_btn_clone = voice_btn.clone();
-        let entry_clone = entry.clone();
+        let is_recording = self.is_recording.clone();
+        let (sender, receiver) = glib::MainContext::channel(glib::Priority::default());
+        
+        {
+            let state_clone = Rc::clone(self);
+            let voice_btn_clone = voice_btn.clone();
+            let entry_clone = entry.clone();
+            
+            receiver.attach(None, move |msg| {
+                match msg {
+                    VoiceMsg::Error(e) => {
+                        state_clone.show_error(&e);
+                        voice_btn_clone.remove_css_class("destructive-action");
+                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
+                        state_clone.is_recording.store(false, AtomicOrdering::SeqCst);
+                    }
+                    VoiceMsg::Transcription(text) => {
+                        let current = entry_clone.text();
+                        if current.is_empty() {
+                            entry_clone.set_text(&text);
+                        } else {
+                            entry_clone.set_text(&format!("{} {}", current, text));
+                        }
+                    }
+                    VoiceMsg::Finished => {
+                        voice_btn_clone.remove_css_class("destructive-action");
+                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
+                        state_clone.is_recording.store(false, AtomicOrdering::SeqCst);
+                    }
+                }
+                glib::ControlFlow::Continue
+            });
+        }
 
         std::thread::spawn(move || {
             let host = cpal::default_host();
             let device = match host.default_input_device() {
                 Some(d) => d,
                 None => {
-                    glib::idle_add_local(clone!(@strong state, @strong voice_btn_clone => move || {
-                        state.show_error("No input device found");
-                        voice_btn_clone.remove_css_class("destructive-action");
-                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
-                        state.is_recording.store(false, AtomicOrdering::SeqCst);
-                        glib::ControlFlow::Break
-                    }));
+                    let _ = sender.send(VoiceMsg::Error("No input device found".to_string()));
                     return;
                 }
             };
@@ -1794,13 +1825,7 @@ impl AppState {
             let config = match device.default_input_config() {
                 Ok(c) => c,
                 Err(e) => {
-                    glib::idle_add_local(clone!(@strong state, @strong voice_btn_clone => move || {
-                        state.show_error(&format!("Input config error: {}", e));
-                        voice_btn_clone.remove_css_class("destructive-action");
-                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
-                        state.is_recording.store(false, AtomicOrdering::SeqCst);
-                        glib::ControlFlow::Break
-                    }));
+                    let _ = sender.send(VoiceMsg::Error(format!("Input config error: {}", e)));
                     return;
                 }
             };
@@ -1819,29 +1844,17 @@ impl AppState {
             ) {
                 Ok(s) => s,
                 Err(e) => {
-                    glib::idle_add_local(clone!(@strong state, @strong voice_btn_clone => move || {
-                        state.show_error(&format!("Stream error: {}", e));
-                        voice_btn_clone.remove_css_class("destructive-action");
-                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
-                        state.is_recording.store(false, AtomicOrdering::SeqCst);
-                        glib::ControlFlow::Break
-                    }));
+                    let _ = sender.send(VoiceMsg::Error(format!("Stream error: {}", e)));
                     return;
                 }
             };
 
             if let Err(e) = stream.play() {
-                glib::idle_add_local(clone!(@strong state, @strong voice_btn_clone => move || {
-                    state.show_error(&format!("Stream play error: {}", e));
-                    voice_btn_clone.remove_css_class("destructive-action");
-                    voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
-                    state.is_recording.store(false, AtomicOrdering::SeqCst);
-                    glib::ControlFlow::Break
-                }));
+                let _ = sender.send(VoiceMsg::Error(format!("Stream play error: {}", e)));
                 return;
             }
 
-            while state.is_recording.load(AtomicOrdering::SeqCst) {
+            while is_recording.load(AtomicOrdering::SeqCst) {
                 std::thread::sleep(std::time::Duration::from_millis(100));
             }
 
@@ -1849,6 +1862,7 @@ impl AppState {
 
             let samples = audio_data.lock().unwrap().clone();
             if samples.is_empty() {
+                let _ = sender.send(VoiceMsg::Finished);
                 return;
             }
 
@@ -1873,10 +1887,7 @@ impl AppState {
             ) {
                 Ok(c) => c,
                 Err(e) => {
-                    glib::idle_add_local(clone!(@strong state => move || {
-                        state.show_error(&format!("Whisper error: {}", e));
-                        glib::ControlFlow::Break
-                    }));
+                    let _ = sender.send(VoiceMsg::Error(format!("Whisper error: {}", e)));
                     return;
                 }
             };
@@ -1888,10 +1899,7 @@ impl AppState {
 
             let mut state_whisper = ctx.create_state().expect("failed to create state");
             if let Err(e) = state_whisper.full(params, &samples_16k) {
-                glib::idle_add_local(clone!(@strong state => move || {
-                    state.show_error(&format!("Transcription error: {}", e));
-                    glib::ControlFlow::Break
-                }));
+                let _ = sender.send(VoiceMsg::Error(format!("Transcription error: {}", e)));
                 return;
             }
 
@@ -1905,16 +1913,9 @@ impl AppState {
 
             let final_text = result_text.trim().to_string();
             if !final_text.is_empty() {
-                glib::idle_add_local(clone!(@strong entry_clone => move || {
-                    let current = entry_clone.text();
-                    if current.is_empty() {
-                        entry_clone.set_text(&final_text);
-                    } else {
-                        entry_clone.set_text(&format!("{} {}", current, final_text));
-                    }
-                    glib::ControlFlow::Break
-                }));
+                let _ = sender.send(VoiceMsg::Transcription(final_text));
             }
+            let _ = sender.send(VoiceMsg::Finished);
         });
     }
 
