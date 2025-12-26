@@ -1222,6 +1222,69 @@ impl AppState {
         });
         webdav_group.add(&check_row);
 
+        // --- About Page ---
+        let about_page = adw::PreferencesPage::builder()
+            .title(&t("about"))
+            .icon_name("help-about-symbolic")
+            .build();
+        dialog.add(&about_page);
+
+        let about_group = adw::PreferencesGroup::builder()
+            .build();
+        about_page.add(&about_group);
+
+        let banner = adw::Bin::builder()
+            .margin_top(12)
+            .margin_bottom(12)
+            .build();
+        let banner_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        banner_box.set_halign(gtk::Align::Center);
+        
+        let app_icon = gtk::Image::from_icon_name("me.dumke.Reinschrift");
+        app_icon.set_pixel_size(128);
+        banner_box.append(&app_icon);
+
+        let app_name = gtk::Label::builder()
+            .label("Reinschrift")
+            .css_classes(["title-1"])
+            .build();
+        banner_box.append(&app_name);
+
+        let app_version = gtk::Label::builder()
+            .label(&format!("{} 0.6.2", t("version")))
+            .css_classes(["dim-label"])
+            .build();
+        banner_box.append(&app_version);
+
+        banner.set_child(Some(&banner_box));
+        about_group.add(&banner);
+
+        let info_group = adw::PreferencesGroup::builder()
+            .build();
+        about_page.add(&info_group);
+
+        let dev_row = adw::ActionRow::builder()
+            .title(&t("developer"))
+            .subtitle("Dr. Daniel Dumke")
+            .build();
+        info_group.add(&dev_row);
+
+        let site_row = adw::ActionRow::builder()
+            .title(&t("website"))
+            .subtitle("https://github.com/danst0/ReinschriftTodo")
+            .activatable(true)
+            .build();
+        site_row.connect_activated(|_| {
+            let _ = gtk::show_uri(None::<&gtk::Window>, "https://github.com/danst0/ReinschriftTodo", 0);
+        });
+        info_group.add(&site_row);
+
+        let license_row = adw::ActionRow::builder()
+            .title(&t("license"))
+            .subtitle("CC-BY-NC-SA-4.0")
+            .build();
+        info_group.add(&license_row);
+
         dialog.present();
     }
 

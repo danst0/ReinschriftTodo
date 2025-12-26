@@ -117,6 +117,11 @@ pub fn t(key: &str) -> String {
         de.insert("key_today", "Fällig heute");
         de.insert("key_tomorrow", "Fällig morgen");
         de.insert("key_sometimes", "Fällig irgendwann");
+        de.insert("about", "Über");
+        de.insert("version", "Version");
+        de.insert("developer", "Entwickler");
+        de.insert("website", "Webseite");
+        de.insert("license", "Lizenz");
         m.insert("de", de);
 
         let mut en = std::collections::HashMap::new();
@@ -220,6 +225,11 @@ pub fn t(key: &str) -> String {
         en.insert("key_today", "Due today");
         en.insert("key_tomorrow", "Due tomorrow");
         en.insert("key_sometimes", "Due sometimes");
+        en.insert("about", "About");
+        en.insert("version", "Version");
+        en.insert("developer", "Developer");
+        en.insert("website", "Website");
+        en.insert("license", "License");
         m.insert("en", en);
 
         let mut es = std::collections::HashMap::new();
@@ -289,6 +299,11 @@ pub fn t(key: &str) -> String {
         es.insert("key_today", "Vence hoy");
         es.insert("key_tomorrow", "Vence mañana");
         es.insert("key_sometimes", "Vence algún momento");
+        es.insert("about", "Acerca de");
+        es.insert("version", "Versión");
+        es.insert("developer", "Desarrollador");
+        es.insert("website", "Sitio web");
+        es.insert("license", "Licencia");
         m.insert("es", es);
 
         let mut sv = std::collections::HashMap::new();
@@ -387,6 +402,11 @@ pub fn t(key: &str) -> String {
         sv.insert("key_today", "Förfaller idag");
         sv.insert("key_tomorrow", "Förfaller imorgon");
         sv.insert("key_sometimes", "Förfaller när som helst");
+        sv.insert("about", "Om");
+        sv.insert("version", "Version");
+        sv.insert("developer", "Utvecklare");
+        sv.insert("website", "Webbplats");
+        sv.insert("license", "Licens");
         m.insert("sv", sv);
 
         let mut fr = std::collections::HashMap::new();
@@ -485,6 +505,11 @@ pub fn t(key: &str) -> String {
         fr.insert("key_today", "Échéance aujourd'hui");
         fr.insert("key_tomorrow", "Échéance demain");
         fr.insert("key_sometimes", "Échéance un jour");
+        fr.insert("about", "À propos");
+        fr.insert("version", "Version");
+        fr.insert("developer", "Développeur");
+        fr.insert("website", "Site web");
+        fr.insert("license", "Licence");
         m.insert("fr", fr);
 
         let mut ja = std::collections::HashMap::new();
@@ -583,6 +608,11 @@ pub fn t(key: &str) -> String {
         ja.insert("key_today", "今日が期限");
         ja.insert("key_tomorrow", "明日が期限");
         ja.insert("key_sometimes", "いつか期限");
+        ja.insert("about", "情報");
+        ja.insert("version", "バージョン");
+        ja.insert("developer", "開発者");
+        ja.insert("website", "ウェブサイト");
+        ja.insert("license", "ライセンス");
         m.insert("ja", ja);
 
         m

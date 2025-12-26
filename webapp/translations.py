@@ -47,7 +47,12 @@ TRANSLATIONS = {
         'key_edit': 'Bearbeiten',
         'key_today': 'Fällig heute',
         'key_tomorrow': 'Fällig morgen',
-        'key_sometimes': 'Fällig irgendwann'
+        'key_sometimes': 'Fällig irgendwann',
+        'about': 'Über',
+        'version': 'Version',
+        'developer': 'Entwickler',
+        'website': 'Webseite',
+        'license': 'Lizenz'
     },
     'en': {
         'todos': 'Reinschrift',
@@ -96,7 +101,12 @@ TRANSLATIONS = {
         'key_edit': 'Edit',
         'key_today': 'Due today',
         'key_tomorrow': 'Due tomorrow',
-        'key_sometimes': 'Due sometimes'
+        'key_sometimes': 'Due sometimes',
+        'about': 'About',
+        'version': 'Version',
+        'developer': 'Developer',
+        'website': 'Website',
+        'license': 'License'
     },
     'es': {
         'todos': 'Reinschrift',
@@ -145,7 +155,12 @@ TRANSLATIONS = {
         'key_edit': 'Editar',
         'key_today': 'Vence hoy',
         'key_tomorrow': 'Vence mañana',
-        'key_sometimes': 'Vence algún momento'
+        'key_sometimes': 'Vence algún momento',
+        'about': 'Acerca de',
+        'version': 'Versión',
+        'developer': 'Desarrollador',
+        'website': 'Sitio web',
+        'license': 'Licencia'
     },
     'sv': {
         'todos': 'Reinschrift',
@@ -194,7 +209,12 @@ TRANSLATIONS = {
         'key_edit': 'Redigera',
         'key_today': 'Förfaller idag',
         'key_tomorrow': 'Förfaller imorgon',
-        'key_sometimes': 'Förfaller när som helst'
+        'key_sometimes': 'Förfaller när som helst',
+        'about': 'Om',
+        'version': 'Version',
+        'developer': 'Utvecklare',
+        'website': 'Webbplats',
+        'license': 'Licens'
     },
     'fr': {
         'todos': 'Reinschrift',
@@ -243,7 +263,12 @@ TRANSLATIONS = {
         'key_edit': 'Modifier',
         'key_today': 'Échéance aujourd\'hui',
         'key_tomorrow': 'Échéance demain',
-        'key_sometimes': 'Échéance un jour'
+        'key_sometimes': 'Échéance un jour',
+        'about': 'À propos',
+        'version': 'Version',
+        'developer': 'Développeur',
+        'website': 'Site web',
+        'license': 'Licence'
     },
     'ja': {
         'todos': 'Reinschrift',
@@ -292,6 +317,11 @@ TRANSLATIONS = {
         'key_edit': '編集',
         'key_today': '今日が期限',
         'key_tomorrow': '明日が期限',
-        'key_sometimes': 'いつか期限'
+        'key_sometimes': 'いつか期限',
+        'about': '情報',
+        'version': 'バージョン',
+        'developer': '開発者',
+        'website': 'ウェブサイト',
+        'license': 'ライセンス'
     }
 }
