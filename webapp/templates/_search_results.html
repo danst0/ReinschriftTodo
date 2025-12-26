@@ -1,0 +1,20 @@
+{% if current_results %}
+    <div class="section-header">{{ t.search_results_current }}</div>
+    {% with todos=current_results %}
+        {% include '_todo_list.html' %}
+    {% endwith %}
+{% endif %}
+
+{% if open_results %}
+    <div class="section-header">{{ t.search_results_open }}</div>
+    {% with todos=open_results %}
+        {% include '_todo_list.html' %}
+    {% endwith %}
+{% endif %}
+
+{% if done_results %}
+    <div class="section-header">{{ t.search_results_done }}</div>
+    {% with todos=done_results %}
+        {% include '_todo_list.html' %}
+    {% endwith %}
+{% endif %}

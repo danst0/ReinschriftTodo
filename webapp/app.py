@@ -345,6 +345,13 @@ def index():
         done_results = [t for t in done_results if not any(c['line_index'] == t['line_index'] and c['marker'] == t['marker'] for c in current_results)]
         for t in done_results: t['section'] = None
         
+        if request.args.get('partial'):
+            return render_template('_search_results.html', 
+                                   current_results=current_results,
+                                   open_results=open_results,
+                                   done_results=done_results,
+                                   q=q)
+
         return render_template('index.html', 
                                current_results=current_results,
                                open_results=open_results,
