@@ -356,6 +356,7 @@
                     document.getElementById('edit-due').value = data.due || '';
                     document.getElementById('edit-reference').value = data.reference || '';
                     document.getElementById('edit-done').checked = data.done;
+                    document.getElementById('btn-close-comment').style.display = data.done ? 'none' : 'inline-block';
                     
                     document.getElementById('editForm').action = '/edit/' + lineIndex;
                     
@@ -370,6 +371,7 @@
         function closeModal() {
             modal.style.display = "none";
             document.getElementById('comment-section').style.display = 'none';
+            document.getElementById('btn-close-comment').style.display = 'inline-block';
             document.getElementById('edit-comment').value = '';
         }
 
