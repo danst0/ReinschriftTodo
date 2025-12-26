@@ -389,14 +389,6 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         today_btn.add_css_class("flat");
         container.append(&today_btn);
 
-        let sometimes_btn = gtk::Button::builder()
-            .icon_name("clock-symbolic")
-            .tooltip_text(&t("postpone_sometimes"))
-            .build();
-        sometimes_btn.set_valign(gtk::Align::Center);
-        sometimes_btn.add_css_class("flat");
-        container.append(&sometimes_btn);
-
         let postpone_btn = gtk::Button::builder()
             .icon_name("go-next-symbolic")
             .tooltip_text(&t("postpone_tomorrow"))
@@ -404,6 +396,14 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         postpone_btn.set_valign(gtk::Align::Center);
         postpone_btn.add_css_class("flat");
         container.append(&postpone_btn);
+
+        let sometimes_btn = gtk::Button::builder()
+            .icon_name("clock-symbolic")
+            .tooltip_text(&t("postpone_sometimes"))
+            .build();
+        sometimes_btn.set_valign(gtk::Align::Center);
+        sometimes_btn.add_css_class("flat");
+        container.append(&sometimes_btn);
 
         stack.add_named(&container, Some("item"));
         list_item.set_child(Some(&stack));

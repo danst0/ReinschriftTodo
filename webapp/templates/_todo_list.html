@@ -28,8 +28,8 @@
         </div>
         <div class="actions" style="margin-left: auto; display: flex; gap: 0.5rem;">
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'today')" title="{{ t.today }}">📅</a>
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'sometimes')" title="{{ t.sometimes }}">🕒</a>
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow')" title="{{ t.tomorrow }}">➡️</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'sometimes')" title="{{ t.sometimes }}">🕒</a>
         </div>
     </div>
 {% endfor %}

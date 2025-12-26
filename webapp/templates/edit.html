@@ -62,8 +62,8 @@
             <div style="display: flex; gap: 0.5rem;">
                 <input type="date" id="due" name="due" value="{{ todo.due or '' }}">
                 <button type="button" class="btn-action" onclick="setDate(0)" title="{{ t.today }}">📅</button>
-                <button type="button" class="btn-action" onclick="setSometimes()" title="{{ t.sometimes }}">🕒</button>
                 <button type="button" class="btn-action" onclick="setDate(1)" title="{{ t.tomorrow }}">➡️</button>
+                <button type="button" class="btn-action" onclick="setSometimes()" title="{{ t.sometimes }}">🕒</button>
             </div>
         </div>
         <div class="form-group">
