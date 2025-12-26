@@ -272,6 +272,7 @@
             <table style="width: 100%; border-collapse: collapse;">
                 <tr><td style="padding: 4px 8px; text-align: right; color: #999; width: 40%;"><strong>?</strong></td><td style="padding: 4px 8px;">{{ t.key_help }}</td></tr>
                 <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Ctrl + N</strong></td><td style="padding: 4px 8px;">{{ t.key_new }}</td></tr>
+                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Ctrl + F</strong></td><td style="padding: 4px 8px;">{{ t.key_search }}</td></tr>
                 <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>j / k / ↓ / ↑</strong></td><td style="padding: 4px 8px;">{{ t.key_nav }}</td></tr>
                 <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Space</strong></td><td style="padding: 4px 8px;">{{ t.key_toggle }}</td></tr>
                 <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Enter</strong></td><td style="padding: 4px 8px;">{{ t.key_edit }}</td></tr>
@@ -575,7 +576,10 @@
                 closeCheatsheet();
             } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
                 e.preventDefault();
-                document.querySelector('.add-form input').focus();
+                toggleAdd();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                toggleSearch();
             } else if (e.key === 'j' || e.key === 'ArrowDown') {
                 const items = document.querySelectorAll('.todo-item');
                 if (selectedIndex < items.length - 1) {
