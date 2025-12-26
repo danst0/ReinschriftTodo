@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.7.1" date="2025-12-26">
+      <description>
+        <ul>
+          <li>Webapp: Restricted voice input to mobile devices</li>
+          <li>Webapp: Fixed syntax errors in translations</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.7.0" date="2025-12-26">
       <description>
         <ul>
