@@ -778,143 +778,137 @@ impl AppState {
             return;
         };
 
-        let dialog = adw::Window::builder()
+        let dialog = adw::PreferencesWindow::builder()
             .title(&t("settings"))
             .transient_for(&parent)
             .modal(true)
-            .default_width(420)
+            .default_width(480)
             .build();
-        dialog.set_destroy_with_parent(true);
 
-        let controller = gtk::EventControllerKey::new();
-        let dialog_clone = dialog.clone();
-        controller.connect_key_pressed(move |_, key, _, _| {
-            if key == gtk::gdk::Key::Escape {
-                dialog_clone.close();
-                return glib::Propagation::Stop;
-            }
-            glib::Propagation::Proceed
+        let page = adw::PreferencesPage::builder()
+            .title(&t("settings"))
+            .icon_name("preferences-system-symbolic")
+            .build();
+        dialog.add(&page);
+
+        // --- General Group ---
+        let general_group = adw::PreferencesGroup::builder()
+            .title(&t("general"))
+            .build();
+        page.add(&general_group);
+
+        let show_done_row = adw::SwitchRow::builder()
+            .title(&t("show_completed"))
+            .active(self.show_completed())
+            .build();
+        show_done_row.add_prefix(&gtk::Image::from_icon_name("view-list-symbolic"));
+        let state_done = Rc::clone(self);
+        show_done_row.connect_active_notify(move |row| {
+            state_done.set_show_completed(row.is_active());
         });
-        dialog.add_controller(controller);
+        general_group.add(&show_done_row);
 
-        let content = gtk::Box::new(gtk::Orientation::Vertical, 16);
-        content.set_margin_start(20);
-        content.set_margin_end(20);
-        content.set_margin_top(20);
-        content.set_margin_bottom(20);
-
-        let show_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-        let show_label = gtk::Label::builder()
-            .label(&t("show_completed"))
-            .xalign(0.0)
-            .hexpand(true)
+        let show_due_row = adw::SwitchRow::builder()
+            .title(&t("show_due_only_settings"))
+            .active(self.show_due_only())
             .build();
-        let show_switch = gtk::Switch::new();
-        show_switch.set_halign(gtk::Align::End);
-        show_switch.set_active(self.show_completed());
-        let toggle_state = Rc::clone(self);
-        show_switch.connect_state_set(move |_, value| {
-            toggle_state.set_show_completed(value);
-            glib::Propagation::Proceed
+        show_due_row.add_prefix(&gtk::Image::from_icon_name("appointment-soon-symbolic"));
+        let state_due = Rc::clone(self);
+        show_due_row.connect_active_notify(move |row| {
+            state_due.set_show_due_only(row.is_active());
         });
-        show_row.append(&show_label);
-        show_row.append(&show_switch);
-        content.append(&show_row);
+        general_group.add(&show_due_row);
 
-        let due_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-        let due_label = gtk::Label::builder()
-            .label(&t("show_due_only_settings"))
-            .xalign(0.0)
-            .hexpand(true)
+        // --- Storage Group ---
+        let storage_group = adw::PreferencesGroup::builder()
+            .title(&t("storage"))
             .build();
-        let due_switch = gtk::Switch::new();
-        due_switch.set_halign(gtk::Align::End);
-        due_switch.set_active(self.show_due_only());
-        let due_state = Rc::clone(self);
-        due_switch.connect_state_set(move |_, value| {
-            due_state.set_show_due_only(value);
-            glib::Propagation::Proceed
-        });
-        due_row.append(&due_label);
-        due_row.append(&due_switch);
-        content.append(&due_row);
+        page.add(&storage_group);
 
-        let storage_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-        let storage_label = gtk::Label::builder()
-            .label(&t("use_webdav"))
-            .xalign(0.0)
-            .hexpand(true)
+        let use_webdav_row = adw::SwitchRow::builder()
+            .title(&t("use_webdav"))
             .build();
-        let storage_switch = gtk::Switch::new();
-        storage_switch.set_halign(gtk::Align::End);
+        use_webdav_row.add_prefix(&gtk::Image::from_icon_name("network-server-symbolic"));
         let (use_webdav, wd_url, wd_path, wd_user, wd_pass) = self.get_webdav_prefs();
-        storage_switch.set_active(use_webdav);
-        
-        storage_row.append(&storage_label);
-        storage_row.append(&storage_switch);
-        content.append(&storage_row);
+        use_webdav_row.set_active(use_webdav);
+        storage_group.add(&use_webdav_row);
 
-        // Local File UI
-        let file_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        file_box.append(&gtk::Label::builder().label(&t("database_file")).xalign(0.0).build());
-        let path_label = gtk::Label::builder()
-            .xalign(0.0)
-            .wrap(true)
-            .selectable(true)
+        // Local File Row
+        let file_row = adw::ActionRow::builder()
+            .title(&t("database_file"))
+            .subtitle(&data::todo_path().display().to_string())
             .build();
-        path_label.set_text(&data::todo_path().display().to_string());
-
-        let file_buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        file_buttons.set_hexpand(true);
-        file_buttons.append(&path_label);
-        let choose_btn = gtk::Button::with_label(&t("select_file"));
-        let label_ref = path_label.downgrade();
-        let state_for_file = Rc::clone(self);
-        let dialog_ref = dialog.downgrade();
-        choose_btn.connect_clicked(move |_| {
-            let Some(settings_window) = dialog_ref.upgrade() else {
-                return;
-            };
-            let label_ref_clone = label_ref.clone();
-            let callback = Rc::new(move |path: PathBuf| {
-                if let Some(label) = label_ref_clone.upgrade() {
-                    label.set_text(&path.display().to_string());
+        file_row.add_prefix(&gtk::Image::from_icon_name("document-open-symbolic"));
+        let select_button = gtk::Button::builder()
+            .label(&t("select_file"))
+            .valign(gtk::Align::Center)
+            .build();
+        select_button.add_css_class("flat");
+        file_row.add_suffix(&select_button);
+        
+        let state_file = Rc::clone(self);
+        let dialog_weak = dialog.downgrade();
+        let file_row_weak = file_row.downgrade();
+        select_button.connect_clicked(move |_| {
+            let Some(win) = dialog_weak.upgrade() else { return; };
+            let row_weak = file_row_weak.clone();
+            state_file.choose_database_file(&win, Some(Rc::new(move |path| {
+                if let Some(row) = row_weak.upgrade() {
+                    row.set_subtitle(&path.display().to_string());
                 }
-            });
-            state_for_file.choose_database_file(&settings_window, Some(callback));
+            })));
         });
-        file_buttons.append(&choose_btn);
-        file_box.append(&file_buttons);
-        content.append(&file_box);
+        storage_group.add(&file_row);
 
-        // WebDAV UI
-        let webdav_box = gtk::Box::new(gtk::Orientation::Vertical, 8);
+        // WebDAV Rows
+        let url_row = adw::EntryRow::builder()
+            .title(&t("webdav_url"))
+            .text(wd_url.unwrap_or_default())
+            .build();
+        let state_url = Rc::clone(self);
+        url_row.connect_changed(move |row| {
+            state_url.set_webdav_url(row.text().to_string());
+        });
+
+        let path_row = adw::EntryRow::builder()
+            .title(&t("path_relative"))
+            .text(wd_path.unwrap_or_default())
+            .build();
+        let state_path = Rc::clone(self);
+        path_row.connect_changed(move |row| {
+            state_path.set_webdav_path(row.text().to_string());
+        });
+
+        let user_row = adw::EntryRow::builder()
+            .title(&t("username"))
+            .text(wd_user.unwrap_or_default())
+            .build();
+        let state_user = Rc::clone(self);
+        user_row.connect_changed(move |row| {
+            state_user.set_webdav_username(row.text().to_string());
+        });
+
+        let pass_row = adw::PasswordEntryRow::builder()
+            .title(&t("password"))
+            .text(wd_pass.unwrap_or_default())
+            .build();
+        let state_pass = Rc::clone(self);
+        pass_row.connect_changed(move |row| {
+            state_pass.set_webdav_password(row.text().to_string());
+        });
+
+        let check_row = adw::ActionRow::builder()
+            .title(&t("check_connection"))
+            .build();
+        let check_button = gtk::Button::builder()
+            .label(&t("check_connection"))
+            .valign(gtk::Align::Center)
+            .build();
+        check_button.add_css_class("flat");
+        check_row.add_suffix(&check_button);
         
-        let url_entry = gtk::Entry::builder().placeholder_text(&t("webdav_url")).build();
-        if let Some(url) = wd_url { url_entry.set_text(&url); }
-
-        let path_entry = gtk::Entry::builder().placeholder_text(&t("path_relative")).build();
-        if let Some(path) = wd_path { path_entry.set_text(&path); }
-        
-        let user_entry = gtk::Entry::builder().placeholder_text(&t("username")).build();
-        if let Some(user) = wd_user { user_entry.set_text(&user); }
-
-        let pass_entry = gtk::PasswordEntry::builder().placeholder_text(&t("password")).build();
-        if let Some(pass) = wd_pass { pass_entry.set_text(&pass); }
-
-        webdav_box.append(&gtk::Label::builder().label(&t("webdav_url")).xalign(0.0).build());
-        webdav_box.append(&url_entry);
-        webdav_box.append(&gtk::Label::builder().label(&t("path_relative")).xalign(0.0).build());
-        webdav_box.append(&path_entry);
-        webdav_box.append(&gtk::Label::builder().label(&t("username")).xalign(0.0).build());
-        webdav_box.append(&user_entry);
-        webdav_box.append(&gtk::Label::builder().label(&t("password")).xalign(0.0).build());
-        webdav_box.append(&pass_entry);
-
-        let check_btn = gtk::Button::with_label(&t("check_connection"));
-        check_btn.set_margin_top(8);
         let state_for_check = Rc::clone(self);
-        check_btn.connect_clicked(move |_| {
+        check_button.connect_clicked(move |_| {
             let (_, url, path, user, pass) = state_for_check.get_webdav_prefs();
             
             let Some(u) = url else {
@@ -956,50 +950,38 @@ impl AppState {
                 }
             });
         });
-        webdav_box.append(&check_btn);
 
-        content.append(&webdav_box);
+        storage_group.add(&url_row);
+        storage_group.add(&path_row);
+        storage_group.add(&user_row);
+        storage_group.add(&pass_row);
+        storage_group.add(&check_row);
 
         // Visibility logic
-        let file_box_clone = file_box.clone();
-        let webdav_box_clone = webdav_box.clone();
+        let file_row_clone = file_row.clone();
+        let url_row_clone = url_row.clone();
+        let path_row_clone = path_row.clone();
+        let user_row_clone = user_row.clone();
+        let pass_row_clone = pass_row.clone();
+        let check_row_clone = check_row.clone();
+
         let update_visibility = move |active: bool| {
-            file_box_clone.set_visible(!active);
-            webdav_box_clone.set_visible(active);
+            file_row_clone.set_visible(!active);
+            url_row_clone.set_visible(active);
+            path_row_clone.set_visible(active);
+            user_row_clone.set_visible(active);
+            pass_row_clone.set_visible(active);
+            check_row_clone.set_visible(active);
         };
         update_visibility(use_webdav);
 
-        let update_vis_clone = update_visibility.clone(); // Clone for closure
-        let storage_state = Rc::clone(self);
-        storage_switch.connect_state_set(move |_, value| {
-            storage_state.set_use_webdav(value);
-            update_vis_clone(value);
-            glib::Propagation::Proceed
+        let state_storage = Rc::clone(self);
+        use_webdav_row.connect_active_notify(move |row| {
+            let active = row.is_active();
+            state_storage.set_use_webdav(active);
+            update_visibility(active);
         });
 
-        // Connect entries
-        let url_state = Rc::clone(self);
-        url_entry.connect_changed(move |e| url_state.set_webdav_url(e.text().to_string()));
-
-        let path_state = Rc::clone(self);
-        path_entry.connect_changed(move |e| path_state.set_webdav_path(e.text().to_string()));
-        
-        let user_state = Rc::clone(self);
-        user_entry.connect_changed(move |e| user_state.set_webdav_username(e.text().to_string()));
-
-        let pass_state = Rc::clone(self);
-        pass_entry.connect_changed(move |e| pass_state.set_webdav_password(e.text().to_string()));
-
-
-        let close_btn = gtk::Button::with_label(&t("close"));
-        close_btn.set_halign(gtk::Align::End);
-        let dialog_close = dialog.clone();
-        close_btn.connect_clicked(move |_| {
-            dialog_close.close();
-        });
-        content.append(&close_btn);
-
-        dialog.set_content(Some(&content));
         dialog.present();
     }
 

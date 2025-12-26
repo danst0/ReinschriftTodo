@@ -14,3 +14,6 @@ repo/
 __pycache__/
 .ipynb_checkpoints
 docker-compose.yml
+
+.venv/
+flatpak-cargo-generator.py

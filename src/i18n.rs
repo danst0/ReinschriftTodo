@@ -10,6 +10,8 @@ pub fn t(key: &str) -> String {
         let mut de = std::collections::HashMap::new();
         de.insert("app_title", "Reinschrift");
         de.insert("settings", "Einstellungen");
+        de.insert("general", "Allgemein");
+        de.insert("storage", "Speicher");
         de.insert("reload", "Neu laden (Ctrl+R)");
         de.insert("sort_by", "Sortieren nach:");
         de.insert("topics", "+ Themen");
@@ -90,6 +92,8 @@ pub fn t(key: &str) -> String {
         let mut en = std::collections::HashMap::new();
         en.insert("app_title", "Reinschrift");
         en.insert("settings", "Settings");
+        en.insert("general", "General");
+        en.insert("storage", "Storage");
         en.insert("reload", "Reload (Ctrl+R)");
         en.insert("sort_by", "Sort by:");
         en.insert("topics", "+ Topics");
