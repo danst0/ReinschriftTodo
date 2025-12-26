@@ -1009,6 +1009,11 @@ impl AppState {
         content.set_margin_start(24);
         content.set_margin_end(24);
 
+        let grid = gtk::Grid::builder()
+            .column_spacing(24)
+            .row_spacing(8)
+            .build();
+
         let shortcuts = [
             ("key_help", "?"),
             ("key_new", "Ctrl + N"),
@@ -1023,13 +1028,23 @@ impl AppState {
             ("key_sometimes", "s"),
         ];
 
-        for (key, _) in shortcuts {
-            let label = gtk::Label::builder()
+        for (i, (key, shortcut)) in shortcuts.iter().enumerate() {
+            let key_label = gtk::Label::builder()
+                .label(shortcut)
+                .xalign(1.0)
+                .build();
+            key_label.add_css_class("dim-label");
+            
+            let desc_label = gtk::Label::builder()
                 .label(&t(key))
                 .xalign(0.0)
                 .build();
-            content.append(&label);
+            
+            grid.attach(&key_label, 0, i as i32, 1, 1);
+            grid.attach(&desc_label, 1, i as i32, 1, 1);
         }
+
+        content.append(&grid);
 
         let close_btn = gtk::Button::with_label(&t("close"));
         close_btn.set_halign(gtk::Align::End);
