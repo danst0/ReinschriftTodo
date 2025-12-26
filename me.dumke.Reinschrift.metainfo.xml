@@ -40,6 +40,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.3.0" date="2025-12-26">
+      <description>
+        <ul>
+          <li>Add "Postpone to Sometimes" button to desktop and webapp</li>
+          <li>Use 9999-12-31 as date for "Sometimes" tasks</li>
+          <li>Improved translations for all supported languages</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.2" date="2025-12-26" />
     <release version="0.2.1" date="2025-12-26" />
     <release version="0.2.0" date="2025-12-26" />

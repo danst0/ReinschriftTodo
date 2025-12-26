@@ -14,11 +14,21 @@
             <div class="meta">
                 {% if todo.project %}<span class="tag project">+{{ todo.project }}</span>{% endif %}
                 {% if todo.context %}<span class="tag context">@{{ todo.context }}</span>{% endif %}
-                {% if todo.due %}<span class="due">{{ t.due }} {{ todo.due }}</span>{% endif %}
+                {% if todo.due %}
+                    <span class="due">
+                        {{ t.due }} 
+                        {% if todo.due.year == 9999 %}
+                            {{ t.sometimes }}
+                        {% else %}
+                            {{ todo.due }}
+                        {% endif %}
+                    </span>
+                {% endif %}
             </div>
         </div>
         <div class="actions" style="margin-left: auto; display: flex; gap: 0.5rem;">
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'today')" title="{{ t.today }}">📅</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'sometimes')" title="{{ t.sometimes }}">🕒</a>
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow')" title="{{ t.tomorrow }}">➡️</a>
         </div>
     </div>

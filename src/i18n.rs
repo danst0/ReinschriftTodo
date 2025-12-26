@@ -1,5 +1,14 @@
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use glib::language_names;
+
+static OVERRIDE_LANG: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+
+pub fn set_language(lang: String) {
+    let m = OVERRIDE_LANG.get_or_init(|| Mutex::new(None));
+    if let Ok(mut guard) = m.lock() {
+        *guard = Some(lang);
+    }
+}
 
 pub fn t(key: &str) -> String {
     static TRANSLATIONS: OnceLock<std::collections::HashMap<&'static str, std::collections::HashMap<&'static str, &'static str>>> = OnceLock::new();
@@ -31,6 +40,8 @@ pub fn t(key: &str) -> String {
         de.insert("monitor_error", "Dateiüberwachung nicht verfügbar: {}");
         de.insert("set_due_today", "Fälligkeit auf heute setzen");
         de.insert("postpone_tomorrow", "Auf morgen verschieben");
+        de.insert("postpone_sometimes", "Auf 'Irgendwann' verschieben");
+        de.insert("sometimes", "Irgendwann");
         de.insert("update_error", "Konnte Eintrag nicht aktualisieren: {}");
         de.insert("set_due_error", "Konnte Fälligkeit setzen: {}");
         de.insert("no_window", "Kein Fenster verfügbar");
@@ -116,6 +127,8 @@ pub fn t(key: &str) -> String {
         en.insert("monitor_error", "File monitoring not available: {}");
         en.insert("set_due_today", "Set due date to today");
         en.insert("postpone_tomorrow", "Postpone to tomorrow");
+        en.insert("postpone_sometimes", "Postpone to 'sometimes'");
+        en.insert("sometimes", "Sometimes");
         en.insert("update_error", "Could not update entry: {}");
         en.insert("set_due_error", "Could not set due date: {}");
         en.insert("no_window", "No window available");
@@ -195,6 +208,8 @@ pub fn t(key: &str) -> String {
         es.insert("monitor_error", "Monitorización de archivos no disponible: {}");
         es.insert("set_due_today", "Establecer vencimiento para hoy");
         es.insert("postpone_tomorrow", "Posponer para mañana");
+        es.insert("postpone_sometimes", "Posponer para 'algún momento'");
+        es.insert("sometimes", "Algún momento");
         es.insert("update_error", "No se pudo actualizar la entrada: {}");
         es.insert("set_due_error", "No se pudo establecer el vencimiento: {}");
         es.insert("no_window", "No hay ventana disponible");
@@ -275,6 +290,8 @@ pub fn t(key: &str) -> String {
         sv.insert("monitor_error", "Filövervakning inte tillgänglig: {}");
         sv.insert("set_due_today", "Sätt förfallodatum till idag");
         sv.insert("postpone_tomorrow", "Skjut upp till imorgon");
+        sv.insert("postpone_sometimes", "Skjut upp till 'när som helst'");
+        sv.insert("sometimes", "När som helst");
         sv.insert("update_error", "Kunde inte uppdatera posten: {}");
         sv.insert("set_due_error", "Kunde inte sätta förfallodatum: {}");
         sv.insert("no_window", "Inget fönster tillgängligt");
@@ -355,6 +372,8 @@ pub fn t(key: &str) -> String {
         fr.insert("monitor_error", "Surveillance des fichiers non disponible : {}");
         fr.insert("set_due_today", "Régler l'échéance à aujourd'hui");
         fr.insert("postpone_tomorrow", "Reporter à demain");
+        fr.insert("postpone_sometimes", "Reporter à 'un jour'");
+        fr.insert("sometimes", "Un jour");
         fr.insert("update_error", "Impossible de mettre à jour l'entrée : {}");
         fr.insert("set_due_error", "Impossible de régler l'échéance : {}");
         fr.insert("no_window", "Aucune fenêtre disponible");
@@ -435,6 +454,8 @@ pub fn t(key: &str) -> String {
         ja.insert("monitor_error", "ファイル監視を利用できません: {}");
         ja.insert("set_due_today", "期限を今日に設定");
         ja.insert("postpone_tomorrow", "明日に延期");
+        ja.insert("postpone_sometimes", "「いつか」に延期");
+        ja.insert("sometimes", "いつか");
         ja.insert("update_error", "項目を更新できませんでした: {}");
         ja.insert("set_due_error", "期限を設定できませんでした: {}");
         ja.insert("no_window", "ウィンドウがありません");
@@ -498,7 +519,11 @@ pub fn t(key: &str) -> String {
         m
     });
 
-    let langs = language_names();
+    let langs = if let Some(Some(override_lang)) = OVERRIDE_LANG.get().map(|m| m.lock().ok().and_then(|g| g.clone())) {
+        vec![glib::GString::from(override_lang)]
+    } else {
+        language_names()
+    };
     for lang in langs {
         let lang_str = lang.as_str();
         let lang_code = lang_str.split('_').next().unwrap_or(lang_str).split('.').next().unwrap_or(lang_str);

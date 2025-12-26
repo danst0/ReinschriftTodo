@@ -7,7 +7,7 @@ use std::rc::Rc;
 use adw::prelude::*;
 use adw::{self, Application};
 use anyhow::Result;
-use chrono::{Duration, Local, NaiveDate};
+use chrono::{Datelike, Duration, Local, NaiveDate};
 use glib::{clone, BoxedAnyObject};
 use gtk::gio;
 use gtk::{AlertDialog, FileDialog, FileFilter};
@@ -389,6 +389,14 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         today_btn.add_css_class("flat");
         container.append(&today_btn);
 
+        let sometimes_btn = gtk::Button::builder()
+            .icon_name("clock-symbolic")
+            .tooltip_text(&t("postpone_sometimes"))
+            .build();
+        sometimes_btn.set_valign(gtk::Align::Center);
+        sometimes_btn.add_css_class("flat");
+        container.append(&sometimes_btn);
+
         let postpone_btn = gtk::Button::builder()
             .icon_name("go-next-symbolic")
             .tooltip_text(&t("postpone_tomorrow"))
@@ -485,6 +493,31 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             }
         });
 
+        let sometimes_list = list_item.downgrade();
+        let sometimes_state = factory_state.clone();
+        sometimes_btn.connect_clicked(move |_| {
+            let Some(list_item) = sometimes_list.upgrade() else {
+                return;
+            };
+            let Some(obj) = list_item.item() else {
+                return;
+            };
+            let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else {
+                return;
+            };
+            let entry = todo_obj.borrow::<ListEntry>();
+            let todo = match &*entry {
+                ListEntry::Item(todo) => todo.clone(),
+                ListEntry::Header(_) => return,
+            };
+
+            if let Some(state) = sometimes_state.upgrade() {
+                if let Err(err) = state.set_due_sometimes(&todo) {
+                    state.show_error(&t("set_due_error").replace("{}", &err.to_string()));
+                }
+            }
+        });
+
     });
 
     factory.connect_bind(|_, list_item_obj| {
@@ -574,6 +607,7 @@ struct AppState {
 
 impl AppState {
     fn new(window: &adw::ApplicationWindow, overlay: &adw::ToastOverlay, store: &gio::ListStore) -> Self {
+        let current_at_start = data::todo_path();
         let mut prefs = load_preferences();
         let sort_mode = prefs
             .sort_mode
@@ -592,11 +626,18 @@ impl AppState {
                  });
              }
         } else {
-            if let Some(db_path) = prefs.db_path.clone() {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            let default_path = std::path::PathBuf::from(home).join("TodosDatenbank.md");
+            
+            if current_at_start != default_path {
+                // Command line argument was used
+                prefs.db_path = Some(current_at_start.to_string_lossy().into_owned());
+            } else if let Some(db_path) = prefs.db_path.clone() {
+                // No command line argument, use saved preference
                 data::set_todo_path(PathBuf::from(db_path));
             } else {
-                let current = data::todo_path();
-                prefs.db_path = Some(current.to_string_lossy().into_owned());
+                // No command line and no preference, use default
+                prefs.db_path = Some(current_at_start.to_string_lossy().into_owned());
             }
         }
 
@@ -660,9 +701,9 @@ impl AppState {
         self.save_item(&updated)
     }
 
-    fn clear_due_date(&self, todo: &TodoItem) -> Result<()> {
+    fn set_due_sometimes(&self, todo: &TodoItem) -> Result<()> {
         let mut updated = todo.clone();
-        updated.due = None;
+        updated.due = Some(NaiveDate::from_ymd_opt(9999, 12, 31).unwrap());
         self.save_item(&updated)
     }
 
@@ -700,7 +741,7 @@ impl AppState {
 
                         let outcome = match action {
                             Some(days) => state.set_due_in_days(&base_todo, days),
-                            None => state.clear_due_date(&base_todo),
+                            None => state.set_due_sometimes(&base_todo),
                         };
 
                         if let Err(err) = outcome {
@@ -1588,7 +1629,11 @@ fn format_metadata(item: &TodoItem) -> String {
         parts.push(format!("@{}", context));
     }
     if let Some(due) = item.due {
-        parts.push(t("due_label").replace("{}", &due.to_string()));
+        if due.year() == 9999 {
+            parts.push(t("sometimes"));
+        } else {
+            parts.push(t("due_label").replace("{}", &due.to_string()));
+        }
     }
     if let Some(reference) = &item.reference {
         parts.push(format!("↗ {}", reference));

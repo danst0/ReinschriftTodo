@@ -419,6 +419,8 @@ def postpone(line_index, target):
     new_date = today
     if target == 'tomorrow':
         new_date = today + timedelta(days=1)
+    elif target == 'sometimes':
+        new_date = datetime(9999, 12, 31).date()
     
     # Update line
     # We need to replace or add due:YYYY-MM-DD

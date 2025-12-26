@@ -145,6 +145,7 @@
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="date" id="edit-due" name="due">
                         <button type="button" class="btn-action" onclick="setModalDate(0)" title="{{ t.today }}">📅</button>
+                        <button type="button" class="btn-action" onclick="setModalSometimes()" title="{{ t.sometimes }}">🕒</button>
                         <button type="button" class="btn-action" onclick="setModalDate(1)" title="{{ t.tomorrow }}">➡️</button>
                     </div>
                 </div>
@@ -395,6 +396,11 @@
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
             dateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+
+        function setModalSometimes() {
+            const dateInput = document.getElementById('edit-due');
+            dateInput.value = '9999-12-31';
         }
 
         // Close modal when clicking outside
