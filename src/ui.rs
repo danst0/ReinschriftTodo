@@ -145,6 +145,10 @@ pub fn build_ui(app: &Application) -> Result<()> {
         state_for_search.repopulate_store();
     });
 
+    search_entry.connect_stop_search(move |entry| {
+        entry.set_text("");
+    });
+
     let state_for_settings_btn = Rc::clone(&state);
     settings_btn.connect_clicked(move |_| {
         state_for_settings_btn.show_settings_dialog();

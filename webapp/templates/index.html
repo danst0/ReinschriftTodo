@@ -209,11 +209,15 @@
     </div>
     
     <form action="{{ url_for('index') }}" method="get" style="margin-bottom: 1rem; display: flex; gap: 0.5rem;">
-        <input type="text" name="q" value="{{ q or '' }}" placeholder="{{ t.search_placeholder }}" style="flex-grow: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+        <input type="text" id="search-input" name="q" value="{{ q or '' }}" placeholder="{{ t.search_placeholder }}" style="flex-grow: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; outline: none;">
         <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
         <input type="hidden" name="show_due_only" value="{{ '1' if show_due_only else '0' }}">
         <input type="hidden" name="sort_mode" value="{{ sort_mode }}">
         <button type="submit" style="padding: 0.5rem 1rem; background: #3584e4; color: white; border: none; border-radius: 6px; cursor: pointer;">{{ t.search_placeholder.strip('…') }}</button>
+        {% if q %}
+            <a href="{{ url_for('index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}" 
+               style="padding: 0.5rem 1rem; background: #e0e0e0; color: #333; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: flex; align-items: center;">✕</a>
+        {% endif %}
     </form>
 
     <form id="addForm" class="add-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post">
@@ -286,6 +290,16 @@
                 autoReload();
             });
         };
+
+        // Clear search on Esc
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const searchInput = document.getElementById('search-input');
+                if (searchInput && searchInput.value) {
+                    window.location.href = "{{ url_for('index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}";
+                }
+            }
+        });
 
         document.getElementById('addForm').onsubmit = function(e) {
             e.preventDefault();
