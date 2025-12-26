@@ -1477,7 +1477,7 @@ impl AppState {
                         if total_size > 0 {
                             let progress = downloaded as f64 / total_size as f64;
                             // Only report progress if it changed by at least 0.1% or if we are done
-                            if progress - last_reported_progress >= 0.001 || progress >= 1.0 {
+                            if progress - last_reported_progress >= 0.005 || progress >= 1.0 {
                                 let _ = sender.send(Ok(progress));
                                 last_reported_progress = progress;
                             }
