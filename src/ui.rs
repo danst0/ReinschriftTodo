@@ -1267,7 +1267,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.8.0", t("version")))
+            .label(&format!("{} 0.8.1", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -1779,36 +1779,45 @@ impl AppState {
         voice_btn.set_icon_name("media-record-symbolic");
 
         let is_recording = self.is_recording.clone();
-        let (sender, receiver) = glib::MainContext::channel(glib::Priority::default());
+        let (sender, receiver) = std::sync::mpsc::channel::<VoiceMsg>();
         
         {
             let state_clone = Rc::clone(self);
             let voice_btn_clone = voice_btn.clone();
             let entry_clone = entry.clone();
             
-            receiver.attach(None, move |msg| {
-                match msg {
-                    VoiceMsg::Error(e) => {
-                        state_clone.show_error(&e);
-                        voice_btn_clone.remove_css_class("destructive-action");
-                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
-                        state_clone.is_recording.store(false, AtomicOrdering::SeqCst);
-                    }
-                    VoiceMsg::Transcription(text) => {
-                        let current = entry_clone.text();
-                        if current.is_empty() {
-                            entry_clone.set_text(&text);
-                        } else {
-                            entry_clone.set_text(&format!("{} {}", current, text));
+            glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                let mut finished = false;
+                while let Ok(msg) = receiver.try_recv() {
+                    match msg {
+                        VoiceMsg::Error(e) => {
+                            state_clone.show_error(&e);
+                            voice_btn_clone.remove_css_class("destructive-action");
+                            voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
+                            state_clone.is_recording.store(false, AtomicOrdering::SeqCst);
+                            finished = true;
+                        }
+                        VoiceMsg::Transcription(text) => {
+                            let current = entry_clone.text();
+                            if current.is_empty() {
+                                entry_clone.set_text(&text);
+                            } else {
+                                entry_clone.set_text(&format!("{} {}", current, text));
+                            }
+                        }
+                        VoiceMsg::Finished => {
+                            voice_btn_clone.remove_css_class("destructive-action");
+                            voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
+                            state_clone.is_recording.store(false, AtomicOrdering::SeqCst);
+                            finished = true;
                         }
                     }
-                    VoiceMsg::Finished => {
-                        voice_btn_clone.remove_css_class("destructive-action");
-                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
-                        state_clone.is_recording.store(false, AtomicOrdering::SeqCst);
-                    }
                 }
-                glib::ControlFlow::Continue
+                if finished {
+                    glib::ControlFlow::Break
+                } else {
+                    glib::ControlFlow::Continue
+                }
             });
         }
 
@@ -1834,7 +1843,7 @@ impl AppState {
             let audio_data_clone = audio_data.clone();
 
             let stream = match device.build_input_stream(
-                &config.into(),
+                &config.clone().into(),
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
                     let mut buffer = audio_data_clone.lock().unwrap();
                     buffer.extend_from_slice(data);
