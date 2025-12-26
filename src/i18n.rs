@@ -46,7 +46,7 @@ pub fn t(key: &str) -> String {
         de.insert("set_due_error", "Konnte Fälligkeit setzen: {}");
         de.insert("no_window", "Kein Fenster verfügbar");
         de.insert("show_completed", "Erledigte Aufgaben anzeigen");
-        de.insert("show_due_only_settings", "Nur fällige (<= heute) anzeigen");
+        de.insert("show_due_only_mode", "Nur fällige (<= heute) anzeigen");
         de.insert("use_webdav", "WebDAV verwenden");
         de.insert("use_this_method", "Diese Methode verwenden");
         de.insert("database_file", "Datenbankdatei");
@@ -105,6 +105,18 @@ pub fn t(key: &str) -> String {
         de.insert("search_results_current", "Suchergebnisse in aktueller Liste");
         de.insert("search_results_open", "Suchergebnisse in allen offenen To-dos");
         de.insert("search_results_done", "Suchergebnisse in abgeschlossenen To-dos");
+        de.insert("cheatsheet", "Tastenkürzel");
+        de.insert("key_help", "? : Hilfe anzeigen");
+        de.insert("key_new", "Ctrl + N : Neue Aufgabe");
+        de.insert("key_search", "Ctrl + F : Suchen");
+        de.insert("key_reload", "Ctrl + R : Neu laden");
+        de.insert("key_quit", "Ctrl + Q : Beenden");
+        de.insert("key_nav", "↑ / ↓ : Navigieren");
+        de.insert("key_toggle", "Space : Erledigt umschalten");
+        de.insert("key_edit", "Enter : Bearbeiten");
+        de.insert("key_today", "t : Fällig heute");
+        de.insert("key_tomorrow", "+ : Fällig morgen");
+        de.insert("key_sometimes", "s : Fällig irgendwann");
         m.insert("de", de);
 
         let mut en = std::collections::HashMap::new();
@@ -137,7 +149,7 @@ pub fn t(key: &str) -> String {
         en.insert("set_due_error", "Could not set due date: {}");
         en.insert("no_window", "No window available");
         en.insert("show_completed", "Show completed tasks");
-        en.insert("show_due_only_settings", "Show only due (<= today)");
+        en.insert("show_due_only_mode", "Show only due (<= today)");
         en.insert("use_webdav", "Use WebDAV");
         en.insert("use_this_method", "Use this method");
         en.insert("database_file", "Database file");
@@ -196,6 +208,18 @@ pub fn t(key: &str) -> String {
         en.insert("search_results_current", "Search results in current list");
         en.insert("search_results_open", "Search results in all open To-dos");
         en.insert("search_results_done", "Search results in completed To-dos");
+        en.insert("cheatsheet", "Keyboard Shortcuts");
+        en.insert("key_help", "? : Show help");
+        en.insert("key_new", "Ctrl + N : New task");
+        en.insert("key_search", "Ctrl + F : Search");
+        en.insert("key_reload", "Ctrl + R : Reload");
+        en.insert("key_quit", "Ctrl + Q : Quit");
+        en.insert("key_nav", "↑ / ↓ : Navigate");
+        en.insert("key_toggle", "Space : Toggle done");
+        en.insert("key_edit", "Enter : Edit");
+        en.insert("key_today", "t : Due today");
+        en.insert("key_tomorrow", "+ : Due tomorrow");
+        en.insert("key_sometimes", "s : Due sometimes");
         m.insert("en", en);
 
         let mut es = std::collections::HashMap::new();
@@ -224,7 +248,7 @@ pub fn t(key: &str) -> String {
         es.insert("set_due_error", "No se pudo establecer el vencimiento: {}");
         es.insert("no_window", "No hay ventana disponible");
         es.insert("show_completed", "Mostrar tareas completadas");
-        es.insert("show_due_only_settings", "Mostrar solo pendientes (<= hoy)");
+        es.insert("show_due_only_mode", "Mostrar solo pendientes (<= hoy)");
         es.insert("use_webdav", "Usar WebDAV");
         es.insert("database_file", "Archivo de base de datos");
         es.insert("select_file", "Seleccionar archivo…");
@@ -253,6 +277,18 @@ pub fn t(key: &str) -> String {
         es.insert("search_results_current", "Resultados en la lista actual");
         es.insert("search_results_open", "Resultados en todas las tareas abiertas");
         es.insert("search_results_done", "Resultados en tareas completadas");
+        es.insert("cheatsheet", "Atajos de teclado");
+        es.insert("key_help", "? : Mostrar ayuda");
+        es.insert("key_new", "Ctrl + N : Nueva tarea");
+        es.insert("key_search", "Ctrl + F : Buscar");
+        es.insert("key_reload", "Ctrl + R : Recargar");
+        es.insert("key_quit", "Ctrl + Q : Salir");
+        es.insert("key_nav", "↑ / ↓ : Navegar");
+        es.insert("key_toggle", "Espacio : Alternar completado");
+        es.insert("key_edit", "Enter : Editar");
+        es.insert("key_today", "t : Vence hoy");
+        es.insert("key_tomorrow", "+ : Vence mañana");
+        es.insert("key_sometimes", "s : Vence algún momento");
         m.insert("es", es);
 
         let mut sv = std::collections::HashMap::new();
@@ -281,7 +317,7 @@ pub fn t(key: &str) -> String {
         sv.insert("set_due_error", "Kunde inte sätta förfallodatum: {}");
         sv.insert("no_window", "Inget fönster tillgängligt");
         sv.insert("show_completed", "Visa klara uppgifter");
-        sv.insert("show_due_only_settings", "Visa endast förfallna (<= idag)");
+        sv.insert("show_due_only_mode", "Visa endast förfallna (<= idag)");
         sv.insert("use_webdav", "Använd WebDAV");
         sv.insert("database_file", "Databasfil");
         sv.insert("select_file", "Välj fil…");
@@ -339,6 +375,18 @@ pub fn t(key: &str) -> String {
         sv.insert("search_results_current", "Sökresultat i aktuell lista");
         sv.insert("search_results_open", "Sökresultat i alla öppna uppgifter");
         sv.insert("search_results_done", "Sökresultat i klara uppgifter");
+        sv.insert("cheatsheet", "Tangentbordsgenvägar");
+        sv.insert("key_help", "? : Visa hjälp");
+        sv.insert("key_new", "Ctrl + N : Ny uppgift");
+        sv.insert("key_search", "Ctrl + F : Sök");
+        sv.insert("key_reload", "Ctrl + R : Uppdatera");
+        sv.insert("key_quit", "Ctrl + Q : Avsluta");
+        sv.insert("key_nav", "↑ / ↓ : Navigera");
+        sv.insert("key_toggle", "Mellanslag : Växla klar");
+        sv.insert("key_edit", "Enter : Redigera");
+        sv.insert("key_today", "t : Förfaller idag");
+        sv.insert("key_tomorrow", "+ : Förfaller imorgon");
+        sv.insert("key_sometimes", "s : Förfaller när som helst");
         m.insert("sv", sv);
 
         let mut fr = std::collections::HashMap::new();
@@ -367,7 +415,7 @@ pub fn t(key: &str) -> String {
         fr.insert("set_due_error", "Impossible de régler l'échéance : {}");
         fr.insert("no_window", "Aucune fenêtre disponible");
         fr.insert("show_completed", "Afficher les tâches terminées");
-        fr.insert("show_due_only_settings", "Afficher uniquement les échéances (<= aujourd'hui)");
+        fr.insert("show_due_only_mode", "Afficher uniquement les échéances (<= aujourd'hui)");
         fr.insert("use_webdav", "Utiliser WebDAV");
         fr.insert("database_file", "Fichier de base de données");
         fr.insert("select_file", "Sélectionner un fichier…");
@@ -425,6 +473,18 @@ pub fn t(key: &str) -> String {
         fr.insert("search_results_current", "Résultats dans la liste actuelle");
         fr.insert("search_results_open", "Résultats dans toutes les tâches ouvertes");
         fr.insert("search_results_done", "Résultats dans les tâches terminées");
+        fr.insert("cheatsheet", "Raccourcis clavier");
+        fr.insert("key_help", "? : Afficher l'aide");
+        fr.insert("key_new", "Ctrl + N : Nouvelle tâche");
+        fr.insert("key_search", "Ctrl + F : Rechercher");
+        fr.insert("key_reload", "Ctrl + R : Recharger");
+        fr.insert("key_quit", "Ctrl + Q : Quitter");
+        fr.insert("key_nav", "↑ / ↓ : Naviguer");
+        fr.insert("key_toggle", "Espace : Basculer terminé");
+        fr.insert("key_edit", "Entrée : Modifier");
+        fr.insert("key_today", "t : Échéance aujourd'hui");
+        fr.insert("key_tomorrow", "+ : Échéance demain");
+        fr.insert("key_sometimes", "s : Échéance un jour");
         m.insert("fr", fr);
 
         let mut ja = std::collections::HashMap::new();
@@ -453,7 +513,7 @@ pub fn t(key: &str) -> String {
         ja.insert("set_due_error", "期限を設定できませんでした: {}");
         ja.insert("no_window", "ウィンドウがありません");
         ja.insert("show_completed", "完了したタスクを表示");
-        ja.insert("show_due_only_settings", "期限内 (今日まで) のみ表示");
+        ja.insert("show_due_only_mode", "期限内 (今日まで) のみ表示");
         ja.insert("use_webdav", "WebDAV を使用する");
         ja.insert("database_file", "データベースファイル");
         ja.insert("select_file", "ファイルを選択…");
@@ -511,6 +571,18 @@ pub fn t(key: &str) -> String {
         ja.insert("search_results_current", "現在のリスト内の検索結果");
         ja.insert("search_results_open", "すべての未完了タスク内の検索結果");
         ja.insert("search_results_done", "完了したタスク内の検索結果");
+        ja.insert("cheatsheet", "キーボードショートカット");
+        ja.insert("key_help", "? : ヘルプを表示");
+        ja.insert("key_new", "Ctrl + N : 新しいタスク");
+        ja.insert("key_search", "Ctrl + F : 検索");
+        ja.insert("key_reload", "Ctrl + R : 再読み込み");
+        ja.insert("key_quit", "Ctrl + Q : 終了");
+        ja.insert("key_nav", "↑ / ↓ : 移動");
+        ja.insert("key_toggle", "Space : 完了を切り替え");
+        ja.insert("key_edit", "Enter : 編集");
+        ja.insert("key_today", "t : 今日が期限");
+        ja.insert("key_tomorrow", "+ : 明日が期限");
+        ja.insert("key_sometimes", "s : いつか期限");
         m.insert("ja", ja);
 
         m

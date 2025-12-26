@@ -13,10 +13,9 @@
       and editable on any device with your favorite editor.
     </p>
     <p>
-      Whether you share the file via Nextcloud/WebDAV, edit it in the terminal, or run
-      automations over it: the format remains open, portable, and transparent.
-      The app reads changes live, writes directly back, and thus makes classic to-do
-      lists in plain text suitable for everyday use – without proprietary silos.
+      The app syncs the file via Nextcloud/WebDAV, reads changes live, writes directly back,
+      and thus makes classic to-do lists in plain text suitable for everyday use – without
+      proprietary silos. The format remains open, portable, and transparent.
     </p>
   </description>
   <launchable type="desktop-id">me.dumke.Reinschrift.desktop</launchable>
@@ -40,6 +39,16 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.6.0" date="2025-12-26">
+      <description>
+        <ul>
+          <li>Full keyboard control for Desktop and Webapp</li>
+          <li>Added keyboard shortcuts cheatsheet (press '?')</li>
+          <li>Removed local file selection in favor of WebDAV focus</li>
+          <li>Updated translations for all supported languages</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.5.1" date="2025-12-26">
       <description>
         <ul>

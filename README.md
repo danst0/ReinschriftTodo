@@ -1,9 +1,9 @@
 # Reinschrift
 
-Rust/libadwaita Anwendung, die die Aufgaben aus deiner Markdown-Datei `TodosDatenbank.md` lädt, sie in einer GNOME-Oberfläche anzeigt und das Abhaken direkt zurück in dieselbe Datei schreibt.
+Rust/libadwaita Anwendung, die deine Aufgaben über WebDAV (z.B. Nextcloud) synchronisiert, sie in einer GNOME-Oberfläche anzeigt und Änderungen direkt zurückschreibt.
 
 ## Beschreibung für Flathub
-Reinschrift kombiniert eine native GNOME-Oberfläche mit der Einfachheit von reinem Text. Deine Aufgaben bleiben eine ganz normale Markdown-Datei – leicht zu sichern, per Git versionierbar und auf jedem Gerät mit deinem Lieblingseditor editierbar. Ob du die Datei über Nextcloud/WebDAV teilst, im Terminal bearbeitest oder Automationen darüber laufen lässt: Das Format bleibt offen, portabel und transparent. Die App liest Änderungen live ein, schreibt direkt zurück und macht damit klassische To-do-Listen im Klartext alltagstauglich – ohne proprietäre Silos.
+Reinschrift kombiniert eine native GNOME-Oberfläche mit der Einfachheit von reinem Text. Deine Aufgaben bleiben eine ganz normale Markdown-Datei – leicht zu sichern, per Git versionierbar und auf jedem Gerät mit deinem Lieblingseditor editierbar. Die App synchronisiert die Datei über Nextcloud/WebDAV, liest Änderungen live ein, schreibt direkt zurück und macht damit klassische To-do-Listen im Klartext alltagstauglich – ohne proprietäre Silos.
 
 ## Voraussetzungen
 - Rust Toolchain (Edition 2024)
@@ -26,7 +26,7 @@ Standardmäßig greift die App auf die Datei `TodosDatenbank.md` im Projektverze
 - Über das Kalender-Symbol setzt du die Fälligkeit auf heute, der Pfeil direkt daneben verschiebt sie auf morgen.
 - Über den Refresh-Button (oder `Ctrl+R`) lässt sich die Datei jederzeit neu einlesen.
 - Änderungen außerhalb der App werden über einen Dateimonitor automatisch erkannt und eingelesen (sofern das Dateisystem es unterstützt).
-- Ein Klick auf das Hamburger-Symbol öffnet ein Einstellungsfenster, in dem du erledigte Aufgaben ein-/ausblendest, den Filter "Nur fällige" steuerst und die zu verwendende Markdown-Datei auswählst. Die Änderungen werden dauerhaft gespeichert.
+- Ein Klick auf das Hamburger-Symbol öffnet ein Einstellungsfenster, in dem du erledigte Aufgaben ein-/ausblendest, den Filter "Nur fällige" steuerst und die WebDAV-Verbindung konfigurierst. Die Änderungen werden dauerhaft gespeichert.
 - Über die Tastaturkürzel `Ctrl+W`, `Ctrl+Q` und `Alt+F4` kannst du das Fenster jederzeit schließen.
 
 ## Web App

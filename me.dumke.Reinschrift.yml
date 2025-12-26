@@ -27,7 +27,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        tag: v0.5.1
+        tag: v0.6.0
       - type: file
         path: generated-sources.json
       - type: shell

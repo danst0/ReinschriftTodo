@@ -264,6 +264,24 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
     </div>
 
+    <!-- Cheatsheet Modal -->
+    <div id="cheatsheetModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCheatsheet()">&times;</span>
+            <h2>{{ t.cheatsheet }}</h2>
+            <ul style="list-style: none; padding: 0;">
+                <li><strong>?</strong> : {{ t.key_help }}</li>
+                <li><strong>Ctrl + N</strong> : {{ t.key_new }}</li>
+                <li><strong>j / k / ↓ / ↑</strong> : {{ t.key_nav }}</li>
+                <li><strong>Space</strong> : {{ t.key_toggle }}</li>
+                <li><strong>Enter</strong> : {{ t.key_edit }}</li>
+                <li><strong>t</strong> : {{ t.key_today }}</li>
+                <li><strong>+</strong> : {{ t.key_tomorrow }}</li>
+                <li><strong>s</strong> : {{ t.key_sometimes }}</li>
+            </ul>
+        </div>
+    </div>
+
     <script>
         var modal = document.getElementById("editModal");
 
@@ -519,6 +537,91 @@
             if (scrollPos) {
                 window.scrollTo(0, parseInt(scrollPos));
                 sessionStorage.removeItem('scrollPos');
+            }
+        });
+
+        // Keyboard Navigation
+        let selectedIndex = -1;
+
+        function updateSelection() {
+            const items = document.querySelectorAll('.todo-item');
+            items.forEach((item, index) => {
+                if (index === selectedIndex) {
+                    item.style.border = '2px solid #3584e4';
+                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    item.style.border = '1px solid #eee';
+                }
+            });
+        }
+
+        function closeCheatsheet() {
+            document.getElementById('cheatsheetModal').style.display = "none";
+        }
+
+        document.addEventListener('keydown', function(e) {
+            // Ignore if inside input or textarea
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                if (e.key === 'Escape') {
+                    e.target.blur();
+                }
+                return;
+            }
+
+            if (e.key === '?') {
+                document.getElementById('cheatsheetModal').style.display = "block";
+            } else if (e.key === 'Escape') {
+                closeModal();
+                closeCheatsheet();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                document.querySelector('.add-form input').focus();
+            } else if (e.key === 'j' || e.key === 'ArrowDown') {
+                const items = document.querySelectorAll('.todo-item');
+                if (selectedIndex < items.length - 1) {
+                    selectedIndex++;
+                    updateSelection();
+                }
+            } else if (e.key === 'k' || e.key === 'ArrowUp') {
+                if (selectedIndex > 0) {
+                    selectedIndex--;
+                    updateSelection();
+                } else if (selectedIndex === -1) {
+                    selectedIndex = 0;
+                    updateSelection();
+                }
+            } else if (e.key === ' ' && selectedIndex !== -1) {
+                e.preventDefault();
+                const items = document.querySelectorAll('.todo-item');
+                const link = items[selectedIndex].querySelector('.checkbox');
+                if (link) link.click();
+            } else if (e.key === 'Enter' && selectedIndex !== -1) {
+                const items = document.querySelectorAll('.todo-item');
+                items[selectedIndex].click();
+            } else if (e.key === 't' && selectedIndex !== -1) {
+                 const items = document.querySelectorAll('.todo-item');
+                 const onclick = items[selectedIndex].getAttribute('onclick');
+                 const match = onclick.match(/openEditModal\((\d+)\)/);
+                 if (match) {
+                     const idx = match[1];
+                     window.location.href = '/postpone/' + idx + '/today';
+                 }
+            } else if (e.key === '+' && selectedIndex !== -1) {
+                 const items = document.querySelectorAll('.todo-item');
+                 const onclick = items[selectedIndex].getAttribute('onclick');
+                 const match = onclick.match(/openEditModal\((\d+)\)/);
+                 if (match) {
+                     const idx = match[1];
+                     window.location.href = '/postpone/' + idx + '/tomorrow';
+                 }
+            } else if (e.key === 's' && selectedIndex !== -1) {
+                 const items = document.querySelectorAll('.todo-item');
+                 const onclick = items[selectedIndex].getAttribute('onclick');
+                 const match = onclick.match(/openEditModal\((\d+)\)/);
+                 if (match) {
+                     const idx = match[1];
+                     window.location.href = '/postpone/' + idx + '/sometimes';
+                 }
             }
         });
     </script>

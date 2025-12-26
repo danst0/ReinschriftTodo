@@ -164,6 +164,55 @@ pub fn build_ui(app: &Application) -> Result<()> {
     let store = gio::ListStore::new::<BoxedAnyObject>();
     let state = Rc::new(AppState::new(&window, &overlay, &store));
 
+    // Global Key Controller
+    let key_controller = gtk::EventControllerKey::new();
+    let state_key = Rc::clone(&state);
+    let add_btn_key = add_task_btn.clone();
+    let search_btn_key = search_btn.clone();
+    let refresh_btn_key = refresh_btn.clone();
+    let window_key = window.clone();
+    
+    key_controller.connect_key_pressed(move |_, keyval, _keycode, state_modifiers| {
+        if state_modifiers.contains(gdk::ModifierType::CONTROL_MASK) {
+            match keyval {
+                gdk::Key::n | gdk::Key::N => {
+                    add_btn_key.set_active(!add_btn_key.is_active());
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::f | gdk::Key::F => {
+                    search_btn_key.set_active(!search_btn_key.is_active());
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::r | gdk::Key::R => {
+                    refresh_btn_key.emit_clicked();
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::q | gdk::Key::Q | gdk::Key::w | gdk::Key::W => {
+                    window_key.close();
+                    return glib::Propagation::Stop;
+                }
+                _ => {}
+            }
+        } else {
+            if keyval == gdk::Key::question {
+                 state_key.show_cheatsheet();
+                 return glib::Propagation::Stop;
+            }
+            if keyval == gdk::Key::Escape {
+                if add_btn_key.is_active() {
+                    add_btn_key.set_active(false);
+                    return glib::Propagation::Stop;
+                }
+                if search_btn_key.is_active() {
+                    search_btn_key.set_active(false);
+                    return glib::Propagation::Stop;
+                }
+            }
+        }
+        glib::Propagation::Proceed
+    });
+    window.add_controller(key_controller);
+
     let state_for_search = Rc::clone(&state);
     search_entry.connect_search_changed(move |entry| {
         let text = entry.text().to_string();
@@ -493,6 +542,45 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
         stack.add_named(&container, Some("item"));
         list_item.set_child(Some(&stack));
+
+        // Keyboard shortcuts for list items
+        let key_controller = gtk::EventControllerKey::new();
+        let state_item_key = factory_state.clone();
+        let weak_list_item = list_item.downgrade();
+        
+        key_controller.connect_key_pressed(move |_, keyval, _, _| {
+            let Some(list_item) = weak_list_item.upgrade() else { return glib::Propagation::Proceed; };
+            let Some(obj) = list_item.item() else { return glib::Propagation::Proceed; };
+            let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else { return glib::Propagation::Proceed; };
+            let entry = todo_obj.borrow::<ListEntry>();
+            let todo = match &*entry {
+                ListEntry::Item(todo) => todo.clone(),
+                ListEntry::Header(_) => return glib::Propagation::Proceed,
+            };
+            
+            let Some(state) = state_item_key.upgrade() else { return glib::Propagation::Proceed; };
+            
+            match keyval {
+                gdk::Key::space => {
+                    let _ = state.toggle_item(&todo, !todo.done);
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::t | gdk::Key::T => {
+                    let _ = state.set_due_today(&todo);
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::plus | gdk::Key::KP_Add => {
+                    let _ = state.set_due_in_days(&todo, 1);
+                    return glib::Propagation::Stop;
+                }
+                gdk::Key::s | gdk::Key::S => {
+                    let _ = state.set_due_sometimes(&todo);
+                    return glib::Propagation::Stop;
+                }
+                _ => glib::Propagation::Proceed,
+            }
+        });
+        stack.add_controller(key_controller);
 
         unsafe {
             list_item.set_data("stack", stack.downgrade());
@@ -901,11 +989,69 @@ impl AppState {
         );
     }
 
+    fn show_cheatsheet(self: &Rc<Self>) {
+        let Some(parent) = self.window.upgrade() else {
+            self.show_error(&t("no_window"));
+            return;
+        };
+
+        let dialog = adw::Window::builder()
+            .title(&t("cheatsheet"))
+            .transient_for(&parent)
+            .modal(true)
+            .default_width(400)
+            .build();
+        dialog.set_destroy_with_parent(true);
+
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        content.set_margin_top(24);
+        content.set_margin_bottom(24);
+        content.set_margin_start(24);
+        content.set_margin_end(24);
+
+        let shortcuts = [
+            ("key_help", "?"),
+            ("key_new", "Ctrl + N"),
+            ("key_search", "Ctrl + F"),
+            ("key_reload", "Ctrl + R"),
+            ("key_quit", "Ctrl + Q"),
+            ("key_nav", "↑ / ↓"),
+            ("key_toggle", "Space"),
+            ("key_edit", "Enter"),
+            ("key_today", "t"),
+            ("key_tomorrow", "+"),
+            ("key_sometimes", "s"),
+        ];
+
+        for (key, _) in shortcuts {
+            let label = gtk::Label::builder()
+                .label(&t(key))
+                .xalign(0.0)
+                .build();
+            content.append(&label);
+        }
+
+        let close_btn = gtk::Button::with_label(&t("close"));
+        close_btn.set_halign(gtk::Align::End);
+        close_btn.set_margin_top(12);
+        let dialog_close = dialog.clone();
+        close_btn.connect_clicked(move |_| {
+            dialog_close.close();
+        });
+        content.append(&close_btn);
+
+        dialog.set_content(Some(&content));
+        dialog.present();
+    }
+
     fn show_settings_dialog(self: &Rc<Self>) {
         let Some(parent) = self.window.upgrade() else {
             self.show_error(&t("no_window"));
             return;
         };
+
+        // Enforce WebDAV mode
+        self.set_use_webdav(true);
 
         let dialog = adw::PreferencesWindow::builder()
             .title(&t("settings"))
@@ -938,7 +1084,7 @@ impl AppState {
         general_group.add(&show_done_row);
 
         let show_due_row = adw::SwitchRow::builder()
-            .title(&t("show_due_only_settings"))
+            .title(&t("show_due_only_mode"))
             .active(self.show_due_only())
             .build();
         show_due_row.add_prefix(&gtk::Image::from_icon_name("appointment-soon-symbolic"));
@@ -947,51 +1093,6 @@ impl AppState {
             state_due.set_show_due_only(row.is_active());
         });
         general_group.add(&show_due_row);
-
-        // --- Local File Page ---
-        let local_page = adw::PreferencesPage::builder()
-            .title(&t("local_file"))
-            .icon_name("drive-harddisk-symbolic")
-            .build();
-        dialog.add(&local_page);
-
-        let local_group = adw::PreferencesGroup::builder()
-            .title(&t("local_file"))
-            .build();
-        local_page.add(&local_group);
-
-        let use_local_row = adw::SwitchRow::builder()
-            .title(&t("use_this_method"))
-            .build();
-        let (use_webdav, wd_url, wd_path, wd_user, wd_pass) = self.get_webdav_prefs();
-        use_local_row.set_active(!use_webdav);
-        local_group.add(&use_local_row);
-
-        let file_row = adw::ActionRow::builder()
-            .title(&t("database_file"))
-            .subtitle(&data::todo_path().display().to_string())
-            .build();
-        file_row.add_prefix(&gtk::Image::from_icon_name("document-open-symbolic"));
-        let select_button = gtk::Button::builder()
-            .label(&t("select_file"))
-            .valign(gtk::Align::Center)
-            .build();
-        select_button.add_css_class("flat");
-        file_row.add_suffix(&select_button);
-        
-        let state_file = Rc::clone(self);
-        let dialog_weak = dialog.downgrade();
-        let file_row_weak = file_row.downgrade();
-        select_button.connect_clicked(move |_| {
-            let Some(win) = dialog_weak.upgrade() else { return; };
-            let row_weak = file_row_weak.clone();
-            state_file.choose_database_file(&win, Some(Rc::new(move |path| {
-                if let Some(row) = row_weak.upgrade() {
-                    row.set_subtitle(&path.display().to_string());
-                }
-            })));
-        });
-        local_group.add(&file_row);
 
         // --- WebDAV Page ---
         let webdav_page = adw::PreferencesPage::builder()
@@ -1005,11 +1106,11 @@ impl AppState {
             .build();
         webdav_page.add(&webdav_group);
 
-        let use_webdav_row = adw::SwitchRow::builder()
-            .title(&t("use_this_method"))
-            .active(use_webdav)
-            .build();
-        webdav_group.add(&use_webdav_row);
+        let (_, _, wd_path, wd_user, wd_pass) = self.get_webdav_prefs();
+        // Note: wd_url is fetched inside the closure below or we can get it here if needed, 
+        // but we need to bind it to the row.
+        // Let's get the current values again to populate the fields.
+        let (_, wd_url, _, _, _) = self.get_webdav_prefs();
 
         let url_row = adw::EntryRow::builder()
             .title(&t("webdav_url"))
@@ -1105,28 +1206,6 @@ impl AppState {
             });
         });
         webdav_group.add(&check_row);
-
-        // --- Sync Toggles ---
-        let use_local_row_for_webdav = use_local_row.clone();
-        let use_webdav_row_for_local = use_webdav_row.clone();
-        let state_local = Rc::clone(self);
-        use_local_row.connect_active_notify(move |row| {
-            let active = row.is_active();
-            if active == use_webdav_row_for_local.is_active() {
-                use_webdav_row_for_local.set_active(!active);
-                state_local.set_use_webdav(!active);
-            }
-        });
-
-        let use_local_row_for_webdav2 = use_local_row_for_webdav.clone();
-        let state_webdav = Rc::clone(self);
-        use_webdav_row.connect_active_notify(move |row| {
-            let active = row.is_active();
-            if active == use_local_row_for_webdav2.is_active() {
-                use_local_row_for_webdav2.set_active(!active);
-                state_webdav.set_use_webdav(active);
-            }
-        });
 
         dialog.present();
     }

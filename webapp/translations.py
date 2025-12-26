@@ -37,7 +37,16 @@ TRANSLATIONS = {
         'search_placeholder': 'Suchen…',
         'search_results_current': 'Suchergebnisse in aktueller Liste',
         'search_results_open': 'Suchergebnisse in allen offenen To-dos',
-        'search_results_done': 'Suchergebnisse in abgeschlossenen To-dos'
+        'search_results_done': 'Suchergebnisse in abgeschlossenen To-dos',
+        'cheatsheet': 'Tastenkürzel',
+        'key_help': 'Hilfe anzeigen',
+        'key_new': 'Neue Aufgabe',
+        'key_nav': 'Navigieren',
+        'key_toggle': 'Erledigt umschalten',
+        'key_edit': 'Bearbeiten',
+        'key_today': 'Fällig heute',
+        'key_tomorrow': 'Fällig morgen',
+        'key_sometimes': 'Fällig irgendwann'
     },
     'en': {
         'todos': 'Reinschrift',
@@ -76,7 +85,16 @@ TRANSLATIONS = {
         'search_placeholder': 'Search…',
         'search_results_current': 'Search results in current list',
         'search_results_open': 'Search results in all open todos',
-        'search_results_done': 'Search results in completed todos'
+        'search_results_done': 'Search results in completed todos',
+        'cheatsheet': 'Keyboard Shortcuts',
+        'key_help': 'Show help',
+        'key_new': 'New task',
+        'key_nav': 'Navigate',
+        'key_toggle': 'Toggle done',
+        'key_edit': 'Edit',
+        'key_today': 'Due today',
+        'key_tomorrow': 'Due tomorrow',
+        'key_sometimes': 'Due sometimes'
     },
     'es': {
         'todos': 'Reinschrift',
@@ -115,7 +133,16 @@ TRANSLATIONS = {
         'search_placeholder': 'Buscar…',
         'search_results_current': 'Resultados en la lista actual',
         'search_results_open': 'Resultados en todas las tareas abiertas',
-        'search_results_done': 'Resultados en tareas completadas'
+        'search_results_done': 'Resultados en tareas completadas',
+        'cheatsheet': 'Atajos de teclado',
+        'key_help': 'Mostrar ayuda',
+        'key_new': 'Nueva tarea',
+        'key_nav': 'Navegar',
+        'key_toggle': 'Alternar completado',
+        'key_edit': 'Editar',
+        'key_today': 'Vence hoy',
+        'key_tomorrow': 'Vence mañana',
+        'key_sometimes': 'Vence algún momento'
     },
     'sv': {
         'todos': 'Reinschrift',
@@ -154,7 +181,16 @@ TRANSLATIONS = {
         'search_placeholder': 'Sök…',
         'search_results_current': 'Sökresultat i aktuell lista',
         'search_results_open': 'Sökresultat i alla öppna uppgifter',
-        'search_results_done': 'Sökresultat i klara uppgifter'
+        'search_results_done': 'Sökresultat i klara uppgifter',
+        'cheatsheet': 'Tangentbordsgenvägar',
+        'key_help': 'Visa hjälp',
+        'key_new': 'Ny uppgift',
+        'key_nav': 'Navigera',
+        'key_toggle': 'Växla klar',
+        'key_edit': 'Redigera',
+        'key_today': 'Förfaller idag',
+        'key_tomorrow': 'Förfaller imorgon',
+        'key_sometimes': 'Förfaller när som helst'
     },
     'fr': {
         'todos': 'Reinschrift',
@@ -193,7 +229,16 @@ TRANSLATIONS = {
         'search_placeholder': 'Rechercher…',
         'search_results_current': 'Résultats dans la liste actuelle',
         'search_results_open': 'Résultats dans toutes les tâches ouvertes',
-        'search_results_done': 'Résultats dans les tâches terminées'
+        'search_results_done': 'Résultats dans les tâches terminées',
+        'cheatsheet': 'Raccourcis clavier',
+        'key_help': 'Afficher l\'aide',
+        'key_new': 'Nouvelle tâche',
+        'key_nav': 'Naviguer',
+        'key_toggle': 'Basculer terminé',
+        'key_edit': 'Modifier',
+        'key_today': 'Échéance aujourd\'hui',
+        'key_tomorrow': 'Échéance demain',
+        'key_sometimes': 'Échéance un jour'
     },
     'ja': {
         'todos': 'Reinschrift',
@@ -232,6 +277,15 @@ TRANSLATIONS = {
         'search_placeholder': '検索…',
         'search_results_current': '現在のリスト内の検索結果',
         'search_results_open': 'すべての未完了タスク内の検索結果',
-        'search_results_done': '完了したタスク内の検索結果'
+        'search_results_done': '完了したタスク内の検索結果',
+        'cheatsheet': 'キーボードショートカット',
+        'key_help': 'ヘルプを表示',
+        'key_new': '新しいタスク',
+        'key_nav': '移動',
+        'key_toggle': '完了を切り替え',
+        'key_edit': '編集',
+        'key_today': '今日が期限',
+        'key_tomorrow': '明日が期限',
+        'key_sometimes': 'いつか期限'
     }
 }
