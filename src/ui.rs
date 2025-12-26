@@ -785,17 +785,17 @@ impl AppState {
             .default_width(480)
             .build();
 
-        let page = adw::PreferencesPage::builder()
-            .title(&t("settings"))
+        // --- General Page ---
+        let general_page = adw::PreferencesPage::builder()
+            .title(&t("general"))
             .icon_name("preferences-system-symbolic")
             .build();
-        dialog.add(&page);
+        dialog.add(&general_page);
 
-        // --- General Group ---
         let general_group = adw::PreferencesGroup::builder()
             .title(&t("general"))
             .build();
-        page.add(&general_group);
+        general_page.add(&general_group);
 
         let show_done_row = adw::SwitchRow::builder()
             .title(&t("show_completed"))
@@ -819,21 +819,25 @@ impl AppState {
         });
         general_group.add(&show_due_row);
 
-        // --- Storage Group ---
-        let storage_group = adw::PreferencesGroup::builder()
-            .title(&t("storage"))
+        // --- Local File Page ---
+        let local_page = adw::PreferencesPage::builder()
+            .title(&t("local_file"))
+            .icon_name("drive-harddisk-symbolic")
             .build();
-        page.add(&storage_group);
+        dialog.add(&local_page);
 
-        let use_webdav_row = adw::SwitchRow::builder()
-            .title(&t("use_webdav"))
+        let local_group = adw::PreferencesGroup::builder()
+            .title(&t("local_file"))
             .build();
-        use_webdav_row.add_prefix(&gtk::Image::from_icon_name("network-server-symbolic"));
+        local_page.add(&local_group);
+
+        let use_local_row = adw::SwitchRow::builder()
+            .title(&t("use_this_method"))
+            .build();
         let (use_webdav, wd_url, wd_path, wd_user, wd_pass) = self.get_webdav_prefs();
-        use_webdav_row.set_active(use_webdav);
-        storage_group.add(&use_webdav_row);
+        use_local_row.set_active(!use_webdav);
+        local_group.add(&use_local_row);
 
-        // Local File Row
         let file_row = adw::ActionRow::builder()
             .title(&t("database_file"))
             .subtitle(&data::todo_path().display().to_string())
@@ -858,9 +862,26 @@ impl AppState {
                 }
             })));
         });
-        storage_group.add(&file_row);
+        local_group.add(&file_row);
 
-        // WebDAV Rows
+        // --- WebDAV Page ---
+        let webdav_page = adw::PreferencesPage::builder()
+            .title(&t("webdav"))
+            .icon_name("network-server-symbolic")
+            .build();
+        dialog.add(&webdav_page);
+
+        let webdav_group = adw::PreferencesGroup::builder()
+            .title(&t("webdav"))
+            .build();
+        webdav_page.add(&webdav_group);
+
+        let use_webdav_row = adw::SwitchRow::builder()
+            .title(&t("use_this_method"))
+            .active(use_webdav)
+            .build();
+        webdav_group.add(&use_webdav_row);
+
         let url_row = adw::EntryRow::builder()
             .title(&t("webdav_url"))
             .text(wd_url.unwrap_or_default())
@@ -869,6 +890,7 @@ impl AppState {
         url_row.connect_changed(move |row| {
             state_url.set_webdav_url(row.text().to_string());
         });
+        webdav_group.add(&url_row);
 
         let path_row = adw::EntryRow::builder()
             .title(&t("path_relative"))
@@ -878,6 +900,7 @@ impl AppState {
         path_row.connect_changed(move |row| {
             state_path.set_webdav_path(row.text().to_string());
         });
+        webdav_group.add(&path_row);
 
         let user_row = adw::EntryRow::builder()
             .title(&t("username"))
@@ -887,6 +910,7 @@ impl AppState {
         user_row.connect_changed(move |row| {
             state_user.set_webdav_username(row.text().to_string());
         });
+        webdav_group.add(&user_row);
 
         let pass_row = adw::PasswordEntryRow::builder()
             .title(&t("password"))
@@ -896,6 +920,7 @@ impl AppState {
         pass_row.connect_changed(move |row| {
             state_pass.set_webdav_password(row.text().to_string());
         });
+        webdav_group.add(&pass_row);
 
         let check_row = adw::ActionRow::builder()
             .title(&t("check_connection"))
@@ -950,36 +975,28 @@ impl AppState {
                 }
             });
         });
+        webdav_group.add(&check_row);
 
-        storage_group.add(&url_row);
-        storage_group.add(&path_row);
-        storage_group.add(&user_row);
-        storage_group.add(&pass_row);
-        storage_group.add(&check_row);
+        // --- Sync Toggles ---
+        let use_local_row_for_webdav = use_local_row.clone();
+        let use_webdav_row_for_local = use_webdav_row.clone();
+        let state_local = Rc::clone(self);
+        use_local_row.connect_active_notify(move |row| {
+            let active = row.is_active();
+            if active == use_webdav_row_for_local.is_active() {
+                use_webdav_row_for_local.set_active(!active);
+                state_local.set_use_webdav(!active);
+            }
+        });
 
-        // Visibility logic
-        let file_row_clone = file_row.clone();
-        let url_row_clone = url_row.clone();
-        let path_row_clone = path_row.clone();
-        let user_row_clone = user_row.clone();
-        let pass_row_clone = pass_row.clone();
-        let check_row_clone = check_row.clone();
-
-        let update_visibility = move |active: bool| {
-            file_row_clone.set_visible(!active);
-            url_row_clone.set_visible(active);
-            path_row_clone.set_visible(active);
-            user_row_clone.set_visible(active);
-            pass_row_clone.set_visible(active);
-            check_row_clone.set_visible(active);
-        };
-        update_visibility(use_webdav);
-
-        let state_storage = Rc::clone(self);
+        let use_local_row_for_webdav2 = use_local_row_for_webdav.clone();
+        let state_webdav = Rc::clone(self);
         use_webdav_row.connect_active_notify(move |row| {
             let active = row.is_active();
-            state_storage.set_use_webdav(active);
-            update_visibility(active);
+            if active == use_local_row_for_webdav2.is_active() {
+                use_local_row_for_webdav2.set_active(!active);
+                state_webdav.set_use_webdav(active);
+            }
         });
 
         dialog.present();

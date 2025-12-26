@@ -12,6 +12,8 @@ pub fn t(key: &str) -> String {
         de.insert("settings", "Einstellungen");
         de.insert("general", "Allgemein");
         de.insert("storage", "Speicher");
+        de.insert("local_file", "Lokale Datei");
+        de.insert("webdav", "WebDAV");
         de.insert("reload", "Neu laden (Ctrl+R)");
         de.insert("sort_by", "Sortieren nach:");
         de.insert("topics", "+ Themen");
@@ -35,6 +37,7 @@ pub fn t(key: &str) -> String {
         de.insert("show_completed", "Erledigte Aufgaben anzeigen");
         de.insert("show_due_only_settings", "Nur fällige (<= heute) anzeigen");
         de.insert("use_webdav", "WebDAV verwenden");
+        de.insert("use_this_method", "Diese Methode verwenden");
         de.insert("database_file", "Datenbankdatei");
         de.insert("select_file", "Datei auswählen…");
         de.insert("webdav_url", "WebDAV URL");
@@ -94,6 +97,8 @@ pub fn t(key: &str) -> String {
         en.insert("settings", "Settings");
         en.insert("general", "General");
         en.insert("storage", "Storage");
+        en.insert("local_file", "Local File");
+        en.insert("webdav", "WebDAV");
         en.insert("reload", "Reload (Ctrl+R)");
         en.insert("sort_by", "Sort by:");
         en.insert("topics", "+ Topics");
@@ -117,6 +122,7 @@ pub fn t(key: &str) -> String {
         en.insert("show_completed", "Show completed tasks");
         en.insert("show_due_only_settings", "Show only due (<= today)");
         en.insert("use_webdav", "Use WebDAV");
+        en.insert("use_this_method", "Use this method");
         en.insert("database_file", "Database file");
         en.insert("select_file", "Select file…");
         en.insert("webdav_url", "WebDAV URL");
