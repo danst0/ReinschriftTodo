@@ -23,7 +23,11 @@
   <screenshots>
     <screenshot type="default">
       <caption>The main window showing the todo list</caption>
-      <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main.png</image>
+      <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_en_v0.2.1.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Die Hauptansicht mit der Aufgabenliste</caption>
+      <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_de_v0.2.1.png</image>
     </screenshot>
   </screenshots>
   <url type="homepage">https://github.com/danst0/ReinschriftTodo</url>
