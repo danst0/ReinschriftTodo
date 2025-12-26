@@ -161,8 +161,8 @@ TRANSLATIONS = {
         'about': 'Acerca de',
         'version': 'Versión',
         'developer': 'Desarrollador',
-        'website': 'Sitio web,
-        'voice_input': 'Entrada de voz'',
+        'website': 'Sitio web',
+        'voice_input': 'Entrada de voz',
         'license': 'Licencia'
     },
     'sv': {
@@ -216,8 +216,8 @@ TRANSLATIONS = {
         'about': 'Om',
         'version': 'Version',
         'developer': 'Utvecklare',
-        'website': 'Webbpla,
-        'voice_input': 'Röstinmatning'ts',
+        'website': 'Webbplats',
+        'voice_input': 'Röstinmatning',
         'license': 'Licens'
     },
     'fr': {
@@ -270,8 +270,8 @@ TRANSLATIONS = {
         'key_sometimes': 'Échéance un jour',
         'about': 'À propos',
         'version': 'Version',
-        'developer': 'Dévelo,
-        'voice_input': 'Entrée vocale'ppeur',
+        'developer': 'Développeur',
+        'voice_input': 'Entrée vocale',
         'website': 'Site web',
         'license': 'Licence'
     },
