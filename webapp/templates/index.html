@@ -41,6 +41,16 @@
         .icon-btn:hover { background: #eee; }
         .icon-btn.active { color: #3584e4; background: #eef5ff; }
 
+        .voice-btn { background: none; border: none; cursor: pointer; padding: 0.5rem; display: flex; align-items: center; justify-content: center; color: #666; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
+        .voice-btn:hover { background: #eee; }
+        .voice-btn.recording { color: #c01c28; animation: pulse 1.5s infinite; background: #fdeef0; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
         .collapsible-form { display: none; margin-bottom: 1rem; }
         .collapsible-form.visible { display: flex; }
         
@@ -67,6 +77,9 @@
             .icon-btn { color: #aaa; }
             .icon-btn:hover { background: #3d3d3d; }
             .icon-btn.active { color: #78aeed; background: #1a3b5c; }
+            .voice-btn { color: #aaa; border-color: #444; }
+            .voice-btn:hover { background: #3d3d3d; }
+            .voice-btn.recording { background: #4a1a1a; color: #ff7b72; }
         }
 
         /* Modal Styles */
@@ -241,6 +254,7 @@
 
     <form id="addForm" class="add-form collapsible-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post" style="gap: 0;">
         <input type="text" id="add-input" name="title" placeholder="{{ t.new_task }}" required>
+        <button type="button" id="voice-btn" class="voice-btn" title="{{ t.voice_input }}" style="display: none;">🎤</button>
         <button type="submit">{{ t.add }}</button>
     </form>
 
@@ -264,7 +278,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; pt: 1rem;">
-            <p><strong>Reinschrift</strong> v0.6.2</p>
+            <p><strong>Reinschrift</strong> v0.7.0</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-NC-SA-4.0</p>
         </div>
@@ -634,6 +648,50 @@
                  }
             }
         });
+
+        // Web Speech API Integration
+        const voiceBtn = document.getElementById('voice-btn');
+        const addInput = document.getElementById('add-input');
+        const addForm = document.getElementById('addForm');
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+
+            recognition.lang = "{{ current_lang }}";
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            voiceBtn.style.display = 'flex';
+
+            voiceBtn.onclick = () => {
+                if (voiceBtn.classList.contains('recording')) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            };
+
+            recognition.onstart = () => {
+                voiceBtn.classList.add('recording');
+            };
+
+            recognition.onend = () => {
+                voiceBtn.classList.remove('recording');
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                addInput.value = transcript;
+                // Auto-submit form
+                addForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                voiceBtn.classList.remove('recording');
+            };
+        }
     </script>
 </body>
 </html>

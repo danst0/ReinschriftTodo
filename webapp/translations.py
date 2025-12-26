@@ -52,7 +52,8 @@ TRANSLATIONS = {
         'version': 'Version',
         'developer': 'Entwickler',
         'website': 'Webseite',
-        'license': 'Lizenz'
+        'license': 'Lizenz',
+        'voice_input': 'Spracheingabe'
     },
     'en': {
         'todos': 'Reinschrift',
@@ -106,7 +107,8 @@ TRANSLATIONS = {
         'version': 'Version',
         'developer': 'Developer',
         'website': 'Website',
-        'license': 'License'
+        'license': 'License',
+        'voice_input': 'Voice Input'
     },
     'es': {
         'todos': 'Reinschrift',
@@ -159,7 +161,8 @@ TRANSLATIONS = {
         'about': 'Acerca de',
         'version': 'Versión',
         'developer': 'Desarrollador',
-        'website': 'Sitio web',
+        'website': 'Sitio web,
+        'voice_input': 'Entrada de voz'',
         'license': 'Licencia'
     },
     'sv': {
@@ -213,7 +216,8 @@ TRANSLATIONS = {
         'about': 'Om',
         'version': 'Version',
         'developer': 'Utvecklare',
-        'website': 'Webbplats',
+        'website': 'Webbpla,
+        'voice_input': 'Röstinmatning'ts',
         'license': 'Licens'
     },
     'fr': {
@@ -266,7 +270,8 @@ TRANSLATIONS = {
         'key_sometimes': 'Échéance un jour',
         'about': 'À propos',
         'version': 'Version',
-        'developer': 'Développeur',
+        'developer': 'Dévelo,
+        'voice_input': 'Entrée vocale'ppeur',
         'website': 'Site web',
         'license': 'Licence'
     },
@@ -321,6 +326,7 @@ TRANSLATIONS = {
         'about': '情報',
         'version': 'バージョン',
         'developer': '開発者',
+        'voice_input': '音声入力',
         'website': 'ウェブサイト',
         'license': 'ライセンス'
     }
