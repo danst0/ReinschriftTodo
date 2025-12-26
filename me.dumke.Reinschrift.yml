@@ -4,7 +4,7 @@ runtime-version: '49'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
-  - org.freedesktop.Sdk.Extension.llvm18
+  - org.freedesktop.Sdk.Extension.llvm20
 command: reinschrift
 finish-args:
   - --share=ipc
@@ -14,10 +14,10 @@ finish-args:
   - --share=network
   - --socket=pulseaudio
 build-options:
-  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm18/bin
+  append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm20/bin
   env:
     CARGO_HOME: /run/build/reinschrift/cargo
-    LIBCLANG_PATH: /usr/lib/sdk/llvm18/lib
+    LIBCLANG_PATH: /usr/lib/sdk/llvm20/lib
 modules:
   - name: alsa-lib
     sources:
