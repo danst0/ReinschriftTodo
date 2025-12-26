@@ -39,6 +39,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.8.0" date="2025-12-26">
+      <description>
+        <ul>
+          <li>Native: Integrated local Whisper-based voice recognition</li>
+          <li>Native: Automated model management (download/cleanup)</li>
+          <li>Native: Added microphone button to task entry</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.7.1" date="2025-12-26">
       <description>
         <ul>

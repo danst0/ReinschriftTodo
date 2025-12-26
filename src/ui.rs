@@ -1,13 +1,18 @@
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fs;
+use std::io::Read;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::sync::Mutex;
 
 use adw::prelude::*;
 use adw::{self, Application};
 use anyhow::Result;
 use chrono::{Datelike, Duration, Local, NaiveDate};
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use glib::{clone, BoxedAnyObject};
 use gtk::gdk;
 use gtk::gio;
@@ -18,6 +23,7 @@ use gtk::pango;
 use gtk::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
 use crate::data::{self, TodoItem};
 use crate::i18n::t;
@@ -88,6 +94,8 @@ struct Preferences {
     webdav_username: Option<String>,
     #[serde(default)]
     webdav_password: Option<String>,
+    #[serde(default)]
+    use_whisper: bool,
 }
 
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
@@ -164,83 +172,41 @@ pub fn build_ui(app: &Application) -> Result<()> {
     let store = gio::ListStore::new::<BoxedAnyObject>();
     let state = Rc::new(AppState::new(&window, &overlay, &store));
 
-    // Global Key Controller
-    let key_controller = gtk::EventControllerKey::new();
-    let state_key = Rc::clone(&state);
-    let add_btn_key = add_task_btn.clone();
-    let search_btn_key = search_btn.clone();
-    let refresh_btn_key = refresh_btn.clone();
-    let window_key = window.clone();
-    
-    key_controller.connect_key_pressed(move |_, keyval, _keycode, state_modifiers| {
-        if state_modifiers.contains(gdk::ModifierType::CONTROL_MASK) {
-            match keyval {
-                gdk::Key::n | gdk::Key::N => {
-                    add_btn_key.set_active(!add_btn_key.is_active());
-                    return glib::Propagation::Stop;
-                }
-                gdk::Key::f | gdk::Key::F => {
-                    search_btn_key.set_active(!search_btn_key.is_active());
-                    return glib::Propagation::Stop;
-                }
-                gdk::Key::r | gdk::Key::R => {
-                    refresh_btn_key.emit_clicked();
-                    return glib::Propagation::Stop;
-                }
-                gdk::Key::q | gdk::Key::Q | gdk::Key::w | gdk::Key::W => {
-                    window_key.close();
-                    return glib::Propagation::Stop;
-                }
-                _ => {}
-            }
-        } else {
-            if keyval == gdk::Key::question {
-                 state_key.show_cheatsheet();
-                 return glib::Propagation::Stop;
-            }
-            if keyval == gdk::Key::Escape {
-                if add_btn_key.is_active() {
-                    add_btn_key.set_active(false);
-                    return glib::Propagation::Stop;
-                }
-                if search_btn_key.is_active() {
-                    search_btn_key.set_active(false);
-                    return glib::Propagation::Stop;
-                }
-            }
-        }
-        glib::Propagation::Proceed
-    });
-    window.add_controller(key_controller);
+    // Neue To-do Eingabezeile unter den Filtereinstellungen
+    let new_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    new_row.set_margin_start(12);
+    new_row.set_margin_end(12);
+    new_row.set_margin_top(6);
+    new_row.set_margin_bottom(6);
 
-    let state_for_search = Rc::clone(&state);
-    search_entry.connect_search_changed(move |entry| {
-        let text = entry.text().to_string();
-        *state_for_search.search_term.borrow_mut() = text;
-        state_for_search.repopulate_store();
+    let new_entry = gtk::Entry::new();
+    new_entry.set_placeholder_text(Some(&t("new_todo_placeholder")));
+    new_entry.set_hexpand(true);
+    new_row.append(&new_entry);
+
+    let voice_btn = gtk::Button::builder()
+        .icon_name("audio-input-microphone-symbolic")
+        .tooltip_text(&t("voice"))
+        .css_classes(["flat"])
+        .build();
+    voice_btn.set_visible(state.use_whisper());
+    new_row.append(&voice_btn);
+
+    let state_for_voice = Rc::clone(&state);
+    let voice_btn_clone = voice_btn.clone();
+    let new_entry_for_voice = new_entry.clone();
+    voice_btn.connect_clicked(move |_| {
+        state_for_voice.toggle_recording(&voice_btn_clone, &new_entry_for_voice);
     });
 
-    let search_btn_clone = search_btn.clone();
-    search_entry.connect_stop_search(move |entry| {
-        entry.set_text("");
-        search_btn_clone.set_active(false);
-    });
-
-    let search_revealer_clone = search_revealer.clone();
-    let search_entry_clone = search_entry.clone();
-    let add_task_btn_clone = add_task_btn.clone();
-    search_btn.connect_toggled(move |btn| {
-        let active = btn.is_active();
-        search_revealer_clone.set_reveal_child(active);
-        if active {
-            search_entry_clone.grab_focus();
-            add_task_btn_clone.set_active(false);
-        }
-    });
+    let add_btn = gtk::Button::with_label(&t("add"));
+    add_btn.add_css_class("suggested-action");
+    new_row.append(&add_btn);
 
     let state_for_settings_btn = Rc::clone(&state);
+    let voice_btn_for_settings = voice_btn.clone();
     settings_btn.connect_clicked(move |_| {
-        state_for_settings_btn.show_settings_dialog();
+        state_for_settings_btn.show_settings_dialog(Some(voice_btn_for_settings.clone()));
     });
 
     let controls = gtk::Box::new(gtk::Orientation::Horizontal, 6);
@@ -263,22 +229,6 @@ pub fn build_ui(app: &Application) -> Result<()> {
     due_filter.set_margin_start(18);
     due_filter.set_active(state.show_due_only());
     controls.append(&due_filter);
-
-    // Neue To-do Eingabezeile unter den Filtereinstellungen
-    let new_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    new_row.set_margin_start(12);
-    new_row.set_margin_end(12);
-    new_row.set_margin_top(6);
-    new_row.set_margin_bottom(6);
-
-    let new_entry = gtk::Entry::new();
-    new_entry.set_placeholder_text(Some(&t("new_todo_placeholder")));
-    new_entry.set_hexpand(true);
-    new_row.append(&new_entry);
-
-    let add_btn = gtk::Button::with_label(&t("add"));
-    add_btn.add_css_class("suggested-action");
-    new_row.append(&add_btn);
 
     let add_revealer = gtk::Revealer::builder()
         .child(&new_row)
@@ -405,7 +355,7 @@ pub fn build_ui(app: &Application) -> Result<()> {
     let settings_action = gio::SimpleAction::new("open-settings", None);
     let state_for_settings_action = Rc::clone(&state);
     settings_action.connect_activate(move |_, _| {
-        state_for_settings_action.show_settings_dialog();
+        state_for_settings_action.show_settings_dialog(None);
     });
     app.add_action(&settings_action);
 
@@ -430,7 +380,7 @@ pub fn build_ui(app: &Application) -> Result<()> {
 
     if let Err(err) = state.reload() {
         state.show_error(&format!("{}\n{}", t("load_error").replace("{}", &err.to_string()), t("select_valid_file")));
-        state.show_settings_dialog();
+        state.show_settings_dialog(None);
     }
 
     sort_selector.connect_selected_notify(clone!(@weak state => move |dropdown| {
@@ -778,6 +728,7 @@ struct AppState {
     window: glib::WeakRef<adw::ApplicationWindow>,
     preferences: RefCell<Preferences>,
     search_term: RefCell<String>,
+    is_recording: Arc<AtomicBool>,
 }
 
 impl AppState {
@@ -816,6 +767,15 @@ impl AppState {
             }
         }
 
+        if !prefs.use_whisper {
+            let mut model_path = glib::user_cache_dir();
+            model_path.push("reinschrift_todo");
+            model_path.push("ggml-small.bin");
+            if model_path.exists() {
+                let _ = fs::remove_file(model_path);
+            }
+        }
+
         Self {
             store: store.clone(),
             overlay: overlay.clone(),
@@ -825,6 +785,7 @@ impl AppState {
             window: window.downgrade(),
             preferences: RefCell::new(prefs),
             search_term: RefCell::new(String::new()),
+            is_recording: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -842,6 +803,17 @@ impl AppState {
 
     fn show_due_only(&self) -> bool {
         self.preferences.borrow().show_due_only
+    }
+
+    fn use_whisper(&self) -> bool {
+        self.preferences.borrow().use_whisper
+    }
+
+    fn whisper_model_path(&self) -> PathBuf {
+        let mut dir = glib::user_cache_dir();
+        dir.push("reinschrift_todo");
+        dir.push("ggml-small.bin");
+        dir
     }
 
     fn reload(&self) -> Result<()> {
@@ -1059,7 +1031,7 @@ impl AppState {
         dialog.present();
     }
 
-    fn show_settings_dialog(self: &Rc<Self>) {
+    fn show_settings_dialog(self: &Rc<Self>, voice_btn: Option<gtk::Button>) {
         let Some(parent) = self.window.upgrade() else {
             self.show_error(&t("no_window"));
             return;
@@ -1222,6 +1194,44 @@ impl AppState {
         });
         webdav_group.add(&check_row);
 
+        // --- Voice Page ---
+        let voice_page = adw::PreferencesPage::builder()
+            .title(&t("voice"))
+            .icon_name("audio-input-microphone-symbolic")
+            .build();
+        dialog.add(&voice_page);
+
+        let voice_group = adw::PreferencesGroup::builder()
+            .title(&t("voice"))
+            .build();
+        voice_page.add(&voice_group);
+
+        let progress_bar = gtk::ProgressBar::builder()
+            .visible(false)
+            .margin_top(6)
+            .margin_bottom(6)
+            .build();
+        voice_group.add(&progress_bar);
+
+        let use_whisper_row = adw::SwitchRow::builder()
+            .title(&t("use_whisper"))
+            .subtitle(&t("whisper_desc"))
+            .active(self.use_whisper())
+            .build();
+        use_whisper_row.add_prefix(&gtk::Image::from_icon_name("audio-input-microphone-symbolic"));
+        
+        let state_whisper = Rc::clone(self);
+        let pb_whisper = progress_bar.clone();
+        let vb_whisper = voice_btn.clone();
+        use_whisper_row.connect_active_notify(move |row| {
+            if row.is_active() {
+                state_whisper.set_use_whisper(true, Some(pb_whisper.clone()), Some(row.clone()), vb_whisper.clone());
+            } else {
+                state_whisper.set_use_whisper(false, None, None, vb_whisper.clone());
+            }
+        });
+        voice_group.add(&use_whisper_row);
+
         // --- About Page ---
         let about_page = adw::PreferencesPage::builder()
             .title(&t("about"))
@@ -1359,6 +1369,157 @@ impl AppState {
 
         self.persist_preferences();
         self.repopulate_store();
+    }
+
+    fn set_use_whisper(self: &Rc<Self>, use_whisper: bool, progress_bar: Option<gtk::ProgressBar>, switch_row: Option<adw::SwitchRow>, voice_btn: Option<gtk::Button>) {
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.use_whisper == use_whisper {
+                return;
+            }
+            prefs.use_whisper = use_whisper;
+        }
+        self.persist_preferences();
+
+        if let Some(btn) = voice_btn {
+            btn.set_visible(use_whisper);
+        }
+
+        if use_whisper {
+            self.ensure_whisper_model(progress_bar, switch_row);
+        } else {
+            let path = self.whisper_model_path();
+            if path.exists() {
+                let _ = fs::remove_file(path);
+            }
+        }
+    }
+
+    fn ensure_whisper_model(self: &Rc<Self>, progress_bar: Option<gtk::ProgressBar>, switch_row: Option<adw::SwitchRow>) {
+        let path = self.whisper_model_path();
+        if path.exists() {
+            // Basic integrity check: size should be around 480MB
+            if let Ok(meta) = fs::metadata(&path) {
+                if meta.len() > 450 * 1024 * 1024 {
+                    if let Some(row) = &switch_row {
+                        row.set_sensitive(true);
+                    }
+                    return;
+                }
+            }
+            let _ = fs::remove_file(&path);
+        }
+
+        if let Some(pb) = &progress_bar {
+            pb.set_visible(true);
+            pb.set_fraction(0.0);
+        }
+
+        if let Some(row) = &switch_row {
+            row.set_sensitive(false);
+        }
+
+        self.show_info(&t("downloading_model"));
+
+        let state = Rc::clone(self);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        
+        std::thread::spawn(move || {
+            let url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin";
+            let client = reqwest::blocking::Client::new();
+            let mut response = match client.get(url).send() {
+                Ok(r) => r,
+                Err(e) => {
+                    let _ = sender.send(Err(e.to_string()));
+                    return;
+                }
+            };
+
+            if !response.status().is_success() {
+                let _ = sender.send(Err(format!("HTTP {}", response.status())));
+                return;
+            }
+
+            let total_size = response.content_length().unwrap_or(0);
+            let mut downloaded = 0;
+            let mut buffer = [0; 8192];
+            
+            if let Some(parent) = path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+
+            let mut file = match fs::File::create(&path) {
+                Ok(f) => f,
+                Err(e) => {
+                    let _ = sender.send(Err(e.to_string()));
+                    return;
+                }
+            };
+
+            use std::io::Write;
+            loop {
+                match response.read(&mut buffer) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        if let Err(e) = file.write_all(&buffer[..n]) {
+                            let _ = sender.send(Err(e.to_string()));
+                            return;
+                        }
+                        downloaded += n as u64;
+                        if total_size > 0 {
+                            let _ = sender.send(Ok(downloaded as f64 / total_size as f64));
+                        }
+                    }
+                    Err(e) => {
+                        let _ = sender.send(Err(e.to_string()));
+                        return;
+                    }
+                }
+            }
+            let _ = sender.send(Ok(1.0));
+        });
+
+        let pb_clone = progress_bar.clone();
+        let row_clone = switch_row.clone();
+        glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+            match receiver.try_recv() {
+                Ok(Ok(fraction)) => {
+                    if let Some(pb) = &pb_clone {
+                        pb.set_fraction(fraction);
+                    }
+                    if fraction >= 1.0 {
+                        state.show_info(&t("model_download_finished"));
+                        if let Some(pb) = &pb_clone {
+                            pb.set_visible(false);
+                        }
+                        if let Some(row) = &row_clone {
+                            row.set_sensitive(true);
+                        }
+                        return glib::ControlFlow::Break;
+                    }
+                    glib::ControlFlow::Continue
+                }
+                Ok(Err(e)) => {
+                    state.show_error(&format!("{}: {}", t("model_download_error"), e));
+                    if let Some(pb) = &pb_clone {
+                        pb.set_visible(false);
+                    }
+                    if let Some(row) = &row_clone {
+                        row.set_sensitive(true);
+                        row.set_active(false);
+                    }
+                    // Reset preference if download failed
+                    {
+                        let mut prefs = state.preferences.borrow_mut();
+                        prefs.use_whisper = false;
+                    }
+                    state.persist_preferences();
+                    glib::ControlFlow::Break
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => glib::ControlFlow::Break,
+            }
+        });
     }
 
     fn set_use_webdav(&self, use_webdav: bool) {
@@ -1590,6 +1751,184 @@ impl AppState {
         self.reload()?;
         self.show_info(&t("updated_task").replace("{}", &updated.title));
         Ok(())
+    }
+
+    fn toggle_recording(self: &Rc<Self>, voice_btn: &gtk::Button, entry: &gtk::Entry) {
+        if self.is_recording.load(AtomicOrdering::SeqCst) {
+            self.is_recording.store(false, AtomicOrdering::SeqCst);
+            voice_btn.remove_css_class("destructive-action");
+            voice_btn.set_icon_name("audio-input-microphone-symbolic");
+            return;
+        }
+
+        let model_path = self.whisper_model_path();
+        if !model_path.exists() {
+            self.show_error(&t("model_not_found"));
+            return;
+        }
+
+        self.is_recording.store(true, AtomicOrdering::SeqCst);
+        voice_btn.add_css_class("destructive-action");
+        voice_btn.set_icon_name("media-record-symbolic");
+
+        let state = Rc::clone(self);
+        let voice_btn_clone = voice_btn.clone();
+        let entry_clone = entry.clone();
+
+        std::thread::spawn(move || {
+            let host = cpal::default_host();
+            let device = match host.default_input_device() {
+                Some(d) => d,
+                None => {
+                    glib::idle_add_local(clone!(@strong state, @strong voice_btn_clone => move || {
+                        state.show_error("No input device found");
+                        voice_btn_clone.remove_css_class("destructive-action");
+                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
+                        state.is_recording.store(false, AtomicOrdering::SeqCst);
+                        glib::ControlFlow::Break
+                    }));
+                    return;
+                }
+            };
+
+            let config = match device.default_input_config() {
+                Ok(c) => c,
+                Err(e) => {
+                    glib::idle_add_local(clone!(@strong state, @strong voice_btn_clone => move || {
+                        state.show_error(&format!("Input config error: {}", e));
+                        voice_btn_clone.remove_css_class("destructive-action");
+                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
+                        state.is_recording.store(false, AtomicOrdering::SeqCst);
+                        glib::ControlFlow::Break
+                    }));
+                    return;
+                }
+            };
+
+            let audio_data = Arc::new(Mutex::new(Vec::new()));
+            let audio_data_clone = audio_data.clone();
+
+            let stream = match device.build_input_stream(
+                &config.into(),
+                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    let mut buffer = audio_data_clone.lock().unwrap();
+                    buffer.extend_from_slice(data);
+                },
+                |_| {},
+                None,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    glib::idle_add_local(clone!(@strong state, @strong voice_btn_clone => move || {
+                        state.show_error(&format!("Stream error: {}", e));
+                        voice_btn_clone.remove_css_class("destructive-action");
+                        voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
+                        state.is_recording.store(false, AtomicOrdering::SeqCst);
+                        glib::ControlFlow::Break
+                    }));
+                    return;
+                }
+            };
+
+            if let Err(e) = stream.play() {
+                glib::idle_add_local(clone!(@strong state, @strong voice_btn_clone => move || {
+                    state.show_error(&format!("Stream play error: {}", e));
+                    voice_btn_clone.remove_css_class("destructive-action");
+                    voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
+                    state.is_recording.store(false, AtomicOrdering::SeqCst);
+                    glib::ControlFlow::Break
+                }));
+                return;
+            }
+
+            while state.is_recording.load(AtomicOrdering::SeqCst) {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+
+            drop(stream);
+
+            let samples = audio_data.lock().unwrap().clone();
+            if samples.is_empty() {
+                return;
+            }
+
+            // Resample to 16kHz if necessary (Whisper requirement)
+            let sample_rate = config.sample_rate().0;
+            let samples_16k = if sample_rate != 16000 {
+                let mut resampled = Vec::new();
+                let ratio = sample_rate as f32 / 16000.0;
+                let mut i = 0.0;
+                while i < samples.len() as f32 {
+                    resampled.push(samples[i as usize]);
+                    i += ratio;
+                }
+                resampled
+            } else {
+                samples
+            };
+
+            let ctx = match WhisperContext::new_with_params(
+                &model_path.to_string_lossy(),
+                WhisperContextParameters::default(),
+            ) {
+                Ok(c) => c,
+                Err(e) => {
+                    glib::idle_add_local(clone!(@strong state => move || {
+                        state.show_error(&format!("Whisper error: {}", e));
+                        glib::ControlFlow::Break
+                    }));
+                    return;
+                }
+            };
+
+            let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+            params.set_n_threads(4);
+            params.set_single_segment(true);
+            params.set_language(Some("auto"));
+
+            let mut state_whisper = ctx.create_state().expect("failed to create state");
+            if let Err(e) = state_whisper.full(params, &samples_16k) {
+                glib::idle_add_local(clone!(@strong state => move || {
+                    state.show_error(&format!("Transcription error: {}", e));
+                    glib::ControlFlow::Break
+                }));
+                return;
+            }
+
+            let num_segments = state_whisper.full_n_segments().expect("failed to get segments");
+            let mut result_text = String::new();
+            for i in 0..num_segments {
+                if let Ok(segment) = state_whisper.full_get_segment_text(i) {
+                    result_text.push_str(&segment);
+                }
+            }
+
+            let final_text = result_text.trim().to_string();
+            if !final_text.is_empty() {
+                glib::idle_add_local(clone!(@strong entry_clone => move || {
+                    let current = entry_clone.text();
+                    if current.is_empty() {
+                        entry_clone.set_text(&final_text);
+                    } else {
+                        entry_clone.set_text(&format!("{} {}", current, final_text));
+                    }
+                    glib::ControlFlow::Break
+                }));
+            }
+        });
+    }
+            if !final_text.is_empty() {
+                glib::idle_add_local(clone!(@strong entry_clone => move || {
+                    let current = entry_clone.text().to_string();
+                    if current.is_empty() {
+                        entry_clone.set_text(&final_text);
+                    } else {
+                        entry_clone.set_text(&format!("{} {}", current, final_text));
+                    }
+                    glib::ControlFlow::Break
+                }));
+            }
+        });
     }
 
     fn open_entry_at(self: &Rc<Self>, position: u32) {
