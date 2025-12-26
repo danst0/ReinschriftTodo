@@ -17,3 +17,4 @@ docker-compose.yml
 
 .venv/
 flatpak-cargo-generator.py
+.vscode/settings.json
