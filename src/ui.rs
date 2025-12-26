@@ -1267,7 +1267,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.8.1", t("version")))
+            .label(&format!("{} 0.8.2", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -1449,7 +1449,8 @@ impl AppState {
 
             let total_size = response.content_length().unwrap_or(0);
             let mut downloaded = 0;
-            let mut buffer = [0; 8192];
+            let mut buffer = [0; 32768]; // 32KB buffer
+            let mut last_reported_progress = 0.0;
             
             if let Some(parent) = path.parent() {
                 let _ = fs::create_dir_all(parent);
@@ -1474,7 +1475,12 @@ impl AppState {
                         }
                         downloaded += n as u64;
                         if total_size > 0 {
-                            let _ = sender.send(Ok(downloaded as f64 / total_size as f64));
+                            let progress = downloaded as f64 / total_size as f64;
+                            // Only report progress if it changed by at least 0.1% or if we are done
+                            if progress - last_reported_progress >= 0.001 || progress >= 1.0 {
+                                let _ = sender.send(Ok(progress));
+                                last_reported_progress = progress;
+                            }
                         }
                     }
                     Err(e) => {
