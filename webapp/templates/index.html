@@ -33,6 +33,16 @@
         
         .lang-link { text-decoration: none; font-size: 1.5rem; padding-bottom: 2px; border-bottom: 2px solid transparent; }
         .lang-link.active { border-bottom-color: #3584e4; }
+
+        .header-container { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1rem; position: relative; }
+        .header-container h1 { margin: 0; }
+        .header-icons { display: flex; gap: 0.5rem; }
+        .icon-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s; color: #666; }
+        .icon-btn:hover { background: #eee; }
+        .icon-btn.active { color: #3584e4; background: #eef5ff; }
+
+        .collapsible-form { display: none; margin-bottom: 1rem; }
+        .collapsible-form.visible { display: flex; }
         
         /* Mobile improvements */
         input { font-size: 16px; }
@@ -54,6 +64,9 @@
             .section-header { color: #e0e0e0; border-bottom-color: #444; }
             .filter-link { color: #888; }
             .filter-link.active { color: #78aeed; }
+            .icon-btn { color: #aaa; }
+            .icon-btn:hover { background: #3d3d3d; }
+            .icon-btn.active { color: #78aeed; background: #1a3b5c; }
         }
 
         /* Modal Styles */
@@ -177,7 +190,13 @@
         </div>
     </div>
 
-    <h1>{{ t.todos }}</h1>
+    <div class="header-container">
+        <h1>{{ t.todos }}</h1>
+        <div class="header-icons">
+            <button type="button" id="toggle-search" class="icon-btn {% if q %}active{% endif %}" onclick="toggleSearch()" title="{{ t.search_placeholder }}">🔍</button>
+            <button type="button" id="toggle-add" class="icon-btn" onclick="toggleAdd()" title="{{ t.add }}">➕</button>
+        </div>
+    </div>
     
     <div class="filters" style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: center;">
         <a href="{{ url_for('index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" 
@@ -208,7 +227,7 @@
           <button type="button" class="refresh-button" onclick="manualReload()">↻ {{ t.reload }}</button>
     </div>
     
-    <form action="{{ url_for('index') }}" method="get" style="margin-bottom: 1rem; display: flex; gap: 0.5rem;">
+    <form id="search-form" action="{{ url_for('index') }}" method="get" class="collapsible-form {% if q %}visible{% endif %}" style="gap: 0.5rem;">
         <input type="text" id="search-input" name="q" value="{{ q or '' }}" placeholder="{{ t.search_placeholder }}" style="flex-grow: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; outline: none;">
         <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
         <input type="hidden" name="show_due_only" value="{{ '1' if show_due_only else '0' }}">
@@ -220,8 +239,8 @@
         {% endif %}
     </form>
 
-    <form id="addForm" class="add-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post">
-        <input type="text" name="title" placeholder="{{ t.new_task }}" required>
+    <form id="addForm" class="add-form collapsible-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post" style="gap: 0;">
+        <input type="text" id="add-input" name="title" placeholder="{{ t.new_task }}" required>
         <button type="submit">{{ t.add }}</button>
     </form>
 
@@ -276,11 +295,45 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 const searchInput = document.getElementById('search-input');
+                const searchForm = document.getElementById('search-form');
+                const addForm = document.getElementById('addForm');
+                
                 if (searchInput && searchInput.value) {
                     window.location.href = "{{ url_for('index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}";
+                } else {
+                    if (searchForm.classList.contains('visible')) toggleSearch();
+                    if (addForm.classList.contains('visible')) toggleAdd();
                 }
             }
         });
+
+        function toggleSearch() {
+            const form = document.getElementById('search-form');
+            const btn = document.getElementById('toggle-search');
+            const input = document.getElementById('search-input');
+            const isVisible = form.classList.toggle('visible');
+            btn.classList.toggle('active', isVisible || "{{ q }}" !== "");
+            if (isVisible) {
+                input.focus();
+                document.getElementById('addForm').classList.remove('visible');
+                document.getElementById('toggle-add').classList.remove('active');
+            }
+        }
+
+        function toggleAdd() {
+            const form = document.getElementById('addForm');
+            const btn = document.getElementById('toggle-add');
+            const input = document.getElementById('add-input');
+            const isVisible = form.classList.toggle('visible');
+            btn.classList.toggle('active', isVisible);
+            if (isVisible) {
+                input.focus();
+                document.getElementById('search-form').classList.remove('visible');
+                if ("{{ q }}" === "") {
+                    document.getElementById('toggle-search').classList.remove('active');
+                }
+            }
+        }
 
         document.getElementById('addForm').onsubmit = function(e) {
             e.preventDefault();
