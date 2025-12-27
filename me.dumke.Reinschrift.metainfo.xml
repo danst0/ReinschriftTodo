@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.4" date="2025-12-27">
+      <description>
+        <ul>
+          <li>Fix: Fixed compilation error in main.rs</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.3" date="2025-12-27">
       <description>
         <ul>

@@ -34,7 +34,7 @@ fn main() -> Result<()> {
     let app = adw::Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(|app| {
-        if let Err(err) = ui::build_ui(app) {
+        if let Err(err) = ui::build_ui(app, false) {
             eprintln!("{}: {err:?}", t("build_ui_error"));
         }
     });
