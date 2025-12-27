@@ -19,17 +19,6 @@ build-options:
     CARGO_HOME: /run/build/reinschrift/cargo
     LIBCLANG_PATH: /usr/lib/sdk/llvm20/lib
 modules:
-  - name: alsa-lib
-    sources:
-      - type: archive
-        url: https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.10.tar.bz2
-        sha256: c86a45a846331b1b0aa6e6be100be2a7aef92efd405cf6bac7eef8174baa920e
-    cleanup:
-      - /bin
-      - /sbin
-      - /share/alsa/alsa.conf.d
-      - /include
-
   - name: reinschrift
     buildsystem: simple
     build-commands:
@@ -41,7 +30,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        branch: main
+        tag: v0.8.5
       - generated-sources.json
       - type: shell
         commands:
