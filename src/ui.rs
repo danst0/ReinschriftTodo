@@ -124,7 +124,7 @@ fn schedule_poll(state: Rc<AppState>, interval: u32) {
     }));
 }
 
-pub fn build_ui(app: &Application) -> Result<()> {
+pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title(&t("app_title"))
@@ -182,7 +182,7 @@ pub fn build_ui(app: &Application) -> Result<()> {
     overlay.set_hexpand(true);
     overlay.set_vexpand(true);
     let store = gio::ListStore::new::<BoxedAnyObject>();
-    let state = Rc::new(AppState::new(&window, &overlay, &store));
+    let state = Rc::new(AppState::new(&window, &overlay, &store, debug_mode));
 
     // Neue To-do Eingabezeile unter den Filtereinstellungen
     let new_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
@@ -741,10 +741,11 @@ struct AppState {
     preferences: RefCell<Preferences>,
     search_term: RefCell<String>,
     is_recording: Arc<AtomicBool>,
+    debug_mode: bool,
 }
 
 impl AppState {
-    fn new(window: &adw::ApplicationWindow, overlay: &adw::ToastOverlay, store: &gio::ListStore) -> Self {
+    fn new(window: &adw::ApplicationWindow, overlay: &adw::ToastOverlay, store: &gio::ListStore, debug_mode: bool) -> Self {
         let current_at_start = data::todo_path();
         let mut prefs = load_preferences();
         let sort_mode = prefs
@@ -798,6 +799,7 @@ impl AppState {
             preferences: RefCell::new(prefs),
             search_term: RefCell::new(String::new()),
             is_recording: Arc::new(AtomicBool::new(false)),
+            debug_mode,
         }
     }
 
@@ -1887,6 +1889,7 @@ impl AppState {
         }
 
         let language = self.whisper_language();
+        let debug_mode = self.debug_mode;
 
         std::thread::spawn(move || {
             let host = cpal::default_host();
