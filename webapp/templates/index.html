@@ -101,6 +101,7 @@
             background-color: #fefefe;
             margin: 5% auto; 
             padding: 20px;
+            padding-bottom: 40px;
             border: 1px solid #888;
             width: 90%; 
             max-width: 500px;
@@ -120,6 +121,11 @@
             color: black;
             text-decoration: none;
             cursor: pointer;
+        }
+        
+        @media screen and (max-width: 600px) {
+            .modal { padding-top: 10px; }
+            .modal-content { margin: 2% auto; width: 95%; padding: 15px; padding-bottom: 8rem; }
         }
         
         .form-group { margin-bottom: 1rem; }
@@ -498,7 +504,11 @@
             document.getElementById('comment-section').style.display = 'block';
             document.getElementById('edit-done').checked = true;
             document.getElementById('btn-close-comment').style.display = 'none';
-            document.getElementById('edit-comment').focus();
+            const commentInput = document.getElementById('edit-comment');
+            commentInput.focus();
+            setTimeout(() => {
+                commentInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
         }
 
         function submitWithComment() {

@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 1rem; background-color: #fafafa; color: #333; }
+        
+        @media screen and (max-width: 600px) {
+            body { padding-bottom: 10rem; }
+        }
+        
         h2 { color: #333; }
         .form-group { margin-bottom: 1rem; }
         label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
@@ -93,7 +98,11 @@
             document.getElementById('comment-group').style.display = 'block';
             document.getElementById('done-checkbox').checked = true;
             document.getElementById('close-with-comment-btn').style.display = 'none';
-            document.getElementById('comment').focus();
+            const commentInput = document.getElementById('comment');
+            commentInput.focus();
+            setTimeout(() => {
+                commentInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
         }
     </script>
 </body>
