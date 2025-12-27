@@ -129,6 +129,21 @@ pub fn t(key: &str) -> String {
         de.insert("developer", "Entwickler");
         de.insert("website", "Webseite");
         de.insert("license", "Lizenz");
+        de.insert("whisper_language", "Sprache für Erkennung");
+        de.insert("lang_auto", "Automatisch");
+        de.insert("lang_en", "Englisch");
+        de.insert("lang_de", "Deutsch");
+        de.insert("lang_es", "Spanisch");
+        de.insert("lang_fr", "Französisch");
+        de.insert("lang_it", "Italienisch");
+        de.insert("lang_ja", "Japanisch");
+        de.insert("lang_zh", "Chinesisch");
+        de.insert("lang_nl", "Niederländisch");
+        de.insert("lang_pl", "Polnisch");
+        de.insert("lang_pt", "Portugiesisch");
+        de.insert("lang_ru", "Russisch");
+        de.insert("lang_tr", "Türkisch");
+        de.insert("lang_sv", "Schwedisch");
         m.insert("de", de);
 
         let mut en = std::collections::HashMap::new();
@@ -242,6 +257,21 @@ pub fn t(key: &str) -> String {
         en.insert("developer", "Developer");
         en.insert("website", "Website");
         en.insert("license", "License");
+        en.insert("whisper_language", "Recognition Language");
+        en.insert("lang_auto", "Automatic");
+        en.insert("lang_en", "English");
+        en.insert("lang_de", "German");
+        en.insert("lang_es", "Spanish");
+        en.insert("lang_fr", "French");
+        en.insert("lang_it", "Italian");
+        en.insert("lang_ja", "Japanese");
+        en.insert("lang_zh", "Chinese");
+        en.insert("lang_nl", "Dutch");
+        en.insert("lang_pl", "Polish");
+        en.insert("lang_pt", "Portuguese");
+        en.insert("lang_ru", "Russian");
+        en.insert("lang_tr", "Turkish");
+        en.insert("lang_sv", "Swedish");
         m.insert("en", en);
 
         let mut es = std::collections::HashMap::new();

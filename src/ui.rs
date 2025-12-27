@@ -102,6 +102,12 @@ struct Preferences {
     webdav_password: Option<String>,
     #[serde(default)]
     use_whisper: bool,
+    #[serde(default = "default_whisper_language")]
+    whisper_language: String,
+}
+
+fn default_whisper_language() -> String {
+    "auto".to_string()
 }
 
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
@@ -815,6 +821,10 @@ impl AppState {
         self.preferences.borrow().use_whisper
     }
 
+    fn whisper_language(&self) -> String {
+        self.preferences.borrow().whisper_language.clone()
+    }
+
     fn whisper_model_path(&self) -> PathBuf {
         let mut dir = glib::user_cache_dir();
         dir.push("reinschrift_todo");
@@ -1226,17 +1236,55 @@ impl AppState {
             .build();
         use_whisper_row.add_prefix(&gtk::Image::from_icon_name("audio-input-microphone-symbolic"));
         
+        let languages = vec!["auto", "en", "de", "es", "fr", "it", "ja", "zh", "nl", "pl", "pt", "ru", "tr", "sv"];
+        let language_names = [
+            t("lang_auto"), t("lang_en"), t("lang_de"), t("lang_es"), t("lang_fr"), 
+            t("lang_it"), t("lang_ja"), t("lang_zh"), t("lang_nl"), t("lang_pl"), 
+            t("lang_pt"), t("lang_ru"), t("lang_tr"), t("lang_sv")
+        ];
+        let language_names_refs: Vec<&str> = language_names.iter().map(|s| s.as_str()).collect();
+        
+        let language_model = gtk::StringList::new(&language_names_refs);
+        
+        let language_row = adw::ComboRow::builder()
+            .title(&t("whisper_language"))
+            .model(&language_model)
+            .build();
+
+        // Set initial selection
+        let current_lang = self.whisper_language();
+        if let Some(idx) = languages.iter().position(|&l| l == current_lang) {
+            language_row.set_selected(idx as u32);
+        }
+
+        let state_lang = Rc::clone(self);
+        let languages_clone = languages.clone();
+        language_row.connect_selected_notify(move |row| {
+            let idx = row.selected() as usize;
+            if idx < languages_clone.len() {
+                state_lang.set_whisper_language(languages_clone[idx].to_string());
+            }
+        });
+
         let state_whisper = Rc::clone(self);
         let pb_whisper = progress_bar.clone();
         let vb_whisper = voice_btn.clone();
+        let lang_row_clone = language_row.clone();
+        
+        // Disable language selection if whisper is disabled
+        language_row.set_sensitive(self.use_whisper());
+
         use_whisper_row.connect_active_notify(move |row| {
             if row.is_active() {
                 state_whisper.set_use_whisper(true, Some(pb_whisper.clone()), Some(row.clone()), vb_whisper.clone());
+                lang_row_clone.set_sensitive(true);
             } else {
                 state_whisper.set_use_whisper(false, None, None, vb_whisper.clone());
+                lang_row_clone.set_sensitive(false);
             }
         });
         voice_group.add(&use_whisper_row);
+        voice_group.add(&language_row);
 
         // --- About Page ---
         let about_page = adw::PreferencesPage::builder()
@@ -1535,6 +1583,17 @@ impl AppState {
         });
     }
 
+    fn set_whisper_language(&self, language: String) {
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.whisper_language == language {
+                return;
+            }
+            prefs.whisper_language = language;
+        }
+        self.persist_preferences();
+    }
+
     fn set_use_webdav(&self, use_webdav: bool) {
         {
             let mut prefs = self.preferences.borrow_mut();
@@ -1827,6 +1886,8 @@ impl AppState {
             });
         }
 
+        let language = self.whisper_language();
+
         std::thread::spawn(move || {
             let host = cpal::default_host();
             let device = match host.default_input_device() {
@@ -1910,7 +1971,7 @@ impl AppState {
             let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
             params.set_n_threads(4);
             params.set_single_segment(true);
-            params.set_language(Some("auto"));
+            params.set_language(Some(&language));
 
             let mut state_whisper = ctx.create_state().expect("failed to create state");
             if let Err(e) = state_whisper.full(params, &samples_16k) {
