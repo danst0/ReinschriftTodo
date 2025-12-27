@@ -781,6 +781,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hound"
+version = "3.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62adaabb884c94955b19907d60019f4e145d091c75345379e70d1ee696f7854f"
+
+[[package]]
 name = "http"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1492,7 +1498,7 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "reinschrift_todo"
-version = "0.8.5"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1500,6 +1506,7 @@ dependencies = [
  "gio",
  "glib",
  "gtk4",
+ "hound",
  "libadwaita",
  "once_cell",
  "regex",
