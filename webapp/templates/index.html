@@ -284,7 +284,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; pt: 1rem;">
-            <p><strong>Reinschrift</strong> v0.7.1</p>
+            <p><strong>Reinschrift</strong> v0.9.5</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-NC-SA-4.0</p>
         </div>
@@ -297,8 +297,8 @@
             <h2>{{ t.cheatsheet }}</h2>
             <table style="width: 100%; border-collapse: collapse;">
                 <tr><td style="padding: 4px 8px; text-align: right; color: #999; width: 40%;"><strong>?</strong></td><td style="padding: 4px 8px;">{{ t.key_help }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Ctrl + N</strong></td><td style="padding: 4px 8px;">{{ t.key_new }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Ctrl + F</strong></td><td style="padding: 4px 8px;">{{ t.key_search }}</td></tr>
+                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>n</strong></td><td style="padding: 4px 8px;">{{ t.key_new }}</td></tr>
+                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>f / /</strong></td><td style="padding: 4px 8px;">{{ t.key_search }}</td></tr>
                 <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>j / k / ↓ / ↑</strong></td><td style="padding: 4px 8px;">{{ t.key_nav }}</td></tr>
                 <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Space</strong></td><td style="padding: 4px 8px;">{{ t.key_toggle }}</td></tr>
                 <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Enter</strong></td><td style="padding: 4px 8px;">{{ t.key_edit }}</td></tr>
@@ -604,10 +604,10 @@
             } else if (e.key === 'Escape') {
                 closeModal();
                 closeCheatsheet();
-            } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            } else if (!e.ctrlKey && !e.metaKey && e.key === 'n') {
                 e.preventDefault();
                 toggleAdd();
-            } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            } else if (!e.ctrlKey && !e.metaKey && (e.key === 'f' || e.key === '/')) {
                 e.preventDefault();
                 toggleSearch();
             } else if (e.key === 'j' || e.key === 'ArrowDown') {
