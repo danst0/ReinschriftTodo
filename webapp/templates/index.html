@@ -212,7 +212,7 @@
                 </div>
                 
                 <div class="buttons">
-                    <button type="submit" class="btn-primary">{{ t.save }}</button>
+                    <button type="submit" id="btn-save-main" class="btn-primary">{{ t.save }}</button>
                     <button type="button" id="btn-close-comment" class="btn-secondary" onclick="showCommentField()">{{ t.close_with_comment }}</button>
                     <button type="button" class="btn-secondary" onclick="closeModal()">{{ t.cancel }}</button>
                 </div>
@@ -494,6 +494,8 @@
                     document.getElementById('edit-reference').value = data.reference || '';
                     document.getElementById('edit-done').checked = data.done;
                     document.getElementById('btn-close-comment').style.display = data.done ? 'none' : 'inline-block';
+                    document.getElementById('btn-save-main').style.display = 'inline-block';
+                    document.getElementById('comment-section').style.display = 'none';
                     
                     document.getElementById('editForm').action = '/edit/' + lineIndex;
                     
@@ -509,6 +511,7 @@
             modal.style.display = "none";
             document.getElementById('comment-section').style.display = 'none';
             document.getElementById('btn-close-comment').style.display = 'inline-block';
+            document.getElementById('btn-save-main').style.display = 'inline-block';
             document.getElementById('edit-comment').value = '';
         }
 
@@ -516,6 +519,7 @@
             document.getElementById('comment-section').style.display = 'block';
             document.getElementById('edit-done').checked = true;
             document.getElementById('btn-close-comment').style.display = 'none';
+            document.getElementById('btn-save-main').style.display = 'none';
             const commentInput = document.getElementById('edit-comment');
             commentInput.focus();
             setTimeout(() => {
