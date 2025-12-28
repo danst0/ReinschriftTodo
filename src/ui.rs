@@ -851,6 +851,21 @@ impl AppState {
 
     fn toggle_item(&self, todo: &TodoItem, done: bool) -> Result<()> {
         data::toggle_todo(&todo.key, done)?;
+
+        if done {
+            if let Some(rule) = todo.recurrence.as_deref() {
+                if let Some(next_due) = data::next_due_date(todo.due, rule) {
+                    let mut next_item = todo.clone();
+                    next_item.key = data::TodoKey { line_index: 0, marker: None };
+                    next_item.done = false;
+                    next_item.due = Some(next_due);
+                    if let Err(err) = data::add_todo_full(&next_item) {
+                        eprintln!("Failed to add recurring task: {err}");
+                    }
+                }
+            }
+        }
+
         self.reload()?;
         let message = if done {
             format!("Erledigt: {}", todo.title)
@@ -2154,6 +2169,25 @@ impl AppState {
         due_row.append(&due_inputs);
         content.append(&due_row);
 
+        let recurrence_labels = [
+            t("recurrence_none"),
+            t("recurrence_daily"),
+            t("recurrence_weekly"),
+            t("recurrence_monthly"),
+        ];
+        let recurrence_values = ["", "daily", "weekly", "monthly"];
+        let recurrence_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        recurrence_row.append(&gtk::Label::builder().label(&t("recurrence")).xalign(0.0).build());
+        let recurrence_dropdown = gtk::DropDown::from_strings(&recurrence_labels);
+        let rec_index = todo
+            .recurrence
+            .as_deref()
+            .and_then(|r| recurrence_values.iter().position(|v| v == &r))
+            .unwrap_or(0) as u32;
+        recurrence_dropdown.set_selected(rec_index);
+        recurrence_row.append(&recurrence_dropdown);
+        content.append(&recurrence_row);
+
         let done_check = gtk::CheckButton::with_label(&t("done"));
         done_check.set_active(todo.done);
         content.append(&done_check);
@@ -2198,6 +2232,7 @@ impl AppState {
         let done_check_save = done_check.clone();
         let comment_entry_save = comment_entry.clone();
         let comment_row_save = comment_row.clone();
+        let recurrence_dropdown_save = recurrence_dropdown.clone();
         save_btn.connect_clicked(move |_| {
             let mut title_text = title_entry_save.text().trim().to_string();
             if title_text.is_empty() {
@@ -2239,12 +2274,20 @@ impl AppState {
                 }
             };
 
+            let rec_values = ["", "daily", "weekly", "monthly"];
+            let rec_idx = recurrence_dropdown_save.selected() as usize;
+            let recurrence_value = rec_values
+                .get(rec_idx)
+                .map(|s| s.to_string())
+                .filter(|s| !s.is_empty());
+
             let mut updated = base_item.clone();
             updated.title = title_text;
             updated.project = project_value;
             updated.context = context_value;
             updated.reference = base_item.reference.clone();
             updated.due = due_value;
+            updated.recurrence = recurrence_value;
             updated.done = done_check_save.is_active();
 
             if let Err(err) = state_for_save.save_item(&updated) {
@@ -2362,6 +2405,15 @@ fn format_metadata(item: &TodoItem) -> String {
         } else {
             parts.push(t("due_label").replace("{}", &due.to_string()));
         }
+    }
+    if let Some(rule) = &item.recurrence {
+        let label = match rule.as_str() {
+            "daily" => t("recurrence_daily"),
+            "weekly" => t("recurrence_weekly"),
+            "monthly" => t("recurrence_monthly"),
+            _ => rule.clone(),
+        };
+        parts.push(format!("↻ {}", label));
     }
     if let Some(reference) = &item.reference {
         parts.push(format!("↗ {}", reference));

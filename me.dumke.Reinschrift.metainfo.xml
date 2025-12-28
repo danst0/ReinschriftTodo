@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.9" date="2025-12-28">
+      <description>
+        <ul>
+          <li>Feature: Recurring tasks with rec: token, auto-spawn next occurrence on completion</li>
+          <li>UI: Show recurrence badges in lists (desktop and web)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.8" date="2025-12-28">
       <description>
         <ul>

@@ -18,6 +18,7 @@
         .tag { background: #f0f0f0; padding: 2px 8px; border-radius: 12px; color: #555; }
         .tag.project { color: #e66100; background: #fff1e5; }
         .tag.context { color: #1a5fb4; background: #eef5ff; }
+        .tag.recurrence { color: #0b6c6a; background: #e5f4f2; display: inline-flex; align-items: center; gap: 4px; }
         .due { color: #c01c28; font-weight: 500; }
         .add-form { display: flex; margin-bottom: 2rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border-radius: 8px; }
         .add-form input { flex-grow: 1; padding: 0.8rem; border: 1px solid #ddd; border-right: none; border-radius: 8px 0 0 8px; font-size: 1rem; outline: none; }
@@ -68,6 +69,7 @@
             .tag { background: #3d3d3d; color: #ccc; }
             .tag.project { background: #4a2c1a; color: #ffb380; }
             .tag.context { background: #1a3b5c; color: #8cb4ff; }
+            .tag.recurrence { background: #1f3b3a; color: #7ad1c4; }
             .due { color: #ff7b72; }
             .add-form input { background: #2d2d2d; border-color: #444; color: #e0e0e0; }
             .add-form button { background: #3584e4; }
@@ -182,6 +184,15 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label for="edit-recurrence">{{ t.recurrence }}</label>
+                    <select id="edit-recurrence" name="recurrence" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">{{ t.recurrence_none }}</option>
+                        <option value="daily">{{ t.recurrence_daily }}</option>
+                        <option value="weekly">{{ t.recurrence_weekly }}</option>
+                        <option value="monthly">{{ t.recurrence_monthly }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label for="edit-reference">{{ t.reference }}</label>
                     <input type="text" id="edit-reference" name="reference">
                 </div>
@@ -284,7 +295,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; pt: 1rem;">
-            <p><strong>Reinschrift</strong> v0.9.5</p>
+            <p><strong>Reinschrift</strong> v0.9.9</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-NC-SA-4.0</p>
         </div>
@@ -479,6 +490,7 @@
                     document.getElementById('edit-project').value = data.project || '';
                     document.getElementById('edit-context').value = data.context || '';
                     document.getElementById('edit-due').value = data.due || '';
+                    document.getElementById('edit-recurrence').value = data.recurrence || '';
                     document.getElementById('edit-reference').value = data.reference || '';
                     document.getElementById('edit-done').checked = data.done;
                     document.getElementById('btn-close-comment').style.display = data.done ? 'none' : 'inline-block';

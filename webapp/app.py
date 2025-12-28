@@ -46,6 +46,7 @@ CONTEXT_RE = re.compile(r"@([^\s]+)")
 DUE_RE = re.compile(r"due:(\d{4}-\d{2}-\d{2})")
 ID_RE = re.compile(r"\^([A-Za-z0-9]+)")
 COMPLETION_RE = re.compile(r"\s✅\s\d{4}-\d{2}-\d{2}")
+RECUR_RE = re.compile(r"rec:([^\s]+)")
 
 def read_content():
     if USE_WEBDAV:
@@ -144,6 +145,7 @@ def parse_line(line, line_index, section):
     project = capture_token(PROJECT_RE, rest)
     context = capture_token(CONTEXT_RE, rest)
     due_str = capture_token(DUE_RE, rest)
+    recurrence = capture_token(RECUR_RE, rest)
     due = None
     if due_str:
         try:
@@ -163,6 +165,7 @@ def parse_line(line, line_index, section):
         'context': context,
         'due': due,
         'reference': reference,
+        'recurrence': recurrence,
         'done': done,
         'raw_line': line
     }
@@ -174,7 +177,7 @@ def capture_token(regex, text):
     return None
 
 def extract_title(rest):
-    markers = [" +", " @", " due:", " [[", " ✅", " ^", "+", "@", "due:", "[[", "✅", "^"]
+    markers = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", "+", "@", "due:", "rec:", "[[", "✅", "^"]
     cut = len(rest)
     for marker in markers:
         idx = rest.find(marker)
@@ -217,6 +220,27 @@ def rewrite_line(line, done):
     
     return updated
 
+
+def next_due_date(current_due, rule):
+    base = current_due or datetime.now().date()
+    rule_l = rule.lower()
+    if rule_l == 'daily':
+        return base + timedelta(days=1)
+    if rule_l == 'weekly':
+        return base + timedelta(days=7)
+    if rule_l == 'monthly':
+        # naive month increment
+        year = base.year + (base.month // 12)
+        month = base.month % 12 + 1
+        day = base.day
+        for d in range(31, 27, -1):
+            try:
+                return datetime(year, month, min(day, d)).date()
+            except ValueError:
+                continue
+        return None
+    return None
+
 def add_todo(title):
     content = read_content()
     lines = content.splitlines()
@@ -231,6 +255,20 @@ def add_todo(title):
     new_line = f"- [ ] {title} due:{today}"
     lines.insert(insert_index, new_line)
     
+    write_content('\n'.join(lines) + '\n')
+
+
+def insert_line(line):
+    content = read_content()
+    lines = content.splitlines()
+
+    insert_index = len(lines)
+    for i, l in enumerate(lines):
+        if l.strip() == "---":
+            insert_index = i
+            break
+
+    lines.insert(insert_index, line)
     write_content('\n'.join(lines) + '\n')
 
 def sort_key_topic(todo):
@@ -427,7 +465,22 @@ def toggle(line_index):
     if line_index < len(lines):
         line = lines[line_index]
         is_done = "- [x]" in line or "- [X]" in line
+        item = parse_line(line, line_index, "")
         toggle_todo(line_index, not is_done)
+
+        if item and item.get('recurrence') and not is_done:
+            next_due = next_due_date(item.get('due'), item['recurrence'])
+            if next_due:
+                new_line = "- [ ] " + item['title'].strip()
+                if item.get('project'):
+                    new_line += f" +{item['project'].strip()}"
+                if item.get('context'):
+                    new_line += f" @{item['context'].strip()}"
+                new_line += f" due:{next_due.strftime('%Y-%m-%d')}"
+                new_line += f" rec:{item['recurrence']}"
+                if item.get('reference'):
+                    new_line += f" [[{item['reference'].strip()}]]"
+                insert_line(new_line)
     
     return redirect(url_for('index'))
 
@@ -521,6 +574,7 @@ def edit(line_index):
         context = request.form.get('context')
         due_str = request.form.get('due')
         reference = request.form.get('reference')
+        recurrence = request.form.get('recurrence')
         done = request.form.get('done') == 'on'
 
         if comment and comment.strip():
@@ -529,6 +583,8 @@ def edit(line_index):
         # Reconstruct line
         original_line = lines[line_index]
         marker = capture_token(ID_RE, original_line)
+        original_item = parse_line(original_line, line_index, "")
+        was_done = original_item.get('done') if original_item else False
         
         # Handle completion date
         completion_str = ""
@@ -560,6 +616,10 @@ def edit(line_index):
             
         if reference and reference.strip():
             new_line += f" [[{reference.strip()}]]"
+
+        if recurrence and recurrence.strip():
+            rec_clean = recurrence.strip()
+            new_line += f" rec:{rec_clean}"
             
         if completion_str:
             new_line += completion_str
@@ -569,6 +629,27 @@ def edit(line_index):
             
         lines[line_index] = new_line
         write_content('\n'.join(lines) + '\n')
+
+        if recurrence and recurrence.strip() and not was_done and done:
+            base_due = None
+            if due_str and due_str.strip():
+                try:
+                    base_due = datetime.strptime(due_str.strip(), "%Y-%m-%d").date()
+                except ValueError:
+                    base_due = None
+            next_due = next_due_date(base_due, recurrence.strip())
+            if next_due:
+                clone_title = title.strip()
+                new_rec_line = "- [ ] " + clone_title
+                if project and project.strip():
+                    new_rec_line += f" +{project.strip().lstrip('+')}"
+                if context and context.strip():
+                    new_rec_line += f" @{context.strip().lstrip('@')}"
+                new_rec_line += f" due:{next_due.strftime('%Y-%m-%d')}"
+                new_rec_line += f" rec:{recurrence.strip()}"
+                if reference and reference.strip():
+                    new_rec_line += f" [[{reference.strip()}]]"
+                insert_line(new_rec_line)
         
         return redirect(url_for('index'))
     

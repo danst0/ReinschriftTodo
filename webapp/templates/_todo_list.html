@@ -14,6 +14,20 @@
             <div class="meta">
                 {% if todo.project %}<span class="tag project">+{{ todo.project }}</span>{% endif %}
                 {% if todo.context %}<span class="tag context">@{{ todo.context }}</span>{% endif %}
+                {% if todo.recurrence %}
+                    <span class="tag recurrence">
+                        ↻
+                        {% if todo.recurrence == 'daily' %}
+                            {{ t.recurrence_daily }}
+                        {% elif todo.recurrence == 'weekly' %}
+                            {{ t.recurrence_weekly }}
+                        {% elif todo.recurrence == 'monthly' %}
+                            {{ t.recurrence_monthly }}
+                        {% else %}
+                            {{ todo.recurrence }}
+                        {% endif %}
+                    </span>
+                {% endif %}
                 {% if todo.due %}
                     <span class="due">
                         {{ t.due }} 

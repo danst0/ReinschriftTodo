@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use crate::i18n::t;
 use anyhow::{anyhow, bail, Context, Result};
-use chrono::{Local, NaiveDate};
+use chrono::{Datelike, Duration, Local, NaiveDate};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::blocking::Client;
@@ -52,6 +52,7 @@ static CONTEXT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"@([^\s]+)").unwrap())
 static DUE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"due:(\d{4}-\d{2}-\d{2})").unwrap());
 static ID_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\^([A-Za-z0-9]+)").unwrap());
 static COMPLETION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s✅\s\d{4}-\d{2}-\d{2}").unwrap());
+static RECUR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"rec:([^\s]+)").unwrap());
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TodoKey {
@@ -68,6 +69,7 @@ pub struct TodoItem {
     pub context: Option<String>,
     pub due: Option<NaiveDate>,
     pub reference: Option<String>,
+    pub recurrence: Option<String>,
     pub done: bool,
 }
 
@@ -347,19 +349,29 @@ pub fn add_todo(title: &str) -> Result<()> {
     if title.is_empty() {
         bail!(t("title_empty_error"));
     }
+    let today = Local::now().date_naive();
+    let line = format!("- [ ] {} due:{}", title, today.format("%Y-%m-%d"));
+    insert_line(line)
+}
 
+pub fn add_todo_full(item: &TodoItem) -> Result<()> {
+    let mut clone = item.clone();
+    clone.done = false;
+    clone.key = TodoKey { line_index: 0, marker: None };
+    let line = render_line(&clone)?;
+    insert_line(line)
+}
+
+fn insert_line(line: String) -> Result<()> {
     let content = read_content()?;
-    let mut lines: Vec<String> = content.lines().map(|line| line.to_string()).collect();
+    let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
 
     let insert_index = lines
         .iter()
-        .position(|line| line.trim() == "---")
+        .position(|l| l.trim() == "---")
         .unwrap_or(lines.len());
-    let today = Local::now().date_naive();
-    lines.insert(
-        insert_index,
-        format!("- [ ] {} due:{}", title, today.format("%Y-%m-%d")),
-    );
+
+    lines.insert(insert_index, line);
 
     let mut output = lines.join("\n");
     if content.ends_with('\n') {
@@ -367,7 +379,6 @@ pub fn add_todo(title: &str) -> Result<()> {
     }
 
     write_content(output)?;
-
     Ok(())
 }
 
@@ -387,6 +398,7 @@ fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> 
     let project = capture_token(&PROJECT_RE, rest);
     let context = capture_token(&CONTEXT_RE, rest);
     let due = capture_token(&DUE_RE, rest).and_then(|value| NaiveDate::parse_from_str(&value, "%Y-%m-%d").ok());
+    let recurrence = capture_token(&RECUR_RE, rest);
     let reference = capture_token(&LINK_RE, rest);
     let marker = capture_token(&ID_RE, rest);
 
@@ -401,6 +413,7 @@ fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> 
         context,
         due,
         reference,
+        recurrence,
         done,
     })
 }
@@ -412,7 +425,7 @@ fn capture_token(regex: &Regex, text: &str) -> Option<String> {
 }
 
 fn extract_title(rest: &str) -> String {
-    const MARKERS: [&str; 12] = [" +", " @", " due:", " [[", " ✅", " ^", "+", "@", "due:", "[[", "✅", "^"];
+    const MARKERS: [&str; 14] = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", "+", "@", "due:", "rec:", "[[", "✅", "^"];
     let mut cut = rest.len();
     for marker in MARKERS {
         if let Some(idx) = rest.find(marker) {
@@ -497,6 +510,31 @@ fn rewrite_line(line: &str, done: bool) -> Result<String> {
     Ok(updated)
 }
 
+fn add_months(date: NaiveDate, months: i32) -> Option<NaiveDate> {
+    let total_months = date.year() * 12 + (date.month0() as i32) + months;
+    let new_year = total_months.div_euclid(12);
+    let new_month0 = total_months.rem_euclid(12);
+    let new_month = (new_month0 + 1) as u32;
+
+    // Find last valid day of target month
+    let last_day = (28..=31)
+        .rev()
+        .find_map(|d| NaiveDate::from_ymd_opt(new_year, new_month, d))?;
+
+    let day = date.day().min(last_day.day());
+    NaiveDate::from_ymd_opt(new_year, new_month, day)
+}
+
+pub fn next_due_date(current_due: Option<NaiveDate>, rule: &str) -> Option<NaiveDate> {
+    let base = current_due.unwrap_or_else(|| Local::now().date_naive());
+    match rule.to_lowercase().as_str() {
+        "daily" => base.checked_add_signed(chrono::Duration::days(1)),
+        "weekly" => base.checked_add_signed(chrono::Duration::days(7)),
+        "monthly" => add_months(base, 1),
+        _ => None,
+    }
+}
+
 fn render_line(item: &TodoItem) -> Result<String> {
     let title = item.title.trim();
     if title.is_empty() {
@@ -514,6 +552,9 @@ fn render_line(item: &TodoItem) -> Result<String> {
     }
     if let Some(due) = item.due {
         parts.push(format!("due:{}", due.format("%Y-%m-%d")));
+    }
+    if let Some(recur) = normalize_token(item.recurrence.as_deref()) {
+        parts.push(format!("rec:{recur}"));
     }
     if let Some(reference) = normalize_reference(item.reference.as_deref()) {
         parts.push(format!("[[{reference}]]"));
@@ -602,7 +643,7 @@ fn rewrite_due(line: &str, new_due: NaiveDate) -> Result<String> {
 }
 
 fn insert_due_segment(line: &str, segment: &str) -> String {
-    const MARKERS: [&str; 5] = [" +", " @", " [[", " ✅", " ^"];
+    const MARKERS: [&str; 6] = [" +", " @", " rec:", " [[", " ✅", " ^"];
     let mut insert_at = line.len();
     for marker in MARKERS {
         if let Some(idx) = line.find(marker) {
