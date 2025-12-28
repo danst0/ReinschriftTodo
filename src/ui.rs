@@ -745,7 +745,7 @@ struct AppState {
     search_term: RefCell<String>,
     list_view: RefCell<Option<gtk::ListView>>,
     is_recording: Arc<AtomicBool>,
-    debug_mode: bool,
+    _debug_mode: bool,
 }
 
 impl AppState {
@@ -804,7 +804,7 @@ impl AppState {
             search_term: RefCell::new(String::new()),
             list_view: RefCell::new(None),
             is_recording: Arc::new(AtomicBool::new(false)),
-            debug_mode,
+            _debug_mode: debug_mode,
         }
     }
 
