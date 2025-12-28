@@ -2127,11 +2127,20 @@ impl AppState {
         let context_entry_save = context_entry.clone();
         let due_entry_save = due_entry.clone();
         let done_check_save = done_check.clone();
+        let comment_entry_save = comment_entry.clone();
+        let comment_row_save = comment_row.clone();
         save_btn.connect_clicked(move |_| {
-            let title_text = title_entry_save.text().trim().to_string();
+            let mut title_text = title_entry_save.text().trim().to_string();
             if title_text.is_empty() {
                 state_for_save.show_error(&t("title_empty_error"));
                 return;
+            }
+
+            if comment_row_save.is_visible() {
+                let comment = comment_entry_save.text().trim().to_string();
+                if !comment.is_empty() {
+                    title_text = format!("{} ({})", title_text, comment);
+                }
             }
 
             let project_text = project_entry_save.text().trim().to_string();
@@ -2176,71 +2185,15 @@ impl AppState {
             }
         });
 
-        let dialog_close_comment = dialog.clone();
-        let state_for_close_comment = Rc::clone(self);
-        let base_item_close = todo.clone();
-        let title_entry_close = title_entry.clone();
-        let project_entry_close = project_entry.clone();
-        let context_entry_close = context_entry.clone();
-        let due_entry_close = due_entry.clone();
         let comment_entry_close = comment_entry.clone();
         let comment_row_close = comment_row.clone();
         let close_btn_ref = close_with_comment_btn.clone();
+        let done_check_close = done_check.clone();
         close_with_comment_btn.connect_clicked(move |_| {
-            if !comment_row_close.is_visible() {
-                comment_row_close.set_visible(true);
-                comment_entry_close.grab_focus();
-                close_btn_ref.add_css_class("suggested-action");
-                return;
-            }
-
-            let comment = comment_entry_close.text().trim().to_string();
-            if comment.is_empty() {
-                return;
-            }
-
-            let title_text = title_entry_close.text().trim().to_string();
-            let full_title = format!("{} ({})", title_text, comment);
-
-            let project_text = project_entry_close.text().trim().to_string();
-            let project_value = if project_text.is_empty() {
-                None
-            } else {
-                Some(project_text)
-            };
-
-            let context_text = context_entry_close.text().trim().to_string();
-            let context_value = if context_text.is_empty() {
-                None
-            } else {
-                Some(context_text)
-            };
-
-            let due_text = due_entry_close.text().trim().to_string();
-            let due_value = if due_text.is_empty() {
-                None
-            } else {
-                match NaiveDate::parse_from_str(&due_text, "%Y-%m-%d") {
-                    Ok(date) => Some(date),
-                    Err(_) => {
-                        state_for_close_comment.show_error(&t("invalid_date_error"));
-                        return;
-                    }
-                }
-            };
-
-            let mut updated = base_item_close.clone();
-            updated.title = full_title;
-            updated.project = project_value;
-            updated.context = context_value;
-            updated.due = due_value;
-            updated.done = true;
-
-            if let Err(err) = state_for_close_comment.save_item(&updated) {
-                state_for_close_comment.show_error(&t("save_task_error").replace("{}", &err.to_string()));
-            } else {
-                dialog_close_comment.close();
-            }
+            comment_row_close.set_visible(true);
+            comment_entry_close.grab_focus();
+            done_check_close.set_active(true);
+            close_btn_ref.set_sensitive(false);
         });
 
         dialog.present();
