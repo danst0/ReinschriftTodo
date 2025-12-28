@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use crate::i18n::t;
 use anyhow::{anyhow, bail, Context, Result};
-use chrono::{Datelike, Duration, Local, NaiveDate};
+use chrono::{Datelike, Local, NaiveDate};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::blocking::Client;
