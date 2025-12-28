@@ -316,6 +316,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     content.append(&overlay);
 
     let list_view = create_list_view(&state);
+    *state.list_view.borrow_mut() = Some(list_view.clone());
     let scrolled = gtk::ScrolledWindow::builder()
         .child(&list_view)
         .vexpand(true)
@@ -719,7 +720,9 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         }
     });
 
-    let model = gtk::NoSelection::new(Some(state.store()));
+    let model = gtk::SingleSelection::new(Some(state.store()));
+    model.set_autoselect(false);
+    model.set_can_unselect(true);
     let list_view = gtk::ListView::new(Some(model), Some(factory));
     list_view.set_single_click_activate(true);
     let activate_state = state_weak.clone();
@@ -740,6 +743,7 @@ struct AppState {
     window: glib::WeakRef<adw::ApplicationWindow>,
     preferences: RefCell<Preferences>,
     search_term: RefCell<String>,
+    list_view: RefCell<Option<gtk::ListView>>,
     is_recording: Arc<AtomicBool>,
     debug_mode: bool,
 }
@@ -798,6 +802,7 @@ impl AppState {
             window: window.downgrade(),
             preferences: RefCell::new(prefs),
             search_term: RefCell::new(String::new()),
+            list_view: RefCell::new(None),
             is_recording: Arc::new(AtomicBool::new(false)),
             debug_mode,
         }
@@ -1730,6 +1735,25 @@ impl AppState {
     }
 
     fn repopulate_store(&self) {
+        let mut selected_key = None;
+        if let Some(list_view) = self.list_view.borrow().as_ref() {
+            if let Some(model) = list_view.model() {
+                if let Ok(selection) = model.downcast::<gtk::SingleSelection>() {
+                    let pos = selection.selected();
+                    if pos != gtk::INVALID_LIST_POSITION {
+                        if let Some(obj) = self.store.item(pos) {
+                            if let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
+                                let entry = boxed.borrow::<ListEntry>();
+                                if let ListEntry::Item(todo) = &*entry {
+                                    selected_key = Some(todo.key.clone());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let search_term = self.search_term.borrow().to_lowercase();
         let mut items = self.cached_items.borrow().clone();
         self.sort_items(&mut items);
@@ -1808,6 +1832,29 @@ impl AppState {
                 self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("search_results_done"))));
                 for item in done_results_filtered {
                     self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                }
+            }
+        }
+
+        if let Some(key) = selected_key {
+            if let Some(list_view) = self.list_view.borrow().as_ref() {
+                if let Some(model) = list_view.model() {
+                    if let Ok(selection) = model.downcast::<gtk::SingleSelection>() {
+                        for i in 0..self.store.n_items() {
+                            if let Some(obj) = self.store.item(i) {
+                                if let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
+                                    let entry = boxed.borrow::<ListEntry>();
+                                    if let ListEntry::Item(todo) = &*entry {
+                                        if todo.key == key {
+                                            selection.set_selected(i);
+                                            list_view.scroll_to(i, gtk::ListScrollFlags::NONE, None);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
