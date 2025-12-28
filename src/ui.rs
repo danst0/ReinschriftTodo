@@ -322,6 +322,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         .vexpand(true)
         .hexpand(true)
         .build();
+    *state.scrolled_window.borrow_mut() = Some(scrolled.clone());
     overlay.set_child(Some(&scrolled));
 
     let toolbar_view = adw::ToolbarView::new();
@@ -744,6 +745,7 @@ struct AppState {
     preferences: RefCell<Preferences>,
     search_term: RefCell<String>,
     list_view: RefCell<Option<gtk::ListView>>,
+    scrolled_window: RefCell<Option<gtk::ScrolledWindow>>,
     is_recording: Arc<AtomicBool>,
     _debug_mode: bool,
 }
@@ -803,6 +805,7 @@ impl AppState {
             preferences: RefCell::new(prefs),
             search_term: RefCell::new(String::new()),
             list_view: RefCell::new(None),
+            scrolled_window: RefCell::new(None),
             is_recording: Arc::new(AtomicBool::new(false)),
             _debug_mode: debug_mode,
         }
@@ -1736,6 +1739,14 @@ impl AppState {
 
     fn repopulate_store(&self) {
         let mut selected_key = None;
+        let mut scroll_pos = None;
+
+        if let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
+            if let Some(adj) = scrolled.vadjustment() {
+                scroll_pos = Some(adj.value());
+            }
+        }
+
         if let Some(list_view) = self.list_view.borrow().as_ref() {
             if let Some(model) = list_view.model() {
                 if let Ok(selection) = model.downcast::<gtk::SingleSelection>() {
@@ -1836,6 +1847,8 @@ impl AppState {
             }
         }
 
+        let mut restored = false;
+
         if let Some(key) = selected_key {
             if let Some(list_view) = self.list_view.borrow().as_ref() {
                 if let Some(model) = list_view.model() {
@@ -1848,12 +1861,24 @@ impl AppState {
                                         if todo.key == key {
                                             selection.set_selected(i);
                                             list_view.scroll_to(i, gtk::ListScrollFlags::NONE, None);
+                                            restored = true;
                                             break;
                                         }
                                     }
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        if !restored {
+            if let Some(pos) = scroll_pos {
+                if let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
+                    if let Some(adj) = scrolled.vadjustment() {
+                        let max = (adj.upper() - adj.page_size()).max(0.0);
+                        adj.set_value(pos.min(max));
                     }
                 }
             }
