@@ -44,7 +44,8 @@
         <ul>
           <li>UI: Disable 'Close with comment' button after click and handle comment in save button</li>
         </ul>
-      </release>
+      </description>
+    </release>
     <release version="0.9.5" date="2025-12-27">
       <description>
         <ul>
