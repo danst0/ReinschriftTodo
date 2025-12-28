@@ -1936,7 +1936,6 @@ impl AppState {
         }
 
         let language = self.whisper_language();
-        let debug_mode = self.debug_mode;
 
         std::thread::spawn(move || {
             let host = cpal::default_host();
