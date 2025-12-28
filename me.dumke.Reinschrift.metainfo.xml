@@ -39,6 +39,12 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.6" date="2025-12-28">
+      <description>
+        <ul>
+          <li>UI: Disable 'Close with comment' button after click and handle comment in save button</li>
+        </ul>
+      </release>
     <release version="0.9.5" date="2025-12-27">
       <description>
         <ul>
