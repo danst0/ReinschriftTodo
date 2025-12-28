@@ -1742,9 +1742,8 @@ impl AppState {
         let mut scroll_pos = None;
 
         if let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
-            if let Some(adj) = scrolled.vadjustment() {
-                scroll_pos = Some(adj.value());
-            }
+            let adj = scrolled.vadjustment();
+            scroll_pos = Some(adj.value());
         }
 
         if let Some(list_view) = self.list_view.borrow().as_ref() {
@@ -1876,10 +1875,9 @@ impl AppState {
         if !restored {
             if let Some(pos) = scroll_pos {
                 if let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
-                    if let Some(adj) = scrolled.vadjustment() {
-                        let max = (adj.upper() - adj.page_size()).max(0.0);
-                        adj.set_value(pos.min(max));
-                    }
+                    let adj = scrolled.vadjustment();
+                    let max = (adj.upper() - adj.page_size()).max(0.0);
+                    adj.set_value(pos.min(max));
                 }
             }
         }
