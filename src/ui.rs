@@ -17,7 +17,6 @@ use glib::{clone, BoxedAnyObject};
 use gtk::gdk;
 use gtk::gio;
 use gtk::{AlertDialog, FileDialog, FileFilter};
-use gtk::Expression;
 use gtk::gio::prelude::*;
 use gtk::glib;
 use gtk::pango;
@@ -2178,7 +2177,7 @@ impl AppState {
         recurrence_list.append(&t("recurrence_daily"));
         recurrence_list.append(&t("recurrence_weekly"));
         recurrence_list.append(&t("recurrence_monthly"));
-        let recurrence_dropdown = gtk::DropDown::new(Some(&recurrence_list), None::<&gtk::Expression>);
+        let recurrence_dropdown = gtk::DropDown::new(Some(recurrence_list.clone()), None::<&gtk::Expression>);
         let rec_index = todo
             .recurrence
             .as_deref()
