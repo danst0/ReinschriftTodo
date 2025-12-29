@@ -1352,7 +1352,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.8.2", t("version")))
+            .label(&format!("{} 0.9.12", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -1903,8 +1903,11 @@ impl AppState {
             if let Some(pos) = scroll_pos {
                 if let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
                     let adj = scrolled.vadjustment();
-                    let max = (adj.upper() - adj.page_size()).max(0.0);
-                    adj.set_value(pos.min(max));
+                    glib::idle_add_local(move || {
+                        let max = (adj.upper() - adj.page_size()).max(0.0);
+                        adj.set_value(pos.min(max));
+                        glib::ControlFlow::Break
+                    });
                 }
             }
         }
