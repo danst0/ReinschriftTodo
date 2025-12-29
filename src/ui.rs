@@ -127,7 +127,7 @@ fn schedule_poll(state: Rc<AppState>, interval: u32) {
 
 pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     let provider = gtk::CssProvider::new();
-    provider.load_from_data(
+    provider.load_from_string(
         "@keyframes pulse {
             0% { opacity: 1.0; }
             50% { opacity: 0.3; }
@@ -1015,63 +1015,6 @@ impl AppState {
         );
     }
 
-    fn choose_database_file(
-        self: &Rc<Self>,
-        parent: &impl IsA<gtk::Window>,
-        on_success: Option<Rc<dyn Fn(PathBuf)>>,
-    ) {
-        let mut builder = FileDialog::builder()
-            .title("Datenbankdatei auswählen")
-            .modal(true);
-
-        if let Some(folder) = data::todo_path().parent() {
-            let folder_file = gio::File::for_path(folder);
-            builder = builder.initial_folder(&folder_file);
-        }
-
-        if let Some(name) = data::todo_path().file_name().and_then(|n| n.to_str()) {
-            builder = builder.initial_name(name);
-        }
-
-        let markdown_filter = FileFilter::new();
-        markdown_filter.set_name(Some("Markdown-Dateien"));
-        markdown_filter.add_pattern("*.md");
-        let filters = gio::ListStore::new::<FileFilter>();
-        filters.append(&markdown_filter);
-        let builder = builder
-            .filters(&filters)
-            .default_filter(&markdown_filter)
-            .accept_label("Auswählen");
-
-        let dialog = builder.build();
-        let callback = on_success.clone();
-
-        dialog.open(
-            Some(parent),
-            Option::<&gio::Cancellable>::None,
-            clone!(@strong self as state => move |result| {
-                match result {
-                    Ok(file) => {
-                        if let Some(path) = file.path() {
-                            let path_buf = path;
-                            if state.set_database_path(path_buf.clone()) {
-                                if let Some(cb) = callback.clone() {
-                                    cb(path_buf);
-                                }
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        if err.matches(gio::IOErrorEnum::Cancelled) {
-                            return;
-                        }
-                        state.show_error(&format!("Datei konnte nicht gewählt werden: {err}"));
-                    }
-                }
-            }),
-        );
-    }
-
     fn show_cheatsheet(self: &Rc<Self>) {
         let Some(parent) = self.window.upgrade() else {
             self.show_error(&t("no_window"));
@@ -1422,7 +1365,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.9.21", t("version")))
+            .label(&format!("{} 0.9.22", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -1458,53 +1401,6 @@ impl AppState {
         info_group.add(&license_row);
 
         dialog.present();
-    }
-
-    fn set_database_path(self: &Rc<Self>, path: PathBuf) -> bool {
-        if !path.exists() {
-            self.show_error(&t("file_not_exists"));
-            return false;
-        }
-
-        let canonical = match path.canonicalize() {
-            Ok(p) => p,
-            Err(err) => {
-                self.show_error(&t("open_path_error").replace("{}", &err.to_string()));
-                return false;
-            }
-        };
-
-        let previous = data::todo_path();
-        if previous == canonical {
-            self.show_info(&t("file_already_active"));
-            return false;
-        }
-
-        data::set_todo_path(canonical.clone());
-        if let Err(err) = self.reload() {
-            data::set_todo_path(previous);
-            if let Err(rollback_err) = self.reload() {
-                eprintln!("{}", t("rollback_failed").replace("{}", &rollback_err.to_string()));
-            }
-            self.show_error(&t("load_error").replace("{}", &err.to_string()));
-            return false;
-        }
-
-        {
-            let mut prefs = self.preferences.borrow_mut();
-            prefs.db_path = Some(canonical.to_string_lossy().into_owned());
-        }
-        self.persist_preferences();
-
-        if let Some(old_monitor) = self.monitor.borrow_mut().take() {
-            drop(old_monitor);
-        }
-        if let Err(err) = self.install_monitor() {
-            self.show_error(&t("monitor_error").replace("{}", &err.to_string()));
-        }
-
-        self.show_info(&t("using_file").replace("{}", &canonical.display().to_string()));
-        true
     }
 
     fn set_show_completed(&self, show: bool) {
