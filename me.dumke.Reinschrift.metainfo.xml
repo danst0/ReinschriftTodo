@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.15" date="2025-12-29">
+      <description>
+        <ul>
+          <li>New: Use Esc key to exit sub-windows and revealers</li>
+          <li>Fix: Improved plus key shortcut compatibility</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.14" date="2025-12-29">
       <description>
         <ul>

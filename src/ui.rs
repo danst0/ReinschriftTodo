@@ -196,6 +196,23 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     new_entry.set_hexpand(true);
     new_row.append(&new_entry);
 
+    let search_btn_for_stop = search_btn.clone();
+    search_entry.connect_stop_search(move |_| {
+        search_btn_for_stop.set_active(false);
+    });
+
+    let add_task_btn_for_esc = add_task_btn.clone();
+    let new_entry_key_controller = gtk::EventControllerKey::new();
+    new_entry_key_controller.connect_key_pressed(move |_, key, _, _| {
+        if key == gdk::Key::Escape {
+            add_task_btn_for_esc.set_active(false);
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    new_entry.add_controller(new_entry_key_controller);
+
     let voice_btn = gtk::Button::builder()
         .icon_name("audio-input-microphone-symbolic")
         .tooltip_text(&t("voice"))
@@ -545,7 +562,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                     let _ = state.set_due_today(&todo);
                     return glib::Propagation::Stop;
                 }
-                gdk::Key::plus | gdk::Key::KP_Add => {
+                gdk::Key::plus | gdk::Key::KP_Add | gdk::Key::asterisk | gdk::Key::KP_Multiply => {
                     let _ = state.set_due_in_days(&todo, 1);
                     return glib::Propagation::Stop;
                 }
@@ -1043,6 +1060,18 @@ impl AppState {
             .build();
         dialog.set_destroy_with_parent(true);
 
+        let key_controller = gtk::EventControllerKey::new();
+        let dialog_clone = dialog.clone();
+        key_controller.connect_key_pressed(move |_, keyval, _, _| {
+            if keyval == gdk::Key::Escape {
+                dialog_clone.close();
+                glib::Propagation::Stop
+            } else {
+                glib::Propagation::Proceed
+            }
+        });
+        dialog.add_controller(key_controller);
+
         let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
         content.set_margin_top(24);
         content.set_margin_bottom(24);
@@ -1367,7 +1396,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.9.12", t("version")))
+            .label(&format!("{} 0.9.15", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -2141,6 +2170,18 @@ impl AppState {
             .default_width(420)
             .build();
         dialog.set_destroy_with_parent(true);
+
+        let key_controller = gtk::EventControllerKey::new();
+        let dialog_clone = dialog.clone();
+        key_controller.connect_key_pressed(move |_, keyval, _, _| {
+            if keyval == gdk::Key::Escape {
+                dialog_clone.close();
+                glib::Propagation::Stop
+            } else {
+                glib::Propagation::Proceed
+            }
+        });
+        dialog.add_controller(key_controller);
 
         let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
         content.set_margin_top(16);
