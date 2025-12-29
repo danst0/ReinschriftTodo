@@ -21,11 +21,8 @@ pub enum BackendConfig {
 }
 
 static BACKEND_CONFIG: Lazy<Mutex<BackendConfig>> = Lazy::new(|| {
-    let configured = env::var("TODOS_DB_PATH").unwrap_or_else(|_| {
-        let home = env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join("TodosDatenbank.md").to_string_lossy().to_string()
-    });
-    Mutex::new(BackendConfig::Local(PathBuf::from(configured)))
+    let configured = default_todo_path();
+    Mutex::new(BackendConfig::Local(configured))
 });
 
 pub fn set_backend_config(config: BackendConfig) {
@@ -39,12 +36,17 @@ pub fn get_backend_config() -> BackendConfig {
 }
 
 static TODO_PATH: Lazy<Mutex<PathBuf>> = Lazy::new(|| {
-    let configured = env::var("TODOS_DB_PATH").unwrap_or_else(|_| {
-        let home = env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join("TodosDatenbank.md").to_string_lossy().to_string()
-    });
-    Mutex::new(PathBuf::from(configured))
+    Mutex::new(default_todo_path())
 });
+
+fn default_todo_path() -> PathBuf {
+    env::var("TODOS_DB_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            let home = env::var("HOME").unwrap_or_else(|_| ".".to_string());
+            PathBuf::from(home).join("TodosDatenbank.md")
+        })
+}
 
 static LINK_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[\[([^\]]+)\]\]").unwrap());
 static PROJECT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\+([^\s]+)").unwrap());
