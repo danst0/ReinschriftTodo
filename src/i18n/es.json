@@ -24,7 +24,7 @@
   "set_due_error": "No se pudo establecer el vencimiento: {}",
   "no_window": "No hay ventana disponible",
   "show_completed": "Mostrar tareas completadas",
-  "show_due_only_mode": "Mostrar solo pendientes (<= hoy)",
+  "show_due_only_mode": "Mostrar solo pendientes (hasta hoy)",
   "use_webdav": "Usar WebDAV",
   "database_file": "Archivo de base de datos",
   "select_file": "Seleccionar archivo…",

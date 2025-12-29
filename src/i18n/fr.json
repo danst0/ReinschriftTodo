@@ -29,7 +29,7 @@
   "set_due_error": "Impossible de régler l'échéance : {}",
   "no_window": "Aucune fenêtre disponible",
   "show_completed": "Afficher les tâches terminées",
-  "show_due_only_mode": "Afficher uniquement les échéances (<= aujourd'hui)",
+  "show_due_only_mode": "Afficher uniquement les échéances (jusqu'à aujourd'hui)",
   "use_webdav": "Utiliser WebDAV",
   "database_file": "Fichier de base de données",
   "select_file": "Sélectionner un fichier…",

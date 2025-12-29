@@ -29,7 +29,7 @@
   "set_due_error": "Kunde inte sätta förfallodatum: {}",
   "no_window": "Inget fönster tillgängligt",
   "show_completed": "Visa klara uppgifter",
-  "show_due_only_mode": "Visa endast förfallna (<= idag)",
+  "show_due_only_mode": "Visa endast förfallna (t.o.m. idag)",
   "use_webdav": "Använd WebDAV",
   "database_file": "Databasfil",
   "select_file": "Välj fil…",

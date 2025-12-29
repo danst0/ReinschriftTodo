@@ -28,7 +28,7 @@
   "set_due_error": "Konnte Fälligkeit setzen: {}",
   "no_window": "Kein Fenster verfügbar",
   "show_completed": "Erledigte Aufgaben anzeigen",
-  "show_due_only_mode": "Nur fällige (<= heute) anzeigen",
+  "show_due_only_mode": "Nur fällige (bis heute) anzeigen",
   "use_webdav": "WebDAV verwenden",
   "use_this_method": "Diese Methode verwenden",
   "database_file": "Datenbankdatei",

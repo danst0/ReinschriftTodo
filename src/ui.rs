@@ -331,14 +331,26 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
 
     window.set_content(Some(&toolbar_view));
 
-    // ESC-Taste zum Schließen der Revealer
+    // ESC-Taste zum Schließen der Revealer, ? für Hilfe, Ctrl+N/F für Aktionen
     let key_controller = gtk::EventControllerKey::new();
     let search_btn_esc = search_btn.clone();
     let add_task_btn_esc = add_task_btn.clone();
-    key_controller.connect_key_pressed(move |_, key, _, _| {
+    let state_for_keys = Rc::clone(&state);
+    key_controller.connect_key_pressed(move |_, key, _, modifiers| {
+        let has_ctrl = modifiers.contains(gdk::ModifierType::CONTROL_MASK);
+        
         if key == gdk::Key::Escape {
             search_btn_esc.set_active(false);
             add_task_btn_esc.set_active(false);
+            glib::Propagation::Stop
+        } else if key == gdk::Key::question && !has_ctrl {
+            state_for_keys.show_cheatsheet();
+            glib::Propagation::Stop
+        } else if has_ctrl && (key == gdk::Key::n || key == gdk::Key::N) {
+            add_task_btn_esc.set_active(!add_task_btn_esc.is_active());
+            glib::Propagation::Stop
+        } else if has_ctrl && (key == gdk::Key::f || key == gdk::Key::F) {
+            search_btn_esc.set_active(!search_btn_esc.is_active());
             glib::Propagation::Stop
         } else {
             glib::Propagation::Proceed

@@ -28,7 +28,7 @@
   "set_due_error": "Could not set due date: {}",
   "no_window": "No window available",
   "show_completed": "Show completed tasks",
-  "show_due_only_mode": "Show only due (<= today)",
+  "show_due_only_mode": "Show only due (until today)",
   "use_webdav": "Use WebDAV",
   "use_this_method": "Use this method",
   "database_file": "Database file",
