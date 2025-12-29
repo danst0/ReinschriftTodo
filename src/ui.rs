@@ -31,6 +31,7 @@ use crate::i18n::t;
 enum VoiceMsg {
     Error(String),
     Transcription(String),
+    Transcribing,
     Finished,
 }
 
@@ -125,6 +126,23 @@ fn schedule_poll(state: Rc<AppState>, interval: u32) {
 }
 
 pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
+    let provider = gtk::CssProvider::new();
+    provider.load_from_data(
+        "@keyframes pulse {
+            0% { opacity: 1.0; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1.0; }
+        }
+        .pulse {
+            animation: pulse 1s infinite;
+        }",
+    );
+    gtk::style_context_add_provider_for_display(
+        &gdk::Display::default().expect("Could not connect to a display."),
+        &provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title(&t("app_title"))
@@ -1404,7 +1422,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.9.16", t("version")))
+            .label(&format!("{} 0.9.21", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -2012,6 +2030,7 @@ impl AppState {
                         VoiceMsg::Error(e) => {
                             state_clone.show_error(&e);
                             voice_btn_clone.remove_css_class("destructive-action");
+                            voice_btn_clone.remove_css_class("pulse");
                             voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
                             state_clone.is_recording.store(false, AtomicOrdering::SeqCst);
                             finished = true;
@@ -2024,8 +2043,14 @@ impl AppState {
                                 entry_clone.set_text(&format!("{} {}", current, text));
                             }
                         }
+                        VoiceMsg::Transcribing => {
+                            voice_btn_clone.remove_css_class("destructive-action");
+                            voice_btn_clone.add_css_class("pulse");
+                            voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
+                        }
                         VoiceMsg::Finished => {
                             voice_btn_clone.remove_css_class("destructive-action");
+                            voice_btn_clone.remove_css_class("pulse");
                             voice_btn_clone.set_icon_name("audio-input-microphone-symbolic");
                             state_clone.is_recording.store(false, AtomicOrdering::SeqCst);
                             finished = true;
@@ -2125,6 +2150,7 @@ impl AppState {
             };
 
             println!("Starting transcription ({} samples, {}Hz, language: {})", samples_16k.len(), sample_rate, language);
+            let _ = sender.send(VoiceMsg::Transcribing);
 
             let ctx = match WhisperContext::new_with_params(
                 &model_path.to_string_lossy(),
