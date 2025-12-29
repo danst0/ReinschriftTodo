@@ -553,22 +553,25 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             
             let Some(state) = state_item_key.upgrade() else { return glib::Propagation::Proceed; };
             
+            let unicode = keyval.to_unicode();
             match keyval {
                 gdk::Key::space => {
                     let _ = state.toggle_item(&todo, !todo.done);
-                    return glib::Propagation::Stop;
+                    glib::Propagation::Stop
                 }
-                gdk::Key::t | gdk::Key::T => {
+                _ if unicode == Some('t') || unicode == Some('T') => {
                     let _ = state.set_due_today(&todo);
-                    return glib::Propagation::Stop;
+                    glib::Propagation::Stop
                 }
-                gdk::Key::plus | gdk::Key::KP_Add | gdk::Key::asterisk | gdk::Key::KP_Multiply => {
+                _ if unicode == Some('+') || unicode == Some('*') || unicode == Some('=') || 
+                     keyval == gdk::Key::plus || keyval == gdk::Key::KP_Add || 
+                     keyval == gdk::Key::asterisk || keyval == gdk::Key::KP_Multiply => {
                     let _ = state.set_due_in_days(&todo, 1);
-                    return glib::Propagation::Stop;
+                    glib::Propagation::Stop
                 }
-                gdk::Key::s | gdk::Key::S => {
+                _ if unicode == Some('s') || unicode == Some('S') => {
                     let _ = state.set_due_sometimes(&todo);
-                    return glib::Propagation::Stop;
+                    glib::Propagation::Stop
                 }
                 _ => glib::Propagation::Proceed,
             }
@@ -1396,7 +1399,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.9.15", t("version")))
+            .label(&format!("{} 0.9.16", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
