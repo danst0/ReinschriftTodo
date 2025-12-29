@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.13" date="2025-12-29">
+      <description>
+        <ul>
+          <li>New: Only update the list if there have been changes (check every 10 seconds)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.12" date="2025-12-29">
       <description>
         <ul>

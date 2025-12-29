@@ -62,7 +62,7 @@ pub struct TodoKey {
     pub marker: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TodoItem {
     pub key: TodoKey,
     pub title: String,
@@ -87,6 +87,45 @@ pub fn set_todo_path(new_path: PathBuf) {
         *path = new_path.clone();
     }
     set_backend_config(BackendConfig::Local(new_path));
+}
+
+pub fn get_fingerprint() -> Result<String> {
+    let config = get_backend_config();
+    match config {
+        BackendConfig::Local(path) => {
+            let metadata = fs::metadata(&path)?;
+            let mtime = metadata.modified()?;
+            Ok(format!("{:?}", mtime))
+        }
+        BackendConfig::WebDav { url, path, username, password } => {
+            let client = Client::builder()
+                .timeout(std::time::Duration::from_secs(5))
+                .build()?;
+
+            let construct_url = |base: &str| -> String {
+                if let Some(p) = &path {
+                    format!("{}/{}", base.trim_end_matches('/'), p.trim_start_matches('/'))
+                } else {
+                    base.to_string()
+                }
+            };
+
+            let full_url = construct_url(&url);
+            let mut req = client.head(&full_url);
+            if let (Some(u), Some(p)) = (&username, &password) {
+                req = req.basic_auth(u, Some(p));
+            }
+            let resp = req.send()?;
+            if !resp.status().is_success() {
+                bail!("WebDAV error: {}", resp.status());
+            }
+            
+            let etag = resp.headers().get("etag").and_then(|v| v.to_str().ok()).unwrap_or("");
+            let last_mod = resp.headers().get("last-modified").and_then(|v| v.to_str().ok()).unwrap_or("");
+            
+            Ok(format!("{}-{}", etag, last_mod))
+        }
+    }
 }
 
 fn read_content() -> Result<String> {

@@ -112,7 +112,7 @@ fn default_whisper_language() -> String {
 
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
     glib::timeout_add_seconds_local(interval, clone!(@weak state => @default-return glib::ControlFlow::Break, move || {
-        let next_interval = match state.reload() {
+        let next_interval = match state.check_for_updates() {
             Ok(_) => 10,
             Err(e) => {
                 eprintln!("{}", t("auto_reload_error").replace("{}", &e.to_string()));
@@ -752,6 +752,7 @@ struct AppState {
     overlay: adw::ToastOverlay,
     monitor: RefCell<Option<gio::FileMonitor>>,
     cached_items: RefCell<Vec<TodoItem>>,
+    last_fingerprint: RefCell<Option<String>>,
     sort_mode: RefCell<SortMode>,
     window: glib::WeakRef<adw::ApplicationWindow>,
     preferences: RefCell<Preferences>,
@@ -820,6 +821,7 @@ impl AppState {
             scrolled_window: RefCell::new(None),
             is_recording: Arc::new(AtomicBool::new(false)),
             _debug_mode: debug_mode,
+            last_fingerprint: RefCell::new(None),
         }
     }
 
@@ -857,7 +859,20 @@ impl AppState {
     fn reload(&self) -> Result<()> {
         let items = data::load_todos()?;
         *self.cached_items.borrow_mut() = items;
+        if let Ok(fp) = data::get_fingerprint() {
+            *self.last_fingerprint.borrow_mut() = Some(fp);
+        }
         self.repopulate_store();
+        Ok(())
+    }
+
+    fn check_for_updates(&self) -> Result<()> {
+        let current_fp = data::get_fingerprint()?;
+        let last_fp = self.last_fingerprint.borrow().clone();
+
+        if Some(current_fp) != last_fp {
+            self.reload()?;
+        }
         Ok(())
     }
 
