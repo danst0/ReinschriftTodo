@@ -39,13 +39,10 @@ static TODO_PATH: Lazy<Mutex<PathBuf>> = Lazy::new(|| {
     Mutex::new(default_todo_path())
 });
 
-fn default_todo_path() -> PathBuf {
+pub fn default_todo_path() -> PathBuf {
     env::var("TODOS_DB_PATH")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            let home = env::var("HOME").unwrap_or_else(|_| ".".to_string());
-            PathBuf::from(home).join("TodosDatenbank.md")
-        })
+        .unwrap_or_else(|_| PathBuf::new())
 }
 
 static LINK_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[\[([^\]]+)\]\]").unwrap());
@@ -132,6 +129,9 @@ fn read_content() -> Result<String> {
     let config = get_backend_config();
     match config {
         BackendConfig::Local(path) => {
+            if path.as_os_str().is_empty() {
+                bail!(t("no_database_configured"));
+            }
              fs::read_to_string(&path)
                 .with_context(|| t("read_error").replace("{}", &path.display().to_string()))
         }

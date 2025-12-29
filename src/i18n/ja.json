@@ -77,6 +77,7 @@
   "build_ui_error": "UI の構築中にエラーが発生しました: {:?}",
   "app_exit_status": "アプリケーションがステータス {:?} で終了しました",
   "read_error": "{} を読み込めませんでした",
+  "no_database_configured": "データベースファイルが設定されていません。設定で選択または作成してください。",
   "write_error": "{} を書き込めませんでした",
   "connection_error": "'{}' への接続に失敗しました: {}",
   "no_section": "セクションなし",

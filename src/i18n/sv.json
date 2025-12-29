@@ -77,6 +77,7 @@
   "build_ui_error": "Fel vid uppbyggnad av gränssnitt: {:?}",
   "app_exit_status": "Programmet avslutades med status {:?}",
   "read_error": "Kunde inte läsa {}",
+  "no_database_configured": "Ingen databasfil konfigurerad. Välj eller skapa en i inställningarna.",
   "write_error": "Kunde inte skriva {}",
   "connection_error": "Anslutning till '{}' misslyckades: {}",
   "no_section": "Ingen sektion",

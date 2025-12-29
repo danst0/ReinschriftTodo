@@ -77,6 +77,7 @@
   "build_ui_error": "Fehler beim Aufbau der Oberfläche: {:?}",
   "app_exit_status": "Anwendung wurde mit Status {:?} beendet",
   "read_error": "Konnte {} nicht lesen",
+  "no_database_configured": "Keine Datenbankdatei konfiguriert. Bitte wählen oder erstellen Sie eine in den Einstellungen.",
   "write_error": "Konnte {} nicht schreiben",
   "connection_error": "Verbindung zu '{}' fehlgeschlagen: {}",
   "no_section": "Ohne Abschnitt",

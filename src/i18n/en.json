@@ -77,6 +77,7 @@
   "build_ui_error": "Error building UI: {:?}",
   "app_exit_status": "Application exited with status {:?}",
   "read_error": "Could not read {}",
+  "no_database_configured": "No database file configured. Please select or create one in the settings.",
   "write_error": "Could not write {}",
   "connection_error": "Connection to '{}' failed: {}",
   "no_section": "No section",

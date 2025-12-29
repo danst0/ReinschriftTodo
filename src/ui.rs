@@ -422,7 +422,13 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     window.present();
 
     if let Err(err) = state.reload() {
-        state.show_error(&format!("{}\n{}", t("load_error").replace("{}", &err.to_string()), t("select_valid_file")));
+        let err_msg = err.to_string();
+        let msg = if err_msg == t("no_database_configured") {
+            err_msg
+        } else {
+            format!("{}\n{}", t("load_error").replace("{}", &err_msg), t("select_valid_file"))
+        };
+        state.show_error(&msg);
         state.show_settings_dialog(None);
     }
 
@@ -804,16 +810,15 @@ impl AppState {
                  });
              }
         } else {
-            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-            let default_path = std::path::PathBuf::from(home).join("TodosDatenbank.md");
+            let default_path = data::default_todo_path();
             
-            if current_at_start != default_path {
+            if !current_at_start.as_os_str().is_empty() && current_at_start != default_path {
                 // Command line argument was used
                 prefs.db_path = Some(current_at_start.to_string_lossy().into_owned());
             } else if let Some(db_path) = prefs.db_path.clone() {
                 // No command line argument, use saved preference
                 data::set_todo_path(PathBuf::from(db_path));
-            } else {
+            } else if !current_at_start.as_os_str().is_empty() {
                 // No command line and no preference, use default
                 prefs.db_path = Some(current_at_start.to_string_lossy().into_owned());
             }

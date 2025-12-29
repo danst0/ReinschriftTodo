@@ -104,6 +104,7 @@
   "no_project": "Sin proyecto",
   "no_section": "Sin sección",
   "read_error": "No se pudo leer {}",
+  "no_database_configured": "No hay archivo de base de datos configurado. Por favor, seleccione o cree uno en los ajustes.",
   "rollback_failed": "Error al revertir: {}",
   "save": "Guardar",
   "save_task_error": "No se pudo guardar la tarea: {}",

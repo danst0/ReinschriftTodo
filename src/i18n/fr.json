@@ -77,6 +77,7 @@
   "build_ui_error": "Erreur lors de la construction de l'interface : {:?}",
   "app_exit_status": "L'application s'est terminée avec le statut {:?}",
   "read_error": "Impossible de lire {}",
+  "no_database_configured": "Aucun fichier de base de données configuré. Veuillez en sélectionner ou en créer un dans les paramètres.",
   "write_error": "Impossible d'écrire {}",
   "connection_error": "Connexion à '{}' échouée : {}",
   "no_section": "Sans section",
