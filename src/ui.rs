@@ -2124,8 +2124,11 @@ impl AppState {
 
             let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
             params.set_n_threads(4);
-            params.set_single_segment(true);
-            params.set_language(Some(&language));
+            if language != "auto" {
+                params.set_language(Some(&language));
+            } else {
+                params.set_language(None);
+            }
 
             let mut state_whisper = ctx.create_state().expect("failed to create state");
             if let Err(e) = state_whisper.full(params, &samples_16k) {

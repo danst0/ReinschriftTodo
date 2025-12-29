@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.19" date="2025-12-29">
+      <description>
+        <ul>
+          <li>Fix: Improved Whisper transcription language handling</li>
+          <li>Fix: Removed single segment restriction for longer voice recordings</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.18" date="2025-12-29">
       <description>
         <ul>
