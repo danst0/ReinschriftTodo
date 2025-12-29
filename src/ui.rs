@@ -2096,20 +2096,35 @@ impl AppState {
                 return;
             }
 
+            // Convert to mono if necessary
+            let channels = config.channels() as usize;
+            let mono_samples = if channels > 1 {
+                let mut mono = Vec::with_capacity(samples.len() / channels);
+                for chunk in samples.chunks_exact(channels) {
+                    let sum: f32 = chunk.iter().sum();
+                    mono.push(sum / channels as f32);
+                }
+                mono
+            } else {
+                samples
+            };
+
             // Resample to 16kHz if necessary (Whisper requirement)
             let sample_rate = config.sample_rate().0;
             let samples_16k = if sample_rate != 16000 {
                 let mut resampled = Vec::new();
                 let ratio = sample_rate as f32 / 16000.0;
                 let mut i = 0.0;
-                while i < samples.len() as f32 {
-                    resampled.push(samples[i as usize]);
+                while i < mono_samples.len() as f32 {
+                    resampled.push(mono_samples[i as usize]);
                     i += ratio;
                 }
                 resampled
             } else {
-                samples
+                mono_samples
             };
+
+            println!("Starting transcription ({} samples, {}Hz, language: {})", samples_16k.len(), sample_rate, language);
 
             let ctx = match WhisperContext::new_with_params(
                 &model_path.to_string_lossy(),

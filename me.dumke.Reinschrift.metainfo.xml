@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.20" date="2025-12-29">
+      <description>
+        <ul>
+          <li>Fix: Correctly handle multi-channel (stereo) audio for Whisper transcription</li>
+          <li>Debug: Added logging for transcription parameters</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.19" date="2025-12-29">
       <description>
         <ul>
