@@ -222,22 +222,37 @@ def rewrite_line(line, done):
 
 
 def next_due_date(current_due, rule):
-    base = current_due or datetime.now().date()
+    next_date = current_due or datetime.now().date()
+    today = datetime.now().date()
     rule_l = rule.lower()
-    if rule_l == 'daily':
-        return base + timedelta(days=1)
-    if rule_l == 'weekly':
-        return base + timedelta(days=7)
-    if rule_l == 'monthly':
-        # naive month increment
-        year = base.year + (base.month // 12)
-        month = base.month % 12 + 1
-        day = base.day
-        for d in range(31, 27, -1):
-            try:
-                return datetime(year, month, min(day, d)).date()
-            except ValueError:
-                continue
+    
+    while True:
+        if rule_l == 'daily':
+            next_date = next_date + timedelta(days=1)
+        elif rule_l == 'weekly':
+            next_date = next_date + timedelta(days=7)
+        elif rule_l == 'monthly':
+            # naive month increment
+            year = next_date.year + (next_date.month // 12)
+            month = next_date.month % 12 + 1
+            day = next_date.day
+            found = False
+            for d in range(31, 27, -1):
+                try:
+                    next_date = datetime(year, month, min(day, d)).date()
+                    found = True
+                    break
+                except ValueError:
+                    continue
+            if not found:
+                return None
+        else:
+            return None
+            
+        if next_date > today:
+            break
+            
+    return next_date
         return None
     return None
 
@@ -453,12 +468,6 @@ def toggle(line_index):
     if 'logged_in' not in session:
         return redirect(url_for('login'))
     
-    # We need to know if it's currently done or not.
-    # Ideally we pass the state, or we read it.
-    # For simplicity, let's read and flip.
-    # But wait, toggle_todo takes 'done' target state.
-    
-    # Let's just read the file again to check current state
     content = read_content()
     lines = content.splitlines()
     
@@ -466,7 +475,17 @@ def toggle(line_index):
         line = lines[line_index]
         is_done = "- [x]" in line or "- [X]" in line
         item = parse_line(line, line_index, "")
-        toggle_todo(line_index, not is_done)
+        
+        today = datetime.now().date()
+        if not is_done and item and item.get('recurrence') and item.get('due') and item['due'] < today:
+            # Option C: Update due date to today for historic recurring tasks
+            due_str = today.strftime('%Y-%m-%d')
+            new_line = re.sub(r'due:\d{4}-\d{2}-\d{2}', f'due:{due_str}', line)
+            lines[line_index] = new_line
+            write_content('\n'.join(lines) + '\n')
+            toggle_todo(line_index, True)
+        else:
+            toggle_todo(line_index, not is_done)
 
         if item and item.get('recurrence') and not is_done:
             next_due = next_due_date(item.get('due'), item['recurrence'])

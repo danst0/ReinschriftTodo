@@ -920,7 +920,18 @@ impl AppState {
     }
 
     fn toggle_item(&self, todo: &TodoItem, done: bool) -> Result<()> {
-        data::toggle_todo(&todo.key, done)?;
+        let today = Local::now().date_naive();
+        let is_historic = todo.due.map(|d| d < today).unwrap_or(false);
+        let is_recurring = todo.recurrence.is_some();
+
+        if done && is_historic && is_recurring {
+            let mut updated = todo.clone();
+            updated.due = Some(today);
+            updated.done = true;
+            data::update_todo_details(&updated)?;
+        } else {
+            data::toggle_todo(&todo.key, done)?;
+        }
 
         if done {
             if let Some(rule) = todo.recurrence.as_deref() {
@@ -1365,7 +1376,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.9.22", t("version")))
+            .label(&format!("{} 0.9.23", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);

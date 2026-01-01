@@ -30,7 +30,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        tag: v0.9.22
+        tag: v0.9.23
       - generated-sources.json
       - type: shell
         commands:

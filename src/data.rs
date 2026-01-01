@@ -567,13 +567,22 @@ fn add_months(date: NaiveDate, months: i32) -> Option<NaiveDate> {
 }
 
 pub fn next_due_date(current_due: Option<NaiveDate>, rule: &str) -> Option<NaiveDate> {
-    let base = current_due.unwrap_or_else(|| Local::now().date_naive());
-    match rule.to_lowercase().as_str() {
-        "daily" => base.checked_add_signed(chrono::Duration::days(1)),
-        "weekly" => base.checked_add_signed(chrono::Duration::days(7)),
-        "monthly" => add_months(base, 1),
-        _ => None,
+    let mut next = current_due.unwrap_or_else(|| Local::now().date_naive());
+    let today = Local::now().date_naive();
+
+    loop {
+        next = match rule.to_lowercase().as_str() {
+            "daily" => next.checked_add_signed(chrono::Duration::days(1))?,
+            "weekly" => next.checked_add_signed(chrono::Duration::days(7))?,
+            "monthly" => add_months(next, 1)?,
+            _ => return None,
+        };
+
+        if next > today {
+            break;
+        }
     }
+    Some(next)
 }
 
 fn render_line(item: &TodoItem) -> Result<String> {
