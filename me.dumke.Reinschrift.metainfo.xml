@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>me.dumke.Reinschrift</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>CC-BY-NC-SA-4.0</project_license>
+  <project_license>CC-BY-SA-4.0</project_license>
   <name>Reinschrift</name>
   <developer_name>Dr. Daniel Dumke</developer_name>
   <summary>Manage your todos in Markdown</summary>
@@ -21,12 +21,12 @@
   <launchable type="desktop-id">me.dumke.Reinschrift.desktop</launchable>
   <screenshots>
     <screenshot type="default">
-      <caption>The main window showing the todo list</caption>
-      <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_en_v0.2.1.png</image>
+      <caption xml:lang="en">The main window showing the todo list</caption>
+      <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_en.png</image>
     </screenshot>
     <screenshot>
-      <caption>Die Hauptansicht mit der Aufgabenliste</caption>
-      <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_de_v0.2.1.png</image>
+      <caption xml:lang="de">Die Hauptansicht mit der Aufgabenliste</caption>
+      <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_de.png</image>
     </screenshot>
   </screenshots>
   <url type="homepage">https://github.com/danst0/ReinschriftTodo</url>
@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.24" date="2026-01-02">
+      <description>
+        <ul>
+          <li>Metadata: Updated AppStream license and refreshed screenshots</li>
+          <li>Packaging: Added multi-size icons for better desktop integration</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.23" date="2026-01-01">
       <description>
         <ul>

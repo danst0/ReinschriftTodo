@@ -27,10 +27,13 @@ modules:
       - install -D me.dumke.Reinschrift.desktop /app/share/applications/me.dumke.Reinschrift.desktop
       - install -D me.dumke.Reinschrift.metainfo.xml /app/share/metainfo/me.dumke.Reinschrift.metainfo.xml
       - install -D icon/todos.png /app/share/icons/hicolor/512x512/apps/me.dumke.Reinschrift.png
+      - install -D icon/todos-256.png /app/share/icons/hicolor/256x256/apps/me.dumke.Reinschrift.png
+      - install -D icon/todos-128.png /app/share/icons/hicolor/128x128/apps/me.dumke.Reinschrift.png
+      - install -D icon/todos-64.png /app/share/icons/hicolor/64x64/apps/me.dumke.Reinschrift.png
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        tag: v0.9.23
+        tag: v0.9.24
       - generated-sources.json
       - type: shell
         commands:

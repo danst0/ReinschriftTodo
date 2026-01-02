@@ -1376,7 +1376,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.9.23", t("version")))
+            .label(&format!("{} 0.9.24", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
