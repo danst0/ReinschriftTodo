@@ -1407,7 +1407,7 @@ impl AppState {
 
         let license_row = adw::ActionRow::builder()
             .title(&t("license"))
-            .subtitle("CC-BY-NC-SA-4.0")
+            .subtitle("CC-BY-SA-4.0")
             .build();
         info_group.add(&license_row);
 

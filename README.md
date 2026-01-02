@@ -51,7 +51,7 @@ Login-Daten (konfigurierbar in `docker-compose.yml`):
 ## Erledigte Todos
 - [x] Esc closes the Preferences Window
 - [x] for the webapp please use long lifed cookies to prevent further needs for login
-- [x] Add a license CC BY NC SA
+- [x] Add a license CC BY SA
 - [x] add another way to connect to the database, via a direct connection to nextcloud via webdav. please add it as an option in the settings window
 - [x] remove the checkmark from the TodosDatenbank file
 - [x] add a simple Webapp with the same layout and functionality. Web App based on docker compose, python, flask, login based on user and password in docker compose env 

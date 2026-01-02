@@ -1,7 +1,8 @@
 [package]
 name = "reinschrift_todo"
-version = "0.9.30"
+version = "0.9.31"
 edition = "2024"
+license = "CC-BY-SA-4.0"
 
 [dependencies]
 adw = { version = "0.6", features = ["v1_4"], package = "libadwaita" }
