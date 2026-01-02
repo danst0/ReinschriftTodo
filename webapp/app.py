@@ -253,8 +253,6 @@ def next_due_date(current_due, rule):
             break
             
     return next_date
-        return None
-    return None
 
 def add_todo(title):
     content = read_content()
