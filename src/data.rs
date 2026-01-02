@@ -385,6 +385,10 @@ pub fn update_todo_details(item: &TodoItem) -> Result<()> {
     update_line(&item.key, |_| Ok(rendered))
 }
 
+pub fn delete_todo(item: &TodoItem) -> Result<()> {
+    delete_line(&item.key)
+}
+
 pub fn add_todo(title: &str) -> Result<()> {
     let title = title.trim();
     if title.is_empty() {
@@ -516,6 +520,32 @@ where
 
     let mut output = lines.join("\n");
     if had_trailing_newline {
+        output.push('\n');
+    }
+
+    write_content(output)?;
+
+    Ok(())
+}
+
+fn delete_line(key: &TodoKey) -> Result<()> {
+    let content = read_content()?;
+    let mut lines: Vec<String> = content.lines().map(|line| line.to_string()).collect();
+    let had_trailing_newline = content.ends_with('\n');
+
+    let mut target_index = None;
+    if let Some(marker) = &key.marker {
+        target_index = find_line_by_marker(&lines, marker);
+    }
+    if target_index.is_none() && key.line_index < lines.len() {
+        target_index = Some(key.line_index);
+    }
+
+    let index = target_index.ok_or_else(|| anyhow!(t("todo_not_found")))?;
+    lines.remove(index);
+
+    let mut output = lines.join("\n");
+    if had_trailing_newline && !output.is_empty() {
         output.push('\n');
     }
 

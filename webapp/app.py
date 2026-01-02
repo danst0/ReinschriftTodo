@@ -682,6 +682,20 @@ def edit(line_index):
         
     return render_template('edit.html', todo=item)
 
+@app.route('/delete/<int:line_index>', methods=['POST'])
+def delete(line_index):
+    if 'logged_in' not in session:
+        return redirect(url_for('login'))
+    
+    content = read_content()
+    lines = content.splitlines()
+    
+    if line_index < len(lines):
+        lines.pop(line_index)
+        write_content('\n'.join(lines) + '\n')
+    
+    return redirect(url_for('index'))
+
 @app.route('/api/todo/<int:line_index>')
 def get_todo_json(line_index):
     if 'logged_in' not in session:

@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.26" date="2026-01-02">
+      <description>
+        <ul>
+          <li>Feature: Added delete button to details view in Rust app and webapp</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.25" date="2026-01-02">
       <description>
         <ul>

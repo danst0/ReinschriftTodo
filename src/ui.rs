@@ -1376,7 +1376,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.9.25", t("version")))
+            .label(&format!("{} 0.9.26", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -2231,10 +2231,13 @@ impl AppState {
         let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         buttons.set_halign(gtk::Align::End);
         let cancel_btn = gtk::Button::with_label(&t("cancel"));
+        let delete_btn = gtk::Button::with_label(&t("delete"));
+        delete_btn.add_css_class("destructive-action");
         let close_with_comment_btn = gtk::Button::with_label(&t("close_with_comment"));
         let save_btn = gtk::Button::with_label(&t("save"));
         save_btn.add_css_class("suggested-action");
         buttons.append(&cancel_btn);
+        buttons.append(&delete_btn);
         buttons.append(&close_with_comment_btn);
         buttons.append(&save_btn);
         content.append(&buttons);
@@ -2243,6 +2246,16 @@ impl AppState {
         let dialog_cancel = dialog.clone();
         cancel_btn.connect_clicked(move |_| {
             dialog_cancel.close();
+        });
+
+        let dialog_delete = dialog.clone();
+        let state_delete = self.clone();
+        let todo_delete = todo.clone();
+        delete_btn.connect_clicked(move |_| {
+            if let Err(e) = data::delete_todo(&todo_delete) {
+                state_delete.show_error(&t("delete_error").replace("{}", &e.to_string()));
+            }
+            dialog_delete.close();
         });
 
         let due_entry_for_button = due_entry.clone();
