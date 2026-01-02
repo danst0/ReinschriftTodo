@@ -1,6 +1,6 @@
 [package]
 name = "reinschrift_todo"
-version = "0.9.26"
+version = "0.9.27"
 edition = "2024"
 
 [dependencies]
