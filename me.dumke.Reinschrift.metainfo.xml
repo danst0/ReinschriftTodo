@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.9.30" date="2026-01-02">
+      <description>
+        <ul>
+          <li>UI: Replaced delete button text with trashcan icon</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.29" date="2026-01-02">
       <description>
         <ul>

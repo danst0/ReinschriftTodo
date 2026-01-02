@@ -214,7 +214,7 @@
                 <div class="buttons">
                     <button type="submit" id="btn-save-main" class="btn-primary">{{ t.save }}</button>
                     <button type="button" id="btn-close-comment" class="btn-secondary" onclick="showCommentField()">{{ t.close_with_comment }}</button>
-                    <button type="button" id="btn-delete" class="btn-secondary" style="color: #e01b24;" onclick="deleteTodoFromModal()">{{ t.delete }}</button>
+                    <button type="button" id="btn-delete" class="btn-secondary" style="color: #e01b24;" onclick="deleteTodoFromModal()" title="{{ t.delete }}">🗑️</button>
                     <button type="button" class="btn-secondary" onclick="closeModal()">{{ t.cancel }}</button>
                 </div>
             </form>
@@ -296,7 +296,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; padding-top: 1rem;">
-            <p><strong>Reinschrift</strong> v0.9.29</p>
+            <p><strong>Reinschrift</strong> v0.9.30</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-NC-SA-4.0</p>
         </div>

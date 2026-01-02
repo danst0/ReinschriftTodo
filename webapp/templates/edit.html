@@ -89,7 +89,7 @@
         <div class="buttons">
             <button type="submit" class="btn-primary">{{ t.save }}</button>
             <button type="button" class="btn-action" id="close-with-comment-btn" onclick="showCommentField()" {% if todo.done %}style="display: none;"{% endif %}>{{ t.close_with_comment }}</button>
-            <button type="button" class="btn-action" style="color: #e01b24;" onclick="if(confirm('{{ t.delete }}?')) document.getElementById('delete-form').submit();">{{ t.delete }}</button>
+            <button type="button" class="btn-action" style="color: #e01b24;" onclick="if(confirm('{{ t.delete }}?')) document.getElementById('delete-form').submit();" title="{{ t.delete }}">🗑️</button>
             <a href="{{ url_for('index') }}" class="btn-secondary" style="text-decoration: none; display: inline-block; text-align: center;">{{ t.cancel }}</a>
         </div>
     </form>

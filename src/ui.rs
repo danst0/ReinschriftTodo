@@ -1376,7 +1376,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} 0.9.29", t("version")))
+            .label(&format!("{} 0.9.30", t("version")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -2231,8 +2231,11 @@ impl AppState {
         let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         buttons.set_halign(gtk::Align::End);
         let cancel_btn = gtk::Button::with_label(&t("cancel"));
-        let delete_btn = gtk::Button::with_label(&t("delete"));
-        delete_btn.add_css_class("destructive-action");
+        let delete_btn = gtk::Button::builder()
+            .icon_name("user-trash-symbolic")
+            .tooltip_text(&t("delete"))
+            .css_classes(["destructive-action"])
+            .build();
         let close_with_comment_btn = gtk::Button::with_label(&t("close_with_comment"));
         let save_btn = gtk::Button::with_label(&t("save"));
         save_btn.add_css_class("suggested-action");
