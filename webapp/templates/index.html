@@ -633,10 +633,15 @@
             .then(data => {
                 if (data.error) throw new Error(data.error);
                 
-                // Construct Reinschrift format
-                let formatted = data.title;
-                if (data.due) formatted += ` due:${data.due}`;
-                if (data.context) formatted += ` @${data.context.replace(/^@/, '')}`;
+                // Construct Reinschrift format with safety checks
+                let title = data.title || data.task || text;
+                let formatted = title;
+                if (data.due && data.due !== 'null' && data.due !== 'None') {
+                    formatted += ` due:${data.due}`;
+                }
+                if (data.context && data.context !== 'null' && data.context !== 'None') {
+                    formatted += ` @${data.context.replace(/^@/, '')}`;
+                }
                 
                 input.value = formatted;
                 input.style.backgroundColor = '#6c5ce733';

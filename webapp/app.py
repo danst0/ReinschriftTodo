@@ -760,9 +760,11 @@ def parse_nlp():
         "You are a specialized parser for todo items. "
         f"Today's date is {today}. "
         "Extract the 'title', 'due' date (in YYYY-MM-DD format), and 'context' (e.g., store, office). "
-        "If a due date is relative (like 'tomorrow'), calculate it relative to today. "
-        "Return ONLY a JSON object with keys: title, due, context. "
-        "If context or due date are missing, use null."
+        "IMPORTANT: You must return a valid JSON object. "
+        "The keys must be 'title', 'due', and 'context'. "
+        "If a due date is relative (like 'tomorrow' or 'next monday'), calculate it relative to today. "
+        "If 'due' date or 'context' are missing, set them to null. "
+        "Return ONLY the JSON object, NO other text."
     )
 
     try:
@@ -775,7 +777,18 @@ def parse_nlp():
         }, timeout=15)
         response.raise_for_status()
         result = response.json()
-        parsed = json.loads(result['response'])
+        raw_response = result['response'].strip()
+        
+        # Strip markdown code blocks if present
+        if raw_response.startswith("```"):
+            lines = raw_response.splitlines()
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            raw_response = "\n".join(lines).strip()
+            
+        parsed = json.loads(raw_response)
         return parsed
     except Exception as e:
         print(f"Ollama Error: {e}")
