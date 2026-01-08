@@ -268,7 +268,10 @@ def add_todo(title):
             break
     
     today = datetime.now().strftime("%Y-%m-%d")
-    new_line = f"- [ ] {title} due:{today}"
+    if DUE_RE.search(title):
+        new_line = f"- [ ] {title}"
+    else:
+        new_line = f"- [ ] {title} due:{today}"
     lines.insert(insert_index, new_line)
     
     write_content('\n'.join(lines) + '\n')
@@ -752,7 +755,7 @@ def parse_nlp():
         return {'error': 'No text provided'}, 400
 
     today = datetime.now().strftime("%Y-%m-%d")
-    OLLAMA_URL = "http://10.0.2.71:11434/api/generate"
+    OLLAMA_URL = os.environ.get('OLLAMA_URL', "http://10.0.2.71:11434/api/generate")
     # User mentioned qwen3:14b
     MODEL = os.environ.get('OLLAMA_MODEL', 'qwen3:14b') 
     
@@ -766,7 +769,8 @@ def parse_nlp():
         "3. For 'context', extract ONLY the identifier (e.g., from '@store' extract 'store').\n"
         "4. If 'due' or 'context' are missing, set them to null.\n"
         "5. If a due date is relative, calculate it from today.\n"
-        "6. Return ONLY the JSON object, NO other text or explanation."
+        "6. Use the language of the input text.\n"
+        "7. Return ONLY the JSON object, NO other text or explanation."
     )
 
     try:
