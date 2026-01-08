@@ -2,12 +2,17 @@ import os
 import re
 import json
 import time
+import logging
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, stream_with_context
 import requests
 from requests.auth import HTTPBasicAuth
 from flask_wtf.csrf import CSRFProtect
 from translations import TRANSLATIONS
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
@@ -752,12 +757,15 @@ def parse_nlp():
     data = request.get_json()
     text = data.get('text')
     if not text:
+        logger.warning("NLP Parse: No text provided")
         return {'error': 'No text provided'}, 400
 
+    logger.info(f"NLP Parse Request: {text}")
+
     today = datetime.now().strftime("%Y-%m-%d")
-    OLLAMA_URL = os.environ.get('OLLAMA_URL', "http://10.0.2.71:11434/api/generate")
+    OLLAMA_URL = os.environ.get('OLLAMA_URL', "http://localhost:11434/api/generate")
     # User mentioned qwen3:14b
-    MODEL = os.environ.get('OLLAMA_MODEL', 'qwen3:14b') 
+    MODEL = os.environ.get('OLLAMA_MODEL', 'qwen2.5:14b') 
     
     system_prompt = (
         "You are a specialized parser for todo items. "
@@ -774,6 +782,7 @@ def parse_nlp():
     )
 
     try:
+        logger.info(f"Sending request to Ollama ({OLLAMA_URL}) with model {MODEL}")
         response = requests.post(OLLAMA_URL, json={
             "model": MODEL,
             "prompt": text,
@@ -781,9 +790,12 @@ def parse_nlp():
             "stream": False,
             "format": "json"
         }, timeout=15)
+        
+        logger.info(f"Ollama response status: {response.status_code}")
         response.raise_for_status()
         result = response.json()
         raw_response = result['response'].strip()
+        logger.debug(f"Ollama raw response: {raw_response}")
         
         # Strip markdown code blocks if present
         if raw_response.startswith("```"):
@@ -795,9 +807,10 @@ def parse_nlp():
             raw_response = "\n".join(lines).strip()
             
         parsed = json.loads(raw_response)
+        logger.info(f"Parsed JSON: {parsed}")
         return parsed
     except Exception as e:
-        print(f"Ollama Error: {e}")
+        logger.error(f"Ollama Error: {e}", exc_info=True)
         return {'error': str(e)}, 500
 
 @app.route('/add', methods=['POST'])
