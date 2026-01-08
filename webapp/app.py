@@ -1,15 +1,18 @@
 import os
 import re
 import json
+import time
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, stream_with_context
 import requests
 from requests.auth import HTTPBasicAuth
+from flask_wtf.csrf import CSRFProtect
 from translations import TRANSLATIONS
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 app.permanent_session_lifetime = timedelta(days=30)
+csrf = CSRFProtect(app)
 
 def get_locale():
     # Check session first
@@ -461,7 +464,7 @@ def login():
             flash(TRANSLATIONS.get(lang, TRANSLATIONS['de'])['invalid_credentials'])
     return render_template('login.html')
 
-@app.route('/toggle/<int:line_index>')
+@app.route('/toggle/<int:line_index>', methods=['POST'])
 def toggle(line_index):
     if 'logged_in' not in session:
         return redirect(url_for('login'))
@@ -501,7 +504,7 @@ def toggle(line_index):
     
     return redirect(url_for('index'))
 
-@app.route('/postpone/<int:line_index>/<string:target>')
+@app.route('/postpone/<int:line_index>/<string:target>', methods=['POST'])
 def postpone(line_index, target):
     if 'logged_in' not in session:
         return redirect(url_for('login'))
@@ -715,6 +718,68 @@ def get_todo_json(line_index):
         item['due'] = item['due'].strftime("%Y-%m-%d")
         
     return item
+
+@app.route('/events')
+def events():
+    if 'logged_in' not in session:
+        return "Unauthorized", 401
+        
+    def event_stream():
+        # Track the last modification time of the file
+        last_mtime = os.path.getmtime(TODO_PATH) if os.path.exists(TODO_PATH) else 0
+        
+        while True:
+            # Check every 2 seconds to reduce CPU usage
+            time.sleep(2)
+            
+            if os.path.exists(TODO_PATH):
+                current_mtime = os.path.getmtime(TODO_PATH)
+                if current_mtime > last_mtime:
+                    last_mtime = current_mtime
+                    # SSE format requires "data: <message>\n\n"
+                    yield "data: refresh\n\n"
+            
+    return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
+
+@app.route('/api/parse', methods=['POST'])
+def parse_nlp():
+    if 'logged_in' not in session:
+        return {'error': 'Unauthorized'}, 401
+    
+    data = request.get_json()
+    text = data.get('text')
+    if not text:
+        return {'error': 'No text provided'}, 400
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    OLLAMA_URL = "http://10.0.2.71:11434/api/generate"
+    # User mentioned qwen3:14b
+    MODEL = os.environ.get('OLLAMA_MODEL', 'qwen3:14b') 
+    
+    system_prompt = (
+        "You are a specialized parser for todo items. "
+        f"Today's date is {today}. "
+        "Extract the 'title', 'due' date (in YYYY-MM-DD format), and 'context' (e.g., store, office). "
+        "If a due date is relative (like 'tomorrow'), calculate it relative to today. "
+        "Return ONLY a JSON object with keys: title, due, context. "
+        "If context or due date are missing, use null."
+    )
+
+    try:
+        response = requests.post(OLLAMA_URL, json={
+            "model": MODEL,
+            "prompt": text,
+            "system": system_prompt,
+            "stream": False,
+            "format": "json"
+        }, timeout=15)
+        response.raise_for_status()
+        result = response.json()
+        parsed = json.loads(result['response'])
+        return parsed
+    except Exception as e:
+        print(f"Ollama Error: {e}")
+        return {'error': str(e)}, 500
 
 @app.route('/add', methods=['POST'])
 def add():

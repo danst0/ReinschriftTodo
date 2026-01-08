@@ -22,6 +22,7 @@
             {% endif %}
         {% endwith %}
         <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="username" placeholder="{{ t.username }}" required>
             <input type="password" name="password" placeholder="{{ t.password }}" required>
             <button type="submit">{{ t.login }}</button>
