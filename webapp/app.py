@@ -763,7 +763,14 @@ def parse_nlp():
     logger.info(f"NLP Parse Request: {text}")
 
     today = datetime.now().strftime("%Y-%m-%d")
-    OLLAMA_URL = os.environ.get('OLLAMA_URL', "http://10.0.2.71:11434/api/generate")
+    
+    # Construct Chat API URL
+    base_url = os.environ.get('OLLAMA_URL', "http://10.0.2.71:11434/api/generate")
+    if "/api/generate" in base_url:
+        chat_url = base_url.replace("/api/generate", "/api/chat")
+    else:
+        chat_url = base_url.rstrip('/') + "/api/chat"
+
     # User mentioned qwen3:14b
     MODEL = os.environ.get('OLLAMA_MODEL', 'qwen3:14b') 
     
@@ -783,11 +790,13 @@ def parse_nlp():
     )
 
     try:
-        logger.info(f"Sending request to Ollama ({OLLAMA_URL}) with model {MODEL}")
-        response = requests.post(OLLAMA_URL, json={
+        logger.info(f"Sending request to Ollama ({chat_url}) with model {MODEL}")
+        response = requests.post(chat_url, json={
             "model": MODEL,
-            "prompt": text,
-            "system": system_prompt,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text}
+            ],
             "stream": False,
             "format": "json"
         }, timeout=15)
@@ -798,7 +807,7 @@ def parse_nlp():
         
         response.raise_for_status()
         result = response.json()
-        raw_response = result['response'].strip()
+        raw_response = result['message']['content'].strip()
         logger.info(f"Ollama raw response: {raw_response}")
         
         # Strip markdown code blocks if present
