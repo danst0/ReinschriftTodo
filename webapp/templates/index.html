@@ -275,7 +275,7 @@
     <form id="addForm" class="add-form collapsible-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post" style="gap: 0;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" id="add-input" name="title" placeholder="{{ t.new_task }}" required>
-        <button type="button" id="smart-btn" title="Smart Add (AI)" style="background: #6c5ce7; color: white; border: none; padding: 0.5rem; cursor: pointer;">✨</button>
+        <button type="button" id="smart-btn" onclick="handleSmartAdd(this)" title="Smart Add (AI)" style="background: #6c5ce7; color: white; border: none; padding: 0.5rem; cursor: pointer;">✨</button>
         <button type="button" id="voice-btn" class="voice-btn" title="{{ t.voice_input }}" style="display: none;">🎤</button>
         <button type="submit">{{ t.add }}</button>
     </form>
@@ -325,7 +325,52 @@
         </div>
     </div>
 
-    <script>
+    <script>        // Move AI Logic to the top for better availability
+        function handleSmartAdd(btn) {
+            console.log("Smart Add clicked");
+            const input = document.getElementById('add-input');
+            const text = input.value;
+            if (!text) return;
+
+            const originalText = btn.innerText;
+            btn.innerText = '⌛';
+            btn.disabled = true;
+
+            fetch("{{ url_for('parse_nlp') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({ text: text })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("HTTP error " + res.status);
+                return res.json();
+            })
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+                let title = data.title || data.task || text;
+                let formatted = title;
+                if (data.due && data.due !== 'null' && data.due !== 'None') {
+                    formatted += ` due:${data.due}`;
+                }
+                if (data.context && data.context !== 'null' && data.context !== 'None') {
+                    formatted += ` @${data.context.replace(/^@/, '')}`;
+                }
+                input.value = formatted;
+                input.style.backgroundColor = '#6c5ce733';
+                setTimeout(() => input.style.backgroundColor = '', 1000);
+            })
+            .catch(err => {
+                console.error("AI Error:", err);
+                alert("AI parsing failed: " + err.message);
+            })
+            .finally(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            });
+        }
         var modal = document.getElementById("editModal");
 
         function toggleTodo(event, lineIndex) {
@@ -600,62 +645,21 @@
         }
         
         // SSE implementation
-        const eventSource = new EventSource("{{ url_for('events') }}");
-        eventSource.onmessage = function(event) {
-            if (event.data === "refresh") {
-                autoReload();
-            }
-        };
-        eventSource.onerror = function(err) {
-            console.error("SSE connection lost", err);
-        };
-
-        // Smart Add Logic
-        document.getElementById('smart-btn').addEventListener('click', function() {
-            const input = document.getElementById('add-input');
-            const text = input.value;
-            if (!text) return;
-
-            const btn = this;
-            const originalText = btn.innerText;
-            btn.innerText = '⌛';
-            btn.disabled = true;
-
-            fetch("{{ url_for('parse_nlp') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': "{{ csrf_token() }}"
-                },
-                body: JSON.stringify({ text: text })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.error) throw new Error(data.error);
-                
-                // Construct Reinschrift format with safety checks
-                let title = data.title || data.task || text;
-                let formatted = title;
-                if (data.due && data.due !== 'null' && data.due !== 'None') {
-                    formatted += ` due:${data.due}`;
+        try {
+            const eventSource = new EventSource("{{ url_for('events') }}");
+            eventSource.onmessage = function(event) {
+                if (event.data === "refresh") {
+                    autoReload();
                 }
-                if (data.context && data.context !== 'null' && data.context !== 'None') {
-                    formatted += ` @${data.context.replace(/^@/, '')}`;
-                }
-                
-                input.value = formatted;
-                input.style.backgroundColor = '#6c5ce733';
-                setTimeout(() => input.style.backgroundColor = '', 1000);
-            })
-            .catch(err => {
-                console.error(err);
-                alert("AI parsing failed: " + err.message);
-            })
-            .finally(() => {
-                btn.innerText = originalText;
-                btn.disabled = false;
-            });
-        });
+            };
+            eventSource.onerror = function(err) {
+                console.error("SSE connection lost", err);
+            };
+        } catch (e) {
+            console.error("SSE initialization failed", e);
+        }
+
+        // Smart Add Logic (Function moved to top)
 
         // Scroll position persistence
         window.addEventListener('beforeunload', () => {
@@ -804,6 +808,7 @@
                 voiceBtn.classList.remove('recording');
             };
         }
+        console.log("Reinschrift JS loaded");
     </script>
 </body>
 </html>
