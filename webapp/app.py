@@ -765,7 +765,7 @@ def parse_nlp():
     today = datetime.now().strftime("%Y-%m-%d")
     OLLAMA_URL = os.environ.get('OLLAMA_URL', "http://10.0.2.71:11434/api/generate")
     # User mentioned qwen3:14b
-    MODEL = os.environ.get('OLLAMA_MODEL', 'qwen2.5:14b') 
+    MODEL = os.environ.get('OLLAMA_MODEL', 'qwen3:14b') 
     
     system_prompt = (
         "You are a specialized parser for todo items. "
