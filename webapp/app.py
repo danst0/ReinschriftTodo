@@ -773,12 +773,13 @@ def parse_nlp():
         "Extract the 'title', 'due' date (in YYYY-MM-DD format), and 'context' (e.g., store, office). "
         "IMPORTANT rules:\n"
         "1. Return ONLY a valid JSON object.\n"
-        "2. The keys must be 'title', 'due', and 'context'.\n"
+        "2. The keys 'title', 'due', and 'context' MUST be present.\n"
         "3. For 'context', extract ONLY the identifier (e.g., from '@store' extract 'store').\n"
         "4. If 'due' or 'context' are missing, set them to null.\n"
         "5. If a due date is relative, calculate it from today.\n"
         "6. Use the language of the input text.\n"
-        "7. Return ONLY the JSON object, NO other text or explanation."
+        "7. Return ONLY the JSON object, NO other text or explanation.\n"
+        "Example: {\"title\": \"Buy milk\", \"due\": \"2026-01-01\", \"context\": \"store\"}"
     )
 
     try:
@@ -798,7 +799,7 @@ def parse_nlp():
         response.raise_for_status()
         result = response.json()
         raw_response = result['response'].strip()
-        logger.debug(f"Ollama raw response: {raw_response}")
+        logger.info(f"Ollama raw response: {raw_response}")
         
         # Strip markdown code blocks if present
         if raw_response.startswith("```"):
@@ -810,6 +811,15 @@ def parse_nlp():
             raw_response = "\n".join(lines).strip()
             
         parsed = json.loads(raw_response)
+        
+        # Validate/fix keys
+        if 'title' not in parsed:
+            parsed['title'] = text
+        if 'due' not in parsed:
+            parsed['due'] = None
+        if 'context' not in parsed:
+            parsed['context'] = None
+            
         logger.info(f"Parsed JSON: {parsed}")
         return parsed
     except Exception as e:
