@@ -760,11 +760,13 @@ def parse_nlp():
         "You are a specialized parser for todo items. "
         f"Today's date is {today}. "
         "Extract the 'title', 'due' date (in YYYY-MM-DD format), and 'context' (e.g., store, office). "
-        "IMPORTANT: You must return a valid JSON object. "
-        "The keys must be 'title', 'due', and 'context'. "
-        "If a due date is relative (like 'tomorrow' or 'next monday'), calculate it relative to today. "
-        "If 'due' date or 'context' are missing, set them to null. "
-        "Return ONLY the JSON object, NO other text."
+        "IMPORTANT rules:\n"
+        "1. Return ONLY a valid JSON object.\n"
+        "2. The keys must be 'title', 'due', and 'context'.\n"
+        "3. For 'context', extract ONLY the identifier (e.g., from '@store' extract 'store').\n"
+        "4. If 'due' or 'context' are missing, set them to null.\n"
+        "5. If a due date is relative, calculate it from today.\n"
+        "6. Return ONLY the JSON object, NO other text or explanation."
     )
 
     try:
