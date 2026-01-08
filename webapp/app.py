@@ -784,9 +784,10 @@ def parse_nlp():
         "3. For 'context', extract ONLY the identifier (e.g., from '@store' extract 'store').\n"
         "4. If 'due' or 'context' are missing, set them to null.\n"
         "5. If a due date is relative, calculate it from today.\n"
-        "6. Use the language of the input text.\n"
+        "6. The 'title' MUST be in the same language as the input text. Do NOT translate the title.\n"
         "7. Return ONLY the JSON object, NO other text or explanation.\n"
-        "Example: {\"title\": \"Buy milk\", \"due\": \"2026-01-01\", \"context\": \"store\"}"
+        "Example 1: {\"title\": \"Buy milk\", \"due\": \"2026-01-01\", \"context\": \"store\"}\n"
+        "Example 2: {\"title\": \"Milch kaufen\", \"due\": \"2026-01-01\", \"context\": \"Laden\"}"
     )
 
     try:
