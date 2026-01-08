@@ -762,7 +762,9 @@ def parse_nlp():
 
     logger.info(f"NLP Parse Request: {text}")
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    weekday = now.strftime("%A")
     
     # Construct Chat API URL
     base_url = os.environ.get('OLLAMA_URL', "http://10.0.2.71:11434/api/generate")
@@ -776,7 +778,7 @@ def parse_nlp():
     
     system_prompt = (
         "You are a specialized parser for todo items. "
-        f"Today's date is {today}. "
+        f"Today is {weekday}, {today}. "
         "Extract the 'title', 'due' date (in YYYY-MM-DD format), and 'context' (e.g., store, office). "
         "IMPORTANT rules:\n"
         "1. Return ONLY a valid JSON object.\n"
