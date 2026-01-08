@@ -792,6 +792,9 @@ def parse_nlp():
         }, timeout=15)
         
         logger.info(f"Ollama response status: {response.status_code}")
+        if response.status_code != 200:
+            logger.error(f"Ollama Error Body: {response.text}")
+        
         response.raise_for_status()
         result = response.json()
         raw_response = result['response'].strip()
