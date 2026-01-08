@@ -763,7 +763,7 @@ def parse_nlp():
     logger.info(f"NLP Parse Request: {text}")
 
     today = datetime.now().strftime("%Y-%m-%d")
-    OLLAMA_URL = os.environ.get('OLLAMA_URL', "http://localhost:11434/api/generate")
+    OLLAMA_URL = os.environ.get('OLLAMA_URL', "http://10.0.2.71:11434/api/generate")
     # User mentioned qwen3:14b
     MODEL = os.environ.get('OLLAMA_MODEL', 'qwen2.5:14b') 
     
