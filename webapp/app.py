@@ -800,7 +800,7 @@ def parse_nlp():
             ],
             "stream": False,
             "format": "json"
-        }, timeout=15)
+        }, timeout=45)
         
         logger.info(f"Ollama response status: {response.status_code}")
         if response.status_code != 200:
