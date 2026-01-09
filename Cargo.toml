@@ -1,6 +1,6 @@
 [package]
 name = "reinschrift_todo"
-version = "0.10.10"
+version = "0.10.11"
 edition = "2024"
 license = "CC-BY-SA-4.0"
 

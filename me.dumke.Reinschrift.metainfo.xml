@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.10.11" date="2026-01-09">
+      <description>
+        <ul>
+          <li>External configuration for LLM settings</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.10.10" date="2026-01-08">
       <description>
         <ul>

@@ -766,15 +766,25 @@ def parse_nlp():
     today = now.strftime("%Y-%m-%d")
     weekday = now.strftime("%A")
     
+    # Load config
+    app_config = {}
+    config_file = os.path.join(os.path.dirname(__file__), 'config.json')
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r') as f:
+                app_config = json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading config.json: {e}")
+
     # Construct Chat API URL
-    base_url = os.environ.get('OLLAMA_URL', "http://10.0.2.71:11434/api/generate")
+    base_url = os.environ.get('OLLAMA_URL', app_config.get('llm_url', "http://10.0.2.71:11434/api/generate"))
     if "/api/generate" in base_url:
         chat_url = base_url.replace("/api/generate", "/api/chat")
     else:
         chat_url = base_url.rstrip('/') + "/api/chat"
 
     # User mentioned qwen3:14b
-    MODEL = os.environ.get('OLLAMA_MODEL', 'qwen3:14b') 
+    MODEL = os.environ.get('OLLAMA_MODEL', app_config.get('llm_model', 'qwen3:14b'))
     
     system_prompt = (
         "You are a specialized parser for todo items. "
