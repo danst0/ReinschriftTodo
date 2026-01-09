@@ -18,3 +18,4 @@ docker-compose.yml
 .venv/
 flatpak-cargo-generator.py
 .vscode/
+webapp/config.json
