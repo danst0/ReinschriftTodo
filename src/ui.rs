@@ -215,8 +215,35 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     new_row.append(&new_entry);
 
     let search_btn_for_stop = search_btn.clone();
-    search_entry.connect_stop_search(move |_| {
+    let state_for_stop = Rc::clone(&state);
+    search_entry.connect_stop_search(move |entry| {
+        entry.set_text("");
+        *state_for_stop.search_term.borrow_mut() = String::new();
+        state_for_stop.repopulate_store();
         search_btn_for_stop.set_active(false);
+    });
+
+    let state_for_search = Rc::clone(&state);
+    search_entry.connect_search_changed(move |entry| {
+        *state_for_search.search_term.borrow_mut() = entry.text().to_string();
+        state_for_search.repopulate_store();
+    });
+
+    let search_revealer_clone = search_revealer.clone();
+    let search_entry_focus = search_entry.clone();
+    let add_task_btn_clone = add_task_btn.clone();
+    let state_for_search_toggle = Rc::clone(&state);
+    search_btn.connect_toggled(move |btn| {
+        let active = btn.is_active();
+        search_revealer_clone.set_reveal_child(active);
+        if active {
+            search_entry_focus.grab_focus();
+            add_task_btn_clone.set_active(false);
+        } else {
+            search_entry_focus.set_text("");
+            *state_for_search_toggle.search_term.borrow_mut() = String::new();
+            state_for_search_toggle.repopulate_store();
+        }
     });
 
     let add_task_btn_for_esc = add_task_btn.clone();
