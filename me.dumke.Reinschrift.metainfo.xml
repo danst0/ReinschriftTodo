@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.11.5" date="2026-01-13">
+      <description>
+        <ul>
+          <li>Add OIDC login support for webapp</li>
+          <li>Restrict OIDC login to single user via environment variable</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.11.4" date="2026-01-13">
       <description>
         <ul>

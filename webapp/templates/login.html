@@ -21,12 +21,23 @@
                 <div class="flash">{{ messages[0] }}</div>
             {% endif %}
         {% endwith %}
+        
+        {% if show_password_login %}
         <form method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="username" placeholder="{{ t.username }}" required>
             <input type="password" name="password" placeholder="{{ t.password }}" required>
             <button type="submit">{{ t.login }}</button>
         </form>
+        {% endif %}
+
+        {% if show_oidc_login %}
+        <div style="margin-top: 1rem; {% if show_password_login %}border-top: 1px solid #ccc; padding-top: 1rem;{% endif %}">
+            <a href="{{ url_for('login_oidc') }}" style="display: block; text-align: center; text-decoration: none; padding: 0.5rem; background: #24292e; color: white; border-radius: 4px; font-size: 0.9rem;">
+                {{ t.login_oidc }}
+            </a>
+        </div>
+        {% endif %}
     </div>
 </body>
 </html>

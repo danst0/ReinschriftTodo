@@ -60,7 +60,9 @@ TRANSLATIONS = {
         'developer': 'Entwickler',
         'website': 'Webseite',
         'license': 'Lizenz',
-        'voice_input': 'Spracheingabe'
+        'voice_input': 'Spracheingabe',
+        'login_oidc': 'Mit OIDC anmelden',
+        'unauthorized_user': 'Nicht autorisierter Benutzer'
     },
     'en': {
         'todos': 'Reinschrift',
@@ -122,7 +124,9 @@ TRANSLATIONS = {
         'developer': 'Developer',
         'website': 'Website',
         'license': 'License',
-        'voice_input': 'Voice Input'
+        'voice_input': 'Voice Input',
+        'login_oidc': 'Login with OIDC',
+        'unauthorized_user': 'Unauthorized user'
     },
     'es': {
         'todos': 'Reinschrift',
@@ -184,7 +188,9 @@ TRANSLATIONS = {
         'developer': 'Desarrollador',
         'website': 'Sitio web',
         'voice_input': 'Entrada de voz',
-        'license': 'Licencia'
+        'license': 'Licencia',
+        'login_oidc': 'Iniciar sesión con OIDC',
+        'unauthorized_user': 'Usuario no autorizado'
     },
     'sv': {
         'todos': 'Reinschrift',
@@ -246,7 +252,9 @@ TRANSLATIONS = {
         'developer': 'Utvecklare',
         'website': 'Webbplats',
         'voice_input': 'Röstinmatning',
-        'license': 'Licens'
+        'license': 'Licens',
+        'login_oidc': 'Logga in med OIDC',
+        'unauthorized_user': 'Obehörig användare'
     },
     'fr': {
         'todos': 'Reinschrift',
@@ -308,7 +316,9 @@ TRANSLATIONS = {
         'developer': 'Développeur',
         'voice_input': 'Entrée vocale',
         'website': 'Site web',
-        'license': 'Licence'
+        'license': 'Licence',
+        'login_oidc': 'Se connecter avec OIDC',
+        'unauthorized_user': 'Utilisateur non autorisé'
     },
     'ja': {
         'todos': 'Reinschrift',
@@ -370,6 +380,8 @@ TRANSLATIONS = {
         'developer': '開発者',
         'voice_input': '音声入力',
         'website': 'ウェブサイト',
-        'license': 'ライセンス'
+        'license': 'ライセンス',
+        'login_oidc': 'OIDCでログイン',
+        'unauthorized_user': '権限のないユーザー'
     }
 }

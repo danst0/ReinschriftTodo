@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import requests
 from requests.auth import HTTPBasicAuth
 from flask_wtf.csrf import CSRFProtect
+from authlib.integrations.flask_client import OAuth
 from translations import TRANSLATIONS
 
 # Configure logging
@@ -18,6 +19,15 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 app.permanent_session_lifetime = timedelta(days=30)
 csrf = CSRFProtect(app)
+
+oauth = OAuth(app)
+oauth.register(
+    name='oidc',
+    server_metadata_url=os.environ.get('OIDC_ISSUER'),
+    client_id=os.environ.get('OIDC_CLIENT_ID'),
+    client_secret=os.environ.get('OIDC_CLIENT_SECRET'),
+    client_kwargs={'scope': 'openid email profile'},
+)
 
 def get_locale():
     # Check session first
@@ -538,9 +548,36 @@ def index():
 
     return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode, q=q)
 
+@app.route('/login/oidc')
+def login_oidc():
+    redirect_uri = url_for('authorize', _external=True)
+    return oauth.oidc.authorize_redirect(redirect_uri)
+
+@app.route('/authorize')
+def authorize():
+    token = oauth.oidc.authorize_access_token()
+    user_info = token.get('userinfo')
+    if not user_info:
+        user_info = oauth.oidc.userinfo(token=token)
+    
+    email = user_info.get('email', '').lower()
+    allowed_user = os.environ.get('OIDC_ALLOWED_USER', '').lower()
+
+    if allowed_user and email == allowed_user:
+        session.permanent = True
+        session['logged_in'] = True
+        return redirect(url_for('index'))
+    else:
+        lang = get_locale()
+        flash(TRANSLATIONS.get(lang, TRANSLATIONS['de'])['unauthorized_user'])
+        return redirect(url_for('login'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
+    show_password_login = bool(os.environ.get('APP_USER') and os.environ.get('APP_PASSWORD'))
+    show_oidc_login = bool(os.environ.get('OIDC_ISSUER') and os.environ.get('OIDC_CLIENT_ID'))
+
+    if request.method == 'POST' and show_password_login:
         username = request.form.get('username')
         password = request.form.get('password')
         if username == os.environ.get('APP_USER') and password == os.environ.get('APP_PASSWORD'):
@@ -550,7 +587,7 @@ def login():
         else:
             lang = get_locale()
             flash(TRANSLATIONS.get(lang, TRANSLATIONS['de'])['invalid_credentials'])
-    return render_template('login.html')
+    return render_template('login.html', show_password_login=show_password_login, show_oidc_login=show_oidc_login)
 
 @app.route('/toggle/<int:line_index>', methods=['POST'])
 def toggle(line_index):

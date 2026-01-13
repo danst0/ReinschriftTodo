@@ -14,6 +14,11 @@ services:
       - APP_USER=admin
       - APP_PASSWORD=secret
 
+      # OIDC Configuration (Optional)
+      - OIDC_ISSUER=https://your-oidc-provider.com/.well-known/openid-configuration
+      - OIDC_CLIENT_ID=your-client-id
+      - OIDC_CLIENT_SECRET=your-client-secret
+      - OIDC_ALLOWED_USER=user@example.com
 
       # WebDAV Configuration (Optional)
       - USE_WEBDAV=false

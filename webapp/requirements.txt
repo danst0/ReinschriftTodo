@@ -3,3 +3,4 @@ python-dotenv<2.0.0
 markdown<4.0.0
 requests<3.0.0
 Flask-WTF<2.0.0
+Authlib<2.0.0
