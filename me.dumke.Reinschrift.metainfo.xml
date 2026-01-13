@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.11.4" date="2026-01-13">
+      <description>
+        <ul>
+          <li>Tastaturbedienung für Detailansicht (Enter zum Speichern, Tab-Navigation)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.11.3" date="2026-01-13">
       <description>
         <ul>

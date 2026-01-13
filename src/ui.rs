@@ -2159,12 +2159,14 @@ impl AppState {
         content.append(&section_row);
 
         let title_entry = gtk::Entry::builder().text(&todo.title).hexpand(true).build();
+        title_entry.set_activates_default(true);
         let title_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         title_row.append(&gtk::Label::builder().label(&t("title")).xalign(0.0).build());
         title_row.append(&title_entry);
         content.append(&title_row);
 
         let project_entry = gtk::Entry::new();
+        project_entry.set_activates_default(true);
         if let Some(project) = &todo.project {
             project_entry.set_text(project);
         }
@@ -2174,6 +2176,7 @@ impl AppState {
         content.append(&project_row);
 
         let context_entry = gtk::Entry::new();
+        context_entry.set_activates_default(true);
         if let Some(context) = &todo.context {
             context_entry.set_text(context);
         }
@@ -2213,6 +2216,7 @@ impl AppState {
         let due_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         due_row.append(&gtk::Label::builder().label(&t("due_date")).xalign(0.0).build());
         let due_inputs = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        due_entry.set_activates_default(true);
         due_entry.set_hexpand(true);
         due_inputs.append(&due_entry);
         let due_today_btn = gtk::Button::with_label(&t("today"));
@@ -2244,6 +2248,7 @@ impl AppState {
         content.append(&done_check);
 
         let comment_entry = gtk::Entry::new();
+        comment_entry.set_activates_default(true);
         let comment_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         comment_row.append(&gtk::Label::builder().label(&t("comment")).xalign(0.0).build());
         comment_row.append(&comment_entry);
@@ -2261,6 +2266,7 @@ impl AppState {
         let close_with_comment_btn = gtk::Button::with_label(&t("close_with_comment"));
         let save_btn = gtk::Button::with_label(&t("save"));
         save_btn.add_css_class("suggested-action");
+        dialog.set_default_widget(Some(&save_btn));
         buttons.append(&cancel_btn);
         buttons.append(&delete_btn);
         buttons.append(&close_with_comment_btn);

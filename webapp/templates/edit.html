@@ -114,6 +114,13 @@
                 commentInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 300);
         }
+
+        document.querySelector('form').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                e.preventDefault();
+                this.requestSubmit();
+            }
+        });
     </script>
 </body>
 </html>
