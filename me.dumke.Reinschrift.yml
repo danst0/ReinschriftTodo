@@ -33,9 +33,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        tag: v0.10.11
-      - type: file
-        path: me.dumke.Reinschrift.metainfo.xml
+        tag: v0.11.0
       - generated-sources.json
       - type: shell
         commands:

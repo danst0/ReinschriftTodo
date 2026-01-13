@@ -1,7 +1,13 @@
 {% set current_section = namespace(value=None) %}
 {% for todo in todos %}
     {% if todo.section and todo.section != current_section.value %}
-        <div class="section-header">{{ todo.section }}</div>
+        <div class="section-header">
+            {% if sort_mode == 'topic' %}
+                {{ t.topic }}: {{ todo.section }}
+            {% else %}
+                {{ todo.section }}
+            {% endif %}
+        </div>
         {% set current_section.value = todo.section %}
     {% endif %}
     
@@ -12,7 +18,7 @@
         <div class="content">
             <div class="title">{{ todo.title }}</div>
             <div class="meta">
-                {% if todo.project %}<span class="tag project">+{{ todo.project }}</span>{% endif %}
+                {% if todo.project and sort_mode != 'topic' %}<span class="tag project">+{{ todo.project }}</span>{% endif %}
                 {% if todo.context %}<span class="tag context">@{{ todo.context }}</span>{% endif %}
                 {% if todo.recurrence %}
                     <span class="tag recurrence">

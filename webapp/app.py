@@ -335,6 +335,7 @@ def index():
     if 'logged_in' not in session:
         return redirect(url_for('login'))
     
+    lang = get_locale()
     todos = load_todos()
     
     # Load saved settings
@@ -439,7 +440,7 @@ def index():
     for todo in filtered_todos:
         display_item = todo.copy()
         if sort_mode == 'topic':
-            display_item['section'] = f"Thema: {todo['project'] if todo['project'] else 'Ohne Projekt'}"
+            display_item['section'] = todo['project'] if todo['project'] else TRANSLATIONS.get(lang, TRANSLATIONS['de']).get('no_section', 'Ohne Abschnitt')
         elif sort_mode == 'location':
             display_item['section'] = f"Ort: {todo['context'] if todo['context'] else 'Ohne Ort'}"
         elif sort_mode == 'date':
