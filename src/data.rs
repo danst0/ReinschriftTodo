@@ -52,6 +52,7 @@ static DUE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"due:(\d{4}-\d{2}-\d{2})")
 static ID_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\^([A-Za-z0-9]+)").unwrap());
 static COMPLETION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s✅\s\d{4}-\d{2}-\d{2}").unwrap());
 static RECUR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"rec:([^\s]+)").unwrap());
+static NOTE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"~note:\"((?:\\.|[^\"])*)\""#).unwrap());
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TodoKey {
@@ -69,6 +70,7 @@ pub struct TodoItem {
     pub due: Option<NaiveDate>,
     pub reference: Option<String>,
     pub recurrence: Option<String>,
+    pub note: Option<String>,
     pub done: bool,
 }
 
@@ -446,6 +448,9 @@ fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> 
     let recurrence = capture_token(&RECUR_RE, rest);
     let reference = capture_token(&LINK_RE, rest);
     let marker = capture_token(&ID_RE, rest);
+    let note = capture_token(&NOTE_RE, rest)
+        .map(|raw| unescape_note(&raw))
+        .and_then(|n| normalize_note(Some(&n)));
 
     Some(TodoItem {
         key: TodoKey {
@@ -459,6 +464,7 @@ fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> 
         due,
         reference,
         recurrence,
+        note,
         done,
     })
 }
@@ -470,7 +476,7 @@ fn capture_token(regex: &Regex, text: &str) -> Option<String> {
 }
 
 fn extract_title(rest: &str) -> String {
-    const MARKERS: [&str; 14] = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", "+", "@", "due:", "rec:", "[[", "✅", "^"];
+    const MARKERS: [&str; 16] = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", " ~note:", "+", "@", "due:", "rec:", "[[", "✅", "^", "~note:"];
     let mut cut = rest.len();
     for marker in MARKERS {
         if let Some(idx) = rest.find(marker) {
@@ -632,6 +638,11 @@ fn render_line(item: &TodoItem) -> Result<String> {
         parts.push(format!("[[{reference}]]"));
     }
 
+    if let Some(note) = normalize_note(item.note.as_deref()) {
+        let escaped = escape_note(&note);
+        parts.push(format!(r#"~note:\"{escaped}\""#));
+    }
+
     if item.done {
         let today = Local::now().date_naive().format("%Y-%m-%d");
         parts.push(format!("✅ {today}"));
@@ -670,6 +681,44 @@ fn normalize_reference(value: Option<&str>) -> Option<String> {
     value
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
+}
+
+fn normalize_note(value: Option<&str>) -> Option<String> {
+    value
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+}
+
+fn escape_note(note: &str) -> String {
+    note
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+}
+
+fn unescape_note(input: &str) -> String {
+    let mut out = String::new();
+    let mut chars = input.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            if let Some(next) = chars.next() {
+                match next {
+                    'n' => out.push('\n'),
+                    '"' => out.push('"'),
+                    '\\' => out.push('\\'),
+                    other => {
+                        out.push(other);
+                    }
+                }
+            } else {
+                out.push('\\');
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 fn apply_completion_marker(line: &str, done: bool) -> String {
@@ -715,7 +764,7 @@ fn rewrite_due(line: &str, new_due: NaiveDate) -> Result<String> {
 }
 
 fn insert_due_segment(line: &str, segment: &str) -> String {
-    const MARKERS: [&str; 6] = [" +", " @", " rec:", " [[", " ✅", " ^"];
+    const MARKERS: [&str; 7] = [" +", " @", " rec:", " [[", " ✅", " ~note:", " ^"];
     let mut insert_at = line.len();
     for marker in MARKERS {
         if let Some(idx) = line.find(marker) {

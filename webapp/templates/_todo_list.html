@@ -34,6 +34,9 @@
                         {% endif %}
                     </span>
                 {% endif %}
+                {% if todo.note %}
+                    <span class="tag note" title="{{ todo.note }}">📝</span>
+                {% endif %}
                 {% if todo.due %}
                     <span class="due">
                         {{ t.due }} 

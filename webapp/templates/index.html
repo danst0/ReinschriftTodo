@@ -19,6 +19,7 @@
         .tag.project { color: #e66100; background: #fff1e5; }
         .tag.context { color: #1a5fb4; background: #eef5ff; }
         .tag.recurrence { color: #0b6c6a; background: #e5f4f2; display: inline-flex; align-items: center; gap: 4px; }
+        .tag.note { color: #6e4aa1; background: #f2edff; }
         .due { color: #c01c28; font-weight: 500; }
         .add-form { display: flex; margin-bottom: 2rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border-radius: 8px; }
         .add-form input { flex-grow: 1; padding: 0.8rem; border: 1px solid #ddd; border-right: none; border-radius: 8px 0 0 8px; font-size: 1rem; outline: none; }
@@ -70,6 +71,7 @@
             .tag.project { background: #4a2c1a; color: #ffb380; }
             .tag.context { background: #1a3b5c; color: #8cb4ff; }
             .tag.recurrence { background: #1f3b3a; color: #7ad1c4; }
+            .tag.note { background: #2f2940; color: #bfa9ff; }
             .due { color: #ff7b72; }
             .add-form input { background: #2d2d2d; border-color: #444; color: #e0e0e0; }
             .add-form button { background: #3584e4; }
@@ -132,7 +134,7 @@
         
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        .modal input[type="text"], .modal input[type="date"] { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
+        .modal input[type="text"], .modal input[type="date"], .modal textarea { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
         .modal input[type="checkbox"] { transform: scale(1.5); margin-right: 0.5rem; }
         .buttons { display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap; }
         .btn-primary { background: #3584e4; color: white; padding: 0.8rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: bold; }
@@ -145,7 +147,7 @@
             .modal { background-color: rgba(0,0,0,0.8); }
             .close { color: #ccc; }
             .close:hover, .close:focus { color: #fff; }
-            .modal input[type="text"], .modal input[type="date"] { background: #3d3d3d; border-color: #555; color: #e0e0e0; }
+            .modal input[type="text"], .modal input[type="date"], .modal textarea { background: #3d3d3d; border-color: #555; color: #e0e0e0; }
             .btn-secondary { background: #3d3d3d; color: #e0e0e0; }
             .btn-primary { background: #4a90e2; }
             .btn-action { background: #3d3d3d; border-color: #555; color: #e0e0e0; }
@@ -174,6 +176,10 @@
                 <div class="form-group">
                     <label for="edit-context">{{ t.context }}</label>
                     <input type="text" id="edit-context" name="context">
+                </div>
+                <div class="form-group">
+                    <label for="edit-note">{{ t.note }}</label>
+                    <textarea id="edit-note" name="note" rows="4" placeholder="{{ t.note }}"></textarea>
                 </div>
                 <div class="form-group">
                     <label for="edit-due">{{ t.due_date }}</label>
@@ -300,7 +306,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; padding-top: 1rem;">
-            <p><strong>Reinschrift</strong> v0.11.1</p>
+            <p><strong>Reinschrift</strong> v0.11.2</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -548,6 +554,7 @@
                     document.getElementById('edit-due').value = data.due || '';
                     document.getElementById('edit-recurrence').value = data.recurrence || '';
                     document.getElementById('edit-reference').value = data.reference || '';
+                    document.getElementById('edit-note').value = data.note || '';
                     document.getElementById('edit-done').checked = data.done;
                     document.getElementById('btn-close-comment').style.display = data.done ? 'none' : 'inline-block';
                     document.getElementById('btn-save-main').style.display = 'inline-block';
@@ -568,6 +575,7 @@
             document.getElementById('comment-section').style.display = 'none';
             document.getElementById('btn-close-comment').style.display = 'inline-block';
             document.getElementById('btn-save-main').style.display = 'inline-block';
+            document.getElementById('edit-note').value = '';
             document.getElementById('edit-comment').value = '';
         }
 

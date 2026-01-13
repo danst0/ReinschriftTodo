@@ -14,7 +14,7 @@
         h2 { color: #333; }
         .form-group { margin-bottom: 1rem; }
         label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        input[type="text"], input[type="date"] { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
+        input[type="text"], input[type="date"], textarea { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
         input[type="checkbox"] { transform: scale(1.5); margin-right: 0.5rem; }
         .buttons { display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap; }
         button { padding: 0.8rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: bold; }
@@ -25,7 +25,7 @@
         @media (prefers-color-scheme: dark) {
             body { background-color: #1e1e1e; color: #e0e0e0; }
             h2 { color: #e0e0e0; }
-            input[type="text"], input[type="date"] { background: #2d2d2d; border-color: #444; color: #e0e0e0; }
+            input[type="text"], input[type="date"], textarea { background: #2d2d2d; border-color: #444; color: #e0e0e0; }
             .btn-secondary { background: #3d3d3d; color: #e0e0e0; }
             .btn-action { background: #2d2d2d; border-color: #444; color: #e0e0e0; }
         }
@@ -62,6 +62,10 @@
         <div class="form-group">
             <label for="context">{{ t.context }}</label>
             <input type="text" id="context" name="context" value="{{ todo.context or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="note">{{ t.note }}</label>
+            <textarea id="note" name="note" rows="4" placeholder="{{ t.note }}">{{ todo.note or '' }}</textarea>
         </div>
         <div class="form-group">
             <label for="due">{{ t.due_date }}</label>

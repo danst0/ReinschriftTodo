@@ -84,6 +84,7 @@
   "changes_applied": "Cambios aplicados desde el archivo",
   "close_with_comment": "Cerrar con comentario",
   "comment": "Comentario",
+  "note": "Nota",
   "connection_error": "Error de conexión a '{}': {}",
   "done": "Hecho",
   "recurrence": "Repetición",

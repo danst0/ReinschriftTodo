@@ -2182,6 +2182,28 @@ impl AppState {
         context_row.append(&context_entry);
         content.append(&context_row);
 
+        let note_buffer = gtk::TextBuffer::builder()
+            .text(todo.note.as_deref().unwrap_or(""))
+            .build();
+        let note_view = gtk::TextView::builder()
+            .buffer(&note_buffer)
+            .wrap_mode(gtk::WrapMode::WordChar)
+            .hexpand(true)
+            .build();
+        note_view.set_top_margin(4);
+        note_view.set_bottom_margin(4);
+
+        let note_scrolled = gtk::ScrolledWindow::builder()
+            .child(&note_view)
+            .min_content_height(96)
+            .hexpand(true)
+            .build();
+
+        let note_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        note_row.append(&gtk::Label::builder().label(&t("note")).xalign(0.0).build());
+        note_row.append(&note_scrolled);
+        content.append(&note_row);
+
         let due_entry = gtk::Entry::new();
         due_entry.set_placeholder_text(Some("YYYY-MM-DD"));
         if let Some(due) = todo.due {
@@ -2278,6 +2300,7 @@ impl AppState {
         let title_entry_save = title_entry.clone();
         let project_entry_save = project_entry.clone();
         let context_entry_save = context_entry.clone();
+        let note_buffer_save = note_buffer.clone();
         let due_entry_save = due_entry.clone();
         let done_check_save = done_check.clone();
         let comment_entry_save = comment_entry.clone();
@@ -2331,6 +2354,14 @@ impl AppState {
                 .map(|s| s.to_string())
                 .filter(|s| !s.is_empty());
 
+            let (note_start, note_end) = note_buffer_save.bounds();
+            let note_text = note_buffer_save.text(&note_start, &note_end, false).to_string();
+            let note_value = if note_text.trim().is_empty() {
+                None
+            } else {
+                Some(note_text.trim().to_string())
+            };
+
             let mut updated = base_item.clone();
             updated.title = title_text;
             updated.project = project_value;
@@ -2338,6 +2369,7 @@ impl AppState {
             updated.reference = base_item.reference.clone();
             updated.due = due_value;
             updated.recurrence = recurrence_value;
+            updated.note = note_value;
             updated.done = done_check_save.is_active();
 
             if let Err(err) = state_for_save.save_item(&updated) {

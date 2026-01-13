@@ -98,6 +98,7 @@
   "model_not_found": "Sprachmodell nicht gefunden. Bitte in den Einstellungen aktivieren.",
   "close_with_comment": "Mit Kommentar abschließen",
   "comment": "Kommentar",
+  "note": "Notiz",
   "search_placeholder": "Suchen…",
   "search_results_current": "Suchergebnisse in aktueller Liste",
   "search_results_open": "Suchergebnisse in allen offenen To-dos",

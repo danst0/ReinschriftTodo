@@ -55,6 +55,7 @@ DUE_RE = re.compile(r"due:(\d{4}-\d{2}-\d{2})")
 ID_RE = re.compile(r"\^([A-Za-z0-9]+)")
 COMPLETION_RE = re.compile(r"\s✅\s\d{4}-\d{2}-\d{2}")
 RECUR_RE = re.compile(r"rec:([^\s]+)")
+NOTE_RE = re.compile(r'~note:"((?:\\.|[^"])*)"')
 
 def read_content():
     if USE_WEBDAV:
@@ -163,6 +164,8 @@ def parse_line(line, line_index, section):
     
     reference = capture_token(LINK_RE, rest)
     marker = capture_token(ID_RE, rest)
+    raw_note = capture_token(NOTE_RE, rest)
+    note = normalize_note(unescape_note(raw_note)) if raw_note else None
     
     return {
         'line_index': line_index,
@@ -174,6 +177,7 @@ def parse_line(line, line_index, section):
         'due': due,
         'reference': reference,
         'recurrence': recurrence,
+        'note': note,
         'done': done,
         'raw_line': line
     }
@@ -184,8 +188,40 @@ def capture_token(regex, text):
         return match.group(1).strip()
     return None
 
+def normalize_note(text):
+    if text is None:
+        return None
+    trimmed = text.strip()
+    return trimmed if trimmed else None
+
+def escape_note(text):
+    return text.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+
+def unescape_note(text):
+    if text is None:
+        return ""
+    out = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == '\\' and i + 1 < len(text):
+            nxt = text[i + 1]
+            if nxt == 'n':
+                out.append('\n')
+            elif nxt == '"':
+                out.append('"')
+            elif nxt == '\\':
+                out.append('\\')
+            else:
+                out.append(nxt)
+            i += 2
+        else:
+            out.append(ch)
+            i += 1
+    return ''.join(out)
+
 def extract_title(rest):
-    markers = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", "+", "@", "due:", "rec:", "[[", "✅", "^"]
+    markers = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", " ~note:", "+", "@", "due:", "rec:", "[[", "✅", "^", "~note:"]
     cut = len(rest)
     for marker in markers:
         idx = rest.find(marker)
@@ -509,6 +545,9 @@ def toggle(line_index):
                 new_line += f" rec:{item['recurrence']}"
                 if item.get('reference'):
                     new_line += f" [[{item['reference'].strip()}]]"
+
+                if item.get('note'):
+                    new_line += f' ~note:"{escape_note(item["note"])}"'
                 insert_line(new_line)
     
     return redirect(url_for('index'))
@@ -559,6 +598,9 @@ def postpone(line_index, target):
         
     if item['reference'] and item['reference'].strip():
         new_line += f" [[{item['reference'].strip()}]]"
+
+    if item.get('note'):
+        new_line += f' ~note:"{escape_note(item["note"])}"'
         
     # Preserve completion date if done
     if item['done']:
@@ -604,7 +646,10 @@ def edit(line_index):
         due_str = request.form.get('due')
         reference = request.form.get('reference')
         recurrence = request.form.get('recurrence')
+        note_raw = request.form.get('note')
         done = request.form.get('done') == 'on'
+
+        note_value = normalize_note(note_raw)
 
         if comment and comment.strip():
             title = f"{title.strip()} ({comment.strip()})"
@@ -643,12 +688,15 @@ def edit(line_index):
         if due_str and due_str.strip():
             new_line += f" due:{due_str.strip()}"
             
-        if reference and reference.strip():
-            new_line += f" [[{reference.strip()}]]"
-
         if recurrence and recurrence.strip():
             rec_clean = recurrence.strip()
             new_line += f" rec:{rec_clean}"
+
+        if reference and reference.strip():
+            new_line += f" [[{reference.strip()}]]"
+
+        if note_value:
+            new_line += f' ~note:"{escape_note(note_value)}"'
             
         if completion_str:
             new_line += completion_str
@@ -678,6 +726,9 @@ def edit(line_index):
                 new_rec_line += f" rec:{recurrence.strip()}"
                 if reference and reference.strip():
                     new_rec_line += f" [[{reference.strip()}]]"
+
+                if note_value:
+                    new_rec_line += f' ~note:"{escape_note(note_value)}"'
                 insert_line(new_rec_line)
         
         return redirect(url_for('index'))

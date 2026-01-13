@@ -98,6 +98,7 @@
   "model_not_found": "Röstmodell hittades inte. Aktivera den i inställningarna.",
   "close_with_comment": "Stäng med kommentar",
   "comment": "Kommentar",
+  "note": "Anteckning",
   "search_placeholder": "Sök…",
   "search_results_current": "Sökresultat i aktuell lista",
   "search_results_open": "Sökresultat i alla öppna uppgifter",

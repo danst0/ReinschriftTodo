@@ -98,6 +98,7 @@
   "model_not_found": "音声モデルが見つかりません。設定で有効にしてください。",
   "close_with_comment": "コメント付きで終了",
   "comment": "コメント",
+  "note": "メモ",
   "search_placeholder": "検索…",
   "search_results_current": "現在のリスト内の検索結果",
   "search_results_open": "すべての未完了タスク内の検索結果",

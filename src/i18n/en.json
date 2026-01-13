@@ -96,6 +96,7 @@
   "model_download_finished": "Voice model downloaded successfully",
   "model_download_error": "Error downloading model",
   "comment": "Comment",
+  "note": "Note",
   "search_placeholder": "Search…",
   "search_results_current": "Search results in current list",
   "search_results_open": "Search results in all open To-dos",
