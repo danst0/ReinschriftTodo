@@ -2255,8 +2255,13 @@ impl AppState {
         let state_delete = self.clone();
         let todo_delete = todo.clone();
         delete_btn.connect_clicked(move |_| {
-            if let Err(e) = data::delete_todo(&todo_delete) {
-                state_delete.show_error(&t("delete_error").replace("{}", &e.to_string()));
+            match data::delete_todo(&todo_delete) {
+                Ok(_) => {
+                    if let Err(err) = state_delete.reload() {
+                        state_delete.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                    }
+                }
+                Err(e) => state_delete.show_error(&t("delete_error").replace("{}", &e.to_string())),
             }
             dialog_delete.close();
         });
