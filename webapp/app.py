@@ -54,6 +54,7 @@ CONTEXT_RE = re.compile(r"@([^\s]+)")
 DUE_RE = re.compile(r"due:(\d{4}-\d{2}-\d{2})")
 ID_RE = re.compile(r"\^([A-Za-z0-9]+)")
 COMPLETION_RE = re.compile(r"\s✅\s\d{4}-\d{2}-\d{2}")
+COMPLETION_DATE_RE = re.compile(r"✅\s(\d{4}-\d{2}-\d{2})")
 RECUR_RE = re.compile(r"rec:([^\s]+)")
 NOTE_RE = re.compile(r'~note:"((?:\\.|[^"])*)"')
 
@@ -137,6 +138,7 @@ def parse_line(line, line_index, section):
     trimmed = line.lstrip()
     done = False
     rest = ""
+    done_date = None
     
     if trimmed.startswith("- [x]"):
         done = True
@@ -161,6 +163,14 @@ def parse_line(line, line_index, section):
             due = datetime.strptime(due_str, "%Y-%m-%d").date()
         except ValueError:
             pass
+
+    if done:
+        date_match = COMPLETION_DATE_RE.search(line)
+        if date_match:
+            try:
+                done_date = datetime.strptime(date_match.group(1), "%Y-%m-%d").date()
+            except ValueError:
+                done_date = None
     
     reference = capture_token(LINK_RE, rest)
     marker = capture_token(ID_RE, rest)
@@ -179,6 +189,7 @@ def parse_line(line, line_index, section):
         'recurrence': recurrence,
         'note': note,
         'done': done,
+        'done_date': done_date,
         'raw_line': line
     }
 
@@ -219,6 +230,38 @@ def unescape_note(text):
             out.append(ch)
             i += 1
     return ''.join(out)
+
+
+def current_date():
+    return datetime.now().date()
+
+
+def recent_window_bounds(window_days=14):
+    today = current_date()
+    window_start = today - timedelta(days=max(window_days - 1, 0))
+    return today, window_start
+
+
+def collect_recent_context(todos, window_days=14):
+    today, window_start = recent_window_bounds(window_days)
+    open_todos = [t for t in todos if not t.get('done')]
+    recent_closed = [
+        t for t in todos
+        if t.get('done') and t.get('done_date') and t['done_date'] >= window_start
+    ]
+
+    all_relevant = open_todos + recent_closed
+    topics = sorted({t['project'] for t in all_relevant if t.get('project')})
+    locations = sorted({t['context'] for t in all_relevant if t.get('context')})
+    recent_full_text = [t['raw_line'].strip() for t in recent_closed if t.get('raw_line')]
+
+    return {
+        'today': today,
+        'window_start': window_start,
+        'topics': topics,
+        'locations': locations,
+        'recent_todos': recent_full_text,
+    }
 
 def extract_title(rest):
     markers = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", " ~note:", "+", "@", "due:", "rec:", "[[", "✅", "^", "~note:"]
@@ -776,6 +819,8 @@ def get_todo_json(line_index):
     # Convert date to string for JSON
     if item['due']:
         item['due'] = item['due'].strftime("%Y-%m-%d")
+    if item.get('done_date'):
+        item['done_date'] = item['done_date'].strftime("%Y-%m-%d")
         
     return item
 
@@ -817,6 +862,9 @@ def parse_nlp():
     now = datetime.now()
     today = now.strftime("%Y-%m-%d")
     weekday = now.strftime("%A")
+
+    todos = load_todos()
+    recent_context = collect_recent_context(todos, window_days=14)
     
     # Load config
     app_config = {}
@@ -853,6 +901,23 @@ def parse_nlp():
         "Example 1: {\"title\": \"Buy milk\", \"due\": \"2026-01-01\", \"context\": \"store\"}\n"
         "Example 2: {\"title\": \"Milch kaufen\", \"due\": \"2026-01-01\", \"context\": \"Laden\"}"
     )
+
+    reminder_sections = []
+    if recent_context['recent_todos']:
+        recent_block = "- " + "\n- ".join(recent_context['recent_todos'])
+        reminder_sections.append(
+            f"Recent closed todos (last 14 days, inclusive of today):\n{recent_block}"
+        )
+
+    topics = recent_context['topics']
+    locations = recent_context['locations']
+    if topics:
+        reminder_sections.append("Distinct topics from open and recent closed todos: " + ", ".join(topics))
+    if locations:
+        reminder_sections.append("Distinct locations from open and recent closed todos: " + ", ".join(locations))
+
+    if reminder_sections:
+        system_prompt += "\n\nContext reminders:\n" + "\n\n".join(reminder_sections)
 
     try:
         logger.info(f"Sending request to Ollama ({chat_url}) with model {MODEL}")
