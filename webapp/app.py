@@ -216,7 +216,7 @@ def normalize_note(text):
     return trimmed if trimmed else None
 
 def escape_note(text):
-    return text.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+    return text.replace('\\', '\\\\').replace('"', '\\"').replace('\r', '\\r').replace('\n', '\\n')
 
 def unescape_note(text):
     if text is None:
@@ -229,6 +229,8 @@ def unescape_note(text):
             nxt = text[i + 1]
             if nxt == 'n':
                 out.append('\n')
+            elif nxt == 'r':
+                out.append('\r')
             elif nxt == '"':
                 out.append('"')
             elif nxt == '\\':

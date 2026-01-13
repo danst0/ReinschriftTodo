@@ -52,7 +52,7 @@ static DUE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"due:(\d{4}-\d{2}-\d{2})")
 static ID_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\^([A-Za-z0-9]+)").unwrap());
 static COMPLETION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s✅\s\d{4}-\d{2}-\d{2}").unwrap());
 static RECUR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"rec:([^\s]+)").unwrap());
-static NOTE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"~note:\"((?:\\.|[^\"])*)\""#).unwrap());
+static NOTE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"~note:"((?:\\.|[^"])*)""#).unwrap());
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TodoKey {
@@ -640,7 +640,7 @@ fn render_line(item: &TodoItem) -> Result<String> {
 
     if let Some(note) = normalize_note(item.note.as_deref()) {
         let escaped = escape_note(&note);
-        parts.push(format!(r#"~note:\"{escaped}\""#));
+        parts.push(format!(r#"~note:"{escaped}""#));
     }
 
     if item.done {
@@ -694,6 +694,7 @@ fn escape_note(note: &str) -> String {
     note
         .replace('\\', "\\\\")
         .replace('"', "\\\"")
+        .replace('\r', "\\r")
         .replace('\n', "\\n")
 }
 
@@ -705,6 +706,7 @@ fn unescape_note(input: &str) -> String {
             if let Some(next) = chars.next() {
                 match next {
                     'n' => out.push('\n'),
+                    'r' => out.push('\r'),
                     '"' => out.push('"'),
                     '\\' => out.push('\\'),
                     other => {

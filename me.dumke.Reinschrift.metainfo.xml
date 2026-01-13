@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.11.6" date="2026-01-13">
+      <description>
+        <ul>
+          <li>Bugfix: Multi-line notes are now correctly stored and parsed</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.11.5" date="2026-01-13">
       <description>
         <ul>
