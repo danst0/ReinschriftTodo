@@ -5,6 +5,7 @@ import time
 import logging
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, stream_with_context
+from werkzeug.middleware.proxy_fix import ProxyFix
 import requests
 from requests.auth import HTTPBasicAuth
 from flask_wtf.csrf import CSRFProtect
@@ -20,6 +21,16 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 app.permanent_session_lifetime = timedelta(days=30)
 csrf = CSRFProtect(app)
 
+# Honor reverse proxy headers (e.g., X-Forwarded-Proto) so url_for builds correct HTTPS URLs.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
+
+# Ensure session cookies survive cross-site OAuth redirects.
+app.config.update(
+    SESSION_COOKIE_SAMESITE='None',
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+)
+
 oauth = OAuth(app)
 oauth.register(
     name='oidc',
@@ -28,6 +39,8 @@ oauth.register(
     client_secret=os.environ.get('OIDC_CLIENT_SECRET'),
     client_kwargs={'scope': 'openid email profile'},
 )
+
+OIDC_REDIRECT_URI = os.environ.get('OIDC_REDIRECT_URI')
 
 def get_locale():
     # Check session first
@@ -552,7 +565,7 @@ def index():
 
 @app.route('/login/oidc')
 def login_oidc():
-    redirect_uri = url_for('authorize', _external=True)
+    redirect_uri = OIDC_REDIRECT_URI or url_for('authorize', _external=True)
     return oauth.oidc.authorize_redirect(redirect_uri)
 
 @app.route('/authorize')

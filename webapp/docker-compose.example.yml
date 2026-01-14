@@ -19,6 +19,7 @@ services:
       - OIDC_CLIENT_ID=your-client-id
       - OIDC_CLIENT_SECRET=your-client-secret
       - OIDC_ALLOWED_USER=user@example.com
+      - OIDC_REDIRECT_URI=https://your-public-domain/authorize
 
       # WebDAV Configuration (Optional)
       - USE_WEBDAV=false
