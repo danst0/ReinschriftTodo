@@ -178,8 +178,8 @@ def parse_line(line, line_index, section):
         return None
     
     title = extract_title(rest)
-    project = capture_token(PROJECT_RE, rest)
-    context = capture_token(CONTEXT_RE, rest)
+    project = normalize_prefix(capture_token(PROJECT_RE, rest), '+')
+    context = normalize_prefix(capture_token(CONTEXT_RE, rest), '@')
     due_str = capture_token(DUE_RE, rest)
     recurrence = capture_token(RECUR_RE, rest)
     due = None
@@ -223,6 +223,25 @@ def capture_token(regex, text):
     if match:
         return match.group(1).strip()
     return None
+
+
+def normalize_prefix(token, prefix_char):
+    """Remove redundant leading prefix characters like '+' or '@'."""
+    if not token:
+        return None
+    normalized = token.lstrip(prefix_char).strip()
+    return normalized if normalized else None
+
+
+def strip_leading_markers(text):
+    """Drop leading project/context markers so the title stays clean."""
+    cleaned = text.lstrip()
+    while True:
+        match = re.match(r'^([+@][^\s]+)\s+(.*)$', cleaned)
+        if not match:
+            break
+        cleaned = match.group(2).lstrip()
+    return cleaned
 
 def normalize_note(text):
     if text is None:
@@ -319,16 +338,17 @@ def build_context_reminders(context, window_days=RECENT_CONTEXT_WINDOW_DAYS):
     return "\n\nContext reminders:\n" + "\n\n".join(sections)
 
 def extract_title(rest):
+    cleaned_rest = strip_leading_markers(rest)
     markers = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", " ~note:", "+", "@", "due:", "rec:", "[[", "✅", "^", "~note:"]
-    cut = len(rest)
+    cut = len(cleaned_rest)
     for marker in markers:
-        idx = rest.find(marker)
+        idx = cleaned_rest.find(marker)
         if idx != -1 and idx < cut:
             cut = idx
     
-    raw = rest[:cut]
+    raw = cleaned_rest[:cut]
     cleaned = raw.strip()
-    return cleaned if cleaned else rest.strip()
+    return cleaned if cleaned else cleaned_rest.strip()
 
 def toggle_todo(line_index, done):
     content = read_content()
@@ -663,9 +683,13 @@ def toggle(line_index):
             if next_due:
                 new_line = "- [ ] " + item['title'].strip()
                 if item.get('project'):
-                    new_line += f" +{item['project'].strip()}"
+                    project_clean = normalize_prefix(item['project'], '+')
+                    if project_clean:
+                        new_line += f" +{project_clean}"
                 if item.get('context'):
-                    new_line += f" @{item['context'].strip()}"
+                    context_clean = normalize_prefix(item['context'], '@')
+                    if context_clean:
+                        new_line += f" @{context_clean}"
                 new_line += f" due:{next_due.strftime('%Y-%m-%d')}"
                 new_line += f" rec:{item['recurrence']}"
                 if item.get('reference'):
@@ -713,10 +737,14 @@ def postpone(line_index, target):
     new_line += item['title'].strip()
     
     if item['project'] and item['project'].strip():
-        new_line += f" +{item['project'].strip()}"
+        project_clean = normalize_prefix(item['project'], '+')
+        if project_clean:
+            new_line += f" +{project_clean}"
         
     if item['context'] and item['context'].strip():
-        new_line += f" @{item['context'].strip()}"
+        context_clean = normalize_prefix(item['context'], '@')
+        if context_clean:
+            new_line += f" @{context_clean}"
         
     # Always set the new due date
     new_line += f" due:{new_date.strftime('%Y-%m-%d')}"
