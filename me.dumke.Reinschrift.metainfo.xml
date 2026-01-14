@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.12.2" date="2026-01-14">
+      <description>
+        <ul>
+          <li>Webapp: Smart Add now shows a turning-circle spinner while AI parses the task</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.12.1" date="2026-01-14">
       <description>
         <ul>

@@ -65,6 +65,8 @@ def inject_translations():
 TODO_PATH = os.environ.get('TODOS_DB_PATH', 'TodosDatenbank.md')
 CONFIG_PATH = os.environ.get('CONFIG_PATH', '/config/settings.json')
 
+RECENT_CONTEXT_WINDOW_DAYS = 14
+
 # WebDAV Configuration
 USE_WEBDAV = os.environ.get('USE_WEBDAV', 'false').lower() == 'true'
 WEBDAV_URL = os.environ.get('WEBDAV_URL')
@@ -261,13 +263,13 @@ def current_date():
     return datetime.now().date()
 
 
-def recent_window_bounds(window_days=14):
+def recent_window_bounds(window_days=RECENT_CONTEXT_WINDOW_DAYS):
     today = current_date()
     window_start = today - timedelta(days=max(window_days - 1, 0))
     return today, window_start
 
 
-def collect_recent_context(todos, window_days=14):
+def collect_recent_context(todos, window_days=RECENT_CONTEXT_WINDOW_DAYS):
     today, window_start = recent_window_bounds(window_days)
     open_todos = [t for t in todos if not t.get('done')]
     recent_closed = [
@@ -287,6 +289,34 @@ def collect_recent_context(todos, window_days=14):
         'locations': locations,
         'recent_todos': recent_full_text,
     }
+
+
+def build_context_reminders(context, window_days=RECENT_CONTEXT_WINDOW_DAYS):
+    sections = []
+
+    recent = context.get('recent_todos') or []
+    if recent:
+        recent_block = "- " + "\n- ".join(recent)
+        sections.append(
+            f"Recent closed todos (last {window_days} days, inclusive of today):\n{recent_block}"
+        )
+
+    topics = context.get('topics') or []
+    if topics:
+        sections.append(
+            "Distinct topics from open and recent closed todos: " + ", ".join(topics)
+        )
+
+    locations = context.get('locations') or []
+    if locations:
+        sections.append(
+            "Distinct locations from open and recent closed todos: " + ", ".join(locations)
+        )
+
+    if not sections:
+        return ""
+
+    return "\n\nContext reminders:\n" + "\n\n".join(sections)
 
 def extract_title(rest):
     markers = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", " ~note:", "+", "@", "due:", "rec:", "[[", "✅", "^", "~note:"]
@@ -916,7 +946,7 @@ def parse_nlp():
     weekday = now.strftime("%A")
 
     todos = load_todos()
-    recent_context = collect_recent_context(todos, window_days=14)
+    recent_context = collect_recent_context(todos, window_days=RECENT_CONTEXT_WINDOW_DAYS)
     
     # Load config
     app_config = {}
@@ -955,22 +985,9 @@ def parse_nlp():
         "Example 2: {\"title\": \"Milch kaufen\", \"due\": \"2026-01-01\", \"context\": \"Laden\"}"
     )
 
-    reminder_sections = []
-    if recent_context['recent_todos']:
-        recent_block = "- " + "\n- ".join(recent_context['recent_todos'])
-        reminder_sections.append(
-            f"Recent closed todos (last 14 days, inclusive of today):\n{recent_block}"
-        )
-
-    topics = recent_context['topics']
-    locations = recent_context['locations']
-    if topics:
-        reminder_sections.append("Distinct topics from open and recent closed todos: " + ", ".join(topics))
-    if locations:
-        reminder_sections.append("Distinct locations from open and recent closed todos: " + ", ".join(locations))
-
-    if reminder_sections:
-        system_prompt += "\n\nContext reminders:\n" + "\n\n".join(reminder_sections)
+    reminder_block = build_context_reminders(recent_context, window_days=RECENT_CONTEXT_WINDOW_DAYS)
+    if reminder_block:
+        system_prompt += "\n\n" + reminder_block
 
     try:
         logger.info(f"Sending request to Ollama ({chat_url}) with model {MODEL}")
