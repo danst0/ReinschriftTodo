@@ -45,6 +45,32 @@
             const dateInput = document.getElementById('due');
             dateInput.value = '9999-12-31';
         }
+
+        function focusRelative(form, current, backwards) {
+            const focusables = Array.from(form.querySelectorAll('input, select, textarea, button'));
+            const idx = focusables.indexOf(current);
+            if (idx === -1) return;
+            const nextIdx = backwards ? idx - 1 : idx + 1;
+            if (nextIdx >= 0 && nextIdx < focusables.length) {
+                focusables[nextIdx].focus();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const noteField = document.getElementById('note');
+            const form = document.querySelector('form');
+            if (!noteField || !form) return;
+
+            noteField.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    focusRelative(form, e.target, e.shiftKey);
+                } else if ((e.key === 'Enter' || e.key === 'NumpadEnter') && e.ctrlKey) {
+                    e.preventDefault();
+                    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
+            });
+        });
     </script>
 </head>
 <body>

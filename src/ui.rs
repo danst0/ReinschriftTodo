@@ -2219,6 +2219,7 @@ impl AppState {
             .buffer(&note_buffer)
             .wrap_mode(gtk::WrapMode::WordChar)
             .hexpand(true)
+            .accepts_tab(false)
             .build();
         note_view.set_top_margin(4);
         note_view.set_bottom_margin(4);
@@ -2300,6 +2301,20 @@ impl AppState {
         buttons.append(&save_btn);
         content.append(&buttons);
         dialog.set_content(Some(&content));
+
+        // Let Ctrl+Enter inside the multiline note field trigger saving.
+        let save_btn_for_note = save_btn.clone();
+        let note_key = gtk::EventControllerKey::new();
+        note_key.connect_key_pressed(move |_, key, _, state| {
+            let is_enter = key == gdk::Key::Return || key == gdk::Key::KP_Enter;
+            if is_enter && state.contains(gdk::ModifierType::CONTROL_MASK) {
+                save_btn_for_note.emit_clicked();
+                glib::Propagation::Stop
+            } else {
+                glib::Propagation::Proceed
+            }
+        });
+        note_view.add_controller(note_key);
 
         let dialog_cancel = dialog.clone();
         cancel_btn.connect_clicked(move |_| {
