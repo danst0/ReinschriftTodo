@@ -45,9 +45,7 @@ TRANSLATIONS = {
         'search_placeholder': 'Suchen…',
         'search_results_current': 'Suchergebnisse in aktueller Liste',
         'search_results_open': 'Suchergebnisse in allen offenen To-dos',
-            'unauthorized_user': '権限のないユーザー',
-            'ai_timeout_notice': 'AIの応答が15秒を超えました。AIなしで追加します。',
-            'ai_parse_failed': 'AI解析に失敗しました。AIなしで追加します。'
+        'search_results_done': 'Suchergebnisse in erledigten To-dos',
         'cheatsheet': 'Tastenkürzel',
         'key_help': 'Hilfe anzeigen',
         'key_new': 'Neue Aufgabe',

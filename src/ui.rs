@@ -15,10 +15,10 @@ use adw::{self, Application};
 use anyhow::{anyhow, Result};
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use glib::{clone, BoxedAnyObject};
+use glib::{clone, BoxedAnyObject, ControlFlow, Priority};
 use gtk::gdk;
 use gtk::gio;
-use gtk::{AlertDialog, FileDialog, FileFilter};
+use gtk::AlertDialog;
 use gtk::gio::prelude::*;
 use gtk::glib;
 use gtk::pango;
@@ -67,6 +67,8 @@ struct AiChatMessage {
 struct AiChatResponse {
     message: AiChatMessage,
 }
+
+type AiParseOutcome = (Result<Result<AiParseResult, anyhow::Error>, tokio::time::error::Elapsed>, String);
 
 impl SortMode {
     fn from_index(index: u32) -> Self {
@@ -1513,7 +1515,8 @@ impl AppState {
             return;
         }
 
-        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let context = glib::MainContext::default();
+        let (sender, receiver) = context.channel::<AiParseOutcome>(Priority::default());
         let runtime = self.ai_runtime.clone();
         runtime.spawn(async move {
             let outcome = tokio::time::timeout(StdDuration::from_secs(15), request_ai_parse(title_text.clone())).await;
@@ -1522,7 +1525,7 @@ impl AppState {
 
         receiver.attach(
             None,
-            clone!(@weak self as state, @weak entry => @default-return glib::Continue(false), move |(outcome, original)| {
+            clone!(@weak self as state, @weak entry => @default-return ControlFlow::Break, move |(outcome, original): AiParseOutcome| {
                 match outcome {
                     Ok(Ok(parsed)) => {
                         let todo = build_todo_from_ai(&parsed, &original);
@@ -1549,7 +1552,7 @@ impl AppState {
                         state.add_plain_and_notify(&original, &entry);
                     }
                 }
-                glib::Continue(false)
+                ControlFlow::Break
             }),
         );
     }
@@ -2689,10 +2692,12 @@ async fn request_ai_parse(text: String) -> Result<AiParseResult> {
     let model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "qwen3:14b".to_string());
 
     let system_prompt = format!(
-        "You are a specialized parser for todo items. Today is {}. "
-            + "Extract a concise 'title', a 'due' date in YYYY-MM-DD if present, and a 'context' identifier without the leading @. "
-            + "Always return a JSON object with keys 'title', 'due', and 'context'. Use null for missing fields. "
-            + "Do not translate the title; keep the input language. If relative dates are used, resolve them from today.",
+        concat!(
+            "You are a specialized parser for todo items. Today is {}. ",
+            "Extract a concise 'title', a 'due' date in YYYY-MM-DD if present, and a 'context' identifier without the leading @. ",
+            "Always return a JSON object with keys 'title', 'due', and 'context'. Use null for missing fields. ",
+            "Do not translate the title; keep the input language. If relative dates are used, resolve them from today."
+        ),
         Local::now().format("%A, %Y-%m-%d")
     );
 
