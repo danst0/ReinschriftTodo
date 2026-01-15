@@ -23,6 +23,7 @@ TRANSLATIONS = {
         'cancel': 'Abbrechen',
         'show_done': 'Erledigte anzeigen',
         'hide_future': 'Zukunft ausblenden',
+        'auto_ai_on_add': 'KI beim Hinzufügen nutzen',
         'topic': 'Thema',
         'location': 'Ort',
         'date': 'Datum',
@@ -44,7 +45,9 @@ TRANSLATIONS = {
         'search_placeholder': 'Suchen…',
         'search_results_current': 'Suchergebnisse in aktueller Liste',
         'search_results_open': 'Suchergebnisse in allen offenen To-dos',
-        'search_results_done': 'Suchergebnisse in abgeschlossenen To-dos',
+            'unauthorized_user': '権限のないユーザー',
+            'ai_timeout_notice': 'AIの応答が15秒を超えました。AIなしで追加します。',
+            'ai_parse_failed': 'AI解析に失敗しました。AIなしで追加します。'
         'cheatsheet': 'Tastenkürzel',
         'key_help': 'Hilfe anzeigen',
         'key_new': 'Neue Aufgabe',
@@ -62,7 +65,9 @@ TRANSLATIONS = {
         'license': 'Lizenz',
         'voice_input': 'Spracheingabe',
         'login_oidc': 'Mit OIDC anmelden',
-        'unauthorized_user': 'Nicht autorisierter Benutzer'
+        'unauthorized_user': 'Nicht autorisierter Benutzer',
+        'ai_timeout_notice': 'KI brauchte zu lange (15s). Aufgabe wird ohne KI hinzugefügt.',
+        'ai_parse_failed': 'KI-Analyse fehlgeschlagen. Aufgabe wird ohne KI hinzugefügt.'
     },
     'en': {
         'todos': 'Reinschrift',
@@ -87,6 +92,7 @@ TRANSLATIONS = {
         'cancel': 'Cancel',
         'show_done': 'Show Done',
         'hide_future': 'Hide Future',
+        'auto_ai_on_add': 'Use AI when adding',
         'topic': 'Topic',
         'location': 'Location',
         'date': 'Date',
@@ -126,7 +132,9 @@ TRANSLATIONS = {
         'license': 'License',
         'voice_input': 'Voice Input',
         'login_oidc': 'Login with OIDC',
-        'unauthorized_user': 'Unauthorized user'
+        'unauthorized_user': 'Unauthorized user',
+        'ai_timeout_notice': 'AI took too long (15s). Adding without AI.',
+        'ai_parse_failed': 'AI parsing failed. Adding without AI.'
     },
     'es': {
         'todos': 'Reinschrift',
@@ -151,6 +159,7 @@ TRANSLATIONS = {
         'cancel': 'Cancelar',
         'show_done': 'Mostrar terminadas',
         'hide_future': 'Ocultar futuras',
+        'auto_ai_on_add': 'Usar IA al añadir',
         'topic': 'Tema',
         'location': 'Ubicación',
         'date': 'Fecha',
@@ -190,7 +199,9 @@ TRANSLATIONS = {
         'voice_input': 'Entrada de voz',
         'license': 'Licencia',
         'login_oidc': 'Iniciar sesión con OIDC',
-        'unauthorized_user': 'Usuario no autorizado'
+        'unauthorized_user': 'Usuario no autorizado',
+        'ai_timeout_notice': 'La IA tardó demasiado (15s). Se añade sin IA.',
+        'ai_parse_failed': 'Fallo al analizar con IA. Se añade sin IA.'
     },
     'sv': {
         'todos': 'Reinschrift',
@@ -215,6 +226,7 @@ TRANSLATIONS = {
         'cancel': 'Avbryt',
         'show_done': 'Visa klara',
         'hide_future': 'Dölj framtida',
+        'auto_ai_on_add': 'Använd AI vid tillägg',
         'topic': 'Ämne',
         'location': 'Plats',
         'date': 'Datum',
@@ -254,7 +266,9 @@ TRANSLATIONS = {
         'voice_input': 'Röstinmatning',
         'license': 'Licens',
         'login_oidc': 'Logga in med OIDC',
-        'unauthorized_user': 'Obehörig användare'
+        'unauthorized_user': 'Obehörig användare',
+        'ai_timeout_notice': 'AI tog för lång tid (15s). Lägger till utan AI.',
+        'ai_parse_failed': 'AI-tolkning misslyckades. Lägger till utan AI.'
     },
     'fr': {
         'todos': 'Reinschrift',
@@ -279,6 +293,7 @@ TRANSLATIONS = {
         'cancel': 'Annuler',
         'show_done': 'Afficher les terminées',
         'hide_future': 'Masquer les futures',
+        'auto_ai_on_add': "Utiliser l'IA à l'ajout",
         'topic': 'Sujet',
         'location': 'Lieu',
         'date': 'Date',
@@ -318,7 +333,9 @@ TRANSLATIONS = {
         'website': 'Site web',
         'license': 'Licence',
         'login_oidc': 'Se connecter avec OIDC',
-        'unauthorized_user': 'Utilisateur non autorisé'
+        'unauthorized_user': 'Utilisateur non autorisé',
+        'ai_timeout_notice': "L'IA a mis trop de temps (15s). Ajout sans IA.",
+        'ai_parse_failed': "Échec de l'analyse IA. Ajout sans IA."
     },
     'ja': {
         'todos': 'Reinschrift',

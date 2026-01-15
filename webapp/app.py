@@ -502,6 +502,7 @@ def index():
     show_done_val = request.args.get('show_done')
     show_due_only_val = request.args.get('show_due_only')
     sort_mode_val = request.args.get('sort_mode')
+    auto_ai_on_add_val = request.args.get('auto_ai_on_add')
     
     new_settings = settings.copy()
     changed = False
@@ -523,6 +524,12 @@ def index():
         changed = True
     else:
         sort_mode_val = settings.get('sort_mode', 'topic')
+
+    if auto_ai_on_add_val is not None:
+        new_settings['auto_ai_on_add'] = auto_ai_on_add_val
+        changed = True
+    else:
+        auto_ai_on_add_val = settings.get('auto_ai_on_add', '0')
         
     if changed:
         save_settings(new_settings)
@@ -531,6 +538,7 @@ def index():
     show_done = show_done_val == '1'
     show_due_only = show_due_only_val == '1'
     sort_mode = sort_mode_val
+    auto_ai_on_add = auto_ai_on_add_val == '1'
     q = request.args.get('q', '').lower()
     
     today = datetime.now().date()
@@ -576,7 +584,8 @@ def index():
                                q=q,
                                show_done=show_done,
                                show_due_only=show_due_only,
-                               sort_mode=sort_mode)
+                               sort_mode=sort_mode,
+                               auto_ai_on_add=auto_ai_on_add)
 
     # Sorting logic
     if sort_mode == 'location':
@@ -611,7 +620,7 @@ def index():
     if request.args.get('partial'):
         return render_template('_todo_list.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode)
 
-    return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode, q=q)
+    return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode, q=q, auto_ai_on_add=auto_ai_on_add)
 
 @app.route('/login/oidc')
 def login_oidc():

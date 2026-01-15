@@ -11,6 +11,8 @@
   "locations": "@ Orte",
   "date": "Datum",
   "show_due_only": "Nur fällige anzeigen",
+  "use_ai_on_new_topic": "KI beim Anlegen nutzen",
+  "use_ai_on_new_topic_desc": "Startet Smart Add automatisch; Abbruch nach 15s.",
   "new_todo_placeholder": "Neues To-do…",
   "add": "Hinzufügen",
   "title_empty_error": "Titel darf nicht leer sein",
@@ -134,5 +136,7 @@
   "lang_pt": "Portugiesisch",
   "lang_ru": "Russisch",
   "lang_tr": "Türkisch",
-  "lang_sv": "Schwedisch"
+  "lang_sv": "Schwedisch",
+  "ai_parse_failed": "KI-Auswertung fehlgeschlagen: {}",
+  "ai_timeout_fallback": "KI hat nach 15s abgebrochen. Hinzugefügt ohne KI."
 }

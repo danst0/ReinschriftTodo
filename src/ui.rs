@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::cmp::Ordering;
+use std::env;
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
@@ -7,10 +8,11 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::sync::Mutex;
+use std::time::Duration as StdDuration;
 
 use adw::prelude::*;
 use adw::{self, Application};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use glib::{clone, BoxedAnyObject};
@@ -23,6 +25,7 @@ use gtk::pango;
 use gtk::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use tokio::runtime::Runtime;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
 use crate::data::{self, TodoItem};
@@ -46,6 +49,23 @@ enum SortMode {
     Topic,
     Location,
     Date,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct AiParseResult {
+    title: Option<String>,
+    due: Option<String>,
+    context: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AiChatMessage {
+    content: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AiChatResponse {
+    message: AiChatMessage,
 }
 
 impl SortMode {
@@ -105,6 +125,8 @@ struct Preferences {
     use_whisper: bool,
     #[serde(default = "default_whisper_language")]
     whisper_language: String,
+    #[serde(default)]
+    use_ai_on_new_topic: bool,
 }
 
 fn default_whisper_language() -> String {
@@ -324,50 +346,14 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     let state_for_add = Rc::clone(&state);
     let new_entry_for_add = new_entry.clone();
     add_btn.connect_clicked(move |_| {
-        let title_text = new_entry_for_add.text().trim().to_string();
-        if title_text.is_empty() {
-            state_for_add.show_error(&t("title_empty_error"));
-            return;
-        }
-
-        match data::add_todo(&title_text) {
-            Ok(_) => {
-                new_entry_for_add.set_text("");
-                if let Err(err) = state_for_add.reload() {
-                    state_for_add.show_error(&t("reload_error").replace("{}", &err.to_string()));
-                } else {
-                    state_for_add.show_info(&t("task_added"));
-                }
-            }
-            Err(err) => {
-                state_for_add.show_error(&t("create_error").replace("{}", &err.to_string()));
-            }
-        }
+        state_for_add.handle_add_submission(&new_entry_for_add);
     });
 
     // Enter im Textfeld soll ebenfalls das To-do anlegen
     let state_for_add2 = Rc::clone(&state);
     let new_entry_for_add2 = new_entry.clone();
     new_entry.connect_activate(move |_| {
-        let title_text = new_entry_for_add2.text().trim().to_string();
-        if title_text.is_empty() {
-            state_for_add2.show_error(&t("title_empty_error"));
-            return;
-        }
-
-        match data::add_todo(&title_text) {
-            Ok(_) => {
-                new_entry_for_add2.set_text("");
-                if let Err(err) = state_for_add2.reload() {
-                    state_for_add2.show_error(&t("reload_error").replace("{}", &err.to_string()));
-                } else {
-                    state_for_add2.show_info(&t("task_added"));
-                }
-            }
-            Err(err) => {
-                state_for_add2.show_error(&t("create_error").replace("{}", &err.to_string()));
-            }
-        }
+        state_for_add2.handle_add_submission(&new_entry_for_add2);
     });
 
     // Erzeuge das vertikale Content-Layout noch vor dem Einfügen der neuen Zeile
@@ -831,6 +817,7 @@ struct AppState {
     list_view: RefCell<Option<gtk::ListView>>,
     scrolled_window: RefCell<Option<gtk::ScrolledWindow>>,
     is_recording: Arc<AtomicBool>,
+    ai_runtime: Arc<Runtime>,
     _debug_mode: bool,
 }
 
@@ -844,6 +831,8 @@ impl AppState {
             .map(SortMode::from_key)
             .unwrap_or(SortMode::Topic);
         prefs.sort_mode = Some(sort_mode.as_key().to_string());
+
+        let ai_runtime = Arc::new(Runtime::new().expect("failed to create tokio runtime"));
 
         if prefs.use_webdav {
              if let Some(url) = &prefs.webdav_url {
@@ -890,6 +879,7 @@ impl AppState {
             list_view: RefCell::new(None),
             scrolled_window: RefCell::new(None),
             is_recording: Arc::new(AtomicBool::new(false)),
+            ai_runtime: ai_runtime.clone(),
             _debug_mode: debug_mode,
             last_fingerprint: RefCell::new(None),
         }
@@ -913,6 +903,10 @@ impl AppState {
 
     fn use_whisper(&self) -> bool {
         self.preferences.borrow().use_whisper
+    }
+
+    fn use_ai_on_new_topic(&self) -> bool {
+        self.preferences.borrow().use_ai_on_new_topic
     }
 
     fn whisper_language(&self) -> String {
@@ -1184,6 +1178,18 @@ impl AppState {
             state_due.set_show_due_only(row.is_active());
         });
         general_group.add(&show_due_row);
+
+        let ai_row = adw::SwitchRow::builder()
+            .title(&t("use_ai_on_new_topic"))
+            .subtitle(&t("use_ai_on_new_topic_desc"))
+            .active(self.use_ai_on_new_topic())
+            .build();
+        ai_row.add_prefix(&gtk::Image::from_icon_name("starred-symbolic"));
+        let state_ai = Rc::clone(self);
+        ai_row.connect_active_notify(move |row| {
+            state_ai.set_use_ai_on_new_topic(row.is_active());
+        });
+        general_group.add(&ai_row);
 
         // --- WebDAV Page ---
         let webdav_page = adw::PreferencesPage::builder()
@@ -1465,6 +1471,87 @@ impl AppState {
 
         self.persist_preferences();
         self.repopulate_store();
+    }
+
+    fn set_use_ai_on_new_topic(&self, enabled: bool) {
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.use_ai_on_new_topic == enabled {
+                return;
+            }
+            prefs.use_ai_on_new_topic = enabled;
+        }
+
+        self.persist_preferences();
+    }
+
+    fn add_plain_and_notify(self: &Rc<Self>, title_text: &str, entry: &gtk::Entry) {
+        match data::add_todo(title_text) {
+            Ok(_) => {
+                entry.set_text("");
+                if let Err(err) = self.reload() {
+                    self.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                } else {
+                    self.show_info(&t("task_added"));
+                }
+            }
+            Err(err) => {
+                self.show_error(&t("create_error").replace("{}", &err.to_string()));
+            }
+        }
+    }
+
+    fn handle_add_submission(self: &Rc<Self>, entry: &gtk::Entry) {
+        let title_text = entry.text().trim().to_string();
+        if title_text.is_empty() {
+            self.show_error(&t("title_empty_error"));
+            return;
+        }
+
+        if !self.use_ai_on_new_topic() {
+            self.add_plain_and_notify(&title_text, entry);
+            return;
+        }
+
+        let (sender, receiver) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let runtime = self.ai_runtime.clone();
+        runtime.spawn(async move {
+            let outcome = tokio::time::timeout(StdDuration::from_secs(15), request_ai_parse(title_text.clone())).await;
+            let _ = sender.send((outcome, title_text));
+        });
+
+        receiver.attach(
+            None,
+            clone!(@weak self as state, @weak entry => @default-return glib::Continue(false), move |(outcome, original)| {
+                match outcome {
+                    Ok(Ok(parsed)) => {
+                        let todo = build_todo_from_ai(&parsed, &original);
+                        match data::add_todo_full(&todo) {
+                            Ok(_) => {
+                                entry.set_text("");
+                                if let Err(err) = state.reload() {
+                                    state.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                                } else {
+                                    state.show_info(&t("task_added"));
+                                }
+                            }
+                            Err(err) => {
+                                state.show_error(&t("create_error").replace("{}", &err.to_string()));
+                            }
+                        }
+                    }
+                    Ok(Err(err)) => {
+                        state.show_error(&t("ai_parse_failed").replace("{}", &err.to_string()));
+                        state.add_plain_and_notify(&original, &entry);
+                    }
+                    Err(_) => {
+                        state.show_error(&t("ai_timeout_fallback"));
+                        state.add_plain_and_notify(&original, &entry);
+                    }
+                }
+                glib::Continue(false)
+            }),
+        );
     }
 
     fn set_use_whisper(self: &Rc<Self>, use_whisper: bool, progress_bar: Option<gtk::ProgressBar>, switch_row: Option<adw::SwitchRow>, voice_btn: Option<gtk::Button>) {
@@ -2550,6 +2637,101 @@ fn format_metadata(item: &TodoItem) -> String {
     }
 
     parts.join(" • ")
+}
+
+fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::TodoItem {
+    let title = parsed
+        .title
+        .as_deref()
+        .unwrap_or(fallback_title)
+        .trim()
+        .to_string();
+
+    let context = parsed
+        .context
+        .as_deref()
+        .map(|c| c.trim().trim_start_matches('@').to_string())
+        .filter(|c| !c.is_empty());
+
+    let due = parsed
+        .due
+        .as_deref()
+        .and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+        .unwrap_or_else(|| Local::now().date_naive());
+
+    data::TodoItem {
+        key: data::TodoKey {
+            line_index: 0,
+            marker: None,
+        },
+        title,
+        section: String::new(),
+        project: None,
+        context,
+        due: Some(due),
+        reference: None,
+        recurrence: None,
+        note: None,
+        done: false,
+    }
+}
+
+async fn request_ai_parse(text: String) -> Result<AiParseResult> {
+    let base_url = env::var("OLLAMA_URL")
+        .unwrap_or_else(|_| "http://10.0.2.71:11434/api/generate".to_string());
+
+    let chat_url = if base_url.contains("/api/generate") {
+        base_url.replace("/api/generate", "/api/chat")
+    } else {
+        format!("{}/api/chat", base_url.trim_end_matches('/'))
+    };
+
+    let model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "qwen3:14b".to_string());
+
+    let system_prompt = format!(
+        "You are a specialized parser for todo items. Today is {}. "
+            + "Extract a concise 'title', a 'due' date in YYYY-MM-DD if present, and a 'context' identifier without the leading @. "
+            + "Always return a JSON object with keys 'title', 'due', and 'context'. Use null for missing fields. "
+            + "Do not translate the title; keep the input language. If relative dates are used, resolve them from today.",
+        Local::now().format("%A, %Y-%m-%d")
+    );
+
+    let payload = serde_json::json!({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text},
+        ],
+        "stream": false,
+        "format": "json",
+    });
+
+    let client = reqwest::Client::new();
+    let resp = client.post(chat_url).json(&payload).send().await?;
+    let status = resp.status();
+    let body = resp.text().await?;
+
+    if !status.is_success() {
+        return Err(anyhow!(format!("HTTP {}: {}", status, body)));
+    }
+
+    let envelope: AiChatResponse = serde_json::from_str(&body)
+        .map_err(|e| anyhow!(format!("Parse response failed: {e}; body: {body}")))?;
+
+    let mut raw = envelope.message.content.trim().to_string();
+    if raw.starts_with("```") {
+        raw = raw
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim()
+            .to_string();
+    }
+
+    let parsed: AiParseResult = serde_json::from_str(&raw)
+        .map_err(|e| anyhow!(format!("Parse JSON failed: {e}; raw: {raw}")))?;
+
+    Ok(parsed)
 }
 
 fn load_preferences() -> Preferences {

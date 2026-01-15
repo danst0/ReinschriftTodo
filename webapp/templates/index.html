@@ -252,6 +252,11 @@
            {% if show_due_only %}☑ {{ t.hide_future }}{% else %}☐ {{ t.hide_future }}{% endif %}
         </a>
 
+          <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode, auto_ai_on_add=0 if auto_ai_on_add else 1) }}"
+              class="filter-link {% if auto_ai_on_add %}active{% endif %}" onclick="applyFilter(event, this.href)">
+              {% if auto_ai_on_add %}☑ {{ t.auto_ai_on_add }}{% else %}☐ {{ t.auto_ai_on_add }}{% endif %}
+          </a>
+
         <span style="color: #ccc;">|</span>
 
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='topic') }}"
@@ -276,6 +281,7 @@
         <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
         <input type="hidden" name="show_due_only" value="{{ '1' if show_due_only else '0' }}">
         <input type="hidden" name="sort_mode" value="{{ sort_mode }}">
+        <input type="hidden" name="auto_ai_on_add" value="{{ '1' if auto_ai_on_add else '0' }}">
         <button type="submit" style="padding: 0.5rem 1rem; background: #3584e4; color: white; border: none; border-radius: 6px; cursor: pointer;">{{ t.search_placeholder.strip('…') }}</button>
         {% if q %}
             <a href="{{ url_for('index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}" 
@@ -314,7 +320,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; padding-top: 1rem;">
-            <p><strong>Reinschrift</strong> v0.12.3</p>
+            <p><strong>Reinschrift</strong> v0.12.4</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -340,50 +346,152 @@
     </div>
 
     <script>        // Move AI Logic to the top for better availability
-        function handleSmartAdd(btn) {
-            console.log("Smart Add clicked");
+        const SMART_ADD_TIMEOUT_MS = 15000;
+        const smartAddUrl = {{ url_for('parse_nlp') | tojson }};
+        const csrfToken = {{ csrf_token() | tojson }};
+        const autoAiOnAdd = {{ 'true' if auto_ai_on_add else 'false' }};
+        const aiTimeoutMessage = {{ t.ai_timeout_notice | tojson }};
+        const aiErrorMessage = {{ t.ai_parse_failed | tojson }};
+
+        let smartAddController = null;
+
+        function setSmartButtonState(btn, loading) {
+            if (!btn) return;
+            if (loading) {
+                btn.classList.add('loading');
+                btn.disabled = true;
+            } else {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        function buildSmartAddController() {
+            if (smartAddController) {
+                smartAddController.abort();
+            }
+            smartAddController = new AbortController();
+            return smartAddController;
+        }
+
+        function formatSmartResult(data, fallbackText) {
+            if (!data) return fallbackText;
+            const base = (data.title || data.task || fallbackText || '').trim();
+            if (!base) return fallbackText;
+
+            let formatted = base;
+            if (data.due && data.due !== 'null' && data.due !== 'None') {
+                formatted += ` due:${data.due}`;
+            }
+            if (data.context && data.context !== 'null' && data.context !== 'None') {
+                formatted += ` @${String(data.context).replace(/^@/, '')}`;
+            }
+            return formatted;
+        }
+
+        async function runSmartAdd({ btn = null, textOverride = null } = {}) {
             const input = document.getElementById('add-input');
-            const text = input.value;
-            if (!text) return;
+            const text = textOverride ?? input.value;
+            if (!text) {
+                return null;
+            }
 
-            btn.classList.add('loading');
-            btn.disabled = true;
+            const controller = buildSmartAddController();
+            const timeoutId = setTimeout(() => controller.abort(), SMART_ADD_TIMEOUT_MS);
+            setSmartButtonState(btn, true);
 
-            fetch("{{ url_for('parse_nlp') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': "{{ csrf_token() }}"
-                },
-                body: JSON.stringify({ text: text })
-            })
-            .then(res => {
-                if (!res.ok) throw new Error("HTTP error " + res.status);
-                return res.json();
-            })
-            .then(data => {
-                if (data.error) throw new Error(data.error);
-                let title = data.title || data.task || text;
-                let formatted = title;
-                if (data.due && data.due !== 'null' && data.due !== 'None') {
-                    formatted += ` due:${data.due}`;
+            try {
+                const res = await fetch(smartAddUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ text }),
+                    signal: controller.signal
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
                 }
-                if (data.context && data.context !== 'null' && data.context !== 'None') {
-                    formatted += ` @${data.context.replace(/^@/, '')}`;
+
+                const data = await res.json();
+                if (data.error) {
+                    throw new Error(data.error);
                 }
+
+                return formatSmartResult(data, text);
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    throw new Error('timeout');
+                }
+                throw err;
+            } finally {
+                clearTimeout(timeoutId);
+                if (smartAddController === controller) {
+                    smartAddController = null;
+                }
+                setSmartButtonState(btn, false);
+            }
+        }
+
+        function notifyAiFallback(message) {
+            alert(message);
+        }
+
+        async function handleSmartAdd(btn) {
+            try {
+                const formatted = await runSmartAdd({ btn });
+                if (!formatted) {
+                    return;
+                }
+                const input = document.getElementById('add-input');
                 input.value = formatted;
                 input.style.backgroundColor = '#6c5ce733';
                 setTimeout(() => input.style.backgroundColor = '', 1000);
-            })
-            .catch(err => {
-                console.error("AI Error:", err);
-                alert("AI parsing failed: " + err.message);
-            })
-            .finally(() => {
-                btn.classList.remove('loading');
-                btn.disabled = false;
+            } catch (err) {
+                if (err && err.message === 'timeout') {
+                    notifyAiFallback(aiTimeoutMessage);
+                } else {
+                    console.error('AI Error:', err);
+                    notifyAiFallback(`${aiErrorMessage} ${err && err.message ? err.message : ''}`.trim());
+                }
+            }
+        }
+
+        function wireAutoSmartAdd() {
+            if (!autoAiOnAdd) {
+                return;
+            }
+            const form = document.getElementById('addForm');
+            const input = document.getElementById('add-input');
+            if (!form || !input) {
+                return;
+            }
+
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                const original = input.value;
+                try {
+                    const formatted = await runSmartAdd({ textOverride: original });
+                    if (formatted) {
+                        input.value = formatted;
+                    }
+                } catch (err) {
+                    if (err && err.message === 'timeout') {
+                        notifyAiFallback(aiTimeoutMessage);
+                    } else if (err && err.message) {
+                        notifyAiFallback(`${aiErrorMessage} ${err.message}`.trim());
+                    } else {
+                        notifyAiFallback(aiErrorMessage);
+                    }
+                    input.value = original;
+                } finally {
+                    form.submit();
+                }
             });
         }
+        wireAutoSmartAdd();
         var modal = document.getElementById("editModal");
 
         function toggleTodo(event, lineIndex) {
