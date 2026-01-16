@@ -2728,16 +2728,32 @@ impl AppState {
     }
 }
 
+fn normalize_token(raw: &str) -> Option<String> {
+    let trimmed = raw.trim().trim_start_matches(['+', '@']);
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_lowercase())
+    }
+}
+
 fn format_metadata(item: &TodoItem) -> String {
     let mut parts = Vec::new();
-    if !item.section.is_empty() {
+
+    let section_norm = normalize_token(&item.section);
+    let project_norm = item.project.as_deref().and_then(normalize_token);
+    let context_norm = item.context.as_deref().and_then(normalize_token);
+
+    if !item.section.is_empty() && section_norm.is_some() && section_norm != project_norm {
         parts.push(item.section.clone());
     }
     if let Some(project) = &item.project {
         parts.push(format!("+{}", project));
     }
-    if let Some(context) = &item.context {
-        parts.push(format!("@{}", context));
+    if let (Some(context), Some(ctx_norm)) = (&item.context, &context_norm) {
+        if Some(ctx_norm.clone()) != project_norm && Some(ctx_norm.clone()) != section_norm {
+            parts.push(format!("@{}", context));
+        }
     }
     if let Some(due) = item.due {
         if due.year() == 9999 {
