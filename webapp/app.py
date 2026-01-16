@@ -3,6 +3,8 @@ import re
 import json
 import time
 import logging
+import secrets
+import string
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, stream_with_context
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -82,6 +84,15 @@ COMPLETION_RE = re.compile(r"\s✅\s\d{4}-\d{2}-\d{2}")
 COMPLETION_DATE_RE = re.compile(r"✅\s(\d{4}-\d{2}-\d{2})")
 RECUR_RE = re.compile(r"rec:([^\s]+)")
 NOTE_RE = re.compile(r'~note:"((?:\\.|[^"])*)"')
+
+
+def generate_marker(length=8):
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+def ensure_marker(existing):
+    return existing if existing else generate_marker()
 
 def read_content():
     if USE_WEBDAV:
@@ -431,6 +442,7 @@ def add_todo(title):
         new_line = f"- [ ] {title}"
     else:
         new_line = f"- [ ] {title} due:{today}"
+    new_line += f" ^{generate_marker()}"
     lines.insert(insert_index, new_line)
     
     write_content('\n'.join(lines) + '\n')
@@ -706,6 +718,7 @@ def toggle(line_index):
 
                 if item.get('note'):
                     new_line += f' ~note:"{escape_note(item["note"])}"'
+                new_line += f" ^{ensure_marker(item.get('marker'))}"
                 insert_line(new_line)
     
     return redirect(url_for('index'))
@@ -740,7 +753,7 @@ def postpone(line_index, target):
     
     # Reconstruct line
     original_line = lines[line_index]
-    marker = capture_token(ID_RE, original_line)
+    marker = ensure_marker(capture_token(ID_RE, original_line))
     
     new_line = "- [x] " if item['done'] else "- [ ] "
     new_line += item['title'].strip()
@@ -770,8 +783,7 @@ def postpone(line_index, target):
          if match:
              new_line += match.group(0)
 
-    if marker:
-        new_line += f" ^{marker}"
+    new_line += f" ^{marker}"
         
     lines[line_index] = new_line
     write_content('\n'.join(lines) + '\n')
@@ -818,7 +830,7 @@ def edit(line_index):
         
         # Reconstruct line
         original_line = lines[line_index]
-        marker = capture_token(ID_RE, original_line)
+        marker = ensure_marker(capture_token(ID_RE, original_line))
         original_item = parse_line(original_line, line_index, "")
         was_done = original_item.get('done') if original_item else False
         
@@ -863,8 +875,7 @@ def edit(line_index):
         if completion_str:
             new_line += completion_str
 
-        if marker:
-            new_line += f" ^{marker}"
+        new_line += f" ^{marker}"
             
         lines[line_index] = new_line
         write_content('\n'.join(lines) + '\n')
@@ -891,6 +902,7 @@ def edit(line_index):
 
                 if note_value:
                     new_rec_line += f' ~note:"{escape_note(note_value)}"'
+                new_rec_line += f" ^{generate_marker()}"
                 insert_line(new_rec_line)
         
         return redirect(url_for('index'))

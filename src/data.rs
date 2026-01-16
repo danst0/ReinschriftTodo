@@ -1,6 +1,7 @@
 use std::{env, fs};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::i18n::t;
 use anyhow::{anyhow, bail, Context, Result};
@@ -397,7 +398,8 @@ pub fn add_todo(title: &str) -> Result<()> {
         bail!(t("title_empty_error"));
     }
     let today = Local::now().date_naive();
-    let line = format!("- [ ] {} due:{}", title, today.format("%Y-%m-%d"));
+    let marker = generate_marker();
+    let line = format!("- [ ] {} due:{} ^{}", title, today.format("%Y-%m-%d"), marker);
     insert_line(line)
 }
 
@@ -648,13 +650,54 @@ fn render_line(item: &TodoItem) -> Result<String> {
         parts.push(format!("✅ {today}"));
     }
 
-    if let Some(marker) = &item.key.marker {
-        if !marker.is_empty() {
-            parts.push(format!("^{marker}"));
+    let marker = item
+        .key
+        .marker
+        .as_deref()
+        .filter(|m| !m.is_empty())
+        .map(|m| m.to_string())
+        .unwrap_or_else(generate_marker);
+
+    parts.push(format!("^{marker}"));
+
+    Ok(parts.join(" "))
+}
+
+fn generate_marker() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+        .as_nanos();
+    let pid = std::process::id() as u128;
+    let mixed = now ^ (pid << 64);
+    let mut encoded = encode_base36(mixed);
+
+    // Keep IDs short and alphanumeric (e.g., 8 chars)
+    if encoded.len() > 8 {
+        encoded.truncate(8);
+    } else {
+        while encoded.len() < 8 {
+            encoded.push('0');
         }
     }
 
-    Ok(parts.join(" "))
+    encoded
+}
+
+fn encode_base36(mut value: u128) -> String {
+    const ALPHABET: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
+    if value == 0 {
+        return "0".to_string();
+    }
+
+    let mut buf = Vec::new();
+    while value > 0 {
+        let idx = (value % 36) as usize;
+        buf.push(ALPHABET[idx] as char);
+        value /= 36;
+    }
+
+    buf.into_iter().rev().collect()
 }
 
 fn normalize_token(value: Option<&str>) -> Option<String> {
