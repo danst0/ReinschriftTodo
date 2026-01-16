@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.12.7" date="2026-01-16">
+      <description>
+        <ul>
+          <li>Fix AI Smart Add channel typing to satisfy GLib callbacks</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.12.6" date="2026-01-16">
       <description>
         <ul>

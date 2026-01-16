@@ -1516,11 +1516,13 @@ impl AppState {
         }
 
         let context = glib::MainContext::default();
-        let (sender, receiver) = context.channel::<AiParseOutcome>(Priority::default());
+        let (sender, receiver): (glib::Sender<AiParseOutcome>, glib::Receiver<AiParseOutcome>) =
+            context.channel(Priority::default());
         let runtime = self.ai_runtime.clone();
         runtime.spawn(async move {
             let outcome = tokio::time::timeout(StdDuration::from_secs(15), request_ai_parse(title_text.clone())).await;
-            let _ = sender.send((outcome, title_text));
+            let payload: AiParseOutcome = (outcome, title_text);
+            let _ = sender.send(payload);
         });
 
         receiver.attach(
