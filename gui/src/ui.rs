@@ -22,12 +22,12 @@ use gtk::gio::prelude::*;
 use gtk::glib;
 use gtk::pango;
 use gtk::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json;
 use tokio::runtime::Runtime;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
-use reinschrift_core::{data, TodoItem, SortMode, sort_items, t};
+use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, Preferences, load_preferences, write_preferences};
 
 enum VoiceMsg {
     Error(String),
@@ -60,49 +60,6 @@ struct AiChatResponse {
 }
 
 const DEFAULT_DUE_TIME: NaiveTime = NaiveTime::from_hms_opt(0, 0, 0).expect("midnight available");
-
-#[derive(Clone, Default, Serialize, Deserialize)]
-struct Preferences {
-    sort_mode: Option<String>,
-    #[serde(default)]
-    show_done: bool,
-    #[serde(default = "default_skip_delete_confirmation")]
-    skip_delete_confirmation: bool,
-    #[serde(default)]
-    db_path: Option<String>,
-    #[serde(default)]
-    show_due_only: bool,
-    #[serde(default)]
-    use_webdav: bool,
-    #[serde(default)]
-    webdav_url: Option<String>,
-    #[serde(default)]
-    webdav_path: Option<String>,
-    #[serde(default)]
-    webdav_username: Option<String>,
-    #[serde(default)]
-    webdav_password: Option<String>,
-    #[serde(default)]
-    use_whisper: bool,
-    #[serde(default = "default_whisper_language")]
-    whisper_language: String,
-    #[serde(default)]
-    use_ai_on_new_topic: bool,
-    #[serde(default = "default_ai_timeout_secs")]
-    ai_timeout_secs: u64,
-}
-
-fn default_whisper_language() -> String {
-    "auto".to_string()
-}
-
-fn default_ai_timeout_secs() -> u64 {
-    30
-}
-
-fn default_skip_delete_confirmation() -> bool {
-    true
-}
 
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
     glib::timeout_add_seconds_local(interval, clone!(@weak state => @default-return glib::ControlFlow::Break, move || {
@@ -2845,29 +2802,4 @@ async fn request_ai_parse(text: String) -> Result<AiParseResult> {
         .map_err(|e| anyhow!(format!("Parse JSON failed: {e}; raw: {raw}")))?;
 
     Ok(parsed)
-}
-
-fn load_preferences() -> Preferences {
-    let path = preferences_path();
-    if let Ok(data) = fs::read_to_string(&path) {
-        serde_json::from_str(&data).unwrap_or_default()
-    } else {
-        Preferences::default()
-    }
-}
-
-fn write_preferences(prefs: &Preferences) -> std::io::Result<()> {
-    let path = preferences_path();
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir)?;
-    }
-    let serialized = serde_json::to_string_pretty(prefs).unwrap_or_else(|_| "{}".into());
-    fs::write(path, serialized)
-}
-
-fn preferences_path() -> PathBuf {
-    let mut dir = glib::user_config_dir();
-    dir.push("reinschrift_todo");
-    dir.push("preferences.json");
-    dir
 }

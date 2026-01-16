@@ -1641,7 +1641,7 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "reinschrift-cli"
-version = "0.13.9"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1654,7 +1654,7 @@ dependencies = [
 
 [[package]]
 name = "reinschrift-core"
-version = "0.13.9"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1667,7 +1667,7 @@ dependencies = [
 
 [[package]]
 name = "reinschrift-gui"
-version = "0.13.9"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "chrono",

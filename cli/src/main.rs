@@ -3,17 +3,12 @@ mod output;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use reinschrift_core::{i18n, set_todo_path};
-use std::path::PathBuf;
+use reinschrift_core::{data, i18n, load_preferences, set_todo_path};
 
 #[derive(Parser)]
 #[command(name = "reinschrift")]
 #[command(author, version, about = "A todo application with markdown storage")]
 struct Cli {
-    /// Path to markdown database file
-    #[arg(short, long, global = true)]
-    database: Option<PathBuf>,
-
     /// Language (de, en, es, fr, ja, sv)
     #[arg(short, long, global = true)]
     language: Option<String>,
@@ -185,11 +180,21 @@ enum ConfigAction {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Set database path if provided
-    if let Some(db_path) = cli.database {
-        let absolute_path = std::fs::canonicalize(&db_path)
-            .unwrap_or_else(|_| db_path.clone());
-        set_todo_path(absolute_path);
+    // Load shared preferences (same file as GUI)
+    let prefs = load_preferences();
+
+    // Configure backend from preferences
+    if prefs.use_webdav {
+        if let Some(url) = prefs.webdav_url.clone() {
+            data::set_backend_config(data::BackendConfig::WebDav {
+                url,
+                path: prefs.webdav_path.clone(),
+                username: prefs.webdav_username.clone(),
+                password: prefs.webdav_password.clone(),
+            });
+        }
+    } else if let Some(db_path) = prefs.db_path.clone() {
+        set_todo_path(db_path.into());
     }
 
     // Set language if provided

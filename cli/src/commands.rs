@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use chrono::{Duration, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use reinschrift_core::{
     data, load_todos, toggle_todo, set_due_today, update_todo_details, delete_todo, add_todo,
-    add_todo_full, todo_path, get_backend_config, test_webdav_connection,
+    add_todo_full, get_backend_config, test_webdav_connection,
     TodoItem, TodoKey, SortMode, sort_items, t,
 };
 use std::io::{self, Write};
@@ -264,11 +264,10 @@ pub fn search(ctx: &OutputContext, query: &str, show_all: bool) -> Result<()> {
 }
 
 pub fn config_show(ctx: &OutputContext) -> Result<()> {
-    let path = todo_path();
     let config = get_backend_config();
 
     if ctx.json {
-        let config_json = match config {
+        let config_json = match &config {
             data::BackendConfig::Local(p) => {
                 format!(r#"{{"type":"local","path":"{}"}}"#, p.display())
             }
@@ -284,10 +283,10 @@ pub fn config_show(ctx: &OutputContext) -> Result<()> {
         println!("{}", config_json);
     } else {
         println!("Configuration:");
-        println!("  Database path: {}", path.display());
-        match config {
-            data::BackendConfig::Local(_) => {
+        match &config {
+            data::BackendConfig::Local(path) => {
                 println!("  Backend: Local file");
+                println!("  Database path: {}", path.display());
             }
             data::BackendConfig::WebDav { url, path, username, .. } => {
                 println!("  Backend: WebDAV");
