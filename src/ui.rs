@@ -15,7 +15,7 @@ use adw::{self, Application};
 use anyhow::{anyhow, Result};
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use glib::{clone, BoxedAnyObject, ControlFlow, Priority};
+use glib::{clone, BoxedAnyObject};
 use gtk::gdk;
 use gtk::gio;
 use gtk::AlertDialog;
@@ -67,8 +67,6 @@ struct AiChatMessage {
 struct AiChatResponse {
     message: AiChatMessage,
 }
-
-type AiParseOutcome = (Result<Result<AiParseResult, anyhow::Error>, tokio::time::error::Elapsed>, String);
 
 impl SortMode {
     fn from_index(index: u32) -> Self {
@@ -1515,49 +1513,56 @@ impl AppState {
             return;
         }
 
-        let context = glib::MainContext::default();
-        let (sender, receiver): (glib::Sender<AiParseOutcome>, glib::Receiver<AiParseOutcome>) =
-            context.channel(Priority::default());
         let runtime = self.ai_runtime.clone();
-        runtime.spawn(async move {
-            let outcome = tokio::time::timeout(StdDuration::from_secs(15), request_ai_parse(title_text.clone())).await;
-            let payload: AiParseOutcome = (outcome, title_text);
-            let _ = sender.send(payload);
-        });
+        let original = title_text.clone();
+        glib::spawn_future_local(clone!(@weak self as state, @weak entry => async move {
+            let original_for_request = original.clone();
+            let outcome = runtime
+                .spawn(async move {
+                    tokio::time::timeout(
+                        StdDuration::from_secs(15),
+                        request_ai_parse(original_for_request),
+                    )
+                    .await
+                })
+                .await;
 
-        receiver.attach(
-            None,
-            clone!(@weak self as state, @weak entry => @default-return glib::Continue(false), move |msg: AiParseOutcome| {
-                let (outcome, original) = msg;
-                match outcome {
-                    Ok(Ok(parsed)) => {
-                        let todo = build_todo_from_ai(&parsed, &original);
-                        match data::add_todo_full(&todo) {
-                            Ok(_) => {
-                                entry.set_text("");
-                                if let Err(err) = state.reload() {
-                                    state.show_error(&t("reload_error").replace("{}", &err.to_string()));
-                                } else {
-                                    state.show_info(&t("task_added"));
-                                }
-                            }
-                            Err(err) => {
-                                state.show_error(&t("create_error").replace("{}", &err.to_string()));
+            let outcome = match outcome {
+                Ok(res) => res,
+                Err(err) => {
+                    state.show_error(&t("ai_parse_failed").replace("{}", &err.to_string()));
+                    state.add_plain_and_notify(&original, &entry);
+                    return;
+                }
+            };
+
+            match outcome {
+                Ok(Ok(parsed)) => {
+                    let todo = build_todo_from_ai(&parsed, &original);
+                    match data::add_todo_full(&todo) {
+                        Ok(_) => {
+                            entry.set_text("");
+                            if let Err(err) = state.reload() {
+                                state.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                            } else {
+                                state.show_info(&t("task_added"));
                             }
                         }
-                    }
-                    Ok(Err(err)) => {
-                        state.show_error(&t("ai_parse_failed").replace("{}", &err.to_string()));
-                        state.add_plain_and_notify(&original, &entry);
-                    }
-                    Err(_) => {
-                        state.show_error(&t("ai_timeout_fallback"));
-                        state.add_plain_and_notify(&original, &entry);
+                        Err(err) => {
+                            state.show_error(&t("create_error").replace("{}", &err.to_string()));
+                        }
                     }
                 }
-                glib::Continue(false)
-            }),
-        );
+                Ok(Err(err)) => {
+                    state.show_error(&t("ai_parse_failed").replace("{}", &err.to_string()));
+                    state.add_plain_and_notify(&original, &entry);
+                }
+                Err(_) => {
+                    state.show_error(&t("ai_timeout_fallback"));
+                    state.add_plain_and_notify(&original, &entry);
+                }
+            }
+        }));
     }
 
     fn set_use_whisper(self: &Rc<Self>, use_whisper: bool, progress_bar: Option<gtk::ProgressBar>, switch_row: Option<adw::SwitchRow>, voice_btn: Option<gtk::Button>) {

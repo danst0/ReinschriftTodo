@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.12.8" date="2026-01-16">
+      <description>
+        <ul>
+          <li>Run AI Smart Add on the main context without GLib channels to satisfy GLib 0.19</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.12.7" date="2026-01-16">
       <description>
         <ul>
