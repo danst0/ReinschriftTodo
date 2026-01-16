@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.13.0" date="2026-01-16">
+      <description>
+        <ul>
+          <li>Configurable AI Smart Add timeout (default 30s) in GTK and web settings</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.12.8" date="2026-01-16">
       <description>
         <ul>

@@ -12,7 +12,9 @@
   "date": "Datum",
   "show_due_only": "Nur fällige anzeigen",
   "use_ai_on_new_topic": "KI beim Anlegen nutzen",
-  "use_ai_on_new_topic_desc": "Startet Smart Add automatisch; Abbruch nach 15s.",
+  "use_ai_on_new_topic_desc": "Startet Smart Add automatisch; Abbruch bei KI-Timeout.",
+  "ai_timeout_label": "KI-Timeout (Sekunden)",
+  "ai_timeout_desc": "Bricht die KI-Analyse nach dieser Zeit ab.",
   "new_todo_placeholder": "Neues To-do…",
   "add": "Hinzufügen",
   "title_empty_error": "Titel darf nicht leer sein",
@@ -84,6 +86,8 @@
   "no_database_configured": "Keine Datenbankdatei konfiguriert. Bitte wählen oder erstellen Sie eine in den Einstellungen.",
   "write_error": "Konnte {} nicht schreiben",
   "connection_error": "Verbindung zu '{}' fehlgeschlagen: {}",
+  "ai_parse_failed": "KI-Analyse fehlgeschlagen: {}",
+  "ai_timeout_fallback": "KI hat abgebrochen. Hinzugefügt ohne KI.",
   "no_section": "Ohne Abschnitt",
   "todo_not_found": "Konnte To-do in der Datei nicht finden",
   "line_update_error": "Konnte Zeile {} nicht aktualisieren",
@@ -136,7 +140,5 @@
   "lang_pt": "Portugiesisch",
   "lang_ru": "Russisch",
   "lang_tr": "Türkisch",
-  "lang_sv": "Schwedisch",
-  "ai_parse_failed": "KI-Auswertung fehlgeschlagen: {}",
-  "ai_timeout_fallback": "KI hat nach 15s abgebrochen. Hinzugefügt ohne KI."
+  "lang_sv": "Schwedisch"
 }

@@ -66,6 +66,7 @@ def inject_translations():
 
 TODO_PATH = os.environ.get('TODOS_DB_PATH', 'TodosDatenbank.md')
 CONFIG_PATH = os.environ.get('CONFIG_PATH', '/config/settings.json')
+DEFAULT_AI_TIMEOUT_SECS = int(os.environ.get('AI_TIMEOUT_SECS', '30'))
 
 RECENT_CONTEXT_WINDOW_DAYS = 14
 
@@ -515,9 +516,17 @@ def index():
     show_due_only_val = request.args.get('show_due_only')
     sort_mode_val = request.args.get('sort_mode')
     auto_ai_on_add_val = request.args.get('auto_ai_on_add')
+    ai_timeout_secs_val = request.args.get('ai_timeout_secs')
     
     new_settings = settings.copy()
     changed = False
+
+    def clamp_timeout_secs(val):
+        try:
+            secs = int(float(val))
+        except (ValueError, TypeError):
+            return DEFAULT_AI_TIMEOUT_SECS
+        return max(5, min(120, secs))
     
     if show_done_val is not None:
         new_settings['show_done'] = show_done_val
@@ -542,6 +551,13 @@ def index():
         changed = True
     else:
         auto_ai_on_add_val = settings.get('auto_ai_on_add', '0')
+
+    if ai_timeout_secs_val is not None:
+        parsed_ai_timeout = clamp_timeout_secs(ai_timeout_secs_val)
+        new_settings['ai_timeout_secs'] = parsed_ai_timeout
+        changed = True
+    else:
+        parsed_ai_timeout = clamp_timeout_secs(settings.get('ai_timeout_secs', DEFAULT_AI_TIMEOUT_SECS))
         
     if changed:
         save_settings(new_settings)
@@ -551,6 +567,8 @@ def index():
     show_due_only = show_due_only_val == '1'
     sort_mode = sort_mode_val
     auto_ai_on_add = auto_ai_on_add_val == '1'
+    ai_timeout_secs = parsed_ai_timeout
+    ai_timeout_ms = ai_timeout_secs * 1000
     q = request.args.get('q', '').lower()
     
     today = datetime.now().date()
@@ -584,20 +602,22 @@ def index():
         
         if request.args.get('partial'):
             return render_template('_search_results.html', 
-                                   current_results=current_results,
-                                   open_results=open_results,
-                                   done_results=done_results,
-                                   q=q)
+                           current_results=current_results,
+                           open_results=open_results,
+                           done_results=done_results,
+                           q=q)
 
         return render_template('index.html', 
-                               current_results=current_results,
-                               open_results=open_results,
-                               done_results=done_results,
-                               q=q,
-                               show_done=show_done,
-                               show_due_only=show_due_only,
-                               sort_mode=sort_mode,
-                               auto_ai_on_add=auto_ai_on_add)
+                       current_results=current_results,
+                       open_results=open_results,
+                       done_results=done_results,
+                       q=q,
+                       show_done=show_done,
+                       show_due_only=show_due_only,
+                       sort_mode=sort_mode,
+                       auto_ai_on_add=auto_ai_on_add,
+                       ai_timeout_secs=ai_timeout_secs,
+                       ai_timeout_ms=ai_timeout_ms)
 
     # Sorting logic
     if sort_mode == 'location':
@@ -632,7 +652,7 @@ def index():
     if request.args.get('partial'):
         return render_template('_todo_list.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode)
 
-    return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode, q=q, auto_ai_on_add=auto_ai_on_add)
+    return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode, q=q, auto_ai_on_add=auto_ai_on_add, ai_timeout_secs=ai_timeout_secs, ai_timeout_ms=ai_timeout_ms)
 
 @app.route('/login/oidc')
 def login_oidc():

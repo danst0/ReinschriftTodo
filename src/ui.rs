@@ -127,10 +127,16 @@ struct Preferences {
     whisper_language: String,
     #[serde(default)]
     use_ai_on_new_topic: bool,
+    #[serde(default = "default_ai_timeout_secs")]
+    ai_timeout_secs: u64,
 }
 
 fn default_whisper_language() -> String {
     "auto".to_string()
+}
+
+fn default_ai_timeout_secs() -> u64 {
+    30
 }
 
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
@@ -832,6 +838,8 @@ impl AppState {
             .unwrap_or(SortMode::Topic);
         prefs.sort_mode = Some(sort_mode.as_key().to_string());
 
+        prefs.ai_timeout_secs = prefs.ai_timeout_secs.clamp(5, 120);
+
         let ai_runtime = Arc::new(Runtime::new().expect("failed to create tokio runtime"));
 
         if prefs.use_webdav {
@@ -1191,6 +1199,23 @@ impl AppState {
         });
         general_group.add(&ai_row);
 
+        let ai_timeout_row = adw::ActionRow::builder()
+            .title(&t("ai_timeout_label"))
+            .subtitle(&t("ai_timeout_desc"))
+            .build();
+        let ai_timeout_spin = gtk::SpinButton::with_range(5.0, 120.0, 1.0);
+        ai_timeout_spin.set_value(self.ai_timeout_secs() as f64);
+        ai_timeout_spin.set_width_chars(4);
+        let state_ai_timeout = Rc::clone(self);
+        ai_timeout_spin.connect_value_changed(move |spin| {
+            let secs = spin.value().round().clamp(5.0, 120.0) as u64;
+            spin.set_value(secs as f64);
+            state_ai_timeout.set_ai_timeout_secs(secs);
+        });
+        ai_timeout_row.add_suffix(&ai_timeout_spin);
+        ai_timeout_row.set_activatable_widget(Some(&ai_timeout_spin));
+        general_group.add(&ai_timeout_row);
+
         // --- WebDAV Page ---
         let webdav_page = adw::PreferencesPage::builder()
             .title(&t("webdav"))
@@ -1520,7 +1545,7 @@ impl AppState {
             let outcome = runtime
                 .spawn(async move {
                     tokio::time::timeout(
-                        StdDuration::from_secs(15),
+                        StdDuration::from_secs(state.ai_timeout_secs()),
                         request_ai_parse(original_for_request),
                     )
                     .await

@@ -236,6 +236,7 @@
     <div class="header-container">
         <h1>{{ t.todos }}</h1>
         <div class="header-icons">
+            <button type="button" id="toggle-settings" class="icon-btn" onclick="openSettings()" title="{{ t.settings }}">⚙️</button>
             <button type="button" id="toggle-search" class="icon-btn {% if q %}active{% endif %}" onclick="toggleSearch()" title="{{ t.search_placeholder }}">🔍</button>
             <button type="button" id="toggle-add" class="icon-btn" onclick="toggleAdd()" title="{{ t.add }}">➕</button>
         </div>
@@ -308,6 +309,36 @@
         {% endif %}
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSettings()">&times;</span>
+            <h2>{{ t.settings }}</h2>
+            <form id="settingsForm" method="get" action="{{ url_for('index') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
+                <input type="hidden" name="show_due_only" value="{{ '1' if show_due_only else '0' }}">
+                <input type="hidden" name="sort_mode" value="{{ sort_mode }}">
+
+                <div class="form-group">
+                    <label style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="hidden" name="auto_ai_on_add" value="0">
+                        <input type="checkbox" name="auto_ai_on_add" value="1" {% if auto_ai_on_add %}checked{% endif %}>
+                        {{ t.auto_ai_on_add }}
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="ai-timeout">{{ t.ai_timeout_label }}</label>
+                    <input type="number" id="ai-timeout" name="ai_timeout_secs" min="5" max="120" step="1" value="{{ ai_timeout_secs }}" style="width: 100%; padding: 0.6rem;">
+                    <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.ai_timeout_help }}</p>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%;">{{ t.save }}</button>
+            </form>
+        </div>
+    </div>
+
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 2rem;">
         <div style="margin-bottom: 1rem; display: flex; justify-content: center; gap: 1rem;">
             <a href="{{ url_for('set_language', lang='de') }}" title="Deutsch" class="lang-link {% if current_lang == 'de' %}active{% endif %}">🇩🇪</a>
@@ -320,7 +351,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; padding-top: 1rem;">
-            <p><strong>Reinschrift</strong> v0.12.4</p>
+            <p><strong>Reinschrift</strong> v0.13.0</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -346,7 +377,7 @@
     </div>
 
     <script>        // Move AI Logic to the top for better availability
-        const SMART_ADD_TIMEOUT_MS = 15000;
+        const SMART_ADD_TIMEOUT_MS = {{ ai_timeout_ms }};
         const smartAddUrl = {{ url_for('parse_nlp') | tojson }};
         const csrfToken = {{ csrf_token() | tojson }};
         const autoAiOnAdd = {{ 'true' if auto_ai_on_add else 'false' }};
@@ -842,6 +873,20 @@
             });
         }
 
+        function openSettings() {
+            const modal = document.getElementById('settingsModal');
+            if (modal) {
+                modal.style.display = "block";
+            }
+        }
+
+        function closeSettings() {
+            const modal = document.getElementById('settingsModal');
+            if (modal) {
+                modal.style.display = "none";
+            }
+        }
+
         function closeCheatsheet() {
             document.getElementById('cheatsheetModal').style.display = "none";
         }
@@ -859,6 +904,7 @@
                 document.getElementById('cheatsheetModal').style.display = "block";
             } else if (e.key === 'Escape') {
                 closeModal();
+                closeSettings();
                 closeCheatsheet();
             } else if (!e.ctrlKey && !e.metaKey && e.key === 'n') {
                 e.preventDefault();
