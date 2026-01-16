@@ -516,6 +516,7 @@ def index():
     show_due_only_val = request.args.get('show_due_only')
     sort_mode_val = request.args.get('sort_mode')
     auto_ai_on_add_val = request.args.get('auto_ai_on_add')
+    skip_delete_confirm_val = request.args.get('skip_delete_confirm')
     ai_timeout_secs_val = request.args.get('ai_timeout_secs')
     
     new_settings = settings.copy()
@@ -552,6 +553,12 @@ def index():
     else:
         auto_ai_on_add_val = settings.get('auto_ai_on_add', '0')
 
+    if skip_delete_confirm_val is not None:
+        new_settings['skip_delete_confirm'] = skip_delete_confirm_val
+        changed = True
+    else:
+        skip_delete_confirm_val = settings.get('skip_delete_confirm', '1')
+
     if ai_timeout_secs_val is not None:
         parsed_ai_timeout = clamp_timeout_secs(ai_timeout_secs_val)
         new_settings['ai_timeout_secs'] = parsed_ai_timeout
@@ -567,6 +574,7 @@ def index():
     show_due_only = show_due_only_val == '1'
     sort_mode = sort_mode_val
     auto_ai_on_add = auto_ai_on_add_val == '1'
+    skip_delete_confirm = skip_delete_confirm_val == '1'
     ai_timeout_secs = parsed_ai_timeout
     ai_timeout_ms = ai_timeout_secs * 1000
     q = request.args.get('q', '').lower()
@@ -616,6 +624,7 @@ def index():
                        show_due_only=show_due_only,
                        sort_mode=sort_mode,
                        auto_ai_on_add=auto_ai_on_add,
+                       skip_delete_confirm=skip_delete_confirm,
                        ai_timeout_secs=ai_timeout_secs,
                        ai_timeout_ms=ai_timeout_ms)
 
@@ -652,7 +661,7 @@ def index():
     if request.args.get('partial'):
         return render_template('_todo_list.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode)
 
-    return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode, q=q, auto_ai_on_add=auto_ai_on_add, ai_timeout_secs=ai_timeout_secs, ai_timeout_ms=ai_timeout_ms)
+    return render_template('index.html', todos=display_todos, show_done=show_done, show_due_only=show_due_only, sort_mode=sort_mode, q=q, auto_ai_on_add=auto_ai_on_add, skip_delete_confirm=skip_delete_confirm, ai_timeout_secs=ai_timeout_secs, ai_timeout_ms=ai_timeout_ms)
 
 @app.route('/login/oidc')
 def login_oidc():

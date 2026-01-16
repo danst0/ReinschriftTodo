@@ -68,7 +68,10 @@ TRANSLATIONS = {
         'ai_timeout_notice': 'KI brauchte zu lange. Aufgabe wird ohne KI hinzugefügt.',
         'ai_timeout_label': 'KI-Timeout (Sekunden)',
         'ai_timeout_help': 'Bricht die KI-Verarbeitung nach dieser Zeit ab.',
-        'ai_parse_failed': 'KI-Analyse fehlgeschlagen. Aufgabe wird ohne KI hinzugefügt.'
+        'ai_parse_failed': 'KI-Analyse fehlgeschlagen. Aufgabe wird ohne KI hinzugefügt.',
+        'skip_delete_confirm_label': 'Löschen ohne Nachfrage',
+        'skip_delete_confirm_help': 'Wenn aktiviert, werden Einträge direkt gelöscht ohne Rückfrage.',
+        'delete_confirm': 'Eintrag wirklich löschen?'
     },
     'en': {
         'todos': 'Reinschrift',
@@ -138,7 +141,10 @@ TRANSLATIONS = {
         'ai_timeout_notice': 'AI took too long. Adding without AI.',
         'ai_timeout_label': 'AI timeout (seconds)',
         'ai_timeout_help': 'Abort AI parsing after this time.',
-        'ai_parse_failed': 'AI parsing failed. Adding without AI.'
+        'ai_parse_failed': 'AI parsing failed. Adding without AI.',
+        'skip_delete_confirm_label': 'Delete without confirmation',
+        'skip_delete_confirm_help': 'When enabled, deletes are executed immediately.',
+        'delete_confirm': 'Delete this item?'
     },
     'es': {
         'todos': 'Reinschrift',
@@ -208,7 +214,10 @@ TRANSLATIONS = {
         'ai_timeout_notice': 'La IA tardó demasiado. Se añade sin IA.',
         'ai_timeout_label': 'Tiempo de espera de IA (s)',
         'ai_timeout_help': 'Cancela el análisis de IA tras este tiempo.',
-        'ai_parse_failed': 'Fallo al analizar con IA. Se añade sin IA.'
+        'ai_parse_failed': 'Fallo al analizar con IA. Se añade sin IA.',
+        'skip_delete_confirm_label': 'Eliminar sin confirmación',
+        'skip_delete_confirm_help': 'Si está activado, las tareas se eliminan directamente.',
+        'delete_confirm': '¿Eliminar esta tarea?'
     },
     'sv': {
         'todos': 'Reinschrift',
@@ -278,7 +287,10 @@ TRANSLATIONS = {
         'ai_timeout_notice': 'AI tog för lång tid. Lägger till utan AI.',
         'ai_timeout_label': 'AI-timeout (sekunder)',
         'ai_timeout_help': 'Avbryt AI-analysen efter denna tid.',
-        'ai_parse_failed': 'AI-tolkning misslyckades. Lägger till utan AI.'
+        'ai_parse_failed': 'AI-tolkning misslyckades. Lägger till utan AI.',
+        'skip_delete_confirm_label': 'Ta bort utan bekräftelse',
+        'skip_delete_confirm_help': 'När den är på tas uppgifter bort direkt.',
+        'delete_confirm': 'Ta bort denna uppgift?'
     },
     'fr': {
         'todos': 'Reinschrift',
@@ -348,7 +360,10 @@ TRANSLATIONS = {
         'ai_timeout_notice': "L'IA a mis trop de temps. Ajout sans IA.",
         'ai_timeout_label': "Délai IA (secondes)",
         'ai_timeout_help': "Annule l'analyse IA après ce délai.",
-        'ai_parse_failed': "Échec de l'analyse IA. Ajout sans IA."
+        'ai_parse_failed': "Échec de l'analyse IA. Ajout sans IA.",
+        'skip_delete_confirm_label': 'Supprimer sans confirmation',
+        'skip_delete_confirm_help': 'Si activé, les tâches sont supprimées immédiatement.',
+        'delete_confirm': 'Supprimer cette tâche ?'
     },
     'ja': {
         'todos': 'Reinschrift',
@@ -398,6 +413,9 @@ TRANSLATIONS = {
         'ai_timeout_label': 'AIのタイムアウト (秒)',
         'ai_timeout_help': 'この時間でAI解析を中断します。',
         'ai_parse_failed': 'AI解析に失敗しました。AIなしで追加します。',
+        'skip_delete_confirm_label': '確認なしで削除',
+        'skip_delete_confirm_help': 'オンの場合、確認ダイアログなしで削除します。',
+        'delete_confirm': 'このタスクを削除しますか？',
         'cheatsheet': 'キーボードショートカット',
         'key_help': 'ヘルプを表示',
         'key_new': '新しいタスク',

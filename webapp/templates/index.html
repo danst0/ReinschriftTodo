@@ -243,22 +243,17 @@
     </div>
     
     <div class="filters" style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: center;">
-        <a href="{{ url_for('index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" 
-           class="filter-link {% if show_done %}active{% endif %}" onclick="applyFilter(event, this.href)">
-           {% if show_done %}☑ {{ t.show_done }}{% else %}☐ {{ t.show_done }}{% endif %}
-        </a>
+          <a href="{{ url_for('index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" 
+              class="filter-link {% if show_done %}active{% endif %}" onclick="applyFilter(event, this.href)">
+              {% if show_done %}☑ {{ t.show_done }}{% else %}☐ {{ t.show_done }}{% endif %}
+          </a>
         
-        <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=0 if show_due_only else 1, sort_mode=sort_mode) }}"
-           class="filter-link {% if show_due_only %}active{% endif %}" onclick="applyFilter(event, this.href)">
-           {% if show_due_only %}☑ {{ t.hide_future }}{% else %}☐ {{ t.hide_future }}{% endif %}
-        </a>
-
-          <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode, auto_ai_on_add=0 if auto_ai_on_add else 1) }}"
-              class="filter-link {% if auto_ai_on_add %}active{% endif %}" onclick="applyFilter(event, this.href)">
-              {% if auto_ai_on_add %}☑ {{ t.auto_ai_on_add }}{% else %}☐ {{ t.auto_ai_on_add }}{% endif %}
+          <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=0 if show_due_only else 1, sort_mode=sort_mode) }}"
+              class="filter-link {% if show_due_only %}active{% endif %}" onclick="applyFilter(event, this.href)">
+              {% if show_due_only %}☑ {{ t.hide_future }}{% else %}☐ {{ t.hide_future }}{% endif %}
           </a>
 
-        <span style="color: #ccc;">|</span>
+          <span style="color: #ccc;">|</span>
 
         <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='topic') }}"
            class="filter-link {% if sort_mode == 'topic' %}active{% endif %}" onclick="applyFilter(event, this.href)">
@@ -329,6 +324,15 @@
                 </div>
 
                 <div class="form-group">
+                    <label style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="hidden" name="skip_delete_confirm" value="0">
+                        <input type="checkbox" name="skip_delete_confirm" value="1" {% if skip_delete_confirm %}checked{% endif %}>
+                        {{ t.skip_delete_confirm_label }}
+                    </label>
+                    <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.skip_delete_confirm_help }}</p>
+                </div>
+
+                <div class="form-group">
                     <label for="ai-timeout">{{ t.ai_timeout_label }}</label>
                     <input type="number" id="ai-timeout" name="ai_timeout_secs" min="5" max="120" step="1" value="{{ ai_timeout_secs }}" style="width: 100%; padding: 0.6rem;">
                     <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.ai_timeout_help }}</p>
@@ -351,7 +355,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; padding-top: 1rem;">
-            <p><strong>Reinschrift</strong> v0.13.0</p>
+            <p><strong>Reinschrift</strong> v0.13.1</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -381,6 +385,7 @@
         const smartAddUrl = {{ url_for('parse_nlp') | tojson }};
         const csrfToken = {{ csrf_token() | tojson }};
         const autoAiOnAdd = {{ 'true' if auto_ai_on_add else 'false' }};
+        const skipDeleteConfirm = {{ 'true' if skip_delete_confirm else 'false' }};
         const aiTimeoutMessage = {{ t.ai_timeout_notice | tojson }};
         const aiErrorMessage = {{ t.ai_parse_failed | tojson }};
 
@@ -735,18 +740,21 @@
         function deleteTodoFromModal() {
             const action = document.getElementById('editForm').action;
             const lineIndex = action.split('/').pop();
-            if (confirm('{{ t.delete }}?')) {
-                fetch('/delete/' + lineIndex, { 
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': "{{ csrf_token() }}"
-                    }
-                })
-                    .then(() => {
-                        closeModal();
-                        autoReload();
-                    });
+            const shouldDelete = skipDeleteConfirm || confirm('{{ t.delete_confirm }}');
+            if (!shouldDelete) {
+                return;
             }
+
+            fetch('/delete/' + lineIndex, { 
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': "{{ csrf_token() }}"
+                }
+            })
+                .then(() => {
+                    closeModal();
+                    autoReload();
+                });
         }
 
         function showCommentField() {
