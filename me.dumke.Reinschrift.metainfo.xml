@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.14.3" date="2026-01-16">
+      <description>
+        <ul>
+          <li>Webapp: Replace broken SSE with 30-second background auto-refresh (no flickering)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.14.1" date="2026-01-16">
       <description>
         <ul>

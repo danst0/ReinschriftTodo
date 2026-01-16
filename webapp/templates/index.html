@@ -933,7 +933,12 @@
             window.location.reload();
         }
 
+        let isRefreshing = false;
+        
         function autoReload() {
+            if (isRefreshing) return;
+            isRefreshing = true;
+            
             // Construct URL with current params + partial=1
             const url = new URL(window.location.href);
             url.searchParams.set('partial', '1');
@@ -943,23 +948,19 @@
                 .then(html => {
                     document.querySelector('.todo-list').innerHTML = html;
                 })
-                .catch(err => console.error('Auto-reload failed', err));
+                .catch(err => console.error('Auto-reload failed', err))
+                .finally(() => {
+                    isRefreshing = false;
+                });
         }
         
-        // SSE implementation
-        try {
-            const eventSource = new EventSource("{{ url_for('events') }}");
-            eventSource.onmessage = function(event) {
-                if (event.data === "refresh") {
-                    autoReload();
-                }
-            };
-            eventSource.onerror = function(err) {
-                console.error("SSE connection lost", err);
-            };
-        } catch (e) {
-            console.error("SSE initialization failed", e);
-        }
+        // Background refresh every 30 seconds (skip if tab hidden or modal open)
+        setInterval(function() {
+            const modalOpen = document.getElementById('editModal').style.display === 'block';
+            if (!document.hidden && !modalOpen) {
+                autoReload();
+            }
+        }, 30000);
 
         // Smart Add Logic (Function moved to top)
 

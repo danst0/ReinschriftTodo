@@ -1084,28 +1084,6 @@ def get_todo_json(line_index):
         
     return item
 
-@app.route('/events')
-def events():
-    if 'logged_in' not in session:
-        return "Unauthorized", 401
-        
-    def event_stream():
-        # Track the last modification time of the file
-        last_mtime = os.path.getmtime(TODO_PATH) if os.path.exists(TODO_PATH) else 0
-        
-        while True:
-            # Check every 2 seconds to reduce CPU usage
-            time.sleep(2)
-            
-            if os.path.exists(TODO_PATH):
-                current_mtime = os.path.getmtime(TODO_PATH)
-                if current_mtime > last_mtime:
-                    last_mtime = current_mtime
-                    # SSE format requires "data: <message>\n\n"
-                    yield "data: refresh\n\n"
-            
-    return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
-
 @app.route('/api/parse', methods=['POST'])
 def parse_nlp():
     if 'logged_in' not in session:
