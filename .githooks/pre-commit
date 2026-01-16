@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${SKIP_CARGO_CHECK:-0}" == "1" ]]; then
+  echo "Skipping cargo check (SKIP_CARGO_CHECK=1)"
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+echo "Running cargo check..."
+cargo check --locked --workspace --quiet

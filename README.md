@@ -15,6 +15,14 @@ cd "/home/danst/Nextcloud/Projekte/2025-12 Todos Extension"
 cargo run --release
 ```
 
+Git-Hooks aktivieren, damit vor jedem Commit automatisch `cargo check --locked --workspace` läuft:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Wenn du den Check einmalig überspringen willst, setze `SKIP_CARGO_CHECK=1` beim Commit.
+
 Standardmäßig greift die App auf die Datei `TodosDatenbank.md` im Projektverzeichnis zu. Wenn du eine andere Datei verwenden möchtest, setze vor dem Start die Umgebungsvariable `TODOS_DB_PATH`, z. B. `TODOS_DB_PATH=/pfad/zur/TodosDatenbank.md cargo run`.
 
 ## Bedienung
