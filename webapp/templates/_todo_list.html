@@ -1,17 +1,26 @@
 {% set current_section = namespace(value=None) %}
 {% for todo in todos %}
     {% if todo.section and todo.section != current_section.value %}
-        <div class="section-header">
-            {% if sort_mode == 'topic' %}
-                {{ t.topic }}: {{ todo.section }}
-            {% else %}
-                {{ todo.section }}
+        <div class="section-header" data-group-mode="{{ sort_mode }}" data-group-key="{{ todo.group_key or '' }}" style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>
+                {% if sort_mode == 'topic' %}
+                    {{ t.topic }}: {{ todo.section }}
+                {% else %}
+                    {{ todo.section }}
+                {% endif %}
+            </span>
+            {% if sort_mode in ['topic', 'location'] %}
+            <div class="group-actions" style="display: inline-flex; gap: 0.35rem;">
+                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'today', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.today }}">📅</a>
+                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'tomorrow', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.tomorrow }}">➡️</a>
+                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'sometimes', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.sometimes }}">🕒</a>
+            </div>
             {% endif %}
         </div>
         {% set current_section.value = todo.section %}
     {% endif %}
     
-    <div class="todo-item {% if todo.done %}done{% endif %}" onclick="openEditModal({{ todo.line_index }})" style="cursor: pointer;">
+    <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" onclick="openEditModal({{ todo.line_index }})" style="cursor: pointer;">
         <a href="javascript:void(0)" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="toggleTodo(event, {{ todo.line_index }})">
             {% if todo.done %}☑{% else %}☐{% endif %}
         </a>

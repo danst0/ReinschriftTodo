@@ -645,8 +645,10 @@ def index():
         display_item = todo.copy()
         if sort_mode == 'topic':
             display_item['section'] = todo['project'] if todo['project'] else TRANSLATIONS.get(lang, TRANSLATIONS['de']).get('no_section', 'Ohne Abschnitt')
+            display_item['group_key'] = todo['project'] if todo['project'] else ''
         elif sort_mode == 'location':
             display_item['section'] = f"Ort: {todo['context'] if todo['context'] else 'Ohne Ort'}"
+            display_item['group_key'] = todo['context'] if todo['context'] else ''
         elif sort_mode == 'date':
             # No grouping for date sort in Rust implementation (returns None)
             # But the template expects a section. Let's use a dummy or empty section?
@@ -655,6 +657,9 @@ def index():
             # In the template, if section changes, it prints a header.
             # If we set all sections to the same value, no headers will be printed (except the first one).
             display_item['section'] = "" 
+            display_item['group_key'] = ''
+        else:
+            display_item['group_key'] = ''
         
         display_todos.append(display_item)
 
