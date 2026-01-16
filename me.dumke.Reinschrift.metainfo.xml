@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.14.6" date="2026-01-16">
+      <description>
+        <ul>
+          <li>Metadata: Fixed release ordering in metainfo.xml</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.14.5" date="2026-01-16">
       <description>
         <ul>
@@ -57,6 +64,8 @@
       <description>
         <ul>
           <li>Webapp: Replace broken SSE with 30-second background auto-refresh (no flickering)</li>
+          <li>Web: Smart due date buttons — Today (12:00 or 18:00), Tomorrow, Next Weekend (Saturday), Sometime</li>
+          <li>Web: Added keyboard shortcut 'w' for next weekend</li>
         </ul>
       </description>
     </release>
@@ -72,14 +81,6 @@
         <ul>
           <li>CLI now shares config with GUI (~/.config/reinschrift_todo/preferences.json)</li>
           <li>Removed -d/--database CLI argument in favor of shared settings</li>
-        </ul>
-      </description>
-    </release>
-    <release version="0.14.3" date="2026-01-16">
-      <description>
-        <ul>
-          <li>Web: Smart due date buttons — Today (12:00 or 18:00), Tomorrow, Next Weekend (Saturday), Sometime</li>
-          <li>Web: Added keyboard shortcut 'w' for next weekend</li>
         </ul>
       </description>
     </release>
