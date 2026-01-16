@@ -33,7 +33,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        commit: 00056e805a78297085b80bfc30e0178af2558e02
+        commit: 374bf4a8564e1b48692e25512b0c88de1a6d3cc9
       - generated-sources.json
       - type: shell
         commands:
