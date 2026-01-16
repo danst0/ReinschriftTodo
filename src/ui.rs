@@ -917,6 +917,10 @@ impl AppState {
         self.preferences.borrow().use_ai_on_new_topic
     }
 
+    fn ai_timeout_secs(&self) -> u64 {
+        self.preferences.borrow().ai_timeout_secs
+    }
+
     fn whisper_language(&self) -> String {
         self.preferences.borrow().whisper_language.clone()
     }
@@ -1510,6 +1514,18 @@ impl AppState {
         self.persist_preferences();
     }
 
+    fn set_ai_timeout_secs(&self, secs: u64) {
+        let clamped = secs.clamp(5, 120);
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.ai_timeout_secs == clamped {
+                return;
+            }
+            prefs.ai_timeout_secs = clamped;
+        }
+        self.persist_preferences();
+    }
+
     fn add_plain_and_notify(self: &Rc<Self>, title_text: &str, entry: &gtk::Entry) {
         match data::add_todo(title_text) {
             Ok(_) => {
@@ -1542,10 +1558,11 @@ impl AppState {
         let original = title_text.clone();
         glib::spawn_future_local(clone!(@weak self as state, @weak entry => async move {
             let original_for_request = original.clone();
+            let timeout_secs = state.ai_timeout_secs();
             let outcome = runtime
                 .spawn(async move {
                     tokio::time::timeout(
-                        StdDuration::from_secs(state.ai_timeout_secs()),
+                        StdDuration::from_secs(timeout_secs),
                         request_ai_parse(original_for_request),
                     )
                     .await
