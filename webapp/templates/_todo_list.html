@@ -49,10 +49,10 @@
                 {% if todo.due %}
                     <span class="due">
                         {{ t.due }} 
-                        {% if todo.due.year == 9999 %}
+                        {% if todo.due_is_sometime %}
                             {{ t.sometimes }}
                         {% else %}
-                            {{ todo.due }}
+                            {{ todo.due_display or todo.due }}
                         {% endif %}
                     </span>
                 {% endif %}

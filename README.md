@@ -27,7 +27,7 @@ Standardmäßig greift die App auf die Datei `TodosDatenbank.md` im Projektverze
 
 ## Bedienung
 - Die Liste blendet erledigte Einträge aus und zeigt nur noch offene Aufgaben; falls du erledigte Aufgaben sehen möchtest, kannst du sie im Einstellungsfenster temporär einblenden.
-- Direkt neben der Sortierauswahl kannst du die Checkbox "Nur fällige anzeigen" aktivieren, um Aufgaben mit Fälligkeit heute/überfällig sowie Aufgaben ohne Datum zu sehen und zukünftige Einträge auszublenden (Einstellung wird gespeichert).
+- Direkt neben der Sortierauswahl kannst du die Checkbox "Nur fällige anzeigen" aktivieren, um Aufgaben mit Fälligkeit heute/überfällig sowie Aufgaben ohne Datum zu sehen und zukünftige Einträge auszublenden; dabei wird nach aktueller Uhrzeit gefiltert und eine optionale Uhrzeit im Feld `due:YYYY-MM-DDTHH:MM` berücksichtigt (ohne Uhrzeit gilt 00:00). Die Einstellung wird gespeichert.
 - Oben kannst du per Auswahlfeld bestimmen, ob die Liste nach Projekten (`+`), Orten (`@`) oder Fälligkeitsdatum sortiert wird. Bei Projekten/Orten wird zusätzlich je Gruppe ein Zwischenüberschrift angezeigt; beim Datum stehen Aufgaben ohne Fälligkeitsdatum ganz oben. Die App merkt sich deine letzte Auswahl für den nächsten Start.
 - Ein Klick auf die Checkbox aktualisiert den Eintrag (Checkbox + `✅ YYYY-MM-DD`) direkt im Markdown.
 - Ein Doppelklick auf den Text eines Eintrags öffnet ein Detailfenster, in dem du Titel, Projekt, Ort, Fälligkeitsdatum, Referenz und Status bearbeiten kannst.

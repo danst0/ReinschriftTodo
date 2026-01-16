@@ -13,7 +13,7 @@ use std::time::Duration as StdDuration;
 use adw::prelude::*;
 use adw::{self, Application};
 use anyhow::{anyhow, Result};
-use chrono::{Datelike, Duration, Local, NaiveDate};
+use chrono::{Datelike, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use glib::{clone, BoxedAnyObject};
 use gtk::gdk;
@@ -67,6 +67,8 @@ struct AiChatMessage {
 struct AiChatResponse {
     message: AiChatMessage,
 }
+
+const DEFAULT_DUE_TIME: NaiveTime = NaiveTime::from_hms_opt(0, 0, 0).expect("midnight available");
 
 impl SortMode {
     fn from_index(index: u32) -> Self {
@@ -963,13 +965,15 @@ impl AppState {
     }
 
     fn toggle_item(&self, todo: &TodoItem, done: bool) -> Result<()> {
-        let today = Local::now().date_naive();
-        let is_historic = todo.due.map(|d| d < today).unwrap_or(false);
+        let now = Local::now().naive_local();
+        let is_historic = todo.due.map(|d| d < now).unwrap_or(false);
         let is_recurring = todo.recurrence.is_some();
 
         if done && is_historic && is_recurring {
             let mut updated = todo.clone();
-            updated.due = Some(today);
+            let time = todo.due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
+            let today = Local::now().date_naive();
+            updated.due = Some(NaiveDateTime::new(today, time));
             updated.done = true;
             data::update_todo_details(&updated)?;
         } else {
@@ -1003,20 +1007,22 @@ impl AppState {
     fn set_due_today(&self, todo: &TodoItem) -> Result<()> {
         let today = data::set_due_today(&todo.key)?;
         self.reload()?;
-        self.show_info(&format!("Fällig heute ({})", today));
+        self.show_info(&format!("Fällig heute ({})", today.format("%Y-%m-%dT%H:%M")));
         Ok(())
     }
 
     fn set_due_in_days(&self, todo: &TodoItem, days: i64) -> Result<()> {
         let mut updated = todo.clone();
-        let target = Local::now().date_naive() + Duration::days(days);
-        updated.due = Some(target);
+        let base_time = todo.due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
+        let target_date = Local::now().date_naive() + Duration::days(days);
+        updated.due = Some(NaiveDateTime::new(target_date, base_time));
         self.save_item(&updated)
     }
 
     fn set_due_sometimes(&self, todo: &TodoItem) -> Result<()> {
         let mut updated = todo.clone();
-        updated.due = Some(NaiveDate::from_ymd_opt(9999, 12, 31).unwrap());
+        let sometime = NaiveDate::from_ymd_opt(9999, 12, 31).unwrap();
+        updated.due = Some(NaiveDateTime::new(sometime, DEFAULT_DUE_TIME));
         self.save_item(&updated)
     }
 
@@ -1976,7 +1982,7 @@ impl AppState {
         
         let include_done = self.show_completed();
         let due_only = self.show_due_only();
-        let today = Local::now().date_naive();
+        let now = Local::now().naive_local();
 
         if search_term.is_empty() {
             let mode = *self.sort_mode.borrow();
@@ -1986,7 +1992,7 @@ impl AppState {
                 let due_ok = if !due_only {
                     true
                 } else {
-                    todo.due.map(|d| d <= today).unwrap_or(true)
+                    todo.due.map(|d| d <= now).unwrap_or(true)
                 };
                 status_ok && due_ok
             }) {
@@ -2006,7 +2012,7 @@ impl AppState {
                 let due_ok = if !due_only {
                     true
                 } else {
-                    todo.due.map(|d| d <= today).unwrap_or(true)
+                    todo.due.map(|d| d <= now).unwrap_or(true)
                 };
                 status_ok && due_ok && todo.title.to_lowercase().contains(&search_term)
             }).cloned().collect();
@@ -2410,9 +2416,9 @@ impl AppState {
         content.append(&note_row);
 
         let due_entry = gtk::Entry::new();
-        due_entry.set_placeholder_text(Some("YYYY-MM-DD"));
+        due_entry.set_placeholder_text(Some("YYYY-MM-DDTHH:MM"));
         if let Some(due) = todo.due {
-            let due_string = due.format("%Y-%m-%d").to_string();
+            let due_string = due.format("%Y-%m-%dT%H:%M").to_string();
             due_entry.set_text(&due_string);
         }
         let due_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -2548,8 +2554,8 @@ impl AppState {
 
         let due_entry_for_button = due_entry.clone();
         due_today_btn.connect_clicked(move |_| {
-            let today = Local::now().date_naive().format("%Y-%m-%d").to_string();
-            due_entry_for_button.set_text(&today);
+            let now = Local::now().naive_local().format("%Y-%m-%dT%H:%M").to_string();
+            due_entry_for_button.set_text(&now);
         });
 
         let dialog_save = dialog.clone();
@@ -2596,12 +2602,15 @@ impl AppState {
             let due_value = if due_text.is_empty() {
                 None
             } else {
-                match NaiveDate::parse_from_str(&due_text, "%Y-%m-%d") {
-                    Ok(date) => Some(date),
-                    Err(_) => {
-                        state_for_save.show_error(&t("invalid_date_error"));
-                        return;
-                    }
+                match NaiveDateTime::parse_from_str(&due_text, "%Y-%m-%dT%H:%M") {
+                    Ok(dt) => Some(dt),
+                    Err(_) => match NaiveDate::parse_from_str(&due_text, "%Y-%m-%d") {
+                        Ok(date) => Some(NaiveDateTime::new(date, DEFAULT_DUE_TIME)),
+                        Err(_) => {
+                            state_for_save.show_error(&t("invalid_date_error"));
+                            return;
+                        }
+                    },
                 }
             };
 
@@ -2756,10 +2765,10 @@ fn format_metadata(item: &TodoItem) -> String {
         }
     }
     if let Some(due) = item.due {
-        if due.year() == 9999 {
+        if due.date().year() == 9999 {
             parts.push(t("sometimes"));
         } else {
-            parts.push(t("due_label").replace("{}", &due.to_string()));
+            parts.push(t("due_label").replace("{}", &due.format("%Y-%m-%d %H:%M").to_string()));
         }
     }
     if let Some(rule) = &item.recurrence {
@@ -2795,8 +2804,18 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
     let due = parsed
         .due
         .as_deref()
-        .and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
-        .unwrap_or_else(|| Local::now().date_naive());
+        .and_then(|d| NaiveDateTime::parse_from_str(d, "%Y-%m-%dT%H:%M").ok())
+        .or_else(|| {
+            parsed
+                .due
+                .as_deref()
+                .and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+                .map(|date| NaiveDateTime::new(date, DEFAULT_DUE_TIME))
+        })
+        .unwrap_or_else(|| {
+            let today = Local::now().date_naive();
+            NaiveDateTime::new(today, DEFAULT_DUE_TIME)
+        });
 
     data::TodoItem {
         key: data::TodoKey {
@@ -2915,7 +2934,7 @@ fn compare_by_context(a: &TodoItem, b: &TodoItem) -> Ordering {
 }
 
 fn compare_by_due(a: &TodoItem, b: &TodoItem) -> Ordering {
-    compare_option_date(a.due, b.due)
+    compare_option_datetime(a.due, b.due)
         .then_with(|| compare_by_project(a, b))
 }
 
@@ -2928,7 +2947,7 @@ fn compare_option_str(a: Option<&str>, b: Option<&str>) -> Ordering {
     }
 }
 
-fn compare_option_date(a: Option<NaiveDate>, b: Option<NaiveDate>) -> Ordering {
+fn compare_option_datetime(a: Option<NaiveDateTime>, b: Option<NaiveDateTime>) -> Ordering {
     match (a, b) {
         (Some(a), Some(b)) => a.cmp(&b),
         (Some(_), None) => Ordering::Greater,

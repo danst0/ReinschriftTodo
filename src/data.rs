@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::i18n::t;
 use anyhow::{anyhow, bail, Context, Result};
-use chrono::{Datelike, Local, NaiveDate};
+use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::blocking::Client;
@@ -49,7 +49,7 @@ pub fn default_todo_path() -> PathBuf {
 static LINK_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[\[([^\]]+)\]\]").unwrap());
 static PROJECT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\+([^\s]+)").unwrap());
 static CONTEXT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"@([^\s]+)").unwrap());
-static DUE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"due:(\d{4}-\d{2}-\d{2})").unwrap());
+static DUE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"due:(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?").unwrap());
 static ID_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\^([A-Za-z0-9]+)").unwrap());
 static COMPLETION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s✅\s\d{4}-\d{2}-\d{2}").unwrap());
 static RECUR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"rec:([^\s]+)").unwrap());
@@ -68,12 +68,14 @@ pub struct TodoItem {
     pub section: String,
     pub project: Option<String>,
     pub context: Option<String>,
-    pub due: Option<NaiveDate>,
+    pub due: Option<NaiveDateTime>,
     pub reference: Option<String>,
     pub recurrence: Option<String>,
     pub note: Option<String>,
     pub done: bool,
 }
+
+const DEFAULT_DUE_TIME: NaiveTime = NaiveTime::from_hms_opt(0, 0, 0).expect("midnight time available");
 
 pub fn todo_path() -> PathBuf {
     TODO_PATH
@@ -377,10 +379,11 @@ pub fn toggle_todo(key: &TodoKey, done: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn set_due_today(key: &TodoKey) -> Result<NaiveDate> {
+pub fn set_due_today(key: &TodoKey) -> Result<NaiveDateTime> {
     let today = Local::now().date_naive();
-    update_line(key, |line| rewrite_due(line, today))?;
-    Ok(today)
+    let due_dt = NaiveDateTime::new(today, DEFAULT_DUE_TIME);
+    update_line(key, |line| rewrite_due(line, due_dt))?;
+    Ok(due_dt)
 }
 
 pub fn update_todo_details(item: &TodoItem) -> Result<()> {
@@ -398,8 +401,9 @@ pub fn add_todo(title: &str) -> Result<()> {
         bail!(t("title_empty_error"));
     }
     let today = Local::now().date_naive();
+    let due_dt = NaiveDateTime::new(today, DEFAULT_DUE_TIME);
     let marker = generate_marker();
-    let line = format!("- [ ] {} due:{} ^{}", title, today.format("%Y-%m-%d"), marker);
+    let line = format!("- [ ] {} due:{} ^{}", title, due_dt.format("%Y-%m-%dT%H:%M"), marker);
     insert_line(line)
 }
 
@@ -431,6 +435,20 @@ fn insert_line(line: String) -> Result<()> {
     Ok(())
 }
 
+fn parse_due(text: &str) -> Option<NaiveDateTime> {
+    let caps = DUE_RE.captures(text)?;
+    let date_part = caps.get(1)?.as_str();
+    let time_part = caps.get(2).map(|m| m.as_str());
+
+    let date = NaiveDate::parse_from_str(date_part, "%Y-%m-%d").ok()?;
+    let time = match time_part {
+        Some(raw) => NaiveTime::parse_from_str(raw, "%H:%M").unwrap_or(DEFAULT_DUE_TIME),
+        None => DEFAULT_DUE_TIME,
+    };
+
+    Some(NaiveDateTime::new(date, time))
+}
+
 fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> {
     let trimmed = line.trim_start();
     let (done, rest) = if let Some(body) = trimmed.strip_prefix("- [x]") {
@@ -446,7 +464,7 @@ fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> 
     let title = extract_title(rest);
     let project = capture_token(&PROJECT_RE, rest);
     let context = capture_token(&CONTEXT_RE, rest);
-    let due = capture_token(&DUE_RE, rest).and_then(|value| NaiveDate::parse_from_str(&value, "%Y-%m-%d").ok());
+    let due = parse_due(rest);
     let recurrence = capture_token(&RECUR_RE, rest);
     let reference = capture_token(&LINK_RE, rest);
     let marker = capture_token(&ID_RE, rest);
@@ -596,8 +614,9 @@ fn add_months(date: NaiveDate, months: i32) -> Option<NaiveDate> {
     NaiveDate::from_ymd_opt(new_year, new_month, day)
 }
 
-pub fn next_due_date(current_due: Option<NaiveDate>, rule: &str) -> Option<NaiveDate> {
-    let mut next = current_due.unwrap_or_else(|| Local::now().date_naive());
+pub fn next_due_date(current_due: Option<NaiveDateTime>, rule: &str) -> Option<NaiveDateTime> {
+    let time = current_due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
+    let mut next = current_due.map(|d| d.date()).unwrap_or_else(|| Local::now().date_naive());
     let today = Local::now().date_naive();
 
     loop {
@@ -612,7 +631,7 @@ pub fn next_due_date(current_due: Option<NaiveDate>, rule: &str) -> Option<Naive
             break;
         }
     }
-    Some(next)
+    Some(NaiveDateTime::new(next, time))
 }
 
 fn render_line(item: &TodoItem) -> Result<String> {
@@ -631,7 +650,7 @@ fn render_line(item: &TodoItem) -> Result<String> {
         parts.push(format!("@{context}"));
     }
     if let Some(due) = item.due {
-        parts.push(format!("due:{}", due.format("%Y-%m-%d")));
+        parts.push(format!("due:{}", due.format("%Y-%m-%dT%H:%M")));
     }
     if let Some(recur) = normalize_token(item.recurrence.as_deref()) {
         parts.push(format!("rec:{recur}"));
@@ -799,8 +818,8 @@ fn apply_completion_marker(line: &str, done: bool) -> String {
     }
 }
 
-fn rewrite_due(line: &str, new_due: NaiveDate) -> Result<String> {
-    let segment = format!("due:{}", new_due.format("%Y-%m-%d"));
+fn rewrite_due(line: &str, new_due: NaiveDateTime) -> Result<String> {
+    let segment = format!("due:{}", new_due.format("%Y-%m-%dT%H:%M"));
     if DUE_RE.is_match(line) {
         Ok(DUE_RE.replace(line, segment).to_string())
     } else {

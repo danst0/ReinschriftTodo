@@ -5,7 +5,7 @@ import time
 import logging
 import secrets
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as dtime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, stream_with_context
 from werkzeug.middleware.proxy_fix import ProxyFix
 import requests
@@ -79,12 +79,15 @@ WEBDAV_PASSWORD = os.environ.get('WEBDAV_PASSWORD')
 LINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
 PROJECT_RE = re.compile(r"\+([^\s]+)")
 CONTEXT_RE = re.compile(r"@([^\s]+)")
-DUE_RE = re.compile(r"due:(\d{4}-\d{2}-\d{2})")
+DUE_RE = re.compile(r"due:(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?")
 ID_RE = re.compile(r"\^([A-Za-z0-9]+)")
 COMPLETION_RE = re.compile(r"\s✅\s\d{4}-\d{2}-\d{2}")
 COMPLETION_DATE_RE = re.compile(r"✅\s(\d{4}-\d{2}-\d{2})")
 RECUR_RE = re.compile(r"rec:([^\s]+)")
 NOTE_RE = re.compile(r'~note:"((?:\\.|[^"])*)"')
+
+DEFAULT_DUE_TIME = dtime(hour=0, minute=0)
+SOMETIME_SENTINEL = datetime(year=9999, month=12, day=31, hour=0, minute=0)
 
 
 def generate_marker(length=8):
@@ -110,6 +113,49 @@ def parse_flag(value, default=True):
         if normalized in ('0', 'false', 'no', 'off', 'n', ''):
             return False
     return default
+
+def parse_due_token(text):
+    match = DUE_RE.search(text)
+    if not match:
+        return None
+
+    date_part = match.group(1)
+    time_part = match.group(2)
+
+    try:
+        date_obj = datetime.strptime(date_part, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+    if time_part:
+        try:
+            time_obj = datetime.strptime(time_part, "%H:%M").time()
+        except ValueError:
+            time_obj = DEFAULT_DUE_TIME
+    else:
+        time_obj = DEFAULT_DUE_TIME
+
+    return datetime.combine(date_obj, time_obj)
+
+def parse_due_input(raw_value):
+    if not raw_value:
+        return None
+    raw_value = raw_value.strip()
+    for fmt in ["%Y-%m-%dT%H:%M", "%Y-%m-%d"]:
+        try:
+            parsed = datetime.strptime(raw_value, fmt)
+            if fmt == "%Y-%m-%d":
+                parsed = datetime.combine(parsed.date(), DEFAULT_DUE_TIME)
+            return parsed
+        except ValueError:
+            continue
+    return None
+
+def format_due(dt_value):
+    return dt_value.strftime("%Y-%m-%dT%H:%M")
+
+def is_sometime(dt_value):
+    return dt_value.date().year == 9999
 
 def read_content():
     if USE_WEBDAV:
@@ -208,14 +254,10 @@ def parse_line(line, line_index, section):
     title = extract_title(rest)
     project = normalize_prefix(capture_token(PROJECT_RE, rest), '+')
     context = normalize_prefix(capture_token(CONTEXT_RE, rest), '@')
-    due_str = capture_token(DUE_RE, rest)
+    due_dt = parse_due_token(rest)
     recurrence = capture_token(RECUR_RE, rest)
-    due = None
-    if due_str:
-        try:
-            due = datetime.strptime(due_str, "%Y-%m-%d").date()
-        except ValueError:
-            pass
+    due_display = format_due(due_dt) if due_dt else None
+    due_is_sometime = is_sometime(due_dt) if due_dt else False
 
     if done:
         date_match = COMPLETION_DATE_RE.search(line)
@@ -237,7 +279,9 @@ def parse_line(line, line_index, section):
         'section': section,
         'project': project,
         'context': context,
-        'due': due,
+        'due': due_dt,
+        'due_display': due_display,
+        'due_is_sometime': due_is_sometime,
         'reference': reference,
         'recurrence': recurrence,
         'note': note,
@@ -412,7 +456,8 @@ def rewrite_line(line, done):
 
 
 def next_due_date(current_due, rule):
-    next_date = current_due or datetime.now().date()
+    base_time = current_due.time() if current_due else DEFAULT_DUE_TIME
+    next_date = current_due.date() if current_due else datetime.now().date()
     today = datetime.now().date()
     rule_l = rule.lower()
     
@@ -422,7 +467,6 @@ def next_due_date(current_due, rule):
         elif rule_l == 'weekly':
             next_date = next_date + timedelta(days=7)
         elif rule_l == 'monthly':
-            # naive month increment
             year = next_date.year + (next_date.month // 12)
             month = next_date.month % 12 + 1
             day = next_date.day
@@ -442,7 +486,7 @@ def next_due_date(current_due, rule):
         if next_date > today:
             break
             
-    return next_date
+    return datetime.combine(next_date, base_time)
 
 def add_todo(title):
     content = read_content()
@@ -454,11 +498,12 @@ def add_todo(title):
             insert_index = i
             break
     
-    today = datetime.now().strftime("%Y-%m-%d")
+    default_due = datetime.combine(datetime.now().date(), DEFAULT_DUE_TIME)
+    default_due_str = format_due(default_due)
     if DUE_RE.search(title):
         new_line = f"- [ ] {title}"
     else:
-        new_line = f"- [ ] {title} due:{today}"
+        new_line = f"- [ ] {title} due:{default_due_str}"
     new_line += f" ^{generate_marker()}"
     lines.insert(insert_index, new_line)
     
@@ -509,7 +554,7 @@ def sort_key_date(todo):
     key_project = sort_key_topic(todo)
     
     if d is None:
-        return (0, datetime.min.date(), key_project)
+        return (0, datetime.min, key_project)
     else:
         return (1, d, key_project)
 
@@ -601,7 +646,7 @@ def index():
     ai_timeout_ms = ai_timeout_secs * 1000
     q = request.args.get('q', '').lower()
     
-    today = datetime.now().date()
+    now = datetime.now()
     filtered_todos = []
     
     for todo in todos:
@@ -609,7 +654,7 @@ def index():
             continue
         
         if show_due_only:
-            if todo['due'] and todo['due'] > today:
+            if todo['due'] and todo['due'] > now:
                 continue
         
         filtered_todos.append(todo)
@@ -744,11 +789,12 @@ def toggle(line_index):
         is_done = "- [x]" in line or "- [X]" in line
         item = parse_line(line, line_index, "")
         
-        today = datetime.now().date()
-        if not is_done and item and item.get('recurrence') and item.get('due') and item['due'] < today:
-            # Option C: Update due date to today for historic recurring tasks
-            due_str = today.strftime('%Y-%m-%d')
-            new_line = re.sub(r'due:\d{4}-\d{2}-\d{2}', f'due:{due_str}', line)
+        now = datetime.now()
+        if not is_done and item and item.get('recurrence') and item.get('due') and item['due'] < now:
+            base_time = item['due'].time() if item.get('due') else DEFAULT_DUE_TIME
+            due_dt = datetime.combine(now.date(), base_time)
+            due_str = format_due(due_dt)
+            new_line = re.sub(r'due:\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?', f'due:{due_str}', line)
             lines[line_index] = new_line
             write_content('\n'.join(lines) + '\n')
             toggle_todo(line_index, True)
@@ -767,7 +813,7 @@ def toggle(line_index):
                     context_clean = normalize_prefix(item['context'], '@')
                     if context_clean:
                         new_line += f" @{context_clean}"
-                new_line += f" due:{next_due.strftime('%Y-%m-%d')}"
+                new_line += f" due:{format_due(next_due)}"
                 new_line += f" rec:{item['recurrence']}"
                 if item.get('reference'):
                     new_line += f" [[{item['reference'].strip()}]]"
@@ -795,8 +841,9 @@ def postpone(line_index, target):
     if not item:
         return redirect(url_for('index'))
         
-    # Calculate new date
+    # Calculate new date/time
     today = datetime.now().date()
+    base_time = item['due'].time() if item.get('due') else DEFAULT_DUE_TIME
     new_date = today
     if target == 'tomorrow':
         new_date = today + timedelta(days=1)
@@ -824,8 +871,8 @@ def postpone(line_index, target):
         if context_clean:
             new_line += f" @{context_clean}"
         
-    # Always set the new due date
-    new_line += f" due:{new_date.strftime('%Y-%m-%d')}"
+    # Always set the new due date/time
+    new_line += f" due:{format_due(datetime.combine(new_date, base_time))}"
         
     if item['reference'] and item['reference'].strip():
         new_line += f" [[{item['reference'].strip()}]]"
@@ -879,6 +926,8 @@ def edit(line_index):
         note_raw = request.form.get('note')
         done = request.form.get('done') == 'on'
 
+        due_dt = parse_due_input(due_str)
+
         note_value = normalize_note(note_raw)
 
         if comment and comment.strip():
@@ -915,8 +964,8 @@ def edit(line_index):
             if clean_context:
                 new_line += f" @{clean_context}"
             
-        if due_str and due_str.strip():
-            new_line += f" due:{due_str.strip()}"
+        if due_dt:
+            new_line += f" due:{format_due(due_dt)}"
             
         if recurrence and recurrence.strip():
             rec_clean = recurrence.strip()
@@ -937,12 +986,7 @@ def edit(line_index):
         write_content('\n'.join(lines) + '\n')
 
         if recurrence and recurrence.strip() and not was_done and done:
-            base_due = None
-            if due_str and due_str.strip():
-                try:
-                    base_due = datetime.strptime(due_str.strip(), "%Y-%m-%d").date()
-                except ValueError:
-                    base_due = None
+            base_due = due_dt
             next_due = next_due_date(base_due, recurrence.strip())
             if next_due:
                 clone_title = title.strip()
@@ -951,7 +995,7 @@ def edit(line_index):
                     new_rec_line += f" +{project.strip().lstrip('+')}"
                 if context and context.strip():
                     new_rec_line += f" @{context.strip().lstrip('@')}"
-                new_rec_line += f" due:{next_due.strftime('%Y-%m-%d')}"
+                new_rec_line += f" due:{format_due(next_due)}"
                 new_rec_line += f" rec:{recurrence.strip()}"
                 if reference and reference.strip():
                     new_rec_line += f" [[{reference.strip()}]]"
@@ -970,6 +1014,8 @@ def edit(line_index):
     item = parse_line(line, line_index, "")
     if not item:
         return redirect(url_for('index'))
+
+    item['due_input'] = item['due_display'] if item.get('due_display') else ''
         
     return render_template('edit.html', todo=item)
 
@@ -1005,7 +1051,7 @@ def get_todo_json(line_index):
         
     # Convert date to string for JSON
     if item['due']:
-        item['due'] = item['due'].strftime("%Y-%m-%d")
+        item['due'] = format_due(item['due'])
     if item.get('done_date'):
         item['done_date'] = item['done_date'].strftime("%Y-%m-%d")
         
@@ -1076,7 +1122,7 @@ def parse_nlp():
     system_prompt = (
         "You are a specialized parser for todo items. "
         f"Today is {weekday}, {today}. "
-        "Extract the 'title', 'due' date (in YYYY-MM-DD format), and 'context' (e.g., store, office). "
+        "Extract the 'title', 'due' datetime (preferred format YYYY-MM-DDTHH:MM 24h; if only a date is given, use time 00:00), and 'context' (e.g., store, office). "
         "IMPORTANT rules:\n"
         "1. Return ONLY a valid JSON object.\n"
         "2. The keys 'title', 'due', and 'context' MUST be present.\n"
@@ -1086,8 +1132,8 @@ def parse_nlp():
         "6. The 'title' MUST be in the same language as the input text. Do NOT translate the title.\n"
         "7. Make the 'title' as concise as possible while keeping the meaning intact; lightly summarize wording without changing intent.\n"
         "8. Return ONLY the JSON object, NO other text or explanation.\n"
-        "Example 1: {\"title\": \"Buy milk\", \"due\": \"2026-01-01\", \"context\": \"store\"}\n"
-        "Example 2: {\"title\": \"Milch kaufen\", \"due\": \"2026-01-01\", \"context\": \"Laden\"}"
+        "Example 1: {\"title\": \"Buy milk\", \"due\": \"2026-01-01T09:30\", \"context\": \"store\"}\n"
+        "Example 2: {\"title\": \"Milch kaufen\", \"due\": \"2026-01-01T00:00\", \"context\": \"Laden\"}"
     )
 
     reminder_block = build_context_reminders(recent_context, window_days=RECENT_CONTEXT_WINDOW_DAYS)

@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.13.6" date="2026-01-16">
+      <description>
+        <ul>
+          <li>Web: Add time-aware due dates, hide-future filtering now considers the due time</li>
+          <li>Web: Show and edit due times with datetime inputs, including "sometime" handling</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.13.5" date="2026-01-16">
       <description>
         <ul>
