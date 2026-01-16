@@ -54,7 +54,7 @@
         </ul>
       </description>
     </release>
-    <release version="0.14.2" date="2026-01-16">
+    <release version="0.14.3" date="2026-01-16">
       <description>
         <ul>
           <li>Web: Smart due date buttons — Today (12:00 or 18:00), Tomorrow, Next Weekend (Saturday), Sometime</li>
