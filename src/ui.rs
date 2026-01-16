@@ -107,6 +107,8 @@ struct Preferences {
     sort_mode: Option<String>,
     #[serde(default)]
     show_done: bool,
+    #[serde(default = "default_skip_delete_confirmation")]
+    skip_delete_confirmation: bool,
     #[serde(default)]
     db_path: Option<String>,
     #[serde(default)]
@@ -137,6 +139,10 @@ fn default_whisper_language() -> String {
 
 fn default_ai_timeout_secs() -> u64 {
     30
+}
+
+fn default_skip_delete_confirmation() -> bool {
+    true
 }
 
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
@@ -909,6 +915,10 @@ impl AppState {
         self.preferences.borrow().show_due_only
     }
 
+    fn skip_delete_confirmation(&self) -> bool {
+        self.preferences.borrow().skip_delete_confirmation
+    }
+
     fn use_whisper(&self) -> bool {
         self.preferences.borrow().use_whisper
     }
@@ -1190,6 +1200,18 @@ impl AppState {
             state_due.set_show_due_only(row.is_active());
         });
         general_group.add(&show_due_row);
+
+        let delete_confirm_row = adw::SwitchRow::builder()
+            .title(&t("delete_without_confirmation"))
+            .subtitle(&t("delete_without_confirmation_desc"))
+            .active(self.skip_delete_confirmation())
+            .build();
+        delete_confirm_row.add_prefix(&gtk::Image::from_icon_name("user-trash-symbolic"));
+        let state_delete_pref = Rc::clone(self);
+        delete_confirm_row.connect_active_notify(move |row| {
+            state_delete_pref.set_skip_delete_confirmation(row.is_active());
+        });
+        general_group.add(&delete_confirm_row);
 
         let ai_row = adw::SwitchRow::builder()
             .title(&t("use_ai_on_new_topic"))
@@ -1500,6 +1522,18 @@ impl AppState {
 
         self.persist_preferences();
         self.repopulate_store();
+    }
+
+    fn set_skip_delete_confirmation(&self, skip: bool) {
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.skip_delete_confirmation == skip {
+                return;
+            }
+            prefs.skip_delete_confirmation = skip;
+        }
+
+        self.persist_preferences();
     }
 
     fn set_use_ai_on_new_topic(&self, enabled: bool) {
@@ -2465,15 +2499,51 @@ impl AppState {
         let state_delete = self.clone();
         let todo_delete = todo.clone();
         delete_btn.connect_clicked(move |_| {
-            match data::delete_todo(&todo_delete) {
-                Ok(_) => {
-                    if let Err(err) = state_delete.reload() {
-                        state_delete.show_error(&t("reload_error").replace("{}", &err.to_string()));
+            let perform_delete = Rc::new({
+                let state_delete = state_delete.clone();
+                let todo_delete = todo_delete.clone();
+                let dialog_delete = dialog_delete.clone();
+                move || {
+                    match data::delete_todo(&todo_delete) {
+                        Ok(_) => {
+                            if let Err(err) = state_delete.reload() {
+                                state_delete.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                            }
+                        }
+                        Err(e) => state_delete.show_error(&t("delete_error").replace("{}", &e.to_string())),
                     }
+                    dialog_delete.close();
                 }
-                Err(e) => state_delete.show_error(&t("delete_error").replace("{}", &e.to_string())),
+            });
+
+            if state_delete.skip_delete_confirmation() {
+                perform_delete();
+                return;
             }
-            dialog_delete.close();
+
+            if let Some(parent) = state_delete.window.upgrade() {
+                let confirm_dialog = AlertDialog::builder()
+                    .modal(true)
+                    .build();
+                confirm_dialog.set_message(&t("delete_confirmation_title"));
+                confirm_dialog.set_detail(&t("delete_confirmation_desc"));
+                confirm_dialog.set_buttons(&[&t("delete"), &t("cancel")]);
+                confirm_dialog.set_default_button(1);
+                confirm_dialog.set_cancel_button(1);
+
+                let perform_delete_cb = perform_delete.clone();
+                confirm_dialog.choose(
+                    Some(&parent),
+                    Option::<&gio::Cancellable>::None,
+                    move |result| {
+                        if let Ok(0) = result {
+                            perform_delete_cb();
+                        }
+                    },
+                );
+            } else {
+                perform_delete();
+            }
         });
 
         let due_entry_for_button = due_entry.clone();

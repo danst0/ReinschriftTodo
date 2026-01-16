@@ -95,6 +95,22 @@ def generate_marker(length=8):
 def ensure_marker(existing):
     return existing if existing else generate_marker()
 
+
+def parse_flag(value, default=True):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ('1', 'true', 'yes', 'on', 'y'):
+            return True
+        if normalized in ('0', 'false', 'no', 'off', 'n', ''):
+            return False
+    return default
+
 def read_content():
     if USE_WEBDAV:
         if not WEBDAV_URL:
@@ -518,7 +534,7 @@ def index():
     auto_ai_on_add_vals = request.args.getlist('auto_ai_on_add')
     auto_ai_on_add_val = auto_ai_on_add_vals[-1] if auto_ai_on_add_vals else None
     skip_delete_confirm_vals = request.args.getlist('skip_delete_confirm')
-    skip_delete_confirm_val = skip_delete_confirm_vals[-1] if skip_delete_confirm_vals else None
+    skip_delete_confirm_raw = skip_delete_confirm_vals[-1] if skip_delete_confirm_vals else None
     ai_timeout_secs_val = request.args.get('ai_timeout_secs')
     
     new_settings = settings.copy()
@@ -555,11 +571,16 @@ def index():
     else:
         auto_ai_on_add_val = settings.get('auto_ai_on_add', '0')
 
-    if skip_delete_confirm_val is not None:
-        new_settings['skip_delete_confirm'] = skip_delete_confirm_val
+    if skip_delete_confirm_raw is not None:
+        skip_delete_confirm = parse_flag(skip_delete_confirm_raw, default=True)
+        new_settings['skip_delete_confirm'] = '1' if skip_delete_confirm else '0'
         changed = True
     else:
-        skip_delete_confirm_val = settings.get('skip_delete_confirm', '1')
+        stored_skip_delete_confirm = settings.get('skip_delete_confirm')
+        skip_delete_confirm = parse_flag(stored_skip_delete_confirm, default=True)
+        if isinstance(stored_skip_delete_confirm, bool):
+            new_settings['skip_delete_confirm'] = '1' if stored_skip_delete_confirm else '0'
+            changed = True
 
     if ai_timeout_secs_val is not None:
         parsed_ai_timeout = clamp_timeout_secs(ai_timeout_secs_val)
@@ -576,7 +597,6 @@ def index():
     show_due_only = show_due_only_val == '1'
     sort_mode = sort_mode_val
     auto_ai_on_add = auto_ai_on_add_val == '1'
-    skip_delete_confirm = skip_delete_confirm_val == '1'
     ai_timeout_secs = parsed_ai_timeout
     ai_timeout_ms = ai_timeout_secs * 1000
     q = request.args.get('q', '').lower()

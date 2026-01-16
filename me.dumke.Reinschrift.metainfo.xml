@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.13.4" date="2026-01-16">
+      <description>
+        <ul>
+          <li>GTK: Add setting to skip delete confirmations by default and honor it in the editor dialog</li>
+          <li>Web: Normalize the delete-without-confirmation setting and default to no dialog</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.13.3" date="2026-01-16">
       <description>
         <ul>
