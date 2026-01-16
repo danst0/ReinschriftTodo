@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::env;
 use std::fs;
 use std::io::Read;
@@ -28,8 +27,7 @@ use serde_json;
 use tokio::runtime::Runtime;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
-use crate::data::{self, TodoItem};
-use crate::i18n::t;
+use reinschrift_core::{data, TodoItem, SortMode, sort_items, t};
 
 enum VoiceMsg {
     Error(String),
@@ -42,13 +40,6 @@ enum VoiceMsg {
 enum ListEntry {
     Header(String),
     Item(TodoItem),
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-enum SortMode {
-    Topic,
-    Location,
-    Date,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -69,40 +60,6 @@ struct AiChatResponse {
 }
 
 const DEFAULT_DUE_TIME: NaiveTime = NaiveTime::from_hms_opt(0, 0, 0).expect("midnight available");
-
-impl SortMode {
-    fn from_index(index: u32) -> Self {
-        match index {
-            1 => SortMode::Location,
-            2 => SortMode::Date,
-            _ => SortMode::Topic,
-        }
-    }
-
-    fn to_index(self) -> u32 {
-        match self {
-            SortMode::Topic => 0,
-            SortMode::Location => 1,
-            SortMode::Date => 2,
-        }
-    }
-
-    fn from_key(key: &str) -> Self {
-        match key {
-            "location" => SortMode::Location,
-            "date" => SortMode::Date,
-            _ => SortMode::Topic,
-        }
-    }
-
-    fn as_key(self) -> &'static str {
-        match self {
-            SortMode::Topic => "topic",
-            SortMode::Location => "location",
-            SortMode::Date => "date",
-        }
-    }
-}
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 struct Preferences {
@@ -2661,11 +2618,7 @@ impl AppState {
     }
 
     fn sort_items(&self, items: &mut [TodoItem]) {
-        match *self.sort_mode.borrow() {
-            SortMode::Topic => items.sort_by(compare_by_project),
-            SortMode::Location => items.sort_by(compare_by_context),
-            SortMode::Date => items.sort_by(compare_by_due),
-        }
+        sort_items(items, *self.sort_mode.borrow());
     }
 
     fn group_label(&self, mode: SortMode, item: &TodoItem) -> Option<String> {
@@ -2917,45 +2870,4 @@ fn preferences_path() -> PathBuf {
     dir.push("reinschrift_todo");
     dir.push("preferences.json");
     dir
-}
-
-fn compare_by_project(a: &TodoItem, b: &TodoItem) -> Ordering {
-    compare_option_str(a.project.as_deref(), b.project.as_deref())
-        .then_with(|| lexical_order(&a.section, &b.section))
-        .then_with(|| lexical_order(&a.title, &b.title))
-        .then_with(|| compare_option_str(a.context.as_deref(), b.context.as_deref()))
-}
-
-fn compare_by_context(a: &TodoItem, b: &TodoItem) -> Ordering {
-    compare_option_str(a.context.as_deref(), b.context.as_deref())
-        .then_with(|| lexical_order(&a.section, &b.section))
-        .then_with(|| lexical_order(&a.title, &b.title))
-        .then_with(|| compare_option_str(a.project.as_deref(), b.project.as_deref()))
-}
-
-fn compare_by_due(a: &TodoItem, b: &TodoItem) -> Ordering {
-    compare_option_datetime(a.due, b.due)
-        .then_with(|| compare_by_project(a, b))
-}
-
-fn compare_option_str(a: Option<&str>, b: Option<&str>) -> Ordering {
-    match (a, b) {
-        (Some(a), Some(b)) => lexical_order(a, b),
-        (Some(_), None) => Ordering::Less,
-        (None, Some(_)) => Ordering::Greater,
-        (None, None) => Ordering::Equal,
-    }
-}
-
-fn compare_option_datetime(a: Option<NaiveDateTime>, b: Option<NaiveDateTime>) -> Ordering {
-    match (a, b) {
-        (Some(a), Some(b)) => a.cmp(&b),
-        (Some(_), None) => Ordering::Greater,
-        (None, Some(_)) => Ordering::Less,
-        (None, None) => Ordering::Equal,
-    }
-}
-
-fn lexical_order(a: &str, b: &str) -> Ordering {
-    a.to_ascii_lowercase().cmp(&b.to_ascii_lowercase())
 }

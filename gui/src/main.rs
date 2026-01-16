@@ -1,11 +1,9 @@
-mod data;
 mod ui;
-mod i18n;
 
 use anyhow::{bail, Context, Result};
 use adw::prelude::*;
 use gtk::glib;
-use i18n::t;
+use reinschrift_core::{i18n, set_todo_path, t};
 
 const APP_ID: &str = "me.dumke.Reinschrift";
 
@@ -16,7 +14,7 @@ fn main() -> Result<()> {
         if pos < filtered_args.len() {
             let db_path = filtered_args.remove(pos);
             let absolute_path = std::fs::canonicalize(&db_path).unwrap_or_else(|_| std::path::PathBuf::from(db_path));
-            data::set_todo_path(absolute_path);
+            set_todo_path(absolute_path);
         }
     }
 

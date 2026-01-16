@@ -9,6 +9,7 @@ use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::blocking::Client;
+use serde::Serialize;
 
 #[derive(Clone, Debug)]
 pub enum BackendConfig {
@@ -55,13 +56,13 @@ static COMPLETION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s✅\s\d{4}-\d{2}
 static RECUR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"rec:([^\s]+)").unwrap());
 static NOTE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"~note:"((?:\\.|[^"])*)""#).unwrap());
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct TodoKey {
     pub line_index: usize,
     pub marker: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct TodoItem {
     pub key: TodoKey,
     pub title: String,
