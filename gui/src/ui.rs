@@ -62,7 +62,7 @@ struct AiChatResponse {
 const DEFAULT_DUE_TIME: NaiveTime = NaiveTime::from_hms_opt(0, 0, 0).expect("midnight available");
 
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
-    glib::timeout_add_seconds_local(interval, clone!(@weak state => @default-return glib::ControlFlow::Break, move || {
+    glib::timeout_add_seconds_local(interval, clone!(#[weak] state, #[upgrade_or] glib::ControlFlow::Break, move || {
         let next_interval = match state.check_for_updates() {
             Ok(_) => 10,
             Err(e) => {
@@ -346,7 +346,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     // });
 
     let refresh_action = gio::SimpleAction::new("reload", None);
-    refresh_action.connect_activate(clone!(@weak state => move |_, _| {
+    refresh_action.connect_activate(clone!(#[weak] state, move |_, _| {
         if let Err(err) = state.reload() {
             state.show_error(&t("load_error").replace("{}", &err.to_string()));
         }
@@ -369,7 +369,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     app.add_action(&close_action);
     app.set_accels_for_action("app.close-window", &["<Primary>w", "<Primary>q", "<Alt>F4"]);
 
-    refresh_btn.connect_clicked(clone!(@weak app => move |_| {
+    refresh_btn.connect_clicked(clone!(#[weak] app, move |_| {
         let _ = app.activate_action("app.reload", None);
     }));
 
@@ -391,12 +391,12 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         state.show_settings_dialog(None);
     }
 
-    sort_selector.connect_selected_notify(clone!(@weak state => move |dropdown| {
+    sort_selector.connect_selected_notify(clone!(#[weak] state, move |dropdown| {
         let mode = SortMode::from_index(dropdown.selected());
         state.set_sort_mode(mode);
     }));
 
-    due_filter.connect_toggled(clone!(@weak state => move |btn| {
+    due_filter.connect_toggled(clone!(#[weak] state, move |btn| {
         state.set_show_due_only(btn.is_active());
     }));
 
@@ -960,7 +960,7 @@ impl AppState {
         dialog.choose(
             Some(&parent),
             Option::<&gio::Cancellable>::None,
-            clone!(@strong state, @strong base_todo => move |result| {
+            clone!(#[strong] state, #[strong] base_todo, move |result| {
                 match result {
                     Ok(index) => {
                         let action = match index {
@@ -1510,7 +1510,7 @@ impl AppState {
 
         let runtime = self.ai_runtime.clone();
         let original = title_text.clone();
-        glib::spawn_future_local(clone!(@weak self as state, @weak entry => async move {
+        glib::spawn_future_local(clone!(#[weak(rename_to = state)] self, #[weak] entry, async move {
             let original_for_request = original.clone();
             let timeout_secs = state.ai_timeout_secs();
             let outcome = runtime
@@ -2614,7 +2614,7 @@ impl AppState {
     fn install_monitor(self: &Rc<Self>) -> Result<()> {
         let file = gio::File::for_path(data::todo_path());
         let monitor = file.monitor_file(gio::FileMonitorFlags::NONE, Option::<&gio::Cancellable>::None)?;
-        monitor.connect_changed(clone!(@weak self as state => move |_, _, _, event| {
+        monitor.connect_changed(clone!(#[weak(rename_to = state)] self, move |_, _, _, event| {
             use gio::FileMonitorEvent as Event;
             let should_reload = matches!(
                 event,
