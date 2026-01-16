@@ -27,6 +27,7 @@
   "monitor_error": "Filövervakning inte tillgänglig: {}",
   "set_due_today": "Sätt förfallodatum till idag",
   "postpone_tomorrow": "Skjut upp till imorgon",
+  "postpone_weekend": "Skjut upp till helgen",
   "postpone_sometimes": "Skjut upp till 'när som helst'",
   "sometimes": "När som helst",
   "update_error": "Kunde inte uppdatera posten: {}",

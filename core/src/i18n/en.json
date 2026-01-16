@@ -26,6 +26,7 @@
   "monitor_error": "File monitoring not available: {}",
   "set_due_today": "Set due date to today",
   "postpone_tomorrow": "Postpone to tomorrow",
+  "postpone_weekend": "Postpone to weekend",
   "postpone_sometimes": "Postpone to 'sometimes'",
   "sometimes": "Sometimes",
   "update_error": "Could not update entry: {}",

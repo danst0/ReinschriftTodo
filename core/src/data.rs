@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::i18n::t;
 use anyhow::{anyhow, bail, Context, Result};
-use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::blocking::Client;
@@ -381,8 +381,54 @@ pub fn toggle_todo(key: &TodoKey, done: bool) -> Result<()> {
 }
 
 pub fn set_due_today(key: &TodoKey) -> Result<NaiveDateTime> {
+    let now = Local::now();
+    let today = now.date_naive();
+    let current_hour = now.hour();
+    
+    // Smart "Today" logic: at least 4 hours from now
+    let time = if current_hour < 8 {
+        NaiveTime::from_hms_opt(12, 0, 0).unwrap()
+    } else if current_hour < 14 {
+        NaiveTime::from_hms_opt(18, 0, 0).unwrap()
+    } else {
+        NaiveTime::from_hms_opt(18, 0, 0).unwrap()
+    };
+    
+    let due_dt = NaiveDateTime::new(today, time);
+    update_line(key, |line| rewrite_due(line, due_dt))?;
+    Ok(due_dt)
+}
+
+pub fn set_due_tomorrow(key: &TodoKey) -> Result<NaiveDateTime> {
+    let tomorrow = Local::now().date_naive() + chrono::Duration::days(1);
+    let time = NaiveTime::from_hms_opt(12, 0, 0).unwrap();
+    let due_dt = NaiveDateTime::new(tomorrow, time);
+    update_line(key, |line| rewrite_due(line, due_dt))?;
+    Ok(due_dt)
+}
+
+pub fn set_due_weekend(key: &TodoKey) -> Result<NaiveDateTime> {
     let today = Local::now().date_naive();
-    let due_dt = NaiveDateTime::new(today, DEFAULT_DUE_TIME);
+    let weekday = today.weekday().num_days_from_monday(); // 0=Mon, 5=Sat, 6=Sun
+    
+    let days_until_saturday: i64 = if weekday == 5 {
+        7  // Today is Saturday, go to next Saturday
+    } else if weekday == 6 {
+        6  // Today is Sunday, go to next Saturday
+    } else {
+        (5 - weekday) as i64  // Monday-Friday: days until this Saturday
+    };
+    
+    let target_date = today + chrono::Duration::days(days_until_saturday);
+    let time = NaiveTime::from_hms_opt(12, 0, 0).unwrap();
+    let due_dt = NaiveDateTime::new(target_date, time);
+    update_line(key, |line| rewrite_due(line, due_dt))?;
+    Ok(due_dt)
+}
+
+pub fn set_due_sometime(key: &TodoKey) -> Result<NaiveDateTime> {
+    let sometime = NaiveDate::from_ymd_opt(9999, 12, 31).unwrap();
+    let due_dt = NaiveDateTime::new(sometime, DEFAULT_DUE_TIME);
     update_line(key, |line| rewrite_due(line, due_dt))?;
     Ok(due_dt)
 }

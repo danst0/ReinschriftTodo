@@ -482,13 +482,21 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         today_btn.add_css_class("flat");
         container.append(&today_btn);
 
-        let postpone_btn = gtk::Button::builder()
+        let tomorrow_btn = gtk::Button::builder()
             .icon_name("go-next-symbolic")
             .tooltip_text(&t("postpone_tomorrow"))
             .build();
-        postpone_btn.set_valign(gtk::Align::Center);
-        postpone_btn.add_css_class("flat");
-        container.append(&postpone_btn);
+        tomorrow_btn.set_valign(gtk::Align::Center);
+        tomorrow_btn.add_css_class("flat");
+        container.append(&tomorrow_btn);
+
+        let weekend_btn = gtk::Button::builder()
+            .icon_name("weather-clear-symbolic")
+            .tooltip_text(&t("postpone_weekend"))
+            .build();
+        weekend_btn.set_valign(gtk::Align::Center);
+        weekend_btn.add_css_class("flat");
+        container.append(&weekend_btn);
 
         let sometimes_btn = gtk::Button::builder()
             .icon_name("clock-symbolic")
@@ -531,7 +539,11 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ if unicode == Some('+') || unicode == Some('*') || unicode == Some('=') || 
                      keyval == gdk::Key::plus || keyval == gdk::Key::KP_Add || 
                      keyval == gdk::Key::asterisk || keyval == gdk::Key::KP_Multiply => {
-                    let _ = state.set_due_in_days(&todo, 1);
+                    let _ = state.set_due_tomorrow(&todo);
+                    glib::Propagation::Stop
+                }
+                _ if unicode == Some('w') || unicode == Some('W') => {
+                    let _ = state.set_due_weekend(&todo);
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('s') || unicode == Some('S') => {
@@ -549,7 +561,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             list_item.set_data("todo-check", check.downgrade());
             list_item.set_data("todo-title", title.downgrade());
             list_item.set_data("todo-meta", meta.downgrade());
-            list_item.set_data("todo-button", postpone_btn.downgrade());
+            list_item.set_data("todo-button", tomorrow_btn.downgrade());
         }
 
         let weak_list = list_item.downgrade();
@@ -580,10 +592,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             }
         });
 
-        let postpone_list = list_item.downgrade();
-        let postpone_state = factory_state.clone();
-        postpone_btn.connect_clicked(move |_| {
-            let Some(list_item) = postpone_list.upgrade() else {
+        let tomorrow_list = list_item.downgrade();
+        let tomorrow_state = factory_state.clone();
+        tomorrow_btn.connect_clicked(move |_| {
+            let Some(list_item) = tomorrow_list.upgrade() else {
                 return;
             };
             let Some(obj) = list_item.item() else {
@@ -598,8 +610,35 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 ListEntry::Header(_) => return,
             };
 
-            if let Some(state) = postpone_state.upgrade() {
-                state.show_due_shortcuts(&todo);
+            if let Some(state) = tomorrow_state.upgrade() {
+                if let Err(err) = state.set_due_tomorrow(&todo) {
+                    state.show_error(&t("set_due_error").replace("{}", &err.to_string()));
+                }
+            }
+        });
+
+        let weekend_list = list_item.downgrade();
+        let weekend_state = factory_state.clone();
+        weekend_btn.connect_clicked(move |_| {
+            let Some(list_item) = weekend_list.upgrade() else {
+                return;
+            };
+            let Some(obj) = list_item.item() else {
+                return;
+            };
+            let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else {
+                return;
+            };
+            let entry = todo_obj.borrow::<ListEntry>();
+            let todo = match &*entry {
+                ListEntry::Item(todo) => todo.clone(),
+                ListEntry::Header(_) => return,
+            };
+
+            if let Some(state) = weekend_state.upgrade() {
+                if let Err(err) = state.set_due_weekend(&todo) {
+                    state.show_error(&t("set_due_error").replace("{}", &err.to_string()));
+                }
             }
         });
 
@@ -925,6 +964,20 @@ impl AppState {
         Ok(())
     }
 
+    fn set_due_tomorrow(&self, todo: &TodoItem) -> Result<()> {
+        let tomorrow = data::set_due_tomorrow(&todo.key)?;
+        self.reload()?;
+        self.show_info(&format!("Fällig morgen ({})", tomorrow.format("%Y-%m-%dT%H:%M")));
+        Ok(())
+    }
+
+    fn set_due_weekend(&self, todo: &TodoItem) -> Result<()> {
+        let weekend = data::set_due_weekend(&todo.key)?;
+        self.reload()?;
+        self.show_info(&format!("Fällig am Wochenende ({})", weekend.format("%Y-%m-%dT%H:%M")));
+        Ok(())
+    }
+
     fn set_due_in_days(&self, todo: &TodoItem, days: i64) -> Result<()> {
         let mut updated = todo.clone();
         let base_time = todo.due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
@@ -934,10 +987,10 @@ impl AppState {
     }
 
     fn set_due_sometimes(&self, todo: &TodoItem) -> Result<()> {
-        let mut updated = todo.clone();
-        let sometime = NaiveDate::from_ymd_opt(9999, 12, 31).unwrap();
-        updated.due = Some(NaiveDateTime::new(sometime, DEFAULT_DUE_TIME));
-        self.save_item(&updated)
+        let sometime = data::set_due_sometime(&todo.key)?;
+        self.reload()?;
+        self.show_info(&format!("Fällig irgendwann ({})", sometime.format("%Y-%m-%dT%H:%M")));
+        Ok(())
     }
 
     fn show_due_shortcuts(self: &Rc<Self>, todo: &TodoItem) {

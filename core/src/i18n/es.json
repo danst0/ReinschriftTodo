@@ -22,6 +22,7 @@
   "monitor_error": "Monitorización de archivos no disponible: {}",
   "set_due_today": "Establecer vencimiento para hoy",
   "postpone_tomorrow": "Posponer para mañana",
+  "postpone_weekend": "Posponer para el fin de semana",
   "postpone_sometimes": "Posponer para 'algún momento'",
   "sometimes": "Algún momento",
   "update_error": "No se pudo actualizar la entrada: {}",

@@ -27,6 +27,7 @@
   "monitor_error": "Surveillance des fichiers non disponible : {}",
   "set_due_today": "Régler l'échéance à aujourd'hui",
   "postpone_tomorrow": "Reporter à demain",
+  "postpone_weekend": "Reporter au week-end",
   "postpone_sometimes": "Reporter à 'un jour'",
   "sometimes": "Un jour",
   "update_error": "Impossible de mettre à jour l'entrée : {}",

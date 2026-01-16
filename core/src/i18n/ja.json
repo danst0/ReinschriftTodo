@@ -27,6 +27,7 @@
   "monitor_error": "ファイル監視を利用できません: {}",
   "set_due_today": "期限を今日に設定",
   "postpone_tomorrow": "明日に延期",
+  "postpone_weekend": "週末に延期",
   "postpone_sometimes": "「いつか」に延期",
   "sometimes": "いつか",
   "update_error": "項目を更新できませんでした: {}",

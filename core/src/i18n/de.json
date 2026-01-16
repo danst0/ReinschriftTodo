@@ -26,6 +26,7 @@
   "monitor_error": "Dateiüberwachung nicht verfügbar: {}",
   "set_due_today": "Fälligkeit auf heute setzen",
   "postpone_tomorrow": "Auf morgen verschieben",
+  "postpone_weekend": "Aufs Wochenende verschieben",
   "postpone_sometimes": "Auf 'Irgendwann' verschieben",
   "sometimes": "Irgendwann",
   "update_error": "Konnte Eintrag nicht aktualisieren: {}",
