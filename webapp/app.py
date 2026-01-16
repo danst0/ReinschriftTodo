@@ -842,13 +842,40 @@ def postpone(line_index, target):
         return redirect(url_for('index'))
         
     # Calculate new date/time
-    today = datetime.now().date()
-    base_time = item['due'].time() if item.get('due') else DEFAULT_DUE_TIME
-    new_date = today
-    if target == 'tomorrow':
+    now = datetime.now()
+    today = now.date()
+    current_hour = now.hour
+    
+    if target == 'today':
+        # Smart "Today" logic: at least 4 hours from now
+        new_date = today
+        if current_hour < 8:
+            new_time = dtime(hour=12, minute=0)
+        elif current_hour < 14:
+            new_time = dtime(hour=18, minute=0)
+        else:
+            new_time = dtime(hour=18, minute=0)
+    elif target == 'tomorrow':
         new_date = today + timedelta(days=1)
-    elif target == 'sometimes':
+        new_time = dtime(hour=12, minute=0)
+    elif target == 'weekend':
+        # Next Saturday
+        day_of_week = today.weekday()  # 0=Monday, 5=Saturday, 6=Sunday
+        if day_of_week == 5:  # Saturday
+            days_until_saturday = 7
+        elif day_of_week == 6:  # Sunday
+            days_until_saturday = 6
+        else:
+            days_until_saturday = 5 - day_of_week
+        new_date = today + timedelta(days=days_until_saturday)
+        new_time = dtime(hour=12, minute=0)
+    elif target == 'sometime':
         new_date = datetime(9999, 12, 31).date()
+        new_time = dtime(hour=0, minute=0)
+    else:
+        # Fallback: keep original date/time or set to today
+        new_date = today
+        new_time = item['due'].time() if item.get('due') else DEFAULT_DUE_TIME
     
     # Update line
     # We need to replace or add due:YYYY-MM-DD
@@ -872,7 +899,7 @@ def postpone(line_index, target):
             new_line += f" @{context_clean}"
         
     # Always set the new due date/time
-    new_line += f" due:{format_due(datetime.combine(new_date, base_time))}"
+    new_line += f" due:{format_due(datetime.combine(new_date, new_time))}"
         
     if item['reference'] and item['reference'].strip():
         new_line += f" [[{item['reference'].strip()}]]"

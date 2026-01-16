@@ -54,6 +54,14 @@
         </ul>
       </description>
     </release>
+    <release version="0.14.2" date="2026-01-16">
+      <description>
+        <ul>
+          <li>Web: Smart due date buttons — Today (12:00 or 18:00), Tomorrow, Next Weekend (Saturday), Sometime</li>
+          <li>Web: Added keyboard shortcut 'w' for next weekend</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.13.9" date="2026-01-16">
       <description>
         <ul>

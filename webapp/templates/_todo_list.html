@@ -13,7 +13,8 @@
             <div class="group-actions" style="display: inline-flex; gap: 0.35rem;">
                 <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'today', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.today }}">📅</a>
                 <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'tomorrow', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.tomorrow }}">➡️</a>
-                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'sometimes', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.sometimes }}">🕒</a>
+                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'weekend', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.next_weekend }}">🏖️</a>
+                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'sometime', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.sometime }}">🕒</a>
             </div>
             {% endif %}
         </div>
@@ -50,7 +51,7 @@
                     <span class="due">
                         {{ t.due }} 
                         {% if todo.due_is_sometime %}
-                            {{ t.sometimes }}
+                            {{ t.sometime }}
                         {% else %}
                             {{ todo.due_display or todo.due }}
                         {% endif %}
@@ -61,7 +62,8 @@
         <div class="actions" style="margin-left: auto; display: flex; gap: 0.5rem;">
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'today')" title="{{ t.today }}">📅</a>
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow')" title="{{ t.tomorrow }}">➡️</a>
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'sometimes')" title="{{ t.sometimes }}">🕒</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'weekend')" title="{{ t.next_weekend }}">🏖️</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'sometime')" title="{{ t.sometime }}">🕒</a>
         </div>
     </div>
 {% endfor %}

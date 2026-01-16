@@ -192,7 +192,7 @@
                         <input type="datetime-local" id="edit-due" name="due">
                         <button type="button" class="btn-action" onclick="setModalDate(0)" title="{{ t.today }}">📅</button>
                         <button type="button" class="btn-action" onclick="setModalDate(1)" title="{{ t.tomorrow }}">➡️</button>
-                        <button type="button" class="btn-action" onclick="setModalNextWeekend()" title="{{ t.next_weekend }}">🏖️</button>
+                        <button type="button" class="btn-action" onclick="setModalNextWeekend()" title="{{ t.next_weekend }}">📆</button>
                         <button type="button" class="btn-action" onclick="setModalSometime()" title="{{ t.sometime }}">🕒</button>
                     </div>
                 </div>
@@ -356,7 +356,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; padding-top: 1rem;">
-            <p><strong>Reinschrift</strong> v0.14.2</p>
+            <p><strong>Reinschrift</strong> v0.13.4</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
