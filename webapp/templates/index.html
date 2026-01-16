@@ -355,7 +355,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; padding-top: 1rem;">
-            <p><strong>Reinschrift</strong> v0.13.2</p>
+            <p><strong>Reinschrift</strong> v0.13.3</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -495,39 +495,53 @@
             }
         }
 
-        function wireAutoSmartAdd() {
-            if (!autoAiOnAdd) {
-                return;
-            }
-            const form = document.getElementById('addForm');
-            const input = document.getElementById('add-input');
-            if (!form || !input) {
-                return;
-            }
+        const addForm = document.getElementById('addForm');
+        if (addForm) {
+            addForm.onsubmit = async function(e) {
+                e.preventDefault();
 
-            form.addEventListener('submit', async function(event) {
-                event.preventDefault();
-                const original = input.value;
-                try {
-                    const formatted = await runSmartAdd({ textOverride: original });
-                    if (formatted) {
-                        input.value = formatted;
+                const input = document.getElementById('add-input');
+                const original = input ? input.value : '';
+                let shouldSubmit = true;
+
+                if (autoAiOnAdd && original) {
+                    try {
+                        const formatted = await runSmartAdd({ textOverride: original });
+                        if (formatted && input) {
+                            input.value = formatted;
+                        }
+                    } catch (err) {
+                        if (err && err.message === 'timeout') {
+                            notifyAiFallback(aiTimeoutMessage);
+                        } else if (err && err.message) {
+                            notifyAiFallback(`${aiErrorMessage} ${err.message}`.trim());
+                        } else {
+                            notifyAiFallback(aiErrorMessage);
+                        }
+                        shouldSubmit = true; // still submit the original input
                     }
-                } catch (err) {
-                    if (err && err.message === 'timeout') {
-                        notifyAiFallback(aiTimeoutMessage);
-                    } else if (err && err.message) {
-                        notifyAiFallback(`${aiErrorMessage} ${err.message}`.trim());
-                    } else {
-                        notifyAiFallback(aiErrorMessage);
-                    }
-                    input.value = original;
-                } finally {
-                    form.submit();
                 }
-            });
+
+                if (!shouldSubmit) {
+                    return;
+                }
+
+                const formData = new FormData(this);
+                if (input) {
+                    formData.set('title', input.value);
+                }
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData
+                }).then(() => {
+                    this.reset();
+                    autoReload();
+                }).catch(err => {
+                    console.error('Add failed', err);
+                });
+            };
         }
-        wireAutoSmartAdd();
         var modal = document.getElementById("editModal");
 
         function toggleTodo(event, lineIndex) {
@@ -659,17 +673,7 @@
             }
         }
 
-        document.getElementById('addForm').onsubmit = function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            fetch(this.action, {
-                method: 'POST',
-                body: formData
-            }).then(() => {
-                this.reset();
-                autoReload();
-            });
-        };
+        // Add form submission is handled once above (with optional AI preprocessing).
 
         function applyFilter(event, url) {
             event.preventDefault();
@@ -1020,7 +1024,7 @@
         // Web Speech API Integration
         const voiceBtn = document.getElementById('voice-btn');
         const addInput = document.getElementById('add-input');
-        const addForm = document.getElementById('addForm');
+        const addFormVoice = document.getElementById('addForm');
 
         // Disable voice input on mobile; allow on desktop only
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -1055,7 +1059,9 @@
                 const transcript = event.results[0][0].transcript;
                 addInput.value = transcript;
                 // Auto-submit form
-                addForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                if (addFormVoice) {
+                    addFormVoice.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
             };
 
             recognition.onerror = (event) => {

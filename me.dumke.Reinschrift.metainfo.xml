@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.13.3" date="2026-01-16">
+      <description>
+        <ul>
+          <li>Web: Respect AI-on-add preference with single-submit Smart Add flow</li>
+          <li>Web: Honor skip-delete-confirm preference from settings</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.13.2" date="2026-01-16">
       <description>
         <ul>

@@ -515,8 +515,10 @@ def index():
     show_done_val = request.args.get('show_done')
     show_due_only_val = request.args.get('show_due_only')
     sort_mode_val = request.args.get('sort_mode')
-    auto_ai_on_add_val = request.args.get('auto_ai_on_add')
-    skip_delete_confirm_val = request.args.get('skip_delete_confirm')
+    auto_ai_on_add_vals = request.args.getlist('auto_ai_on_add')
+    auto_ai_on_add_val = auto_ai_on_add_vals[-1] if auto_ai_on_add_vals else None
+    skip_delete_confirm_vals = request.args.getlist('skip_delete_confirm')
+    skip_delete_confirm_val = skip_delete_confirm_vals[-1] if skip_delete_confirm_vals else None
     ai_timeout_secs_val = request.args.get('ai_timeout_secs')
     
     new_settings = settings.copy()
