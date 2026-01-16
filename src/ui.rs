@@ -1525,7 +1525,8 @@ impl AppState {
 
         receiver.attach(
             None,
-            clone!(@weak self as state, @weak entry => @default-return ControlFlow::Break, move |(outcome, original): AiParseOutcome| {
+            clone!(@weak self as state, @weak entry => @default-return glib::Continue(false), move |msg: AiParseOutcome| {
+                let (outcome, original) = msg;
                 match outcome {
                     Ok(Ok(parsed)) => {
                         let todo = build_todo_from_ai(&parsed, &original);
@@ -1552,7 +1553,7 @@ impl AppState {
                         state.add_plain_and_notify(&original, &entry);
                     }
                 }
-                ControlFlow::Break
+                glib::Continue(false)
             }),
         );
     }
