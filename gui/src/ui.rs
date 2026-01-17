@@ -1631,11 +1631,12 @@ impl AppState {
             };
 
             let timeout_secs = state.ai_timeout_secs();
+            let original_for_parse = original.clone();
             let outcome = runtime
                 .spawn(async move {
                     tokio::time::timeout(
                         StdDuration::from_secs(timeout_secs),
-                        request_ai_parse(original.clone()),
+                        request_ai_parse(original_for_parse),
                     )
                     .await
                 })
