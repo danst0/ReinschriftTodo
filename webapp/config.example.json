@@ -1,4 +1,4 @@
 {
     "llm_url": "http://10.0.2.71:11434/api/generate",
-    "llm_model": "qwen3:14b"
+    "llm_model": "mistral:7b"
 }
