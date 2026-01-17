@@ -1205,7 +1205,7 @@ def parse_nlp():
         "INVALID: speculative thoughts ('ich glaube vielleicht...'), observations, questions, chat.\n\n"
         "OUTPUT JSON (all keys required):\n"
         "{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\n"
-        "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project.\n\n"
+        "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use exact existing case.\n\n"
         "Example: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\n"
         "Example: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}"
     )
