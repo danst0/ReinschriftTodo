@@ -15,7 +15,8 @@ from authlib.integrations.flask_client import OAuth
 from translations import TRANSLATIONS
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
+logging.basicConfig(level=getattr(logging, log_level, logging.INFO), format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -1252,6 +1253,8 @@ def parse_nlp():
 
     try:
         logger.info(f"Sending request to Ollama ({chat_url}) with model {MODEL}")
+        logger.debug(f"System prompt:\n{system_prompt}")
+        logger.debug(f"User input: {text}")
         response = requests.post(chat_url, json={
             "model": MODEL,
             "messages": [
