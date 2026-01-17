@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.middleware.proxy_fix import ProxyFix
 import requests
 from requests.auth import HTTPBasicAuth
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from authlib.integrations.flask_client import OAuth
 from translations import TRANSLATIONS
 
@@ -1277,6 +1277,7 @@ def parse_nlp():
 
 
 @app.route('/api/add', methods=['POST'])
+@csrf.exempt
 def api_add():
     if 'logged_in' not in session:
         return {'error': 'Unauthorized'}, 401
@@ -1291,6 +1292,7 @@ def api_add():
 
 
 @app.route('/api/improve', methods=['POST'])
+@csrf.exempt
 def api_improve():
     if 'logged_in' not in session:
         return {'error': 'Unauthorized'}, 401
