@@ -39,6 +39,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.15.3" date="2026-01-17">
+      <description>
+        <ul>
+          <li>AI: Improve tag assignment by using historical tags as context and preferring action-oriented titles with imperative verbs</li>
+          <li>AI: Add project extraction to webapp (was missing)</li>
+          <li>Increase recent context window from 14 to 30 days for both apps</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.15.2" date="2026-01-17">
       <description>
         <ul>

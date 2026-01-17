@@ -876,6 +876,26 @@ impl AppState {
         }
     }
 
+    fn collect_existing_tags(&self) -> (Vec<String>, Vec<String>) {
+        let items = self.cached_items.borrow();
+        
+        let mut projects: Vec<String> = items
+            .iter()
+            .filter_map(|t| t.project.clone())
+            .collect();
+        projects.sort();
+        projects.dedup();
+        
+        let mut contexts: Vec<String> = items
+            .iter()
+            .filter_map(|t| t.context.clone())
+            .collect();
+        contexts.sort();
+        contexts.dedup();
+        
+        (projects, contexts)
+    }
+
     fn store(&self) -> gio::ListStore {
         self.store.clone()
     }
@@ -1630,13 +1650,14 @@ impl AppState {
                 return;
             };
 
+            let (known_projects, known_contexts) = state.collect_existing_tags();
             let timeout_secs = state.ai_timeout_secs();
             let original_for_parse = original.clone();
             let outcome = runtime
                 .spawn(async move {
                     tokio::time::timeout(
                         StdDuration::from_secs(timeout_secs),
-                        request_ai_parse(original_for_parse),
+                        request_ai_parse(original_for_parse, known_projects, known_contexts),
                     )
                     .await
                 })
@@ -2878,7 +2899,7 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
     }
 }
 
-async fn request_ai_parse(text: String) -> Result<AiParseResult> {
+async fn request_ai_parse(text: String, known_projects: Vec<String>, known_contexts: Vec<String>) -> Result<AiParseResult> {
     let base_url = env::var("OLLAMA_URL")
         .unwrap_or_else(|_| "http://10.0.2.71:11434/api/generate".to_string());
 
@@ -2890,24 +2911,47 @@ async fn request_ai_parse(text: String) -> Result<AiParseResult> {
 
     let model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "qwen3:14b".to_string());
 
+    let projects_str = if known_projects.is_empty() {
+        String::new()
+    } else {
+        format!("Existing topics in use: {}. ", known_projects.join(", "))
+    };
+    let contexts_str = if known_contexts.is_empty() {
+        String::new()
+    } else {
+        format!("Existing locations in use: {}. ", known_contexts.join(", "))
+    };
+    let history_hint = if !projects_str.is_empty() || !contexts_str.is_empty() {
+        format!(
+            "{}{}Prefer using these existing tags when appropriate, but you may also create new fitting tags. ",
+            projects_str, contexts_str
+        )
+    } else {
+        String::new()
+    };
+
     let system_prompt = format!(
         concat!(
             "You are a specialized parser for todo items. Today is {}. ",
+            "{}",
             "Extract from the input: ",
-            "'title': A concise action title (main verb and object only). ",
+            "'title': A concise ACTION-ORIENTED title that MUST start with an imperative verb (e.g. 'Erstelle', 'Kaufe', 'Prüfe', 'Schreibe', 'Rufe an', 'Organisiere'). ",
             "'note': For longer todos, ALWAYS move extra details here (who, how, timing, background). Do NOT leave this empty for long inputs. ",
             "'due': Date in YYYY-MM-DD format if mentioned, resolving relative dates from today. ",
-            "'context': Location or situation identifier without @ (e.g. 'office', 'home', 'phone', 'computer'). ",
-            "'project': Topic or category identifier without + (e.g. 'work', 'health', 'finance', 'training'). ",
+            "'context': Location or situation identifier without @ (e.g. 'office', 'home', 'phone', 'computer', 'errands'). ",
+            "'project': Topic or category identifier without + (e.g. 'work', 'health', 'finance', 'training', 'family'). ",
             "Rules: ",
             "1. ALWAYS keep the original input language—never translate the title or note. ",
             "2. For long todos, the title should be SHORT (main action only), extra info MUST go in note. ",
-            "3. Try to provide context and project when reasonable—only use null if truly uncertain. ",
+            "3. ALWAYS provide context and project—make a reasonable guess rather than using null. Only use null if absolutely no category fits. ",
             "4. Return JSON with keys: title, note, due, context, project. Use null for missing fields. ",
-            "Example: 'Für den Trainer die Analyse und Trainingsplan morgens um 8 erstellen' -> ",
-            "{{\"title\": \"Analyse und Trainingsplan erstellen\", \"note\": \"Für den Trainer, morgens um 8 Uhr\", \"due\": null, \"context\": \"office\", \"project\": \"training\"}}."
+            "Example 1: 'Für den Trainer die Analyse und Trainingsplan morgens um 8 erstellen' -> ",
+            "{{\"title\": \"Erstelle Analyse und Trainingsplan\", \"note\": \"Für den Trainer, morgens um 8 Uhr\", \"due\": null, \"context\": \"office\", \"project\": \"training\"}}. ",
+            "Example 2: 'Milch kaufen' -> ",
+            "{{\"title\": \"Kaufe Milch\", \"note\": null, \"due\": null, \"context\": \"errands\", \"project\": \"household\"}}."
         ),
-        Local::now().format("%A, %Y-%m-%d")
+        Local::now().format("%A, %Y-%m-%d"),
+        history_hint
     );
 
     let payload = serde_json::json!({
