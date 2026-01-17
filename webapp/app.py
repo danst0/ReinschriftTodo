@@ -1208,25 +1208,43 @@ def parse_nlp():
     MODEL = os.environ.get('OLLAMA_MODEL', app_config.get('llm_model', 'qwen3:14b'))
     
     system_prompt = (
-        "You are a specialized parser for todo items. "
+        "You are a specialized parser for todo items and notes. "
         f"Today is {weekday}, {today}. "
-        "Extract from the input: "
-        "'title': A concise ACTION-ORIENTED title that MUST start with an imperative verb (e.g. 'Erstelle', 'Kaufe', 'Prüfe', 'Schreibe', 'Rufe an', 'Organisiere'). "
-        "'note': For longer todos, move extra details here (who, how, timing, background). "
-        "'due': Datetime in YYYY-MM-DDTHH:MM 24h format; if only date given, use 00:00. "
-        "'context': Location or situation identifier without @ (e.g. 'office', 'home', 'phone', 'errands'). "
-        "'project': Topic or category identifier without + (e.g. 'work', 'health', 'finance', 'training', 'family'). "
-        "IMPORTANT rules:\\n"
-        "1. Return ONLY a valid JSON object.\\n"
-        "2. The keys 'title', 'note', 'due', 'context', and 'project' MUST be present.\\n"
-        "3. For long todos, keep the main action as the 'title' and move extra details into 'note'.\\n"
-        "4. If the todo is already short, leave the wording as-is and set 'note' to null.\\n"
-        "5. ALWAYS provide context and project—make a reasonable guess rather than using null. Only use null if absolutely no category fits.\\n"
-        "6. If a due date is relative, calculate it from today.\\n"
-        "7. The 'title' and 'note' MUST be in the same language as the input text. Do NOT translate.\\n"
-        "8. Return ONLY the JSON object, NO other text or explanation.\\n"
-        "Example 1: {\\\"title\\\": \\\"Kaufe Milch\\\", \\\"note\\\": null, \\\"due\\\": \\\"2026-01-01T09:30\\\", \\\"context\\\": \\\"errands\\\", \\\"project\\\": \\\"household\\\"}\\n"
-        "Example 2: {\\\"title\\\": \\\"Erstelle Analyse und Trainingsplan\\\", \\\"note\\\": \\\"Für den Trainer, immer morgens um 8:00 Uhr erstellen\\\", \\\"due\\\": null, \\\"context\\\": \\\"office\\\", \\\"project\\\": \\\"training\\\"}"
+        "Your job is to determine if input is an ACTIONABLE todo/note or just casual conversation.\n\n"
+        "FIRST: Decide if the input is a valid todo/note. Valid inputs include:\n"
+        "- Direct tasks: 'Kaufe Milch', 'Ruf Mama an'\n"
+        "- Statements of intent: 'ich muss noch einkaufen', 'ich sollte den Arzt anrufen'\n"
+        "- Plans with actions: 'morgen Zahnarzt um 10 Uhr'\n"
+        "- Notes to remember: 'Marias Geburtstag ist am 15. März'\n\n"
+        "INVALID inputs (set 'rejected' to true):\n"
+        "- Speculative thoughts without commitment: 'ich glaube ich gehe vielleicht...', 'könnte sein dass...'\n"
+        "- Pure observations: 'Das Wetter ist schön', 'Es regnet'\n"
+        "- Questions: 'Was soll ich heute machen?'\n"
+        "- Casual chat: 'Ich finde Schwimmen toll'\n\n"
+        "OUTPUT FORMAT - Return a JSON object with these fields:\n"
+        "'rejected': boolean - true if input is NOT a valid todo/note, false if it IS valid\n"
+        "'confidence': number 0.0-1.0 - how confident you are in your parsing\n"
+        "'title': string|null - concise action-oriented title (convert statements to imperative if possible, e.g. 'ich muss einkaufen' → 'Einkaufen gehen')\n"
+        "'note': string|null - extra details (who, how, timing, background)\n"
+        "'due': string|null - datetime in YYYY-MM-DDTHH:MM 24h format; if only date given, use 00:00\n"
+        "'context': string|null - location/situation without @ (e.g. 'office', 'home', 'phone', 'errands')\n"
+        "'project': string|null - topic/category without + (e.g. 'work', 'health', 'finance', 'family')\n\n"
+        "RULES:\n"
+        "1. Return ONLY a valid JSON object, NO other text.\n"
+        "2. ALL keys must be present in the response.\n"
+        "3. If rejected=true, set title/note/due/context/project to null.\n"
+        "4. If rejected=false, ALWAYS provide context and project (make reasonable guesses).\n"
+        "5. The 'title' and 'note' MUST be in the same language as the input. Do NOT translate.\n"
+        "6. Calculate relative dates from today.\n\n"
+        "EXAMPLES:\n"
+        "Input: 'Kaufe morgen Milch'\n"
+        "Output: {\\\"rejected\\\": false, \\\"confidence\\\": 0.95, \\\"title\\\": \\\"Kaufe Milch\\\", \\\"note\\\": null, \\\"due\\\": \\\"2026-01-18T00:00\\\", \\\"context\\\": \\\"errands\\\", \\\"project\\\": \\\"household\\\"}\n\n"
+        "Input: 'ich muss noch den Zahnarzt anrufen wegen dem Termin nächste Woche'\n"
+        "Output: {\\\"rejected\\\": false, \\\"confidence\\\": 0.9, \\\"title\\\": \\\"Zahnarzt anrufen\\\", \\\"note\\\": \\\"Wegen Termin nächste Woche\\\", \\\"due\\\": null, \\\"context\\\": \\\"phone\\\", \\\"project\\\": \\\"health\\\"}\n\n"
+        "Input: 'ich glaube ich gehe heute mit den Kindern schwimmen. Wir könnten nach Büttgen gehen'\n"
+        "Output: {\\\"rejected\\\": true, \\\"confidence\\\": 0.85, \\\"title\\\": null, \\\"note\\\": null, \\\"due\\\": null, \\\"context\\\": null, \\\"project\\\": null}\n\n"
+        "Input: 'Das Wetter ist heute wirklich schön'\n"
+        "Output: {\\\"rejected\\\": true, \\\"confidence\\\": 0.95, \\\"title\\\": null, \\\"note\\\": null, \\\"due\\\": null, \\\"context\\\": null, \\\"project\\\": null}"
     )
 
     reminder_block = build_context_reminders(recent_context, window_days=RECENT_CONTEXT_WINDOW_DAYS)
@@ -1265,8 +1283,21 @@ def parse_nlp():
             
         parsed = json.loads(raw_response)
         
+        logger.info(f"Parsed JSON: {parsed}")
+        
+        # Check if input was rejected as non-actionable
+        if parsed.get('rejected', False):
+            logger.info("Input rejected as non-actionable (not a todo/note)")
+            return None  # Silently ignore non-todo input
+        
+        # Check confidence threshold (80%)
+        confidence = parsed.get('confidence', 1.0)
+        if confidence < 0.8:
+            logger.info(f"Input rejected due to low confidence: {confidence}")
+            return None  # Silently ignore low-confidence parsing
+        
         # Validate/fix keys
-        if 'title' not in parsed:
+        if 'title' not in parsed or not parsed['title']:
             parsed['title'] = text
         if 'note' not in parsed:
             parsed['note'] = None
@@ -1279,8 +1310,11 @@ def parse_nlp():
 
         if parsed.get('note') == "":
             parsed['note'] = None
+        
+        # Remove internal fields from response
+        parsed.pop('rejected', None)
+        parsed.pop('confidence', None)
             
-        logger.info(f"Parsed JSON: {parsed}")
         return parsed
     except Exception as e:
         logger.error(f"Ollama Error: {e}", exc_info=True)

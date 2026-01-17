@@ -39,6 +39,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.15.4" date="2026-01-17">
+      <description>
+        <ul>
+          <li>AI: Reject non-actionable inputs (thoughts, observations, questions) instead of creating invalid todos</li>
+          <li>AI: Accept statements of intent (e.g. "ich muss einkaufen") and convert to imperative form</li>
+          <li>AI: Add confidence scoring with 80% threshold for parsing quality</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.15.3" date="2026-01-17">
       <description>
         <ul>
