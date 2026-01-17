@@ -2935,10 +2935,9 @@ async fn request_ai_parse(text: String, known_projects: Vec<String>, known_conte
         concat!(
             "Parse todo items. Today: {}. {}",
             "TASK: Extract structured data from input. ",
-            "OUTPUT JSON (all keys required): ",
-            "{{\"title\": str, \"note\": str|null, \"due\": \"YYYY-MM-DD\"|null, \"context\": str|null, \"project\": str|null}} ",
-            "RULES: JSON only, no other text. Keep input language. Always guess context/project. ",
-            "Example: 'Kaufe morgen Milch' -> {{\"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18\", \"context\": \"errands\", \"project\": \"household\"}}"
+            "OUTPUT JSON: {{\"title\": str, \"note\": str|null, \"due\": \"YYYY-MM-DD\"|null, \"context\": str, \"project\": str}} ",
+            "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. ",
+            "Example: 'Kaufe morgen Milch' -> {{\"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}}"
         ),
         Local::now().format("%A, %Y-%m-%d"),
         history_hint
