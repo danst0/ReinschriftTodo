@@ -442,7 +442,7 @@ pub fn delete_todo(item: &TodoItem) -> Result<()> {
     delete_line(&item.key)
 }
 
-pub fn add_todo(title: &str) -> Result<()> {
+pub fn add_todo(title: &str) -> Result<TodoKey> {
     let title = title.trim();
     if title.is_empty() {
         bail!(t("title_empty_error"));
@@ -451,18 +451,33 @@ pub fn add_todo(title: &str) -> Result<()> {
     let due_dt = NaiveDateTime::new(today, DEFAULT_DUE_TIME);
     let marker = generate_marker();
     let line = format!("- [ ] {} due:{} ^{}", title, due_dt.format("%Y-%m-%dT%H:%M"), marker);
-    insert_line(line)
+    insert_line(line, marker)
 }
 
-pub fn add_todo_full(item: &TodoItem) -> Result<()> {
+pub fn add_todo_full(item: &TodoItem) -> Result<TodoKey> {
     let mut clone = item.clone();
     clone.done = false;
-    clone.key = TodoKey { line_index: 0, marker: None };
+    if clone
+        .key
+        .marker
+        .as_ref()
+        .map(|m| m.is_empty())
+        .unwrap_or(true)
+    {
+        clone.key.marker = Some(generate_marker());
+    }
+    clone.key.line_index = 0;
+
+    let marker = clone
+        .key
+        .marker
+        .clone()
+        .unwrap_or_else(generate_marker);
     let line = render_line(&clone)?;
-    insert_line(line)
+    insert_line(line, marker)
 }
 
-fn insert_line(line: String) -> Result<()> {
+fn insert_line(line: String, marker: String) -> Result<TodoKey> {
     let content = read_content()?;
     let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
 
@@ -479,7 +494,10 @@ fn insert_line(line: String) -> Result<()> {
     }
 
     write_content(output)?;
-    Ok(())
+    Ok(TodoKey {
+        line_index: insert_index,
+        marker: Some(marker),
+    })
 }
 
 fn parse_due(text: &str) -> Option<NaiveDateTime> {

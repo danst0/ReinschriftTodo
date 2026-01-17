@@ -696,7 +696,8 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
     });
 
-    factory.connect_bind(|_, list_item_obj| {
+    let highlight_state = state_weak.clone();
+    factory.connect_bind(move |_, list_item_obj| {
         let Some(list_item) = list_item_obj.downcast_ref::<gtk::ListItem>() else {
             return;
         };
@@ -714,6 +715,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             return;
         };
 
+        let highlight_marker = highlight_state
+            .upgrade()
+            .and_then(|s| s.recently_updated.borrow().clone());
+
         match &*entry {
             ListEntry::Header(label) => {
                 stack.set_visible_child_name("header");
@@ -727,6 +732,19 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             }
             ListEntry::Item(todo) => {
                 stack.set_visible_child_name("item");
+                let is_highlighted = todo
+                    .key
+                    .marker
+                    .as_ref()
+                    .map(|m| highlight_marker.as_deref() == Some(m.as_str()))
+                    .unwrap_or(false);
+
+                if is_highlighted {
+                    stack.add_css_class("pulse");
+                } else {
+                    stack.remove_css_class("pulse");
+                }
+
                 if let Some(check_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::CheckButton>>("todo-check")
                 } {
@@ -787,6 +805,7 @@ struct AppState {
     scrolled_window: RefCell<Option<gtk::ScrolledWindow>>,
     is_recording: Arc<AtomicBool>,
     ai_runtime: Arc<Runtime>,
+    recently_updated: RefCell<Option<String>>,
     _debug_mode: bool,
 }
 
@@ -852,6 +871,7 @@ impl AppState {
             is_recording: Arc::new(AtomicBool::new(false)),
             ai_runtime: ai_runtime.clone(),
             _debug_mode: debug_mode,
+            recently_updated: RefCell::new(None),
             last_fingerprint: RefCell::new(None),
         }
     }
@@ -886,6 +906,28 @@ impl AppState {
 
     fn ai_timeout_secs(&self) -> u64 {
         self.preferences.borrow().ai_timeout_secs
+    }
+
+    fn mark_recently_updated(self: &Rc<Self>, marker: String) {
+        {
+            let mut slot = self.recently_updated.borrow_mut();
+            *slot = if marker.is_empty() { None } else { Some(marker.clone()) };
+        }
+
+        self.repopulate_store();
+
+        let weak = Rc::downgrade(self);
+        glib::timeout_add_seconds_local(2, move || {
+            if let Some(state) = weak.upgrade() {
+                let mut slot = state.recently_updated.borrow_mut();
+                if slot.as_deref() == Some(marker.as_str()) {
+                    *slot = None;
+                    state.repopulate_store();
+                }
+            }
+
+            glib::ControlFlow::Break
+        });
     }
 
     fn whisper_language(&self) -> String {
@@ -1558,21 +1600,42 @@ impl AppState {
             return;
         }
 
-        if !self.use_ai_on_new_topic() {
-            self.add_plain_and_notify(&title_text, entry);
+        let use_ai = self.use_ai_on_new_topic();
+
+        let add_key = match data::add_todo(&title_text) {
+            Ok(key) => key,
+            Err(err) => {
+                self.show_error(&t("create_error").replace("{}", &err.to_string()));
+                return;
+            }
+        };
+
+        entry.set_text("");
+        if let Err(err) = self.reload() {
+            self.show_error(&t("reload_error").replace("{}", &err.to_string()));
+        } else {
+            self.show_info(&t("task_added"));
+        }
+
+        if !use_ai {
             return;
         }
 
         let runtime = self.ai_runtime.clone();
         let original = title_text.clone();
-        glib::spawn_future_local(clone!(#[weak(rename_to = state)] self, #[weak] entry, async move {
-            let original_for_request = original.clone();
+        let marker_for_update = add_key.marker.clone();
+
+        glib::spawn_future_local(clone!(#[weak(rename_to = state)] self, async move {
+            let Some(marker) = marker_for_update.clone() else {
+                return;
+            };
+
             let timeout_secs = state.ai_timeout_secs();
             let outcome = runtime
                 .spawn(async move {
                     tokio::time::timeout(
                         StdDuration::from_secs(timeout_secs),
-                        request_ai_parse(original_for_request),
+                        request_ai_parse(original.clone()),
                     )
                     .await
                 })
@@ -1582,21 +1645,25 @@ impl AppState {
                 Ok(res) => res,
                 Err(err) => {
                     state.show_error(&t("ai_parse_failed").replace("{}", &err.to_string()));
-                    state.add_plain_and_notify(&original, &entry);
                     return;
                 }
             };
 
             match outcome {
                 Ok(Ok(parsed)) => {
-                    let todo = build_todo_from_ai(&parsed, &original);
-                    match data::add_todo_full(&todo) {
+                    let mut todo = build_todo_from_ai(&parsed, &original);
+                    todo.key = data::TodoKey {
+                        line_index: 0,
+                        marker: Some(marker.clone()),
+                    };
+
+                    match data::update_todo_details(&todo) {
                         Ok(_) => {
-                            entry.set_text("");
                             if let Err(err) = state.reload() {
                                 state.show_error(&t("reload_error").replace("{}", &err.to_string()));
                             } else {
-                                state.show_info(&t("task_added"));
+                                state.mark_recently_updated(marker.clone());
+                                state.show_info(&t("changes_applied"));
                             }
                         }
                         Err(err) => {
@@ -1606,11 +1673,9 @@ impl AppState {
                 }
                 Ok(Err(err)) => {
                     state.show_error(&t("ai_parse_failed").replace("{}", &err.to_string()));
-                    state.add_plain_and_notify(&original, &entry);
                 }
                 Err(_) => {
                     state.show_error(&t("ai_timeout_fallback"));
-                    state.add_plain_and_notify(&original, &entry);
                 }
             }
         }));

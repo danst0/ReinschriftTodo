@@ -21,7 +21,7 @@
         {% set current_section.value = todo.section %}
     {% endif %}
     
-    <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" onclick="openEditModal({{ todo.line_index }})" style="cursor: pointer;">
+    <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" data-marker="{{ todo.marker or '' }}" onclick="openEditModal({{ todo.line_index }})" style="cursor: pointer;">
         <a href="javascript:void(0)" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="toggleTodo(event, {{ todo.line_index }})">
             {% if todo.done %}☑{% else %}☐{% endif %}
         </a>

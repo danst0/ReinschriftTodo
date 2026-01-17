@@ -488,6 +488,15 @@ def next_due_date(current_due, rule):
             
     return datetime.combine(next_date, base_time)
 
+def find_line_by_marker(lines, marker):
+    needle = f"^{marker}"
+    for idx, line in enumerate(lines):
+        for token in line.split():
+            if token.strip() == needle:
+                return idx
+    return None
+
+
 def add_todo(title):
     content = read_content()
     lines = content.splitlines()
@@ -500,14 +509,19 @@ def add_todo(title):
     
     default_due = datetime.combine(datetime.now().date(), DEFAULT_DUE_TIME)
     default_due_str = format_due(default_due)
+    marker = generate_marker()
     if DUE_RE.search(title):
         new_line = f"- [ ] {title}"
     else:
         new_line = f"- [ ] {title} due:{default_due_str}"
-    new_line += f" ^{generate_marker()}"
+    new_line += f" ^{marker}"
     lines.insert(insert_index, new_line)
     
     write_content('\n'.join(lines) + '\n')
+    return {
+        'marker': marker,
+        'line_index': insert_index,
+    }
 
 
 def insert_line(line):
@@ -522,6 +536,69 @@ def insert_line(line):
 
     lines.insert(insert_index, line)
     write_content('\n'.join(lines) + '\n')
+
+
+def update_todo_by_marker(marker, updates):
+    content = read_content()
+    lines = content.splitlines()
+
+    target_index = find_line_by_marker(lines, marker)
+    if target_index is None:
+        return False
+
+    existing = parse_line(lines[target_index], target_index, "")
+    if not existing:
+        return False
+
+    title = (updates.get('title') or existing['title'] or '').strip()
+    if not title:
+        title = existing['title'] or ''
+
+    project = updates.get('project') if 'project' in updates else existing['project']
+    context = updates.get('context') if 'context' in updates else existing['context']
+
+    if 'note' in updates:
+        note_value = updates.get('note')
+        note_value = note_value.strip() if isinstance(note_value, str) else None
+    else:
+        note_value = existing.get('note')
+
+    if 'due' in updates and updates.get('due') is not None:
+        due_dt = parse_due_input(updates.get('due')) or existing.get('due')
+    elif 'due' in updates and updates.get('due') is None:
+        due_dt = existing.get('due')
+    else:
+        due_dt = existing.get('due')
+
+    recurrence = existing.get('recurrence')
+    reference = existing.get('reference')
+    done = existing.get('done', False)
+
+    new_line = "- [x]" if done else "- [ ]"
+    new_line += f" {title}"
+
+    if project:
+        new_line += f" +{str(project).strip().lstrip('+')}"
+    if context:
+        new_line += f" @{str(context).strip().lstrip('@')}"
+    if due_dt:
+        new_line += f" due:{format_due(due_dt)}"
+    if recurrence:
+        new_line += f" rec:{recurrence}"
+    if reference:
+        new_line += f" [[{reference}]]"
+    if note_value:
+        new_line += f" ~note:\"{escape_note(note_value)}\""
+
+    if done:
+        done_date = existing.get('done_date') or datetime.now().date()
+        new_line += f" ✅ {done_date.strftime('%Y-%m-%d')}"
+
+    new_line += f" ^{marker}"
+
+    lines[target_index] = new_line
+    write_content('\n'.join(lines) + '\n')
+    return True
 
 def sort_key_topic(todo):
     # Project (asc), Section (asc), Title (asc), Context (asc)
@@ -1198,6 +1275,44 @@ def parse_nlp():
         logger.error(f"Ollama Error: {e}", exc_info=True)
         return {'error': str(e)}, 500
 
+
+@app.route('/api/add', methods=['POST'])
+def api_add():
+    if 'logged_in' not in session:
+        return {'error': 'Unauthorized'}, 401
+
+    payload = request.get_json(silent=True) or {}
+    title = payload.get('title')
+    if not title or not str(title).strip():
+        return {'error': 'Title required'}, 400
+
+    result = add_todo(title)
+    return {'ok': True, 'marker': result['marker'], 'line_index': result['line_index']}
+
+
+@app.route('/api/improve', methods=['POST'])
+def api_improve():
+    if 'logged_in' not in session:
+        return {'error': 'Unauthorized'}, 401
+
+    data = request.get_json(silent=True) or {}
+    marker = data.get('marker')
+    if not marker:
+        return {'error': 'Marker required'}, 400
+
+    updated = {
+        'title': data.get('title'),
+        'note': data.get('note'),
+        'due': data.get('due'),
+        'context': data.get('context'),
+        'project': data.get('project'),
+    }
+
+    if not update_todo_by_marker(marker, updated):
+        return {'error': 'Todo not found'}, 404
+
+    return {'ok': True}
+
 @app.route('/add', methods=['POST'])
 def add():
     if 'logged_in' not in session:
@@ -1207,6 +1322,7 @@ def add():
     if title:
         add_todo(title)
     
+    # Preserve redirect for legacy form posts
     return redirect(url_for('index'))
 
 if __name__ == '__main__':

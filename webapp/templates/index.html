@@ -387,11 +387,54 @@
         const smartAddUrl = {{ url_for('parse_nlp') | tojson }};
         const csrfToken = {{ csrf_token() | tojson }};
         const autoAiOnAdd = {{ 'true' if auto_ai_on_add else 'false' }};
+        const autoAiOnAddFlag = autoAiOnAdd === true || autoAiOnAdd === 'true';
         const skipDeleteConfirm = {{ 'true' if skip_delete_confirm else 'false' }};
         const aiTimeoutMessage = {{ t.ai_timeout_notice | tojson }};
         const aiErrorMessage = {{ t.ai_parse_failed | tojson }};
 
         let smartAddController = null;
+
+        async function callAiParse({ btn = null, text, returnParsed = false }) {
+            if (!text) return null;
+
+            const controller = buildSmartAddController();
+            const timeoutId = setTimeout(() => controller.abort(), SMART_ADD_TIMEOUT_MS);
+            setSmartButtonState(btn, true);
+
+            try {
+                const res = await fetch(smartAddUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ text }),
+                    signal: controller.signal
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                const data = await res.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                return returnParsed ? { parsed: data } : formatSmartResult(data, text);
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    throw new Error('timeout');
+                }
+                throw err;
+            } finally {
+                clearTimeout(timeoutId);
+                if (smartAddController === controller) {
+                    smartAddController = null;
+                }
+                setSmartButtonState(btn, false);
+            }
+        }
 
         function setSmartButtonState(btn, loading) {
             if (!btn) return;
@@ -427,50 +470,16 @@
             return formatted;
         }
 
-        async function runSmartAdd({ btn = null, textOverride = null } = {}) {
+        async function runSmartAdd({ btn = null, textOverride = null, returnParsed = false } = {}) {
             const input = document.getElementById('add-input');
-            const text = textOverride ?? input.value;
-            if (!text) {
-                return null;
+            const text = textOverride ?? (input ? input.value : '');
+            if (!text) return null;
+            const result = await callAiParse({ btn, text, returnParsed });
+            if (returnParsed) {
+                const parsed = result ? result.parsed : null;
+                return parsed ? { parsed, formatted: formatSmartResult(parsed, text) } : null;
             }
-
-            const controller = buildSmartAddController();
-            const timeoutId = setTimeout(() => controller.abort(), SMART_ADD_TIMEOUT_MS);
-            setSmartButtonState(btn, true);
-
-            try {
-                const res = await fetch(smartAddUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({ text }),
-                    signal: controller.signal
-                });
-
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
-
-                const data = await res.json();
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
-                return formatSmartResult(data, text);
-            } catch (err) {
-                if (err.name === 'AbortError') {
-                    throw new Error('timeout');
-                }
-                throw err;
-            } finally {
-                clearTimeout(timeoutId);
-                if (smartAddController === controller) {
-                    smartAddController = null;
-                }
-                setSmartButtonState(btn, false);
-            }
+            return result;
         }
 
         function notifyAiFallback(message) {
@@ -497,51 +506,100 @@
             }
         }
 
+        let lastImprovedMarker = null;
+
+        function highlightMarker(marker) {
+            if (!marker) return;
+            const el = document.querySelector(`.todo-item[data-marker="${marker}"]`);
+            if (el) {
+                el.classList.add('pulse');
+                el.style.outline = '2px solid #6c5ce7';
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
+                    el.classList.remove('pulse');
+                    el.style.outline = '';
+                }, 1800);
+                lastImprovedMarker = null;
+            }
+        }
+
+        async function improveTodoWithAi(marker, originalText) {
+            try {
+                const result = await runSmartAdd({ textOverride: originalText, returnParsed: true });
+                const parsed = result && result.parsed ? result.parsed : null;
+                if (!parsed) return;
+
+                const payload = {
+                    marker,
+                    title: parsed.title || originalText,
+                    note: parsed.note,
+                    due: parsed.due,
+                    context: parsed.context,
+                    project: parsed.project,
+                };
+
+                const res = await fetch('/api/improve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!res.ok) {
+                    const errTxt = await res.text();
+                    console.error('Improve failed', errTxt);
+                    return;
+                }
+
+                lastImprovedMarker = marker;
+                autoReload().then(() => highlightMarker(marker));
+            } catch (err) {
+                if (err && err.message === 'timeout') {
+                    console.warn('AI improve timed out');
+                } else {
+                    console.error('AI improve failed', err);
+                }
+            }
+        }
+
         const addForm = document.getElementById('addForm');
         if (addForm) {
             addForm.onsubmit = async function(e) {
                 e.preventDefault();
 
                 const input = document.getElementById('add-input');
-                const original = input ? input.value : '';
-                let shouldSubmit = true;
+                const original = input ? input.value.trim() : '';
+                if (!original) return;
 
-                if (autoAiOnAdd && original) {
-                    try {
-                        const formatted = await runSmartAdd({ textOverride: original });
-                        if (formatted && input) {
-                            input.value = formatted;
-                        }
-                    } catch (err) {
-                        if (err && err.message === 'timeout') {
-                            notifyAiFallback(aiTimeoutMessage);
-                        } else if (err && err.message) {
-                            notifyAiFallback(`${aiErrorMessage} ${err.message}`.trim());
-                        } else {
-                            notifyAiFallback(aiErrorMessage);
-                        }
-                        shouldSubmit = true; // still submit the original input
+                try {
+                    const res = await fetch('/api/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ title: original })
+                    });
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}`);
                     }
-                }
 
-                if (!shouldSubmit) {
-                    return;
-                }
-
-                const formData = new FormData(this);
-                if (input) {
-                    formData.set('title', input.value);
-                }
-
-                fetch(this.action, {
-                    method: 'POST',
-                    body: formData
-                }).then(() => {
+                    const data = await res.json();
                     this.reset();
-                    autoReload();
-                }).catch(err => {
+                    if (input) input.focus();
+
+                    autoReload().then(() => highlightMarker(data.marker));
+
+                    if (autoAiOnAddFlag && data.marker) {
+                        improveTodoWithAi(data.marker, original);
+                    }
+                } catch (err) {
                     console.error('Add failed', err);
-                });
+                    notifyAiFallback('Add failed');
+                }
             };
         }
         var modal = document.getElementById("editModal");
@@ -936,17 +994,20 @@
         let isRefreshing = false;
         
         function autoReload() {
-            if (isRefreshing) return;
+            if (isRefreshing) return Promise.resolve();
             isRefreshing = true;
             
             // Construct URL with current params + partial=1
             const url = new URL(window.location.href);
             url.searchParams.set('partial', '1');
             
-            fetch(url)
+            return fetch(url)
                 .then(response => response.text())
                 .then(html => {
                     document.querySelector('.todo-list').innerHTML = html;
+                    if (lastImprovedMarker) {
+                        highlightMarker(lastImprovedMarker);
+                    }
                 })
                 .catch(err => console.error('Auto-reload failed', err))
                 .finally(() => {

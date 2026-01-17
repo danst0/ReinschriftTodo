@@ -97,7 +97,7 @@ pub fn add(
 ) -> Result<()> {
     // If only title is provided, use the simple add_todo function
     if project.is_none() && context.is_none() && due.is_none() && recurrence.is_none() && note.is_none() {
-        add_todo(title)?;
+        let _ = add_todo(title)?;
         ctx.success(&format!("Added: {}", title));
         return Ok(());
     }
@@ -123,7 +123,7 @@ pub fn add(
         done: false,
     };
 
-    add_todo_full(&item)?;
+    let _ = add_todo_full(&item)?;
     ctx.success(&format!("Added: {}", title));
     Ok(())
 }
