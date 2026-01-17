@@ -1276,6 +1276,22 @@ def parse_nlp():
         if parsed.get('note') == "":
             parsed['note'] = None
         
+        # Normalize tag case to match existing tags
+        existing_projects = recent_context.get('topics') or []
+        existing_contexts = recent_context.get('locations') or []
+        
+        if parsed.get('project'):
+            for existing in existing_projects:
+                if existing.lower() == parsed['project'].lower():
+                    parsed['project'] = existing
+                    break
+        
+        if parsed.get('context'):
+            for existing in existing_contexts:
+                if existing.lower() == parsed['context'].lower():
+                    parsed['context'] = existing
+                    break
+        
         # Remove internal fields from response
         parsed.pop('rejected', None)
         parsed.pop('confidence', None)

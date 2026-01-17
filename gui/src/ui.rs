@@ -2975,8 +2975,26 @@ async fn request_ai_parse(text: String, known_projects: Vec<String>, known_conte
             .to_string();
     }
 
-    let parsed: AiParseResult = serde_json::from_str(&raw)
+    let mut parsed: AiParseResult = serde_json::from_str(&raw)
         .map_err(|e| anyhow!(format!("Parse JSON failed: {e}; raw: {raw}")))?;
+
+    // Normalize tag case to match existing tags
+    if let Some(ref project) = parsed.project {
+        for existing in &known_projects {
+            if existing.to_lowercase() == project.to_lowercase() {
+                parsed.project = Some(existing.clone());
+                break;
+            }
+        }
+    }
+    if let Some(ref context) = parsed.context {
+        for existing in &known_contexts {
+            if existing.to_lowercase() == context.to_lowercase() {
+                parsed.context = Some(existing.clone());
+                break;
+            }
+        }
+    }
 
     Ok(parsed)
 }
