@@ -47,6 +47,7 @@ struct AiParseResult {
     title: Option<String>,
     due: Option<String>,
     context: Option<String>,
+    project: Option<String>,
     note: Option<String>,
 }
 
@@ -2765,6 +2766,12 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
         .map(|c| c.trim().trim_start_matches('@').to_string())
         .filter(|c| !c.is_empty());
 
+    let project = parsed
+        .project
+        .as_deref()
+        .map(|p| p.trim().trim_start_matches('+').to_string())
+        .filter(|p| !p.is_empty());
+
     let note = parsed
         .note
         .as_deref()
@@ -2795,7 +2802,7 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
         },
         title,
         section: String::new(),
-        project: None,
+        project,
         context,
         due: Some(due),
         reference: None,
@@ -2820,12 +2827,19 @@ async fn request_ai_parse(text: String) -> Result<AiParseResult> {
     let system_prompt = format!(
         concat!(
             "You are a specialized parser for todo items. Today is {}. ",
-            "Extract a concise 'title', an optional 'note' for longer todos, a 'due' date in YYYY-MM-DD if present, and a 'context' identifier without the leading @. ",
-            "For long todos, keep the main action as the 'title' and move extra details (who, how, timing such as 'immer morgens um 8:00 Uhr') into 'note'. ",
-            "If the todo is already short, leave the wording as-is and return 'note' as null. Do not drop information—put overflow into 'note'. ",
-            "Always return a JSON object with keys 'title', 'note', 'due', and 'context'. Use null for missing fields. ",
-            "Do not translate the title or note; keep the input language. If relative dates are used, resolve them from today. ",
-            "Example: Input 'Für den Trainer bitte die Analyse und den neuen Trainingsplan immer morgens um 8:00 Uhr erstellen' -> {{\"title\": \"Analyse und neuen Trainingsplan erstellen\", \"note\": \"Für den Trainer, immer morgens um 8:00 Uhr erstellen\", \"due\": null, \"context\": null}}."
+            "Extract from the input: ",
+            "'title': A concise action title (main verb and object only). ",
+            "'note': For longer todos, ALWAYS move extra details here (who, how, timing, background). Do NOT leave this empty for long inputs. ",
+            "'due': Date in YYYY-MM-DD format if mentioned, resolving relative dates from today. ",
+            "'context': Location or situation identifier without @ (e.g. 'office', 'home', 'phone', 'computer'). ",
+            "'project': Topic or category identifier without + (e.g. 'work', 'health', 'finance', 'training'). ",
+            "Rules: ",
+            "1. ALWAYS keep the original input language—never translate the title or note. ",
+            "2. For long todos, the title should be SHORT (main action only), extra info MUST go in note. ",
+            "3. Try to provide context and project when reasonable—only use null if truly uncertain. ",
+            "4. Return JSON with keys: title, note, due, context, project. Use null for missing fields. ",
+            "Example: 'Für den Trainer die Analyse und Trainingsplan morgens um 8 erstellen' -> ",
+            "{{\"title\": \"Analyse und Trainingsplan erstellen\", \"note\": \"Für den Trainer, morgens um 8 Uhr\", \"due\": null, \"context\": \"office\", \"project\": \"training\"}}."
         ),
         Local::now().format("%A, %Y-%m-%d")
     );
