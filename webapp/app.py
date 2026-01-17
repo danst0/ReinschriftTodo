@@ -392,29 +392,20 @@ def collect_recent_context(todos, window_days=RECENT_CONTEXT_WINDOW_DAYS):
 def build_context_reminders(context, window_days=RECENT_CONTEXT_WINDOW_DAYS):
     sections = []
 
-    recent = context.get('recent_todos') or []
-    if recent:
-        recent_block = "- " + "\n- ".join(recent)
-        sections.append(
-            f"Recent closed todos (last {window_days} days, inclusive of today):\n{recent_block}"
-        )
+    # Skip closed todos - they make the prompt too long
 
     topics = context.get('topics') or []
     if topics:
-        sections.append(
-            "Existing topics in use: " + ", ".join(topics) + ". Prefer using these when appropriate, but you may also create new fitting tags."
-        )
+        sections.append("Existing projects: " + ", ".join(topics))
 
     locations = context.get('locations') or []
     if locations:
-        sections.append(
-            "Existing locations in use: " + ", ".join(locations) + ". Prefer using these when appropriate, but you may also create new fitting tags."
-        )
+        sections.append("Existing contexts: " + ", ".join(locations))
 
     if not sections:
         return ""
 
-    return "\n\nContext reminders:\n" + "\n\n".join(sections)
+    return "\n\nPrefer these tags: " + ". ".join(sections) + "."
 
 def extract_title(rest):
     cleaned_rest = strip_leading_markers(rest)
@@ -1208,43 +1199,15 @@ def parse_nlp():
     MODEL = os.environ.get('OLLAMA_MODEL', app_config.get('llm_model', 'llama3.1:8b'))
     
     system_prompt = (
-        "You are a specialized parser for todo items and notes. "
-        f"Today is {weekday}, {today}. "
-        "Your job is to determine if input is an ACTIONABLE todo/note or just casual conversation.\n\n"
-        "FIRST: Decide if the input is a valid todo/note. Valid inputs include:\n"
-        "- Direct tasks: 'Kaufe Milch', 'Ruf Mama an'\n"
-        "- Statements of intent: 'ich muss noch einkaufen', 'ich sollte den Arzt anrufen'\n"
-        "- Plans with actions: 'morgen Zahnarzt um 10 Uhr'\n"
-        "- Notes to remember: 'Marias Geburtstag ist am 15. März'\n\n"
-        "INVALID inputs (set 'rejected' to true):\n"
-        "- Speculative thoughts without commitment: 'ich glaube ich gehe vielleicht...', 'könnte sein dass...'\n"
-        "- Pure observations: 'Das Wetter ist schön', 'Es regnet'\n"
-        "- Questions: 'Was soll ich heute machen?'\n"
-        "- Casual chat: 'Ich finde Schwimmen toll'\n\n"
-        "OUTPUT FORMAT - Return a JSON object with these fields:\n"
-        "'rejected': boolean - true if input is NOT a valid todo/note, false if it IS valid\n"
-        "'confidence': number 0.0-1.0 - how confident you are in your parsing\n"
-        "'title': string|null - concise action-oriented title (convert statements to imperative if possible, e.g. 'ich muss einkaufen' → 'Einkaufen gehen')\n"
-        "'note': string|null - extra details (who, how, timing, background)\n"
-        "'due': string|null - datetime in YYYY-MM-DDTHH:MM 24h format; if only date given, use 00:00\n"
-        "'context': string|null - location/situation without @ (e.g. 'office', 'home', 'phone', 'errands')\n"
-        "'project': string|null - topic/category without + (e.g. 'work', 'health', 'finance', 'family')\n\n"
-        "RULES:\n"
-        "1. Return ONLY a valid JSON object, NO other text.\n"
-        "2. ALL keys must be present in the response.\n"
-        "3. If rejected=true, set title/note/due/context/project to null.\n"
-        "4. If rejected=false, ALWAYS provide context and project (make reasonable guesses).\n"
-        "5. The 'title' and 'note' MUST be in the same language as the input. Do NOT translate.\n"
-        "6. Calculate relative dates from today.\n\n"
-        "EXAMPLES:\n"
-        "Input: 'Kaufe morgen Milch'\n"
-        "Output: {\\\"rejected\\\": false, \\\"confidence\\\": 0.95, \\\"title\\\": \\\"Kaufe Milch\\\", \\\"note\\\": null, \\\"due\\\": \\\"2026-01-18T00:00\\\", \\\"context\\\": \\\"errands\\\", \\\"project\\\": \\\"household\\\"}\n\n"
-        "Input: 'ich muss noch den Zahnarzt anrufen wegen dem Termin nächste Woche'\n"
-        "Output: {\\\"rejected\\\": false, \\\"confidence\\\": 0.9, \\\"title\\\": \\\"Zahnarzt anrufen\\\", \\\"note\\\": \\\"Wegen Termin nächste Woche\\\", \\\"due\\\": null, \\\"context\\\": \\\"phone\\\", \\\"project\\\": \\\"health\\\"}\n\n"
-        "Input: 'ich glaube ich gehe heute mit den Kindern schwimmen. Wir könnten nach Büttgen gehen'\n"
-        "Output: {\\\"rejected\\\": true, \\\"confidence\\\": 0.85, \\\"title\\\": null, \\\"note\\\": null, \\\"due\\\": null, \\\"context\\\": null, \\\"project\\\": null}\n\n"
-        "Input: 'Das Wetter ist heute wirklich schön'\n"
-        "Output: {\\\"rejected\\\": true, \\\"confidence\\\": 0.95, \\\"title\\\": null, \\\"note\\\": null, \\\"due\\\": null, \\\"context\\\": null, \\\"project\\\": null}"
+        f"Parse todo items. Today: {weekday}, {today}.\n\n"
+        "TASK: Extract structured data from input OR reject if not actionable.\n\n"
+        "VALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\n"
+        "INVALID: speculative thoughts ('ich glaube vielleicht...'), observations, questions, chat.\n\n"
+        "OUTPUT JSON (all keys required):\n"
+        "{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str|null, \"project\": str|null}\n\n"
+        "RULES: JSON only, no other text. Keep input language. If rejected=true, all fields null. If valid, guess context/project.\n\n"
+        "Example: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18T00:00\", \"context\": \"errands\", \"project\": \"household\"}\n"
+        "Example: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}"
     )
 
     reminder_block = build_context_reminders(recent_context, window_days=RECENT_CONTEXT_WINDOW_DAYS)

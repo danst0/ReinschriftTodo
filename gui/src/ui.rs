@@ -2914,41 +2914,31 @@ async fn request_ai_parse(text: String, known_projects: Vec<String>, known_conte
     let projects_str = if known_projects.is_empty() {
         String::new()
     } else {
-        format!("Existing topics in use: {}. ", known_projects.join(", "))
+        format!("Existing projects: {}", known_projects.join(", "))
     };
     let contexts_str = if known_contexts.is_empty() {
         String::new()
     } else {
-        format!("Existing locations in use: {}. ", known_contexts.join(", "))
+        format!("Existing contexts: {}", known_contexts.join(", "))
     };
     let history_hint = if !projects_str.is_empty() || !contexts_str.is_empty() {
-        format!(
-            "{}{}Prefer using these existing tags when appropriate, but you may also create new fitting tags. ",
-            projects_str, contexts_str
-        )
+        let parts: Vec<&str> = [projects_str.as_str(), contexts_str.as_str()]
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect();
+        format!("Prefer these tags: {}. ", parts.join(". "))
     } else {
         String::new()
     };
 
     let system_prompt = format!(
         concat!(
-            "You are a specialized parser for todo items. Today is {}. ",
-            "{}",
-            "Extract from the input: ",
-            "'title': A concise ACTION-ORIENTED title that MUST start with an imperative verb (e.g. 'Erstelle', 'Kaufe', 'Prüfe', 'Schreibe', 'Rufe an', 'Organisiere'). ",
-            "'note': For longer todos, ALWAYS move extra details here (who, how, timing, background). Do NOT leave this empty for long inputs. ",
-            "'due': Date in YYYY-MM-DD format if mentioned, resolving relative dates from today. ",
-            "'context': Location or situation identifier without @ (e.g. 'office', 'home', 'phone', 'computer', 'errands'). ",
-            "'project': Topic or category identifier without + (e.g. 'work', 'health', 'finance', 'training', 'family'). ",
-            "Rules: ",
-            "1. ALWAYS keep the original input language—never translate the title or note. ",
-            "2. For long todos, the title should be SHORT (main action only), extra info MUST go in note. ",
-            "3. ALWAYS provide context and project—make a reasonable guess rather than using null. Only use null if absolutely no category fits. ",
-            "4. Return JSON with keys: title, note, due, context, project. Use null for missing fields. ",
-            "Example 1: 'Für den Trainer die Analyse und Trainingsplan morgens um 8 erstellen' -> ",
-            "{{\"title\": \"Erstelle Analyse und Trainingsplan\", \"note\": \"Für den Trainer, morgens um 8 Uhr\", \"due\": null, \"context\": \"office\", \"project\": \"training\"}}. ",
-            "Example 2: 'Milch kaufen' -> ",
-            "{{\"title\": \"Kaufe Milch\", \"note\": null, \"due\": null, \"context\": \"errands\", \"project\": \"household\"}}."
+            "Parse todo items. Today: {}. {}",
+            "TASK: Extract structured data from input. ",
+            "OUTPUT JSON (all keys required): ",
+            "{{\"title\": str, \"note\": str|null, \"due\": \"YYYY-MM-DD\"|null, \"context\": str|null, \"project\": str|null}} ",
+            "RULES: JSON only, no other text. Keep input language. Always guess context/project. ",
+            "Example: 'Kaufe morgen Milch' -> {{\"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18\", \"context\": \"errands\", \"project\": \"household\"}}"
         ),
         Local::now().format("%A, %Y-%m-%d"),
         history_hint
