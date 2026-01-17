@@ -47,6 +47,7 @@ struct AiParseResult {
     title: Option<String>,
     due: Option<String>,
     context: Option<String>,
+    note: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2764,6 +2765,13 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
         .map(|c| c.trim().trim_start_matches('@').to_string())
         .filter(|c| !c.is_empty());
 
+    let note = parsed
+        .note
+        .as_deref()
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+        .map(|n| n.to_string());
+
     let due = parsed
         .due
         .as_deref()
@@ -2792,7 +2800,7 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
         due: Some(due),
         reference: None,
         recurrence: None,
-        note: None,
+        note,
         done: false,
     }
 }
@@ -2812,9 +2820,12 @@ async fn request_ai_parse(text: String) -> Result<AiParseResult> {
     let system_prompt = format!(
         concat!(
             "You are a specialized parser for todo items. Today is {}. ",
-            "Extract a concise 'title', a 'due' date in YYYY-MM-DD if present, and a 'context' identifier without the leading @. ",
-            "Always return a JSON object with keys 'title', 'due', and 'context'. Use null for missing fields. ",
-            "Do not translate the title; keep the input language. If relative dates are used, resolve them from today."
+            "Extract a concise 'title', an optional 'note' for longer todos, a 'due' date in YYYY-MM-DD if present, and a 'context' identifier without the leading @. ",
+            "For long todos, keep the main action as the 'title' and move extra details (who, how, timing such as 'immer morgens um 8:00 Uhr') into 'note'. ",
+            "If the todo is already short, leave the wording as-is and return 'note' as null. Do not drop information—put overflow into 'note'. ",
+            "Always return a JSON object with keys 'title', 'note', 'due', and 'context'. Use null for missing fields. ",
+            "Do not translate the title or note; keep the input language. If relative dates are used, resolve them from today. ",
+            "Example: Input 'Für den Trainer bitte die Analyse und den neuen Trainingsplan immer morgens um 8:00 Uhr erstellen' -> {{\"title\": \"Analyse und neuen Trainingsplan erstellen\", \"note\": \"Für den Trainer, immer morgens um 8:00 Uhr erstellen\", \"due\": null, \"context\": null}}."
         ),
         Local::now().format("%A, %Y-%m-%d")
     );

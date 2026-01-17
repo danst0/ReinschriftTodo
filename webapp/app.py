@@ -1127,18 +1127,20 @@ def parse_nlp():
     system_prompt = (
         "You are a specialized parser for todo items. "
         f"Today is {weekday}, {today}. "
-        "Extract the 'title', 'due' datetime (preferred format YYYY-MM-DDTHH:MM 24h; if only a date is given, use time 00:00), and 'context' (e.g., store, office). "
+        "Extract the 'title', an optional 'note' for longer todos, the 'due' datetime (preferred format YYYY-MM-DDTHH:MM 24h; if only a date is given, use time 00:00), and 'context' (e.g., store, office). "
         "IMPORTANT rules:\n"
         "1. Return ONLY a valid JSON object.\n"
-        "2. The keys 'title', 'due', and 'context' MUST be present.\n"
-        "3. For 'context', extract ONLY the identifier (e.g., from '@store' extract 'store').\n"
-        "4. If 'due' or 'context' are missing, set them to null.\n"
-        "5. If a due date is relative, calculate it from today.\n"
-        "6. The 'title' MUST be in the same language as the input text. Do NOT translate the title.\n"
-        "7. Make the 'title' as concise as possible while keeping the meaning intact; lightly summarize wording without changing intent.\n"
-        "8. Return ONLY the JSON object, NO other text or explanation.\n"
-        "Example 1: {\"title\": \"Buy milk\", \"due\": \"2026-01-01T09:30\", \"context\": \"store\"}\n"
-        "Example 2: {\"title\": \"Milch kaufen\", \"due\": \"2026-01-01T00:00\", \"context\": \"Laden\"}"
+        "2. The keys 'title', 'note', 'due', and 'context' MUST be present.\n"
+        "3. For long todos, keep the main action as the 'title' and move extra details (who, how, timing such as 'immer morgens um 8:00 Uhr') into 'note'.\n"
+        "4. If the todo is already short, leave the wording as-is and set 'note' to null. Do not drop information—store overflow in 'note'.\n"
+        "5. For 'context', extract ONLY the identifier (e.g., from '@store' extract 'store').\n"
+        "6. If 'due' or 'context' are missing, set them to null.\n"
+        "7. If a due date is relative, calculate it from today.\n"
+        "8. The 'title' and 'note' MUST be in the same language as the input text. Do NOT translate.\n"
+        "9. Make the 'title' concise; do not remove details—instead, place them in 'note'.\n"
+        "10. Return ONLY the JSON object, NO other text or explanation.\n"
+        "Example 1: {\"title\": \"Buy milk\", \"note\": null, \"due\": \"2026-01-01T09:30\", \"context\": \"store\"}\n"
+        "Example 2: {\"title\": \"Analyse und neuen Trainingsplan erstellen\", \"note\": \"Für den Trainer, immer morgens um 8:00 Uhr erstellen\", \"due\": null, \"context\": null}"
     )
 
     reminder_block = build_context_reminders(recent_context, window_days=RECENT_CONTEXT_WINDOW_DAYS)
@@ -1180,10 +1182,15 @@ def parse_nlp():
         # Validate/fix keys
         if 'title' not in parsed:
             parsed['title'] = text
+        if 'note' not in parsed:
+            parsed['note'] = None
         if 'due' not in parsed:
             parsed['due'] = None
         if 'context' not in parsed:
             parsed['context'] = None
+
+        if parsed.get('note') == "":
+            parsed['note'] = None
             
         logger.info(f"Parsed JSON: {parsed}")
         return parsed
