@@ -289,10 +289,12 @@
     <form id="addForm" class="add-form collapsible-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post" style="gap: 0;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" id="add-input" name="title" placeholder="{{ t.new_task }}" required>
+        {% if not auto_ai_on_add %}
         <button type="button" id="smart-btn" class="smart-btn" onclick="handleSmartAdd(this)" title="Smart Add (AI)" style="background: #6c5ce7; color: white; border: none; padding: 0.5rem; cursor: pointer;">
             <span class="smart-icon" aria-hidden="true">✨</span>
             <span class="spinner" aria-hidden="true"></span>
         </button>
+        {% endif %}
         <button type="button" id="voice-btn" class="voice-btn" title="{{ t.voice_input }}" style="display: none;">🎤</button>
         <button type="submit">{{ t.add }}</button>
     </form>
