@@ -1,4 +1,4 @@
 {
     "llm_url": "http://10.0.2.71:11434/api/generate",
-    "llm_model": "mistral:7b"
+    "llm_model": "llama3.1:8b"
 }

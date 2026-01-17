@@ -2909,7 +2909,7 @@ async fn request_ai_parse(text: String, known_projects: Vec<String>, known_conte
         format!("{}/api/chat", base_url.trim_end_matches('/'))
     };
 
-    let model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "mistral:7b".to_string());
+    let model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "llama3.1:8b".to_string());
 
     let projects_str = if known_projects.is_empty() {
         String::new()

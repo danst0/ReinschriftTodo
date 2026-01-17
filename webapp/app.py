@@ -1204,7 +1204,7 @@ def parse_nlp():
     else:
         chat_url = base_url.rstrip('/') + "/api/chat"
 
-    MODEL = os.environ.get('OLLAMA_MODEL', app_config.get('llm_model', 'mistral:7b'))
+    MODEL = os.environ.get('OLLAMA_MODEL', app_config.get('llm_model', 'llama3.1:8b'))
     
     system_prompt = (
         "You are a specialized parser for todo items and notes. "
