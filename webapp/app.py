@@ -154,6 +154,12 @@ def parse_due_input(raw_value):
 def format_due(dt_value):
     return dt_value.strftime("%Y-%m-%dT%H:%M")
 
+def format_due_display(dt_value):
+    """Format due date for display, omitting time if it's 00:00."""
+    if dt_value.hour == 0 and dt_value.minute == 0:
+        return dt_value.strftime("%Y-%m-%d")
+    return dt_value.strftime("%Y-%m-%dT%H:%M")
+
 def is_sometime(dt_value):
     return dt_value.date().year == 9999
 
@@ -256,7 +262,7 @@ def parse_line(line, line_index, section):
     context = normalize_prefix(capture_token(CONTEXT_RE, rest), '@')
     due_dt = parse_due_token(rest)
     recurrence = capture_token(RECUR_RE, rest)
-    due_display = format_due(due_dt) if due_dt else None
+    due_display = format_due_display(due_dt) if due_dt else None
     due_is_sometime = is_sometime(due_dt) if due_dt else False
 
     if done:
