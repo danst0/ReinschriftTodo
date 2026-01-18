@@ -2411,16 +2411,6 @@ impl AppState {
         content.set_margin_start(20);
         content.set_margin_end(20);
 
-        let section_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        section_row.append(&gtk::Label::builder().label(&t("section")).xalign(0.0).build());
-        let section_value = gtk::Label::builder()
-            .label(&todo.section)
-            .xalign(0.0)
-            .build();
-        section_value.add_css_class("dim-label");
-        section_row.append(&section_value);
-        content.append(&section_row);
-
         let title_entry = gtk::Entry::builder().text(&todo.title).hexpand(true).build();
         title_entry.set_activates_default(true);
         let title_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -2811,12 +2801,8 @@ fn normalize_token(raw: &str) -> Option<String> {
 fn format_metadata(item: &TodoItem) -> String {
     let mut parts = Vec::new();
 
-    let section_norm = normalize_token(&item.section);
     let first_project_norm = item.projects.first().and_then(|p| normalize_token(p));
 
-    if !item.section.is_empty() && section_norm.is_some() && section_norm != first_project_norm {
-        parts.push(item.section.clone());
-    }
     if !item.projects.is_empty() {
         let projects_str = item.projects.iter()
             .map(|p| format!("+{}", p))
@@ -2828,7 +2814,7 @@ fn format_metadata(item: &TodoItem) -> String {
         let contexts_str = item.contexts.iter()
             .filter_map(|c| {
                 let ctx_norm = normalize_token(c);
-                if ctx_norm != first_project_norm && ctx_norm != section_norm {
+                if ctx_norm != first_project_norm {
                     Some(format!("@{}", c))
                 } else {
                     None
@@ -2922,7 +2908,6 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
             marker: None,
         },
         title,
-        section: String::new(),
         projects,
         contexts,
         due: Some(due),

@@ -66,7 +66,6 @@ pub struct TodoKey {
 pub struct TodoItem {
     pub key: TodoKey,
     pub title: String,
-    pub section: String,
     pub projects: Vec<String>,
     pub contexts: Vec<String>,
     pub due: Option<NaiveDateTime>,
@@ -335,16 +334,9 @@ pub fn load_todos() -> Result<Vec<TodoItem>> {
     let content = read_content()?;
 
     let mut items = Vec::new();
-    let mut current_section = t("no_section");
 
     for (line_index, line) in content.lines().enumerate() {
-        let trimmed = line.trim();
-        if trimmed.starts_with("###") {
-            current_section = trimmed.trim_start_matches('#').trim().to_string();
-            continue;
-        }
-
-        if let Some(item) = parse_line(line, line_index, &current_section) {
+        if let Some(item) = parse_line(line, line_index) {
             items.push(item);
         }
     }
@@ -514,7 +506,7 @@ fn parse_due(text: &str) -> Option<NaiveDateTime> {
     Some(NaiveDateTime::new(date, time))
 }
 
-fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> {
+fn parse_line(line: &str, line_index: usize) -> Option<TodoItem> {
     let trimmed = line.trim_start();
     let (done, rest) = if let Some(body) = trimmed.strip_prefix("- [x]") {
         (true, body.trim())
@@ -543,7 +535,6 @@ fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> 
             marker,
         },
         title,
-        section: section.to_string(),
         projects,
         contexts,
         due,

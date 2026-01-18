@@ -1,6 +1,6 @@
-{% set current_section = namespace(value=None) %}
+{% set current_group = namespace(value=None) %}
 {% for todo in todos %}
-    {% if todo.section and todo.section != current_section.value %}
+    {% if todo.section and todo.section != current_group.value %}
         <div class="section-header" data-group-mode="{{ sort_mode }}" data-group-key="{{ todo.group_key or '' }}" style="display: flex; align-items: center; gap: 0.5rem;">
             <span>
                 {% if sort_mode == 'topic' %}
@@ -18,7 +18,7 @@
             </div>
             {% endif %}
         </div>
-        {% set current_section.value = todo.section %}
+        {% set current_group.value = todo.section %}
     {% endif %}
     
     <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" data-marker="{{ todo.marker or '' }}" onclick="openEditModal({{ todo.line_index }})" style="cursor: pointer;">

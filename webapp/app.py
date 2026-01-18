@@ -225,22 +225,15 @@ def load_todos():
         return []
     
     items = []
-    lang = get_locale()
-    current_section = TRANSLATIONS.get(lang, TRANSLATIONS['de']).get('no_section', 'Ohne Abschnitt')
     
     for line_index, line in enumerate(content.splitlines()):
-        trimmed = line.strip()
-        if trimmed.startswith("###"):
-            current_section = trimmed.lstrip('#').strip()
-            continue
-        
-        item = parse_line(line, line_index, current_section)
+        item = parse_line(line, line_index)
         if item:
             items.append(item)
     
     return items
 
-def parse_line(line, line_index, section):
+def parse_line(line, line_index):
     trimmed = line.lstrip()
     done = False
     rest = ""
@@ -285,7 +278,6 @@ def parse_line(line, line_index, section):
         'line_index': line_index,
         'marker': marker,
         'title': title,
-        'section': section,
         'projects': projects,
         'contexts': contexts,
         'due': due_dt,
@@ -627,25 +619,23 @@ def update_todo_by_marker(marker, updates):
     return True
 
 def sort_key_topic(todo):
-    # Project (asc), Section (asc), Title (asc), Context (asc)
+    # Project (asc), Title (asc), Context (asc)
     # Rust: Some < None (With Project comes before Without Project)
     p = todo['projects'][0] if todo['projects'] else None
     c = todo['contexts'][0] if todo['contexts'] else None
     return (
         0 if p else 1, p.lower() if p else "",
-        todo['section'].lower(),
         todo['title'].lower(),
         0 if c else 1, c.lower() if c else ""
     )
 
 def sort_key_location(todo):
-    # Context (asc), Section (asc), Title (asc), Project (asc)
+    # Context (asc), Title (asc), Project (asc)
     # Rust: Some < None (With Context comes before Without Context)
     p = todo['projects'][0] if todo['projects'] else None
     c = todo['contexts'][0] if todo['contexts'] else None
     return (
         0 if c else 1, c.lower() if c else "",
-        todo['section'].lower(),
         todo['title'].lower(),
         0 if p else 1, p.lower() if p else ""
     )
@@ -816,7 +806,7 @@ def index():
         first_project = todo['projects'][0] if todo['projects'] else None
         first_context = todo['contexts'][0] if todo['contexts'] else None
         if sort_mode == 'topic':
-            display_item['section'] = first_project if first_project else TRANSLATIONS.get(lang, TRANSLATIONS['de']).get('no_section', 'Ohne Abschnitt')
+            display_item['section'] = first_project if first_project else TRANSLATIONS.get(lang, TRANSLATIONS['de']).get('no_project', 'Ohne Projekt')
             display_item['group_key'] = first_project if first_project else ''
         elif sort_mode == 'location':
             display_item['section'] = f"Ort: {first_context if first_context else 'Ohne Ort'}"

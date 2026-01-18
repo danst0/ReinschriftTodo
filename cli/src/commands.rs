@@ -3,7 +3,7 @@ use chrono::{Duration, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use reinschrift_core::{
     data, load_todos, toggle_todo, set_due_today, update_todo_details, delete_todo, add_todo,
     add_todo_full, get_backend_config, test_webdav_connection,
-    TodoItem, TodoKey, SortMode, sort_items, t,
+    TodoItem, TodoKey, SortMode, sort_items,
 };
 use std::io::{self, Write};
 
@@ -119,7 +119,6 @@ pub fn add(
     let item = TodoItem {
         key: TodoKey { line_index: 0, marker: None },
         title: title.to_string(),
-        section: t("no_section"),
         projects: project.map(|s| parse_space_separated_tags(s, '+')).unwrap_or_default(),
         contexts: context.map(|s| parse_space_separated_tags(s, '@')).unwrap_or_default(),
         due: due_dt,
@@ -251,7 +250,6 @@ pub fn search(ctx: &OutputContext, query: &str, show_all: bool) -> Result<()> {
             || item.projects.iter().any(|p| p.to_lowercase().contains(&query_lower))
             || item.contexts.iter().any(|c| c.to_lowercase().contains(&query_lower))
             || item.note.as_ref().map(|n| n.to_lowercase().contains(&query_lower)).unwrap_or(false)
-            || item.section.to_lowercase().contains(&query_lower)
     });
 
     // Filter completed unless show_all

@@ -53,14 +53,12 @@ pub fn sort_items(items: &mut [TodoItem], mode: SortMode) {
 
 pub fn compare_by_project(a: &TodoItem, b: &TodoItem) -> Ordering {
     compare_option_str(a.projects.first().map(|s| s.as_str()), b.projects.first().map(|s| s.as_str()))
-        .then_with(|| lexical_order(&a.section, &b.section))
         .then_with(|| lexical_order(&a.title, &b.title))
         .then_with(|| compare_option_str(a.contexts.first().map(|s| s.as_str()), b.contexts.first().map(|s| s.as_str())))
 }
 
 pub fn compare_by_context(a: &TodoItem, b: &TodoItem) -> Ordering {
     compare_option_str(a.contexts.first().map(|s| s.as_str()), b.contexts.first().map(|s| s.as_str()))
-        .then_with(|| lexical_order(&a.section, &b.section))
         .then_with(|| lexical_order(&a.title, &b.title))
         .then_with(|| compare_option_str(a.projects.first().map(|s| s.as_str()), b.projects.first().map(|s| s.as_str())))
 }
