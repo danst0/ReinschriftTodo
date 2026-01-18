@@ -28,8 +28,8 @@
         <div class="content">
             <div class="title">{{ todo.title }}</div>
             <div class="meta">
-                {% if todo.project and sort_mode != 'topic' %}<span class="tag project">+{{ todo.project }}</span>{% endif %}
-                {% if todo.context %}<span class="tag context">@{{ todo.context }}</span>{% endif %}
+                {% if todo.projects and sort_mode != 'topic' %}{% for project in todo.projects %}<span class="tag project">+{{ project }}</span> {% endfor %}{% endif %}
+                {% if todo.contexts %}{% for context in todo.contexts %}<span class="tag context">@{{ context }}</span> {% endfor %}{% endif %}
                 {% if todo.recurrence %}
                     <span class="tag recurrence">
                         ↻

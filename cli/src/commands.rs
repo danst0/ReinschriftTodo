@@ -14,6 +14,14 @@ const DEFAULT_DUE_TIME: NaiveTime = match NaiveTime::from_hms_opt(0, 0, 0) {
     None => panic!("invalid time"),
 };
 
+fn parse_space_separated_tags(input: &str, prefix: char) -> Vec<String> {
+    input
+        .split_whitespace()
+        .map(|s| s.trim_start_matches(prefix).to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
 pub fn list(
     ctx: &OutputContext,
     sort: &str,
@@ -41,9 +49,8 @@ pub fn list(
     if let Some(p) = project_filter {
         let p_lower = p.to_lowercase();
         items.retain(|item| {
-            item.project.as_ref()
-                .map(|proj| proj.to_lowercase().contains(&p_lower))
-                .unwrap_or(false)
+            item.projects.iter()
+                .any(|proj| proj.to_lowercase().contains(&p_lower))
         });
     }
 
@@ -51,9 +58,8 @@ pub fn list(
     if let Some(c) = context_filter {
         let c_lower = c.to_lowercase();
         items.retain(|item| {
-            item.context.as_ref()
-                .map(|ctx| ctx.to_lowercase().contains(&c_lower))
-                .unwrap_or(false)
+            item.contexts.iter()
+                .any(|ctx| ctx.to_lowercase().contains(&c_lower))
         });
     }
 
@@ -70,12 +76,12 @@ pub fn list(
     match mode {
         SortMode::Topic => {
             ctx.print_todos_grouped(&items, |item| {
-                format!("Topic: {}", item.project.as_deref().unwrap_or("No project"))
+                format!("Topic: {}", item.projects.first().map(|s| s.as_str()).unwrap_or("No project"))
             });
         }
         SortMode::Location => {
             ctx.print_todos_grouped(&items, |item| {
-                format!("Location: {}", item.context.as_deref().unwrap_or("No location"))
+                format!("Location: {}", item.contexts.first().map(|s| s.as_str()).unwrap_or("No location"))
             });
         }
         SortMode::Date => {
@@ -114,8 +120,8 @@ pub fn add(
         key: TodoKey { line_index: 0, marker: None },
         title: title.to_string(),
         section: t("no_section"),
-        project: project.map(|s| s.to_string()),
-        context: context.map(|s| s.to_string()),
+        projects: project.map(|s| parse_space_separated_tags(s, '+')).unwrap_or_default(),
+        contexts: context.map(|s| parse_space_separated_tags(s, '@')).unwrap_or_default(),
         due: due_dt,
         reference: None,
         recurrence: recurrence.map(|s| s.to_string()),
@@ -146,10 +152,10 @@ pub fn edit(
         item.title = t.to_string();
     }
     if let Some(p) = project {
-        item.project = if p.is_empty() { None } else { Some(p.to_string()) };
+        item.projects = if p.is_empty() { Vec::new() } else { parse_space_separated_tags(p, '+') };
     }
     if let Some(c) = context {
-        item.context = if c.is_empty() { None } else { Some(c.to_string()) };
+        item.contexts = if c.is_empty() { Vec::new() } else { parse_space_separated_tags(c, '@') };
     }
     if let Some(d) = due {
         item.due = if d.is_empty() { None } else { Some(parse_date(d)?) };
@@ -242,8 +248,8 @@ pub fn search(ctx: &OutputContext, query: &str, show_all: bool) -> Result<()> {
     // Filter by search query
     items.retain(|item| {
         item.title.to_lowercase().contains(&query_lower)
-            || item.project.as_ref().map(|p| p.to_lowercase().contains(&query_lower)).unwrap_or(false)
-            || item.context.as_ref().map(|c| c.to_lowercase().contains(&query_lower)).unwrap_or(false)
+            || item.projects.iter().any(|p| p.to_lowercase().contains(&query_lower))
+            || item.contexts.iter().any(|c| c.to_lowercase().contains(&query_lower))
             || item.note.as_ref().map(|n| n.to_lowercase().contains(&query_lower)).unwrap_or(false)
             || item.section.to_lowercase().contains(&query_lower)
     });

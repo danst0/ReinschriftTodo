@@ -67,8 +67,8 @@ pub struct TodoItem {
     pub key: TodoKey,
     pub title: String,
     pub section: String,
-    pub project: Option<String>,
-    pub context: Option<String>,
+    pub projects: Vec<String>,
+    pub contexts: Vec<String>,
     pub due: Option<NaiveDateTime>,
     pub reference: Option<String>,
     pub recurrence: Option<String>,
@@ -527,8 +527,8 @@ fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> 
     };
 
     let title = extract_title(rest);
-    let project = capture_token(&PROJECT_RE, rest);
-    let context = capture_token(&CONTEXT_RE, rest);
+    let projects = capture_all_tokens(&PROJECT_RE, rest);
+    let contexts = capture_all_tokens(&CONTEXT_RE, rest);
     let due = parse_due(rest);
     let recurrence = capture_token(&RECUR_RE, rest);
     let reference = capture_token(&LINK_RE, rest);
@@ -544,14 +544,26 @@ fn parse_line(line: &str, line_index: usize, section: &str) -> Option<TodoItem> 
         },
         title,
         section: section.to_string(),
-        project,
-        context,
+        projects,
+        contexts,
         due,
         reference,
         recurrence,
         note,
         done,
     })
+}
+
+fn capture_all_tokens(regex: &Regex, text: &str) -> Vec<String> {
+    regex
+        .find_iter(text)
+        .filter_map(|m| {
+            let s = m.as_str();
+            // Strip the prefix (+ or @)
+            s.get(1..).map(|t| t.trim().to_string())
+        })
+        .filter(|s| !s.is_empty())
+        .collect()
 }
 
 fn capture_token(regex: &Regex, text: &str) -> Option<String> {
@@ -708,11 +720,15 @@ fn render_line(item: &TodoItem) -> Result<String> {
     let checkbox = if item.done { "- [x]" } else { "- [ ]" };
     let mut parts = vec![format!("{checkbox} {title}")];
 
-    if let Some(project) = normalize_token(item.project.as_deref()) {
-        parts.push(format!("+{project}"));
+    for project in &item.projects {
+        if let Some(normalized) = normalize_token(Some(project)) {
+            parts.push(format!("+{normalized}"));
+        }
     }
-    if let Some(context) = normalize_token(item.context.as_deref()) {
-        parts.push(format!("@{context}"));
+    for context in &item.contexts {
+        if let Some(normalized) = normalize_token(Some(context)) {
+            parts.push(format!("@{normalized}"));
+        }
     }
     if let Some(due) = item.due {
         parts.push(format!("due:{}", due.format("%Y-%m-%dT%H:%M")));

@@ -175,12 +175,12 @@
                     <input type="text" id="edit-title" name="title" required>
                 </div>
                 <div class="form-group">
-                    <label for="edit-project">{{ t.project }}</label>
-                    <input type="text" id="edit-project" name="project">
+                    <label for="edit-projects">{{ t.project }}</label>
+                    <input type="text" id="edit-projects" name="projects">
                 </div>
                 <div class="form-group">
-                    <label for="edit-context">{{ t.context }}</label>
-                    <input type="text" id="edit-context" name="context">
+                    <label for="edit-contexts">{{ t.context }}</label>
+                    <input type="text" id="edit-contexts" name="contexts">
                 </div>
                 <div class="form-group">
                     <label for="edit-note">{{ t.note }}</label>
@@ -466,8 +466,17 @@
             if (data.due && data.due !== 'null' && data.due !== 'None') {
                 formatted += ` due:${data.due}`;
             }
-            if (data.context && data.context !== 'null' && data.context !== 'None') {
+            // Handle both single context and list of contexts
+            if (data.contexts && Array.isArray(data.contexts) && data.contexts.length > 0) {
+                formatted += ' ' + data.contexts.map(c => `@${String(c).replace(/^@/, '')}`).join(' ');
+            } else if (data.context && data.context !== 'null' && data.context !== 'None') {
                 formatted += ` @${String(data.context).replace(/^@/, '')}`;
+            }
+            // Handle both single project and list of projects
+            if (data.projects && Array.isArray(data.projects) && data.projects.length > 0) {
+                formatted += ' ' + data.projects.map(p => `+${String(p).replace(/^\+/, '')}`).join(' ');
+            } else if (data.project && data.project !== 'null' && data.project !== 'None') {
+                formatted += ` +${String(data.project).replace(/^\+/, '')}`;
             }
             return formatted;
         }
@@ -536,8 +545,8 @@
                     title: parsed.title || originalText,
                     note: parsed.note,
                     due: parsed.due,
-                    context: parsed.context,
-                    project: parsed.project,
+                    contexts: parsed.contexts || (parsed.context ? [parsed.context] : []),
+                    projects: parsed.projects || (parsed.project ? [parsed.project] : []),
                 };
 
                 const res = await fetch('/api/improve', {
@@ -821,8 +830,12 @@
                     }
                     
                     document.getElementById('edit-title').value = data.title;
-                    document.getElementById('edit-project').value = data.project || '';
-                    document.getElementById('edit-context').value = data.context || '';
+                    // Format projects with + prefix, space-separated
+                    const projects = data.projects || [];
+                    document.getElementById('edit-projects').value = projects.map(p => `+${p}`).join(' ');
+                    // Format contexts with @ prefix, space-separated
+                    const contexts = data.contexts || [];
+                    document.getElementById('edit-contexts').value = contexts.map(c => `@${c}`).join(' ');
                     document.getElementById('edit-due').value = data.due || '';
                     document.getElementById('edit-recurrence').value = data.recurrence || '';
                     document.getElementById('edit-reference').value = data.reference || '';

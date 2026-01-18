@@ -138,12 +138,12 @@
             <input type="text" id="title" name="title" value="{{ todo.title }}" required>
         </div>
         <div class="form-group">
-            <label for="project">{{ t.project }}</label>
-            <input type="text" id="project" name="project" value="{{ todo.project or '' }}">
+            <label for="projects">{{ t.project }}</label>
+            <input type="text" id="projects" name="projects" value="{% if todo.projects %}{% for p in todo.projects %}+{{ p }}{% if not loop.last %} {% endif %}{% endfor %}{% endif %}">
         </div>
         <div class="form-group">
-            <label for="context">{{ t.context }}</label>
-            <input type="text" id="context" name="context" value="{{ todo.context or '' }}">
+            <label for="contexts">{{ t.context }}</label>
+            <input type="text" id="contexts" name="contexts" value="{% if todo.contexts %}{% for c in todo.contexts %}@{{ c }}{% if not loop.last %} {% endif %}{% endfor %}{% endif %}">
         </div>
         <div class="form-group">
             <label for="note">{{ t.note }}</label>

@@ -881,14 +881,14 @@ impl AppState {
         
         let mut projects: Vec<String> = items
             .iter()
-            .filter_map(|t| t.project.clone())
+            .flat_map(|t| t.projects.iter().cloned())
             .collect();
         projects.sort();
         projects.dedup();
         
         let mut contexts: Vec<String> = items
             .iter()
-            .filter_map(|t| t.context.clone())
+            .flat_map(|t| t.contexts.iter().cloned())
             .collect();
         contexts.sort();
         contexts.dedup();
@@ -2430,8 +2430,12 @@ impl AppState {
 
         let project_entry = gtk::Entry::new();
         project_entry.set_activates_default(true);
-        if let Some(project) = &todo.project {
-            project_entry.set_text(project);
+        if !todo.projects.is_empty() {
+            let projects_display = todo.projects.iter()
+                .map(|p| format!("+{}", p))
+                .collect::<Vec<_>>()
+                .join(" ");
+            project_entry.set_text(&projects_display);
         }
         let project_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         project_row.append(&gtk::Label::builder().label(&t("project_plus")).xalign(0.0).build());
@@ -2440,8 +2444,12 @@ impl AppState {
 
         let context_entry = gtk::Entry::new();
         context_entry.set_activates_default(true);
-        if let Some(context) = &todo.context {
-            context_entry.set_text(context);
+        if !todo.contexts.is_empty() {
+            let contexts_display = todo.contexts.iter()
+                .map(|c| format!("@{}", c))
+                .collect::<Vec<_>>()
+                .join(" ");
+            context_entry.set_text(&contexts_display);
         }
         let context_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         context_row.append(&gtk::Label::builder().label(&t("location_at")).xalign(0.0).build());
@@ -2641,18 +2649,18 @@ impl AppState {
             }
 
             let project_text = project_entry_save.text().trim().to_string();
-            let project_value = if project_text.is_empty() {
-                None
-            } else {
-                Some(project_text)
-            };
+            let projects_value: Vec<String> = project_text
+                .split_whitespace()
+                .map(|s| s.trim_start_matches('+').to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
 
             let context_text = context_entry_save.text().trim().to_string();
-            let context_value = if context_text.is_empty() {
-                None
-            } else {
-                Some(context_text)
-            };
+            let contexts_value: Vec<String> = context_text
+                .split_whitespace()
+                .map(|s| s.trim_start_matches('@').to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
 
             let due_text = due_entry_save.text().trim().to_string();
             let due_value = if due_text.is_empty() {
@@ -2687,8 +2695,8 @@ impl AppState {
 
             let mut updated = base_item.clone();
             updated.title = title_text;
-            updated.project = project_value;
-            updated.context = context_value;
+            updated.projects = projects_value;
+            updated.contexts = contexts_value;
             updated.reference = base_item.reference.clone();
             updated.due = due_value;
             updated.recurrence = recurrence_value;
@@ -2724,16 +2732,18 @@ impl AppState {
         match mode {
             SortMode::Topic => Some(t("topic_group").replace(
                 "{}",
-                item.project
-                    .as_deref()
+                item.projects
+                    .first()
                     .filter(|s| !s.is_empty())
+                    .map(|s| s.as_str())
                     .unwrap_or(&t("no_project"))
             )),
             SortMode::Location => Some(t("location_group").replace(
                 "{}",
-                item.context
-                    .as_deref()
+                item.contexts
+                    .first()
                     .filter(|s| !s.is_empty())
+                    .map(|s| s.as_str())
                     .unwrap_or(&t("no_location"))
             )),
             SortMode::Date => None,
@@ -2802,18 +2812,32 @@ fn format_metadata(item: &TodoItem) -> String {
     let mut parts = Vec::new();
 
     let section_norm = normalize_token(&item.section);
-    let project_norm = item.project.as_deref().and_then(normalize_token);
-    let context_norm = item.context.as_deref().and_then(normalize_token);
+    let first_project_norm = item.projects.first().and_then(|p| normalize_token(p));
 
-    if !item.section.is_empty() && section_norm.is_some() && section_norm != project_norm {
+    if !item.section.is_empty() && section_norm.is_some() && section_norm != first_project_norm {
         parts.push(item.section.clone());
     }
-    if let Some(project) = &item.project {
-        parts.push(format!("+{}", project));
+    if !item.projects.is_empty() {
+        let projects_str = item.projects.iter()
+            .map(|p| format!("+{}", p))
+            .collect::<Vec<_>>()
+            .join(" ");
+        parts.push(projects_str);
     }
-    if let (Some(context), Some(ctx_norm)) = (&item.context, &context_norm) {
-        if Some(ctx_norm.clone()) != project_norm && Some(ctx_norm.clone()) != section_norm {
-            parts.push(format!("@{}", context));
+    if !item.contexts.is_empty() {
+        let contexts_str = item.contexts.iter()
+            .filter_map(|c| {
+                let ctx_norm = normalize_token(c);
+                if ctx_norm != first_project_norm && ctx_norm != section_norm {
+                    Some(format!("@{}", c))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        if !contexts_str.is_empty() {
+            parts.push(contexts_str);
         }
     }
     if let Some(due) = item.due {
@@ -2847,17 +2871,27 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
         .trim()
         .to_string();
 
-    let context = parsed
+    let contexts: Vec<String> = parsed
         .context
         .as_deref()
-        .map(|c| c.trim().trim_start_matches('@').to_string())
-        .filter(|c| !c.is_empty());
+        .map(|c| {
+            c.split_whitespace()
+                .map(|s| s.trim().trim_start_matches('@').to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
 
-    let project = parsed
+    let projects: Vec<String> = parsed
         .project
         .as_deref()
-        .map(|p| p.trim().trim_start_matches('+').to_string())
-        .filter(|p| !p.is_empty());
+        .map(|p| {
+            p.split_whitespace()
+                .map(|s| s.trim().trim_start_matches('+').to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
 
     let note = parsed
         .note
@@ -2889,8 +2923,8 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
         },
         title,
         section: String::new(),
-        project,
-        context,
+        projects,
+        contexts,
         due: Some(due),
         reference: None,
         recurrence: None,
@@ -2980,20 +3014,40 @@ async fn request_ai_parse(text: String, known_projects: Vec<String>, known_conte
 
     // Normalize tag case to match existing tags
     if let Some(ref project) = parsed.project {
-        for existing in &known_projects {
-            if existing.to_lowercase() == project.to_lowercase() {
-                parsed.project = Some(existing.clone());
-                break;
-            }
-        }
+        let normalized_projects: Vec<String> = project
+            .split_whitespace()
+            .map(|p| {
+                let p_clean = p.trim_start_matches('+');
+                for existing in &known_projects {
+                    if existing.to_lowercase() == p_clean.to_lowercase() {
+                        return existing.clone();
+                    }
+                }
+                p_clean.to_string()
+            })
+            .collect();
+        parsed.project = Some(normalized_projects.iter()
+            .map(|p| format!("+{}", p))
+            .collect::<Vec<_>>()
+            .join(" "));
     }
     if let Some(ref context) = parsed.context {
-        for existing in &known_contexts {
-            if existing.to_lowercase() == context.to_lowercase() {
-                parsed.context = Some(existing.clone());
-                break;
-            }
-        }
+        let normalized_contexts: Vec<String> = context
+            .split_whitespace()
+            .map(|c| {
+                let c_clean = c.trim_start_matches('@');
+                for existing in &known_contexts {
+                    if existing.to_lowercase() == c_clean.to_lowercase() {
+                        return existing.clone();
+                    }
+                }
+                c_clean.to_string()
+            })
+            .collect();
+        parsed.context = Some(normalized_contexts.iter()
+            .map(|c| format!("@{}", c))
+            .collect::<Vec<_>>()
+            .join(" "));
     }
 
     Ok(parsed)

@@ -98,12 +98,20 @@ fn print_todo_colored(item: &TodoItem) {
 
     let mut line = format!("{} {}", checkbox, title);
 
-    if let Some(project) = &item.project {
-        line.push_str(&format!(" {}", format!("+{}", project).cyan()));
+    if !item.projects.is_empty() {
+        let projects_str = item.projects.iter()
+            .map(|p| format!("+{}", p))
+            .collect::<Vec<_>>()
+            .join(" ");
+        line.push_str(&format!(" {}", projects_str.cyan()));
     }
 
-    if let Some(context) = &item.context {
-        line.push_str(&format!(" {}", format!("@{}", context).yellow()));
+    if !item.contexts.is_empty() {
+        let contexts_str = item.contexts.iter()
+            .map(|c| format!("@{}", c))
+            .collect::<Vec<_>>()
+            .join(" ");
+        line.push_str(&format!(" {}", contexts_str.yellow()));
     }
 
     if let Some(due) = &item.due {

@@ -259,8 +259,10 @@ def parse_line(line, line_index, section):
         return None
     
     title = extract_title(rest)
-    project = normalize_prefix(capture_token(PROJECT_RE, rest), '+')
-    context = normalize_prefix(capture_token(CONTEXT_RE, rest), '@')
+    projects = [normalize_prefix(p, '+') for p in capture_all_tokens(PROJECT_RE, rest)]
+    projects = [p for p in projects if p]  # Filter out None/empty
+    contexts = [normalize_prefix(c, '@') for c in capture_all_tokens(CONTEXT_RE, rest)]
+    contexts = [c for c in contexts if c]  # Filter out None/empty
     due_dt = parse_due_token(rest)
     recurrence = capture_token(RECUR_RE, rest)
     due_display = format_due_display(due_dt) if due_dt else None
@@ -284,8 +286,8 @@ def parse_line(line, line_index, section):
         'marker': marker,
         'title': title,
         'section': section,
-        'project': project,
-        'context': context,
+        'projects': projects,
+        'contexts': contexts,
         'due': due_dt,
         'due_display': due_display,
         'due_is_sometime': due_is_sometime,
@@ -302,6 +304,11 @@ def capture_token(regex, text):
     if match:
         return match.group(1).strip()
     return None
+
+
+def capture_all_tokens(regex, text):
+    """Capture all matches of a regex pattern (e.g., all +project or @context tags)."""
+    return [m.group(1).strip() for m in regex.finditer(text) if m.group(1).strip()]
 
 
 def normalize_prefix(token, prefix_char):
@@ -376,8 +383,8 @@ def collect_recent_context(todos, window_days=RECENT_CONTEXT_WINDOW_DAYS):
     ]
 
     all_relevant = open_todos + recent_closed
-    topics = sorted({t['project'] for t in all_relevant if t.get('project')})
-    locations = sorted({t['context'] for t in all_relevant if t.get('context')})
+    topics = sorted({p for t in all_relevant for p in t.get('projects', []) if p})
+    locations = sorted({c for t in all_relevant for c in t.get('contexts', []) if c})
     recent_full_text = [t['raw_line'].strip() for t in recent_closed if t.get('raw_line')]
 
     return {
@@ -552,8 +559,29 @@ def update_todo_by_marker(marker, updates):
     if not title:
         title = existing['title'] or ''
 
-    project = updates.get('project') if 'project' in updates else existing['project']
-    context = updates.get('context') if 'context' in updates else existing['context']
+    # Handle projects - can be a string (space-separated) or list
+    if 'projects' in updates:
+        projects_input = updates.get('projects')
+        if isinstance(projects_input, str):
+            projects = [p.strip().lstrip('+') for p in projects_input.split() if p.strip().lstrip('+')]
+        elif isinstance(projects_input, list):
+            projects = [p.strip().lstrip('+') for p in projects_input if p and p.strip().lstrip('+')]
+        else:
+            projects = existing.get('projects', [])
+    else:
+        projects = existing.get('projects', [])
+
+    # Handle contexts - can be a string (space-separated) or list
+    if 'contexts' in updates:
+        contexts_input = updates.get('contexts')
+        if isinstance(contexts_input, str):
+            contexts = [c.strip().lstrip('@') for c in contexts_input.split() if c.strip().lstrip('@')]
+        elif isinstance(contexts_input, list):
+            contexts = [c.strip().lstrip('@') for c in contexts_input if c and c.strip().lstrip('@')]
+        else:
+            contexts = existing.get('contexts', [])
+    else:
+        contexts = existing.get('contexts', [])
 
     if 'note' in updates:
         note_value = updates.get('note')
@@ -575,10 +603,10 @@ def update_todo_by_marker(marker, updates):
     new_line = "- [x]" if done else "- [ ]"
     new_line += f" {title}"
 
-    if project:
-        new_line += f" +{str(project).strip().lstrip('+')}"
-    if context:
-        new_line += f" @{str(context).strip().lstrip('@')}"
+    for project in projects:
+        new_line += f" +{project}"
+    for context in contexts:
+        new_line += f" @{context}"
     if due_dt:
         new_line += f" due:{format_due(due_dt)}"
     if recurrence:
@@ -601,8 +629,8 @@ def update_todo_by_marker(marker, updates):
 def sort_key_topic(todo):
     # Project (asc), Section (asc), Title (asc), Context (asc)
     # Rust: Some < None (With Project comes before Without Project)
-    p = todo['project']
-    c = todo['context']
+    p = todo['projects'][0] if todo['projects'] else None
+    c = todo['contexts'][0] if todo['contexts'] else None
     return (
         0 if p else 1, p.lower() if p else "",
         todo['section'].lower(),
@@ -613,8 +641,8 @@ def sort_key_topic(todo):
 def sort_key_location(todo):
     # Context (asc), Section (asc), Title (asc), Project (asc)
     # Rust: Some < None (With Context comes before Without Context)
-    p = todo['project']
-    c = todo['context']
+    p = todo['projects'][0] if todo['projects'] else None
+    c = todo['contexts'][0] if todo['contexts'] else None
     return (
         0 if c else 1, c.lower() if c else "",
         todo['section'].lower(),
@@ -785,12 +813,14 @@ def index():
     display_todos = []
     for todo in filtered_todos:
         display_item = todo.copy()
+        first_project = todo['projects'][0] if todo['projects'] else None
+        first_context = todo['contexts'][0] if todo['contexts'] else None
         if sort_mode == 'topic':
-            display_item['section'] = todo['project'] if todo['project'] else TRANSLATIONS.get(lang, TRANSLATIONS['de']).get('no_section', 'Ohne Abschnitt')
-            display_item['group_key'] = todo['project'] if todo['project'] else ''
+            display_item['section'] = first_project if first_project else TRANSLATIONS.get(lang, TRANSLATIONS['de']).get('no_section', 'Ohne Abschnitt')
+            display_item['group_key'] = first_project if first_project else ''
         elif sort_mode == 'location':
-            display_item['section'] = f"Ort: {todo['context'] if todo['context'] else 'Ohne Ort'}"
-            display_item['group_key'] = todo['context'] if todo['context'] else ''
+            display_item['section'] = f"Ort: {first_context if first_context else 'Ohne Ort'}"
+            display_item['group_key'] = first_context if first_context else ''
         elif sort_mode == 'date':
             # No grouping for date sort in Rust implementation (returns None)
             # But the template expects a section. Let's use a dummy or empty section?
@@ -880,12 +910,12 @@ def toggle(line_index):
             next_due = next_due_date(item.get('due'), item['recurrence'])
             if next_due:
                 new_line = "- [ ] " + item['title'].strip()
-                if item.get('project'):
-                    project_clean = normalize_prefix(item['project'], '+')
+                for project in item.get('projects', []):
+                    project_clean = normalize_prefix(project, '+')
                     if project_clean:
                         new_line += f" +{project_clean}"
-                if item.get('context'):
-                    context_clean = normalize_prefix(item['context'], '@')
+                for context in item.get('contexts', []):
+                    context_clean = normalize_prefix(context, '@')
                     if context_clean:
                         new_line += f" @{context_clean}"
                 new_line += f" due:{format_due(next_due)}"
@@ -963,13 +993,13 @@ def postpone(line_index, target):
     new_line = "- [x] " if item['done'] else "- [ ] "
     new_line += item['title'].strip()
     
-    if item['project'] and item['project'].strip():
-        project_clean = normalize_prefix(item['project'], '+')
+    for project in item.get('projects', []):
+        project_clean = normalize_prefix(project, '+')
         if project_clean:
             new_line += f" +{project_clean}"
         
-    if item['context'] and item['context'].strip():
-        context_clean = normalize_prefix(item['context'], '@')
+    for context in item.get('contexts', []):
+        context_clean = normalize_prefix(context, '@')
         if context_clean:
             new_line += f" @{context_clean}"
         
@@ -1020,13 +1050,17 @@ def edit(line_index):
     if request.method == 'POST':
         title = request.form.get('title')
         comment = request.form.get('comment')
-        project = request.form.get('project')
-        context = request.form.get('context')
+        projects_raw = request.form.get('projects', '')
+        contexts_raw = request.form.get('contexts', '')
         due_str = request.form.get('due')
         reference = request.form.get('reference')
         recurrence = request.form.get('recurrence')
         note_raw = request.form.get('note')
         done = request.form.get('done') == 'on'
+
+        # Parse space-separated projects and contexts
+        projects = [p.strip().lstrip('+') for p in projects_raw.split() if p.strip().lstrip('+')]
+        contexts = [c.strip().lstrip('@') for c in contexts_raw.split() if c.strip().lstrip('@')]
 
         due_dt = parse_due_input(due_str)
 
@@ -1056,15 +1090,11 @@ def edit(line_index):
         new_line = "- [x] " if done else "- [ ] "
         new_line += title.strip()
         
-        if project and project.strip():
-            clean_project = project.strip().lstrip('+')
-            if clean_project:
-                new_line += f" +{clean_project}"
+        for project in projects:
+            new_line += f" +{project}"
             
-        if context and context.strip():
-            clean_context = context.strip().lstrip('@')
-            if clean_context:
-                new_line += f" @{clean_context}"
+        for context in contexts:
+            new_line += f" @{context}"
             
         if due_dt:
             new_line += f" due:{format_due(due_dt)}"
@@ -1093,10 +1123,10 @@ def edit(line_index):
             if next_due:
                 clone_title = title.strip()
                 new_rec_line = "- [ ] " + clone_title
-                if project and project.strip():
-                    new_rec_line += f" +{project.strip().lstrip('+')}"
-                if context and context.strip():
-                    new_rec_line += f" @{context.strip().lstrip('@')}"
+                for project in projects:
+                    new_rec_line += f" +{project}"
+                for context in contexts:
+                    new_rec_line += f" @{context}"
                 new_rec_line += f" due:{format_due(next_due)}"
                 new_rec_line += f" rec:{recurrence.strip()}"
                 if reference and reference.strip():
@@ -1268,10 +1298,10 @@ def parse_nlp():
             parsed['note'] = None
         if 'due' not in parsed:
             parsed['due'] = None
-        if 'context' not in parsed:
-            parsed['context'] = None
-        if 'project' not in parsed:
-            parsed['project'] = None
+        if 'contexts' not in parsed:
+            parsed['contexts'] = None
+        if 'projects' not in parsed:
+            parsed['projects'] = None
 
         if parsed.get('note') == "":
             parsed['note'] = None
@@ -1280,17 +1310,49 @@ def parse_nlp():
         existing_projects = recent_context.get('topics') or []
         existing_contexts = recent_context.get('locations') or []
         
-        if parsed.get('project'):
-            for existing in existing_projects:
-                if existing.lower() == parsed['project'].lower():
-                    parsed['project'] = existing
-                    break
+        # Handle projects - can be string (space-separated) or list
+        if parsed.get('projects'):
+            projects_input = parsed['projects']
+            if isinstance(projects_input, str):
+                projects = [p.strip().lstrip('+') for p in projects_input.split() if p.strip().lstrip('+')]
+            elif isinstance(projects_input, list):
+                projects = [p.strip().lstrip('+') for p in projects_input if p and p.strip().lstrip('+')]
+            else:
+                projects = []
+            # Normalize case
+            normalized_projects = []
+            for proj in projects:
+                matched = False
+                for existing in existing_projects:
+                    if existing.lower() == proj.lower():
+                        normalized_projects.append(existing)
+                        matched = True
+                        break
+                if not matched:
+                    normalized_projects.append(proj)
+            parsed['projects'] = normalized_projects
         
-        if parsed.get('context'):
-            for existing in existing_contexts:
-                if existing.lower() == parsed['context'].lower():
-                    parsed['context'] = existing
-                    break
+        # Handle contexts - can be string (space-separated) or list
+        if parsed.get('contexts'):
+            contexts_input = parsed['contexts']
+            if isinstance(contexts_input, str):
+                contexts = [c.strip().lstrip('@') for c in contexts_input.split() if c.strip().lstrip('@')]
+            elif isinstance(contexts_input, list):
+                contexts = [c.strip().lstrip('@') for c in contexts_input if c and c.strip().lstrip('@')]
+            else:
+                contexts = []
+            # Normalize case
+            normalized_contexts = []
+            for ctx in contexts:
+                matched = False
+                for existing in existing_contexts:
+                    if existing.lower() == ctx.lower():
+                        normalized_contexts.append(existing)
+                        matched = True
+                        break
+                if not matched:
+                    normalized_contexts.append(ctx)
+            parsed['contexts'] = normalized_contexts
         
         # Remove internal fields from response
         parsed.pop('rejected', None)

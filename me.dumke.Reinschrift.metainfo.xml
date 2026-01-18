@@ -39,6 +39,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.16.3" date="2026-01-18">
+      <description>
+        <ul>
+          <li>Support multiple space-separated projects and locations per todo</li>
+          <li>Display all tags in format +proj1 +proj2 @loc1 @loc2</li>
+          <li>Grouping uses first project/location as primary</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.16.2" date="2026-01-17">
       <description>
         <ul>
