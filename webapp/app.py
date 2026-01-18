@@ -543,7 +543,7 @@ def update_todo_by_marker(marker, updates):
     if target_index is None:
         return False
 
-    existing = parse_line(lines[target_index], target_index, "")
+    existing = parse_line(lines[target_index], target_index)
     if not existing:
         return False
 
@@ -800,16 +800,19 @@ def index():
     # We need to adjust the 'section' field of the todo items for display purposes
     # based on the sort mode, similar to Rust's group_label
     
+    t = TRANSLATIONS.get(lang, TRANSLATIONS['de'])
     display_todos = []
     for todo in filtered_todos:
         display_item = todo.copy()
         first_project = todo['projects'][0] if todo['projects'] else None
         first_context = todo['contexts'][0] if todo['contexts'] else None
         if sort_mode == 'topic':
-            display_item['section'] = first_project if first_project else TRANSLATIONS.get(lang, TRANSLATIONS['de']).get('no_project', 'Ohne Projekt')
+            display_item['section'] = first_project if first_project else t.get('no_project', 'No Project')
             display_item['group_key'] = first_project if first_project else ''
         elif sort_mode == 'location':
-            display_item['section'] = f"Ort: {first_context if first_context else 'Ohne Ort'}"
+            location_label = t.get('location', 'Location')
+            no_location_label = t.get('no_location', 'No Location')
+            display_item['section'] = f"{location_label}: {first_context if first_context else no_location_label}"
             display_item['group_key'] = first_context if first_context else ''
         elif sort_mode == 'date':
             # No grouping for date sort in Rust implementation (returns None)
@@ -882,7 +885,7 @@ def toggle(line_index):
     if line_index < len(lines):
         line = lines[line_index]
         is_done = "- [x]" in line or "- [X]" in line
-        item = parse_line(line, line_index, "")
+        item = parse_line(line, line_index)
         
         now = datetime.now()
         if not is_done and item and item.get('recurrence') and item.get('due') and item['due'] < now:
@@ -932,7 +935,7 @@ def postpone(line_index, target):
         return redirect(url_for('index'))
         
     line = lines[line_index]
-    item = parse_line(line, line_index, "")
+    item = parse_line(line, line_index)
     if not item:
         return redirect(url_for('index'))
         
@@ -1062,7 +1065,7 @@ def edit(line_index):
         # Reconstruct line
         original_line = lines[line_index]
         marker = ensure_marker(capture_token(ID_RE, original_line))
-        original_item = parse_line(original_line, line_index, "")
+        original_item = parse_line(original_line, line_index)
         was_done = original_item.get('done') if original_item else False
         
         # Handle completion date
@@ -1132,8 +1135,7 @@ def edit(line_index):
     # GET request
     line = lines[line_index]
     # We need to parse it to pre-fill the form
-    # We can reuse parse_line but we need a dummy section
-    item = parse_line(line, line_index, "")
+    item = parse_line(line, line_index)
     if not item:
         return redirect(url_for('index'))
 
@@ -1167,7 +1169,7 @@ def get_todo_json(line_index):
         return {'error': 'Not found'}, 404
         
     line = lines[line_index]
-    item = parse_line(line, line_index, "")
+    item = parse_line(line, line_index)
     if not item:
         return {'error': 'Invalid item'}, 400
         

@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.16.5" date="2026-01-18">
+      <description>
+        <ul>
+          <li>Fix webapp parse_line() calls and location group translations</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.16.4" date="2026-01-18">
       <description>
         <ul>
