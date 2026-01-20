@@ -321,32 +321,36 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         }
 
         let direction: i32 = if keyval == gdk::Key::Up { -1 } else { 1 };
-        let start = if current == gtk::INVALID_LIST_POSITION {
-            if direction > 0 { 0 } else { n_items - 1 }
+
+        // Start position: from current if valid, otherwise before first/after last
+        let start_pos: i32 = if current == gtk::INVALID_LIST_POSITION {
+            if direction > 0 { -1 } else { n_items as i32 }
         } else {
-            (current as i32 + direction) as u32
+            current as i32
         };
 
         // Find next non-header item
-        let mut pos = start;
+        let mut pos = start_pos + direction;
         loop {
-            if pos >= n_items {
-                return glib::Propagation::Stop; // At end
+            // Check bounds
+            if pos < 0 || pos >= n_items as i32 {
+                return glib::Propagation::Stop;
             }
-            if let Some(obj) = nav_state.store.item(pos) {
+
+            // Check if this position is an item (not a header)
+            if let Some(obj) = nav_state.store.item(pos as u32) {
                 if let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
                     let entry = boxed.borrow::<ListEntry>();
                     if matches!(&*entry, ListEntry::Item(_)) {
-                        selection.set_selected(pos);
-                        list_view.scroll_to(pos, gtk::ListScrollFlags::NONE, None);
+                        selection.set_selected(pos as u32);
+                        list_view.scroll_to(pos as u32, gtk::ListScrollFlags::NONE, None);
                         return glib::Propagation::Stop;
                     }
                 }
             }
-            pos = (pos as i32 + direction) as u32;
-            if direction < 0 && pos as i32 == -1 {
-                return glib::Propagation::Stop; // At beginning
-            }
+
+            // Move to next position
+            pos += direction;
         }
     });
     list_view.add_controller(nav_controller);
