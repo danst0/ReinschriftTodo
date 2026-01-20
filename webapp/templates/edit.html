@@ -1,33 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{ current_lang or 'en' }}">
 <head>
     <title>{{ t.edit_todo }}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#3584e4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 1rem; background-color: #fafafa; color: #333; }
-        
-        @media screen and (max-width: 600px) {
-            body { padding-bottom: 10rem; }
-        }
-        
-        h2 { color: #333; }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        input[type="text"], input[type="date"], input[type="datetime-local"], textarea { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
-        input[type="checkbox"] { transform: scale(1.5); margin-right: 0.5rem; }
-        .buttons { display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap; }
-        button { padding: 0.8rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: bold; }
-        .btn-primary { background: #3584e4; color: white; }
-        .btn-secondary { background: #e0e0e0; color: #333; }
-        .btn-action { background: #f6f5f4; border: 1px solid #ddd; color: #333; }
-        
-        @media (prefers-color-scheme: dark) {
-            body { background-color: #1e1e1e; color: #e0e0e0; }
-            h2 { color: #e0e0e0; }
-            input[type="text"], input[type="date"], input[type="datetime-local"], textarea { background: #2d2d2d; border-color: #444; color: #e0e0e0; }
-            .btn-secondary { background: #3d3d3d; color: #e0e0e0; }
-            .btn-action { background: #2d2d2d; border-color: #444; color: #e0e0e0; }
+        /* Page-specific overrides for standalone edit page */
+        body {
+            padding-bottom: calc(var(--spacing-xl) + var(--safe-area-bottom) + 5rem);
         }
     </style>
     <script>

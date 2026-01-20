@@ -1,7 +1,7 @@
 {% set current_group = namespace(value=None) %}
 {% for todo in todos %}
     {% if todo.section and todo.section != current_group.value %}
-        <div class="section-header" data-group-mode="{{ sort_mode }}" data-group-key="{{ todo.group_key or '' }}" style="display: flex; align-items: center; gap: 0.5rem;">
+        <div class="section-header" data-group-mode="{{ sort_mode }}" data-group-key="{{ todo.group_key or '' }}">
             <span>
                 {% if sort_mode == 'topic' %}
                     {{ t.topic }}: {{ todo.section }}
@@ -10,7 +10,7 @@
                 {% endif %}
             </span>
             {% if sort_mode in ['topic', 'location'] %}
-            <div class="group-actions" style="display: inline-flex; gap: 0.35rem;">
+            <div class="group-actions">
                 <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'today', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.today }}">📅</a>
                 <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'tomorrow', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.tomorrow }}">➡️</a>
                 <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'weekend', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.next_weekend }}">🏖️</a>
@@ -21,7 +21,11 @@
         {% set current_group.value = todo.section %}
     {% endif %}
     
-    <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" data-marker="{{ todo.marker or '' }}" onclick="openEditModal({{ todo.line_index }})" style="cursor: pointer;">
+    <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" data-marker="{{ todo.marker or '' }}" onclick="openEditModal({{ todo.line_index }})">
+        <!-- Swipe indicators (populated by JS) -->
+        <span class="swipe-indicator swipe-indicator-left">✓</span>
+        <span class="swipe-indicator swipe-indicator-right">📅</span>
+        
         <a href="javascript:void(0)" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="toggleTodo(event, {{ todo.line_index }})">
             {% if todo.done %}☑{% else %}☐{% endif %}
         </a>
@@ -59,7 +63,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="actions" style="margin-left: auto; display: flex; gap: 0.5rem;">
+        <div class="actions">
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'today')" title="{{ t.today }}">📅</a>
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow')" title="{{ t.tomorrow }}">➡️</a>
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'weekend')" title="{{ t.next_weekend }}">🏖️</a>
