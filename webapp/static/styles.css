@@ -734,10 +734,11 @@ button, a, .checkbox, .filter-link, .todo-item {
 
 /* Mobile: Convert modal to bottom sheet */
 @media screen and (max-width: 600px) {
-    .modal {
+    .modal[style*="display: block"],
+    .modal.visible {
+        display: flex;
         padding-top: 0;
         background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
         align-items: flex-end;
     }
     

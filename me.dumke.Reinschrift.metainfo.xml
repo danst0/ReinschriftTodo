@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.17.1" date="2026-01-20">
+      <description>
+        <ul>
+          <li>Fix modals appearing on page load in mobile view</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.17.0" date="2026-01-20">
       <description>
         <ul>
