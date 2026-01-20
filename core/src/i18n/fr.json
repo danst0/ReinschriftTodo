@@ -124,6 +124,8 @@
   "key_today": "Échéance aujourd'hui",
   "key_tomorrow": "Échéance demain",
   "key_sometimes": "Échéance un jour",
+  "key_weekend": "Échéance ce week-end",
+  "key_week": "Échéance la semaine prochaine",
   "about": "À propos",
   "version": "Version",
   "developer": "Développeur",

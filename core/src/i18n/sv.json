@@ -124,6 +124,8 @@
   "key_today": "Förfaller idag",
   "key_tomorrow": "Förfaller imorgon",
   "key_sometimes": "Förfaller när som helst",
+  "key_weekend": "Förfaller i helgen",
+  "key_week": "Förfaller nästa vecka",
   "about": "Om",
   "version": "Version",
   "developer": "Utvecklare",

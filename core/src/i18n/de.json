@@ -124,6 +124,8 @@
   "key_today": "Fällig heute",
   "key_tomorrow": "Fällig morgen",
   "key_sometimes": "Fällig irgendwann",
+  "key_weekend": "Fällig am Wochenende",
+  "key_week": "Fällig in einer Woche",
   "about": "Über",
   "version": "Version",
   "developer": "Entwickler",

@@ -124,6 +124,8 @@
   "key_today": "今日が期限",
   "key_tomorrow": "明日が期限",
   "key_sometimes": "いつか期限",
+  "key_weekend": "週末が期限",
+  "key_week": "来週が期限",
   "about": "情報",
   "version": "バージョン",
   "developer": "開発者",

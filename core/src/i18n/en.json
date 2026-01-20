@@ -122,6 +122,8 @@
   "key_today": "Due today",
   "key_tomorrow": "Due tomorrow",
   "key_sometimes": "Due sometimes",
+  "key_weekend": "Due this weekend",
+  "key_week": "Due next week",
   "about": "About",
   "version": "Version",
   "developer": "Developer",

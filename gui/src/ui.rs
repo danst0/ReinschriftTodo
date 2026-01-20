@@ -295,6 +295,62 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
 
     let list_view = create_list_view(&state);
     *state.list_view.borrow_mut() = Some(list_view.clone());
+
+    // Add keyboard controller to skip headers when navigating
+    let nav_controller = gtk::EventControllerKey::new();
+    let nav_state = Rc::clone(&state);
+    nav_controller.connect_key_pressed(move |_, keyval, _, _| {
+        if keyval != gdk::Key::Up && keyval != gdk::Key::Down {
+            return glib::Propagation::Proceed;
+        }
+
+        let Some(list_view) = nav_state.list_view.borrow().as_ref().cloned() else {
+            return glib::Propagation::Proceed;
+        };
+        let Some(model) = list_view.model() else {
+            return glib::Propagation::Proceed;
+        };
+        let Ok(selection) = model.downcast::<gtk::SingleSelection>() else {
+            return glib::Propagation::Proceed;
+        };
+
+        let current = selection.selected();
+        let n_items = nav_state.store.n_items();
+        if n_items == 0 {
+            return glib::Propagation::Proceed;
+        }
+
+        let direction: i32 = if keyval == gdk::Key::Up { -1 } else { 1 };
+        let start = if current == gtk::INVALID_LIST_POSITION {
+            if direction > 0 { 0 } else { n_items - 1 }
+        } else {
+            (current as i32 + direction) as u32
+        };
+
+        // Find next non-header item
+        let mut pos = start;
+        loop {
+            if pos >= n_items {
+                return glib::Propagation::Stop; // At end
+            }
+            if let Some(obj) = nav_state.store.item(pos) {
+                if let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
+                    let entry = boxed.borrow::<ListEntry>();
+                    if matches!(&*entry, ListEntry::Item(_)) {
+                        selection.set_selected(pos);
+                        list_view.scroll_to(pos, gtk::ListScrollFlags::NONE, None);
+                        return glib::Propagation::Stop;
+                    }
+                }
+            }
+            pos = (pos as i32 + direction) as u32;
+            if direction < 0 && pos as i32 == -1 {
+                return glib::Propagation::Stop; // At beginning
+            }
+        }
+    });
+    list_view.add_controller(nav_controller);
+
     let scrolled = gtk::ScrolledWindow::builder()
         .child(&list_view)
         .vexpand(true)
@@ -534,18 +590,20 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                     let _ = state.toggle_item(&todo, !todo.done);
                     glib::Propagation::Stop
                 }
-                _ if unicode == Some('t') || unicode == Some('T') => {
+                _ if unicode == Some('h') || unicode == Some('H') => {
                     let _ = state.set_due_today(&todo);
                     glib::Propagation::Stop
                 }
-                _ if unicode == Some('+') || unicode == Some('*') || unicode == Some('=') || 
-                     keyval == gdk::Key::plus || keyval == gdk::Key::KP_Add || 
-                     keyval == gdk::Key::asterisk || keyval == gdk::Key::KP_Multiply => {
+                _ if unicode == Some('m') || unicode == Some('M') => {
                     let _ = state.set_due_tomorrow(&todo);
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('w') || unicode == Some('W') => {
                     let _ = state.set_due_weekend(&todo);
+                    glib::Propagation::Stop
+                }
+                _ if unicode == Some('l') || unicode == Some('L') => {
+                    let _ = state.set_due_in_days(&todo, 7);
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('s') || unicode == Some('S') => {
@@ -1152,8 +1210,10 @@ impl AppState {
             ("key_nav", "↑ / ↓"),
             ("key_toggle", "Space"),
             ("key_edit", "Enter"),
-            ("key_today", "t"),
-            ("key_tomorrow", "+"),
+            ("key_today", "h"),
+            ("key_tomorrow", "m"),
+            ("key_weekend", "w"),
+            ("key_week", "l"),
             ("key_sometimes", "s"),
         ];
 

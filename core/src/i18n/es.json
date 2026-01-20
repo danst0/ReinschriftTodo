@@ -71,6 +71,8 @@
   "key_today": "Vence hoy",
   "key_tomorrow": "Vence mañana",
   "key_sometimes": "Vence algún momento",
+  "key_weekend": "Vence este fin de semana",
+  "key_week": "Vence la próxima semana",
   "about": "Acerca de",
   "version": "Versión",
   "developer": "Desarrollador",
