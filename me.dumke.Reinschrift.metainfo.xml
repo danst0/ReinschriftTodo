@@ -39,6 +39,16 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.16.9" date="2026-01-20">
+      <description>
+        <ul>
+          <li>Webapp: Auto-save changes in todo details modal as fields are edited</li>
+          <li>Webapp: Save changes when closing modal by clicking outside</li>
+          <li>Webapp: Cancel/X button reverts to original state (discards auto-saves)</li>
+          <li>Webapp: Added visual save status indicator</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.16.5" date="2026-01-18">
       <description>
         <ul>

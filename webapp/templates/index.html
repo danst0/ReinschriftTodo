@@ -21,6 +21,10 @@
         .tag.recurrence { color: #0b6c6a; background: #e5f4f2; display: inline-flex; align-items: center; gap: 4px; }
         .tag.note { color: #6e4aa1; background: #f2edff; }
         .due { color: #c01c28; font-weight: 500; }
+        .save-status { font-size: 0.8em; margin-left: 10px; font-weight: normal; }
+        .save-status.saving { color: #666; }
+        .save-status.saved { color: #4CAF50; }
+        .save-status.error { color: #f44336; }
         .add-form { display: flex; margin-bottom: 2rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); border-radius: 8px; }
         .add-form input { flex-grow: 1; padding: 0.8rem; border: 1px solid #ddd; border-right: none; border-radius: 8px 0 0 8px; font-size: 1rem; outline: none; }
         .add-form input:focus { border-color: #3584e4; }
@@ -166,8 +170,8 @@
     <!-- Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>{{ t.edit_todo }}</h2>
+            <span class="close" onclick="cancelModal()">&times;</span>
+            <h2>{{ t.edit_todo }} <span id="saveStatus" class="save-status"></span></h2>
             <form id="editForm" method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
@@ -228,7 +232,7 @@
                     <button type="submit" id="btn-save-main" class="btn-primary">{{ t.save }}</button>
                     <button type="button" id="btn-close-comment" class="btn-secondary" onclick="showCommentField()">{{ t.close_with_comment }}</button>
                     <button type="button" id="btn-delete" class="btn-secondary" style="color: #e01b24;" onclick="deleteTodoFromModal()" title="{{ t.delete }}">🗑️</button>
-                    <button type="button" class="btn-secondary" onclick="closeModal()">{{ t.cancel }}</button>
+                    <button type="button" class="btn-secondary" onclick="cancelModal()">{{ t.cancel }}</button>
                 </div>
             </form>
         </div>
@@ -358,7 +362,7 @@
         <a href="{{ url_for('logout') }}" style="color: #999; text-decoration: none; padding: 1rem; display: inline-block;">{{ t.logout }}</a>
         
         <div style="margin-top: 2rem; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; padding-top: 1rem;">
-            <p><strong>Reinschrift</strong> v0.14.3</p>
+            <p><strong>Reinschrift</strong> v0.16.9</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank" style="color: #999;">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -683,14 +687,7 @@
 
         document.getElementById('editForm').onsubmit = function(e) {
             e.preventDefault();
-            const formData = new FormData(this);
-            fetch(this.action, {
-                method: 'POST',
-                body: formData
-            }).then(() => {
-                closeModal();
-                autoReload();
-            });
+            saveModalData(true); // Save and close
         };
 
         document.getElementById('editForm').addEventListener('keydown', function(e) {
@@ -820,6 +817,124 @@
             addForm.action = addUrl.toString();
         }
 
+        // Auto-save state
+        let autoSaveTimeout = null;
+        let isSaving = false;
+        let hasUnsavedChanges = false;
+        let originalTodoData = null; // Store original state for cancel/revert
+
+        // Debounced auto-save function
+        function autoSaveModal() {
+            clearTimeout(autoSaveTimeout);
+            hasUnsavedChanges = true;
+
+            autoSaveTimeout = setTimeout(() => {
+                saveModalData(false); // false = don't close modal after save
+            }, 1000); // Wait 1 second after last edit
+        }
+
+        // Save modal data function
+        function saveModalData(closeAfter = true) {
+            if (isSaving) return;
+
+            const form = document.getElementById('editForm');
+            const formData = new FormData(form);
+
+            isSaving = true;
+            updateSaveStatus('saving');
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest' // Signal AJAX request
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Save failed');
+                return response.json();
+            })
+            .then(data => {
+                hasUnsavedChanges = false;
+                isSaving = false;
+                updateSaveStatus('saved');
+
+                // Update originalTodoData to reflect the saved state
+                if (originalTodoData) {
+                    const form = document.getElementById('editForm');
+                    originalTodoData.title = form.querySelector('#edit-title').value;
+                    originalTodoData.projects = form.querySelector('#edit-projects').value.split(' ').map(p => p.replace(/^\+/, '')).filter(p => p);
+                    originalTodoData.contexts = form.querySelector('#edit-contexts').value.split(' ').map(c => c.replace(/^@/, '')).filter(c => c);
+                    originalTodoData.note = form.querySelector('#edit-note').value;
+                    originalTodoData.due = form.querySelector('#edit-due').value;
+                    originalTodoData.recurrence = form.querySelector('#edit-recurrence').value;
+                    originalTodoData.reference = form.querySelector('#edit-reference').value;
+                    originalTodoData.done = form.querySelector('#edit-done').checked;
+                }
+
+                // Refresh the todo list to show changes
+                autoReload();
+
+                if (closeAfter) {
+                    setTimeout(() => closeModal(false), 300);
+                }
+            })
+            .catch(error => {
+                isSaving = false;
+                updateSaveStatus('error');
+                console.error('Auto-save error:', error);
+            });
+        }
+
+        // Update save status indicator
+        function updateSaveStatus(status) {
+            const indicator = document.getElementById('saveStatus');
+            if (!indicator) return;
+
+            switch(status) {
+                case 'saving':
+                    indicator.textContent = '💾 Saving...';
+                    indicator.className = 'save-status saving';
+                    break;
+                case 'saved':
+                    indicator.textContent = '✓ Saved';
+                    indicator.className = 'save-status saved';
+                    setTimeout(() => {
+                        indicator.textContent = '';
+                    }, 2000);
+                    break;
+                case 'error':
+                    indicator.textContent = '⚠ Error saving';
+                    indicator.className = 'save-status error';
+                    break;
+            }
+        }
+
+        // Attach auto-save listeners to form fields
+        function attachAutoSaveListeners() {
+            const form = document.getElementById('editForm');
+            const fields = form.querySelectorAll('input:not([type="submit"]), textarea, select');
+
+            fields.forEach(field => {
+                // Skip the comment field and CSRF token
+                if (field.name === 'comment' || field.name === 'csrf_token') {
+                    return;
+                }
+
+                // For text inputs and textareas, debounce on input
+                if (field.type === 'text' || field.tagName === 'TEXTAREA') {
+                    field.addEventListener('input', autoSaveModal);
+                }
+                // For checkboxes, selects, and date inputs, save immediately
+                else if (field.type === 'checkbox' || field.tagName === 'SELECT' || field.type === 'datetime-local') {
+                    field.addEventListener('change', () => {
+                        clearTimeout(autoSaveTimeout);
+                        saveModalData(false);
+                    });
+                }
+            });
+        }
+
         function openEditModal(lineIndex) {
             fetch('/api/todo/' + lineIndex)
                 .then(response => response.json())
@@ -828,7 +943,10 @@
                         alert('{{ t.error_loading }} ' + data.error);
                         return;
                     }
-                    
+
+                    // Store original data for potential revert on cancel
+                    originalTodoData = JSON.parse(JSON.stringify(data));
+
                     document.getElementById('edit-title').value = data.title;
                     // Format projects with + prefix, space-separated
                     const projects = data.projects || [];
@@ -844,10 +962,16 @@
                     document.getElementById('btn-close-comment').style.display = data.done ? 'none' : 'inline-block';
                     document.getElementById('btn-save-main').style.display = 'inline-block';
                     document.getElementById('comment-section').style.display = 'none';
-                    
+
                     document.getElementById('editForm').action = '/edit/' + lineIndex;
-                    
+
                     modal.style.display = "block";
+                    document.getElementById('edit-title').focus();
+
+                    // Reset auto-save state and attach listeners
+                    hasUnsavedChanges = false;
+                    clearTimeout(autoSaveTimeout);
+                    attachAutoSaveListeners();
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -855,13 +979,91 @@
                 });
         }
 
-        function closeModal() {
+        function closeModal(saveFirst = true) {
+            // If saveFirst is false (Cancel button), close immediately without saving
+            if (!saveFirst) {
+                modal.style.display = "none";
+                document.getElementById('comment-section').style.display = 'none';
+                document.getElementById('btn-close-comment').style.display = 'inline-block';
+                document.getElementById('btn-save-main').style.display = 'inline-block';
+                document.getElementById('edit-note').value = '';
+                document.getElementById('edit-comment').value = '';
+                hasUnsavedChanges = false;
+                clearTimeout(autoSaveTimeout);
+                return;
+            }
+
+            // If there are unsaved changes, save first
+            if (hasUnsavedChanges && !isSaving) {
+                saveModalData(true); // true = close after save
+                return;
+            }
+
+            // If currently saving, wait for it to complete
+            if (isSaving) {
+                setTimeout(() => closeModal(saveFirst), 100);
+                return;
+            }
+
+            // Close immediately if no unsaved changes
             modal.style.display = "none";
             document.getElementById('comment-section').style.display = 'none';
             document.getElementById('btn-close-comment').style.display = 'inline-block';
             document.getElementById('btn-save-main').style.display = 'inline-block';
             document.getElementById('edit-note').value = '';
             document.getElementById('edit-comment').value = '';
+            hasUnsavedChanges = false;
+            clearTimeout(autoSaveTimeout);
+        }
+
+        function cancelModal() {
+            // If no changes were made, just close
+            if (!hasUnsavedChanges && !isSaving) {
+                closeModal(false);
+                return;
+            }
+
+            // If there are auto-saved changes, revert to original state
+            if (originalTodoData) {
+                const form = document.getElementById('editForm');
+                const formData = new FormData();
+
+                formData.append('csrf_token', form.querySelector('[name="csrf_token"]').value);
+                formData.append('title', originalTodoData.title || '');
+                formData.append('projects', originalTodoData.projects ? originalTodoData.projects.map(p => `+${p}`).join(' ') : '');
+                formData.append('contexts', originalTodoData.contexts ? originalTodoData.contexts.map(c => `@${c}`).join(' ') : '');
+                formData.append('note', originalTodoData.note || '');
+                formData.append('due', originalTodoData.due || '');
+                formData.append('recurrence', originalTodoData.recurrence || '');
+                formData.append('reference', originalTodoData.reference || '');
+                if (originalTodoData.done) {
+                    formData.append('done', 'on');
+                }
+
+                // Save original data to revert auto-saved changes
+                isSaving = true;
+                updateSaveStatus('saving');
+
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(() => {
+                    isSaving = false;
+                    autoReload(); // Refresh list
+                    closeModal(false); // Close without additional save
+                })
+                .catch(error => {
+                    isSaving = false;
+                    console.error('Revert error:', error);
+                    closeModal(false); // Close anyway
+                });
+            } else {
+                closeModal(false);
+            }
         }
 
         function deleteTodoFromModal() {
@@ -940,7 +1142,7 @@
             const now = new Date();
             let targetDate = new Date();
             let targetTime;
-            
+
             if (offset === 0) {
                 // Smart "Today" logic: at least 4 hours from now
                 const currentHour = now.getHours();
@@ -955,11 +1157,14 @@
                 targetDate.setDate(now.getDate() + offset);
                 targetTime = '12:00';
             }
-            
+
             const yyyy = targetDate.getFullYear();
             const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
             const dd = String(targetDate.getDate()).padStart(2, '0');
             dateInput.value = `${yyyy}-${mm}-${dd}T${targetTime}`;
+
+            // Trigger auto-save after setting date
+            saveModalData(false);
         }
 
         function setModalNextWeekend() {
@@ -968,7 +1173,7 @@
             const now = new Date();
             const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
             let daysUntilSaturday;
-            
+
             if (dayOfWeek === 6) {
                 // Today is Saturday, go to next Saturday
                 daysUntilSaturday = 7;
@@ -979,20 +1184,26 @@
                 // Monday-Friday: days until this Saturday
                 daysUntilSaturday = 6 - dayOfWeek;
             }
-            
+
             const targetDate = new Date(now);
             targetDate.setDate(now.getDate() + daysUntilSaturday);
-            
+
             const yyyy = targetDate.getFullYear();
             const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
             const dd = String(targetDate.getDate()).padStart(2, '0');
             dateInput.value = `${yyyy}-${mm}-${dd}T12:00`;
+
+            // Trigger auto-save after setting date
+            saveModalData(false);
         }
 
         function setModalSometime() {
             const dateInput = document.getElementById('edit-due');
             if (!dateInput) return;
             dateInput.value = `9999-12-31T00:00`;
+
+            // Trigger auto-save after setting date
+            saveModalData(false);
         }
 
         // Close modal when clicking outside

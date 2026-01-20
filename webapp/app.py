@@ -1032,14 +1032,20 @@ def set_language(lang):
 @app.route('/edit/<int:line_index>', methods=['GET', 'POST'])
 def edit(line_index):
     if 'logged_in' not in session:
+        # For AJAX requests, return JSON error
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Not logged in'}), 401
         return redirect(url_for('login'))
-    
+
     content = read_content()
     lines = content.splitlines()
-    
+
     if line_index >= len(lines):
+        # For AJAX requests, return JSON error
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Invalid line index'}), 400
         return redirect(url_for('index'))
-        
+
     if request.method == 'POST':
         title = request.form.get('title')
         comment = request.form.get('comment')
@@ -1106,31 +1112,49 @@ def edit(line_index):
             new_line += completion_str
 
         new_line += f" ^{marker}"
-            
-        lines[line_index] = new_line
-        write_content('\n'.join(lines) + '\n')
 
-        if recurrence and recurrence.strip() and not was_done and done:
-            base_due = due_dt
-            next_due = next_due_date(base_due, recurrence.strip())
-            if next_due:
-                clone_title = title.strip()
-                new_rec_line = "- [ ] " + clone_title
-                for project in projects:
-                    new_rec_line += f" +{project}"
-                for context in contexts:
-                    new_rec_line += f" @{context}"
-                new_rec_line += f" due:{format_due(next_due)}"
-                new_rec_line += f" rec:{recurrence.strip()}"
-                if reference and reference.strip():
-                    new_rec_line += f" [[{reference.strip()}]]"
+        try:
+            lines[line_index] = new_line
+            write_content('\n'.join(lines) + '\n')
 
-                if note_value:
-                    new_rec_line += f' ~note:"{escape_note(note_value)}"'
-                new_rec_line += f" ^{generate_marker()}"
-                insert_line(new_rec_line)
-        
-        return redirect(url_for('index'))
+            if recurrence and recurrence.strip() and not was_done and done:
+                base_due = due_dt
+                next_due = next_due_date(base_due, recurrence.strip())
+                if next_due:
+                    clone_title = title.strip()
+                    new_rec_line = "- [ ] " + clone_title
+                    for project in projects:
+                        new_rec_line += f" +{project}"
+                    for context in contexts:
+                        new_rec_line += f" @{context}"
+                    new_rec_line += f" due:{format_due(next_due)}"
+                    new_rec_line += f" rec:{recurrence.strip()}"
+                    if reference and reference.strip():
+                        new_rec_line += f" [[{reference.strip()}]]"
+
+                    if note_value:
+                        new_rec_line += f' ~note:"{escape_note(note_value)}"'
+                    new_rec_line += f" ^{generate_marker()}"
+                    insert_line(new_rec_line)
+
+            # For AJAX requests, return JSON success
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'success': True,
+                    'line_index': line_index,
+                    'message': 'Saved successfully'
+                })
+
+            # For regular form submissions, redirect as before
+            return redirect(url_for('index'))
+
+        except Exception as e:
+            # For AJAX requests, return JSON error
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'error': str(e)}), 500
+
+            # For regular submissions, show error page
+            return f"Error saving todo: {str(e)}", 500
     
     # GET request
     line = lines[line_index]
