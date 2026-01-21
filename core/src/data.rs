@@ -506,7 +506,7 @@ fn parse_due(text: &str) -> Option<NaiveDateTime> {
     Some(NaiveDateTime::new(date, time))
 }
 
-fn parse_line(line: &str, line_index: usize) -> Option<TodoItem> {
+pub(crate) fn parse_line(line: &str, line_index: usize) -> Option<TodoItem> {
     let trimmed = line.trim_start();
     let (done, rest) = if let Some(body) = trimmed.strip_prefix("- [x]") {
         (true, body.trim())
@@ -563,7 +563,7 @@ fn capture_token(regex: &Regex, text: &str) -> Option<String> {
         .and_then(|caps| caps.get(1).map(|m| m.as_str().trim().to_string()))
 }
 
-fn extract_title(rest: &str) -> String {
+pub(crate) fn extract_title(rest: &str) -> String {
     const MARKERS: [&str; 16] = [" +", " @", " due:", " rec:", " [[", " ✅", " ^", " ~note:", "+", "@", "due:", "rec:", "[[", "✅", "^", "~note:"];
     let mut cut = rest.len();
     for marker in MARKERS {
@@ -640,7 +640,7 @@ fn delete_line(key: &TodoKey) -> Result<()> {
     Ok(())
 }
 
-fn rewrite_line(line: &str, done: bool) -> Result<String> {
+pub(crate) fn rewrite_line(line: &str, done: bool) -> Result<String> {
     let mut updated = line.to_string();
     let has_checked = updated.contains("- [x]") || updated.contains("- [X]");
     let has_unchecked = updated.contains("- [ ]");
@@ -702,7 +702,7 @@ pub fn next_due_date(current_due: Option<NaiveDateTime>, rule: &str) -> Option<N
     Some(NaiveDateTime::new(next, time))
 }
 
-fn render_line(item: &TodoItem) -> Result<String> {
+pub(crate) fn render_line(item: &TodoItem) -> Result<String> {
     let title = item.title.trim();
     if title.is_empty() {
         bail!(t("title_empty_error"));
@@ -775,7 +775,7 @@ fn generate_marker() -> String {
     encoded
 }
 
-fn encode_base36(mut value: u128) -> String {
+pub(crate) fn encode_base36(mut value: u128) -> String {
     const ALPHABET: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
     if value == 0 {
         return "0".to_string();
@@ -890,7 +890,7 @@ fn apply_completion_marker(line: &str, done: bool) -> String {
     }
 }
 
-fn rewrite_due(line: &str, new_due: NaiveDateTime) -> Result<String> {
+pub(crate) fn rewrite_due(line: &str, new_due: NaiveDateTime) -> Result<String> {
     let segment = format!("due:{}", new_due.format("%Y-%m-%dT%H:%M"));
     if DUE_RE.is_match(line) {
         Ok(DUE_RE.replace(line, segment).to_string())

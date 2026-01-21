@@ -418,6 +418,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c87e182de0887fd5361989c677c4e8f5000cd9491d6d563161a8f3a5519fc7f"
 
 [[package]]
+name = "diff"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
+
+[[package]]
 name = "displaydoc"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1641,6 +1647,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pretty_assertions"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ae130e2f271fbc2ac3a40fb1d07180839cdbbe443c7a27e1e3c13c5cac0116d"
+dependencies = [
+ "diff",
+ "yansi",
+]
+
+[[package]]
 name = "prettyplease"
 version = "0.2.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1798,33 +1814,37 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "reinschrift-cli"
-version = "0.16.9"
+version = "0.17.2"
 dependencies = [
  "anyhow",
  "chrono",
  "clap",
  "colored",
+ "pretty_assertions",
  "reinschrift-core",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
 name = "reinschrift-core"
-version = "0.16.9"
+version = "0.17.2"
 dependencies = [
  "anyhow",
  "chrono",
  "once_cell",
+ "pretty_assertions",
  "regex",
  "reqwest",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
 name = "reinschrift-gui"
-version = "0.16.9"
+version = "0.17.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3044,6 +3064,12 @@ name = "writeable"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
+
+[[package]]
+name = "yansi"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 
 [[package]]
 name = "yoke"

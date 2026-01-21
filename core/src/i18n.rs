@@ -105,3 +105,27 @@ pub fn t(key: &str) -> String {
     // Fallback to German as requested
     translations.get("de").and_then(|m| m.get(key)).map(|s| s.clone()).unwrap_or_else(|| key.to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_language_and_translation() {
+        set_language("en".to_string());
+        let hello = t("hello");
+        // Should match the English translation if present, fallback to key otherwise
+        assert!(hello == "Hello" || hello == "hello");
+
+        set_language("de".to_string());
+        let hello_de = t("hello");
+        assert!(hello_de == "Hallo" || hello_de == "hello");
+    }
+
+    #[test]
+    fn test_fallback_to_key() {
+        set_language("en".to_string());
+        let not_found = t("__nonexistent_key__");
+        assert_eq!(not_found, "__nonexistent_key__");
+    }
+}

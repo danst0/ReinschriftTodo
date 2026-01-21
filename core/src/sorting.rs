@@ -89,3 +89,81 @@ pub fn compare_option_datetime(a: Option<NaiveDateTime>, b: Option<NaiveDateTime
 pub fn lexical_order(a: &str, b: &str) -> Ordering {
     a.to_ascii_lowercase().cmp(&b.to_ascii_lowercase())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::TodoItem;
+    use chrono::{NaiveDate, NaiveDateTime};
+
+    fn make_item(title: &str, project: Option<&str>, context: Option<&str>, due: Option<NaiveDateTime>) -> TodoItem {
+        TodoItem {
+            key: crate::data::TodoKey { line_index: 0, marker: None },
+            title: title.to_string(),
+            projects: project.map(|p| vec![p.to_string()]).unwrap_or_default(),
+            contexts: context.map(|c| vec![c.to_string()]).unwrap_or_default(),
+            due,
+            reference: None,
+            recurrence: None,
+            note: None,
+            done: false,
+        }
+    }
+
+    #[test]
+    fn test_sort_mode_from_index_and_key() {
+        assert_eq!(SortMode::from_index(0), SortMode::Topic);
+        assert_eq!(SortMode::from_index(1), SortMode::Location);
+        assert_eq!(SortMode::from_index(2), SortMode::Date);
+        assert_eq!(SortMode::from_key("topic"), SortMode::Topic);
+        assert_eq!(SortMode::from_key("location"), SortMode::Location);
+        assert_eq!(SortMode::from_key("date"), SortMode::Date);
+    }
+
+    #[test]
+    fn test_compare_by_project() {
+        let a = make_item("A", Some("work"), None, None);
+        let b = make_item("B", Some("home"), None, None);
+        assert_eq!(compare_by_project(&a, &b), "work".cmp("home"));
+    }
+
+    #[test]
+    fn test_compare_by_context() {
+        let a = make_item("A", None, Some("office"), None);
+        let b = make_item("B", None, Some("home"), None);
+        assert_eq!(compare_by_context(&a, &b), "office".cmp("home"));
+    }
+
+    #[test]
+    fn test_compare_by_due() {
+        let dt1 = NaiveDate::from_ymd_opt(2026, 1, 20).unwrap().and_hms_opt(9, 0, 0).unwrap();
+        let dt2 = NaiveDate::from_ymd_opt(2026, 1, 21).unwrap().and_hms_opt(9, 0, 0).unwrap();
+        let a = make_item("A", Some("work"), None, Some(dt1));
+        let b = make_item("B", Some("work"), None, Some(dt2));
+        assert_eq!(compare_by_due(&a, &b), dt1.cmp(&dt2));
+    }
+
+    #[test]
+    fn test_compare_option_str() {
+        assert_eq!(compare_option_str(Some("a"), Some("b")), "a".cmp("b"));
+        assert_eq!(compare_option_str(Some("a"), None), std::cmp::Ordering::Less);
+        assert_eq!(compare_option_str(None, Some("b")), std::cmp::Ordering::Greater);
+        assert_eq!(compare_option_str(None, None), std::cmp::Ordering::Equal);
+    }
+
+    #[test]
+    fn test_compare_option_datetime() {
+        let dt1 = NaiveDate::from_ymd_opt(2026, 1, 20).unwrap().and_hms_opt(9, 0, 0).unwrap();
+        let dt2 = NaiveDate::from_ymd_opt(2026, 1, 21).unwrap().and_hms_opt(9, 0, 0).unwrap();
+        assert_eq!(compare_option_datetime(Some(dt1), Some(dt2)), dt1.cmp(&dt2));
+        assert_eq!(compare_option_datetime(Some(dt1), None), std::cmp::Ordering::Greater);
+        assert_eq!(compare_option_datetime(None, Some(dt2)), std::cmp::Ordering::Less);
+        assert_eq!(compare_option_datetime(None, None), std::cmp::Ordering::Equal);
+    }
+
+    #[test]
+    fn test_lexical_order_case_insensitive() {
+        assert_eq!(lexical_order("abc", "ABC"), std::cmp::Ordering::Equal);
+        assert_eq!(lexical_order("abc", "abd"), std::cmp::Ordering::Less);
+    }
+}

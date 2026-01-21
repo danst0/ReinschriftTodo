@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cargo test -p reinschrift-core
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+  echo "\nERROR: Tests failed. Commit aborted."
+  exit 1
+fi
+
+
 if [[ "${SKIP_CARGO_CHECK:-0}" == "1" ]]; then
   echo "Skipping cargo check (SKIP_CARGO_CHECK=1)"
   exit 0
@@ -11,3 +19,5 @@ cd "$repo_root"
 
 echo "Running cargo check..."
 cargo check --locked --workspace --quiet
+
+
