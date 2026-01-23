@@ -1,0 +1,13 @@
+# Development dependencies for Reinschrift webapp
+-r requirements.txt
+
+# Testing
+pytest>=7.0
+pytest-cov>=4.0
+
+# Type checking
+mypy>=1.0
+types-requests
+
+# Code quality
+ruff>=0.1.0

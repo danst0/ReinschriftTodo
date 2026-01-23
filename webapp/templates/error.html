@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang or 'en' }}">
+<head>
+    <title>Error - Reinschrift</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#3584e4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="header-container">
+        <h1>Error</h1>
+    </div>
+
+    <div style="padding: 2rem; text-align: center;">
+        <p style="font-size: 1.2rem; color: #e01b24;">{{ error }}</p>
+        <a href="{{ url_for('main.index') }}" class="btn-primary" style="display: inline-block; margin-top: 1rem; text-decoration: none;">
+            {{ t.get('cancel', 'Back') if t else 'Back' }}
+        </a>
+    </div>
+</body>
+</html>

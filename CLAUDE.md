@@ -112,8 +112,21 @@ COMMANDS:
 ### Web Application (Flask)
 ```bash
 cd webapp
+
+# Docker deployment
 docker-compose up --build
 # Access at http://localhost:5000
+
+# Local development
+python run.py
+# Or: flask run
+
+# Run tests
+pip install -r requirements-dev.txt
+pytest tests/ -v
+
+# Type checking
+mypy app/
 ```
 
 ### Git Hooks Setup
@@ -173,9 +186,57 @@ Modular design with focused responsibilities:
 
 ### Web App (webapp/)
 
-- **app.py**: Flask server with form-based and OIDC authentication
-- **templates/**: Jinja2 templates for todo list, editor, login
-- **static/**: CSS, JS, favicon
+Modular Flask application with proper separation of concerns:
+
+```
+webapp/
+├── app/
+│   ├── __init__.py          # Flask app factory
+│   ├── config.py            # Configuration classes
+│   ├── extensions.py        # Flask extensions (CSRF, OAuth)
+│   ├── exceptions.py        # Custom exception classes
+│   ├── models/
+│   │   └── todo.py          # TodoItem dataclass, regex patterns
+│   ├── services/
+│   │   ├── parser.py        # parse_line, extract_title
+│   │   ├── storage.py       # read/write (local + WebDAV)
+│   │   ├── todo_service.py  # CRUD operations
+│   │   ├── date_service.py  # Date calculations, next_due_date
+│   │   ├── sorting.py       # Sort key functions
+│   │   └── ai_service.py    # AI parsing, context building
+│   ├── routes/
+│   │   ├── main.py          # Index, language
+│   │   ├── auth.py          # Login, OIDC
+│   │   ├── todo.py          # Toggle, postpone, edit, delete
+│   │   └── api.py           # JSON API endpoints
+│   └── utils/
+│       ├── markers.py       # generate_marker
+│       ├── escaping.py      # escape/unescape_note
+│       └── helpers.py       # parse_flag, format helpers
+├── static/
+│   ├── css/styles.css
+│   └── js/
+│       ├── app.js           # Main entry point
+│       └── modules/         # ES6 modules (api, modal, etc.)
+├── templates/               # Jinja2 templates
+├── tests/                   # pytest test suite
+├── run.py                   # Entry point
+├── app.py                   # Legacy entry point (deprecated)
+├── requirements.txt
+└── pyproject.toml           # Project configuration
+```
+
+**Key Services:**
+- **parser.py**: Regex patterns matching Rust core, parse_line, extract_title
+- **storage.py**: Unified storage abstraction (local + WebDAV)
+- **todo_service.py**: load_todos, toggle_todo, add_todo, delete_todo
+- **ai_service.py**: Ollama/LLM integration for natural language parsing
+
+**Routes (Blueprints):**
+- `main_bp`: Index view, language selection
+- `auth_bp`: Login (form + OIDC), logout
+- `todo_bp`: Toggle, postpone, edit, delete, add
+- `api_bp`: JSON endpoints (/api/todo, /api/parse, /api/add)
 
 ## Markdown Todo Format
 

@@ -94,27 +94,27 @@
     </div>
     
     <div class="filters" style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: center;">
-          <a href="{{ url_for('index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" 
+          <a href="{{ url_for('main.index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" 
               class="filter-link {% if show_done %}active{% endif %}" onclick="applyFilter(event, this.href)">
               {% if show_done %}☑ {{ t.show_done }}{% else %}☐ {{ t.show_done }}{% endif %}
           </a>
         
-          <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=0 if show_due_only else 1, sort_mode=sort_mode) }}"
+          <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=0 if show_due_only else 1, sort_mode=sort_mode) }}"
               class="filter-link {% if show_due_only %}active{% endif %}" onclick="applyFilter(event, this.href)">
               {% if show_due_only %}☑ {{ t.hide_future }}{% else %}☐ {{ t.hide_future }}{% endif %}
           </a>
 
           <span style="color: #ccc;">|</span>
 
-        <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='topic') }}"
+        <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='topic') }}"
            class="filter-link {% if sort_mode == 'topic' %}active{% endif %}" onclick="applyFilter(event, this.href)">
            {{ t.topic }}
         </a>
-        <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='location') }}"
+        <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='location') }}"
            class="filter-link {% if sort_mode == 'location' %}active{% endif %}" onclick="applyFilter(event, this.href)">
            {{ t.location }}
         </a>
-        <a href="{{ url_for('index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='date') }}"
+        <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='date') }}"
            class="filter-link {% if sort_mode == 'date' %}active{% endif %}" onclick="applyFilter(event, this.href)">
            {{ t.date }}
         </a>
@@ -122,7 +122,7 @@
           <button type="button" class="refresh-button" onclick="manualReload()">↻ {{ t.reload }}</button>
     </div>
     
-    <form id="search-form" action="{{ url_for('index') }}" method="get" class="collapsible-form {% if q %}visible{% endif %}" style="gap: 0.5rem;">
+    <form id="search-form" action="{{ url_for('main.index') }}" method="get" class="collapsible-form {% if q %}visible{% endif %}" style="gap: 0.5rem;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" id="search-input" name="q" value="{{ q or '' }}" placeholder="{{ t.search_placeholder }}" style="flex-grow: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; outline: none;">
         <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
@@ -131,12 +131,12 @@
         <input type="hidden" name="auto_ai_on_add" value="{{ '1' if auto_ai_on_add else '0' }}">
         <button type="submit" style="padding: 0.5rem 1rem; background: #3584e4; color: white; border: none; border-radius: 6px; cursor: pointer;">{{ t.search_placeholder.strip('…') }}</button>
         {% if q %}
-            <a href="{{ url_for('index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}" 
+            <a href="{{ url_for('main.index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}" 
                style="padding: 0.5rem 1rem; background: #e0e0e0; color: #333; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: flex; align-items: center;">✕</a>
         {% endif %}
     </form>
 
-    <form id="addForm" class="add-form collapsible-form" action="{{ url_for('add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post" style="gap: 0;">
+    <form id="addForm" class="add-form collapsible-form" action="{{ url_for('todo.add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post" style="gap: 0;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" id="add-input" name="title" placeholder="{{ t.new_task }}" required>
         {% if not auto_ai_on_add %}
@@ -184,7 +184,7 @@
         <div class="modal-content">
             <span class="close" onclick="closeSettings()">&times;</span>
             <h2>{{ t.settings }}</h2>
-            <form id="settingsForm" method="get" action="{{ url_for('index') }}">
+            <form id="settingsForm" method="get" action="{{ url_for('main.index') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
                 <input type="hidden" name="show_due_only" value="{{ '1' if show_due_only else '0' }}">
@@ -220,14 +220,14 @@
 
     <div class="footer">
         <div class="lang-selector">
-            <a href="{{ url_for('set_language', lang='de') }}" title="Deutsch" class="lang-link {% if current_lang == 'de' %}active{% endif %}">🇩🇪</a>
-            <a href="{{ url_for('set_language', lang='en') }}" title="English" class="lang-link {% if current_lang == 'en' %}active{% endif %}">🇺🇸</a>
-            <a href="{{ url_for('set_language', lang='es') }}" title="Español" class="lang-link {% if current_lang == 'es' %}active{% endif %}">🇪🇸</a>
-            <a href="{{ url_for('set_language', lang='fr') }}" title="Français" class="lang-link {% if current_lang == 'fr' %}active{% endif %}">🇫🇷</a>
-            <a href="{{ url_for('set_language', lang='sv') }}" title="Svenska" class="lang-link {% if current_lang == 'sv' %}active{% endif %}">🇸🇪</a>
-            <a href="{{ url_for('set_language', lang='ja') }}" title="日本語" class="lang-link {% if current_lang == 'ja' %}active{% endif %}">🇯🇵</a>
+            <a href="{{ url_for('main.set_language', lang='de') }}" title="Deutsch" class="lang-link {% if current_lang == 'de' %}active{% endif %}">🇩🇪</a>
+            <a href="{{ url_for('main.set_language', lang='en') }}" title="English" class="lang-link {% if current_lang == 'en' %}active{% endif %}">🇺🇸</a>
+            <a href="{{ url_for('main.set_language', lang='es') }}" title="Español" class="lang-link {% if current_lang == 'es' %}active{% endif %}">🇪🇸</a>
+            <a href="{{ url_for('main.set_language', lang='fr') }}" title="Français" class="lang-link {% if current_lang == 'fr' %}active{% endif %}">🇫🇷</a>
+            <a href="{{ url_for('main.set_language', lang='sv') }}" title="Svenska" class="lang-link {% if current_lang == 'sv' %}active{% endif %}">🇸🇪</a>
+            <a href="{{ url_for('main.set_language', lang='ja') }}" title="日本語" class="lang-link {% if current_lang == 'ja' %}active{% endif %}">🇯🇵</a>
         </div>
-        <a href="{{ url_for('logout') }}" class="logout-link">{{ t.logout }}</a>
+        <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ t.logout }}</a>
         
         <div class="app-info">
             <p><strong>Reinschrift</strong> v0.17.1</p>
@@ -258,7 +258,7 @@
 
     <script>        // Move AI Logic to the top for better availability
         const SMART_ADD_TIMEOUT_MS = {{ ai_timeout_ms }};
-        const smartAddUrl = {{ url_for('parse_nlp') | tojson }};
+        const smartAddUrl = {{ url_for('api.api_parse_nlp') | tojson }};
         const csrfToken = {{ csrf_token() | tojson }};
         const autoAiOnAdd = {{ 'true' if auto_ai_on_add else 'false' }};
         const autoAiOnAddFlag = autoAiOnAdd === true || autoAiOnAdd === 'true';
@@ -580,7 +580,7 @@
                 const addForm = document.getElementById('addForm');
                 
                 if (searchInput && searchInput.value) {
-                    window.location.href = "{{ url_for('index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}";
+                    window.location.href = "{{ url_for('main.index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}";
                 } else {
                     if (searchForm.classList.contains('visible')) toggleSearch();
                     if (addForm.classList.contains('visible')) toggleAdd();

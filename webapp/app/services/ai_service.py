@@ -1,0 +1,325 @@
+"""AI parsing service for natural language todo input."""
+
+import json
+import logging
+import os
+from datetime import datetime, timedelta
+from typing import Optional, Any
+
+import requests
+from flask import current_app
+
+from app.services.todo_service import load_todos
+from app.services.date_service import recent_window_bounds
+
+logger = logging.getLogger(__name__)
+
+RECENT_CONTEXT_WINDOW_DAYS = 30
+
+
+def collect_recent_context(todos: list, window_days: int = RECENT_CONTEXT_WINDOW_DAYS) -> dict[str, Any]:
+    """Collect context from recent todos for AI prompts.
+
+    Args:
+        todos: List of all todos.
+        window_days: Number of days to look back.
+
+    Returns:
+        Context dictionary with topics, locations, and recent todos.
+    """
+    today, window_start = recent_window_bounds(window_days)
+
+    # Convert to date for comparison
+    window_start_date = window_start.date()
+
+    open_todos = [t for t in todos if not (t.done if hasattr(t, 'done') else t.get('done'))]
+    recent_closed = []
+
+    for t in todos:
+        if hasattr(t, 'done'):
+            is_done = t.done
+            done_date = t.done_date.date() if t.done_date else None
+            raw_line = t.raw_line
+        else:
+            is_done = t.get('done')
+            dd = t.get('done_date')
+            done_date = dd.date() if isinstance(dd, datetime) else dd
+            raw_line = t.get('raw_line', '')
+
+        if is_done and done_date and done_date >= window_start_date:
+            recent_closed.append(t)
+
+    all_relevant = open_todos + recent_closed
+
+    # Extract topics (projects) and locations (contexts)
+    topics = set()
+    locations = set()
+    for t in all_relevant:
+        if hasattr(t, 'projects'):
+            topics.update(p for p in t.projects if p)
+            locations.update(c for c in t.contexts if c)
+        else:
+            topics.update(p for p in t.get('projects', []) if p)
+            locations.update(c for c in t.get('contexts', []) if c)
+
+    recent_full_text = []
+    for t in recent_closed:
+        if hasattr(t, 'raw_line'):
+            if t.raw_line:
+                recent_full_text.append(t.raw_line.strip())
+        elif t.get('raw_line'):
+            recent_full_text.append(t['raw_line'].strip())
+
+    return {
+        'today': today,
+        'window_start': window_start,
+        'topics': sorted(topics),
+        'locations': sorted(locations),
+        'recent_todos': recent_full_text,
+    }
+
+
+def build_context_reminders(context: dict[str, Any], window_days: int = RECENT_CONTEXT_WINDOW_DAYS) -> str:
+    """Build context reminder text for AI prompts.
+
+    Args:
+        context: Context dictionary from collect_recent_context.
+        window_days: Window size in days.
+
+    Returns:
+        Formatted reminder text.
+    """
+    sections = []
+
+    # Skip closed todos - they make the prompt too long
+
+    topics = context.get('topics') or []
+    if topics:
+        sections.append("Existing projects: " + ", ".join(topics))
+
+    locations = context.get('locations') or []
+    if locations:
+        sections.append("Existing contexts: " + ", ".join(locations))
+
+    if not sections:
+        return ""
+
+    return "\n\nPrefer these tags: " + ". ".join(sections) + "."
+
+
+def _get_llm_config() -> dict[str, Any]:
+    """Get LLM configuration."""
+    app_config = {}
+
+    # Try to load from config.json
+    config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config.json')
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r') as f:
+                app_config = json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            logger.error("Error loading config.json: %s", e)
+
+    # Get from Flask config or environment
+    if current_app:
+        base_url = current_app.config.get('OLLAMA_URL') or app_config.get('llm_url', "http://10.0.2.71:11434/api/generate")
+        model = current_app.config.get('OLLAMA_MODEL') or app_config.get('llm_model', 'llama3.1:8b')
+    else:
+        base_url = os.environ.get('OLLAMA_URL') or app_config.get('llm_url', "http://10.0.2.71:11434/api/generate")
+        model = os.environ.get('OLLAMA_MODEL') or app_config.get('llm_model', 'llama3.1:8b')
+
+    # Construct Chat API URL
+    if "/api/generate" in base_url:
+        chat_url = base_url.replace("/api/generate", "/api/chat")
+    else:
+        chat_url = base_url.rstrip('/') + "/api/chat"
+
+    return {
+        'chat_url': chat_url,
+        'model': model,
+    }
+
+
+def parse_nlp(text: str) -> Optional[dict[str, Any]]:
+    """Parse natural language input into structured todo data.
+
+    Args:
+        text: Natural language input text.
+
+    Returns:
+        Parsed data dictionary or None if parsing fails or input is rejected.
+    """
+    if not text:
+        logger.warning("NLP Parse: No text provided")
+        return None
+
+    logger.info("NLP Parse Request: %s", text)
+
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    weekday = now.strftime("%A")
+
+    todos = load_todos()
+    recent_context = collect_recent_context(todos, window_days=RECENT_CONTEXT_WINDOW_DAYS)
+
+    config = _get_llm_config()
+
+    system_prompt = (
+        f"Parse todo items. Today: {weekday}, {today}.\n\n"
+        "TASK: Extract structured data from input OR reject if not actionable.\n\n"
+        "VALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\n"
+        "INVALID: speculative thoughts ('ich glaube vielleicht...'), observations, questions, chat.\n\n"
+        "OUTPUT JSON (all keys required):\n"
+        "{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\n"
+        "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use exact existing case.\n\n"
+        "Example: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\n"
+        "Example: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}"
+    )
+
+    reminder_block = build_context_reminders(recent_context, window_days=RECENT_CONTEXT_WINDOW_DAYS)
+    if reminder_block:
+        system_prompt += "\n\n" + reminder_block
+
+    try:
+        logger.info("Sending request to Ollama (%s) with model %s", config['chat_url'], config['model'])
+        logger.debug("System prompt:\n%s", system_prompt)
+        logger.debug("User input: %s", text)
+
+        response = requests.post(config['chat_url'], json={
+            "model": config['model'],
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text}
+            ],
+            "stream": False,
+            "format": "json"
+        }, timeout=45)
+
+        logger.info("Ollama response status: %s", response.status_code)
+        if response.status_code != 200:
+            logger.error("Ollama Error Body: %s", response.text)
+
+        response.raise_for_status()
+        result = response.json()
+        raw_response = result['message']['content'].strip()
+        logger.info("Ollama raw response: %s", raw_response)
+
+        # Strip markdown code blocks if present
+        if raw_response.startswith("```"):
+            lines = raw_response.splitlines()
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            raw_response = "\n".join(lines).strip()
+
+        parsed = json.loads(raw_response)
+        logger.info("Parsed JSON: %s", parsed)
+
+        # Check if input was rejected as non-actionable
+        if parsed.get('rejected', False):
+            logger.info("Input rejected as non-actionable (not a todo/note)")
+            return None
+
+        # Check confidence threshold (80%)
+        confidence = parsed.get('confidence', 1.0)
+        if confidence < 0.8:
+            logger.info("Input rejected due to low confidence: %s", confidence)
+            return None
+
+        # Validate/fix keys
+        if 'title' not in parsed or not parsed['title']:
+            parsed['title'] = text
+        if 'note' not in parsed:
+            parsed['note'] = None
+        if 'due' not in parsed:
+            parsed['due'] = None
+        if 'contexts' not in parsed:
+            parsed['contexts'] = None
+        if 'projects' not in parsed:
+            parsed['projects'] = None
+
+        if parsed.get('note') == "":
+            parsed['note'] = None
+
+        # Normalize tag case to match existing tags
+        existing_projects = recent_context.get('topics') or []
+        existing_contexts = recent_context.get('locations') or []
+
+        # Handle projects - can be string (space-separated) or list
+        if parsed.get('projects'):
+            projects_input = parsed['projects']
+            if isinstance(projects_input, str):
+                projects = [p.strip().lstrip('+') for p in projects_input.split() if p.strip().lstrip('+')]
+            elif isinstance(projects_input, list):
+                projects = [p.strip().lstrip('+') for p in projects_input if p and p.strip().lstrip('+')]
+            else:
+                projects = []
+            # Normalize case
+            normalized_projects = []
+            for proj in projects:
+                matched = False
+                for existing in existing_projects:
+                    if existing.lower() == proj.lower():
+                        normalized_projects.append(existing)
+                        matched = True
+                        break
+                if not matched:
+                    normalized_projects.append(proj)
+            parsed['projects'] = normalized_projects
+        elif parsed.get('project'):
+            # Handle single project field
+            proj = parsed['project'].strip().lstrip('+')
+            matched_proj = proj
+            for existing in existing_projects:
+                if existing.lower() == proj.lower():
+                    matched_proj = existing
+                    break
+            parsed['projects'] = [matched_proj] if matched_proj else []
+
+        # Handle contexts - can be string (space-separated) or list
+        if parsed.get('contexts'):
+            contexts_input = parsed['contexts']
+            if isinstance(contexts_input, str):
+                contexts = [c.strip().lstrip('@') for c in contexts_input.split() if c.strip().lstrip('@')]
+            elif isinstance(contexts_input, list):
+                contexts = [c.strip().lstrip('@') for c in contexts_input if c and c.strip().lstrip('@')]
+            else:
+                contexts = []
+            # Normalize case
+            normalized_contexts = []
+            for ctx in contexts:
+                matched = False
+                for existing in existing_contexts:
+                    if existing.lower() == ctx.lower():
+                        normalized_contexts.append(existing)
+                        matched = True
+                        break
+                if not matched:
+                    normalized_contexts.append(ctx)
+            parsed['contexts'] = normalized_contexts
+        elif parsed.get('context'):
+            # Handle single context field
+            ctx = parsed['context'].strip().lstrip('@')
+            matched_ctx = ctx
+            for existing in existing_contexts:
+                if existing.lower() == ctx.lower():
+                    matched_ctx = existing
+                    break
+            parsed['contexts'] = [matched_ctx] if matched_ctx else []
+
+        # Remove internal fields from response
+        parsed.pop('rejected', None)
+        parsed.pop('confidence', None)
+
+        return parsed
+
+    except requests.RequestException as e:
+        logger.error("Ollama request error: %s", e)
+        return None
+    except json.JSONDecodeError as e:
+        logger.error("JSON decode error: %s", e)
+        return None
+    except Exception as e:
+        logger.error("Unexpected error in NLP parsing: %s", e, exc_info=True)
+        return None
