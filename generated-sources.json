@@ -561,6 +561,19 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
+        "url": "https://static.crates.io/crates/diff/diff-0.1.13.crate",
+        "sha256": "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8",
+        "dest": "cargo/vendor/diff-0.1.13"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": \"56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8\", \"files\": {}}",
+        "dest": "cargo/vendor/diff-0.1.13",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "archive",
+        "archive-type": "tar-gzip",
         "url": "https://static.crates.io/crates/displaydoc/displaydoc-0.2.5.crate",
         "sha256": "97369cbbc041bc366949bc74d34658d6cda5621039731c6310521892a3a20ae0",
         "dest": "cargo/vendor/displaydoc-0.2.5"
@@ -2090,6 +2103,19 @@
         "type": "inline",
         "contents": "{\"package\": \"85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9\", \"files\": {}}",
         "dest": "cargo/vendor/ppv-lite86-0.2.21",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "archive",
+        "archive-type": "tar-gzip",
+        "url": "https://static.crates.io/crates/pretty_assertions/pretty_assertions-1.4.1.crate",
+        "sha256": "3ae130e2f271fbc2ac3a40fb1d07180839cdbbe443c7a27e1e3c13c5cac0116d",
+        "dest": "cargo/vendor/pretty_assertions-1.4.1"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": \"3ae130e2f271fbc2ac3a40fb1d07180839cdbbe443c7a27e1e3c13c5cac0116d\", \"files\": {}}",
+        "dest": "cargo/vendor/pretty_assertions-1.4.1",
         "dest-filename": ".cargo-checksum.json"
     },
     {
@@ -3949,6 +3975,19 @@
         "type": "inline",
         "contents": "{\"package\": \"9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9\", \"files\": {}}",
         "dest": "cargo/vendor/writeable-0.6.2",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "archive",
+        "archive-type": "tar-gzip",
+        "url": "https://static.crates.io/crates/yansi/yansi-1.0.1.crate",
+        "sha256": "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049",
+        "dest": "cargo/vendor/yansi-1.0.1"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": \"cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049\", \"files\": {}}",
+        "dest": "cargo/vendor/yansi-1.0.1",
         "dest-filename": ".cargo-checksum.json"
     },
     {

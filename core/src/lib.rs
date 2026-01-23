@@ -1,7 +1,15 @@
+pub mod config;
 pub mod data;
 pub mod i18n;
+pub mod parser;
 pub mod preferences;
+pub mod renderer;
 pub mod sorting;
+pub mod storage;
+pub mod todo;
+pub mod types;
+pub mod util;
+pub mod webdav;
 
 pub use data::*;
 pub use i18n::t;
@@ -10,8 +18,7 @@ pub use sorting::*;
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+	use chrono::NaiveDate;
 
 	#[test]
 	fn test_parse_line_basic() {

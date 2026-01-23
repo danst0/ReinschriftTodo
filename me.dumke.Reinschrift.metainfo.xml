@@ -39,6 +39,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.17.3" date="2026-01-23">
+      <description>
+        <ul>
+          <li>Refactor: Split monolithic data.rs into focused modules (types, config, webdav, storage, parser, renderer, todo, util)</li>
+          <li>Code quality: Eliminated duplicate construct_url and Nextcloud fallback logic</li>
+          <li>Code quality: Shared FIELD_MARKERS constant across parser and renderer</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.17.2" date="2026-01-20">
       <description>
         <ul>
@@ -46,6 +55,7 @@
         </ul>
       </description>
     </release>
+    <release version="0.17.1" date="2026-01-20">
       <description>
         <ul>
           <li>Fix modals appearing on page load in mobile view</li>
