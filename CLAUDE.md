@@ -19,10 +19,19 @@ reinschrift/
 ├── core/                   # Shared library (reinschrift-core)
 │   ├── Cargo.toml
 │   └── src/
-│       ├── lib.rs          # Re-exports
-│       ├── data.rs         # Data handling, file I/O, WebDAV
+│       ├── lib.rs          # Module declarations and re-exports
+│       ├── data.rs         # Backward-compatible re-exports from modules
+│       ├── types.rs        # TodoItem, TodoKey, DEFAULT_DUE_TIME
+│       ├── config.rs       # BackendConfig, path management
+│       ├── webdav.rs       # WebDAV client operations
+│       ├── storage.rs      # Unified read/write abstraction
+│       ├── parser.rs       # Regex patterns, parse_line, extract_title
+│       ├── renderer.rs     # render_line, rewrite_line, rewrite_due
+│       ├── todo.rs         # Business logic (load, toggle, add, delete)
+│       ├── util.rs         # String helpers, marker generation
 │       ├── i18n.rs         # Internationalization
 │       ├── sorting.rs      # Sorting functions
+│       ├── preferences.rs  # User preferences
 │       └── i18n/           # Translation JSON files
 ├── gui/                    # GTK application (reinschrift-gui)
 │   ├── Cargo.toml
@@ -116,10 +125,34 @@ git config core.hooksPath .githooks
 
 ### Core Library (core/)
 
-- **data.rs**: Markdown parsing, file I/O, WebDAV sync
-  - Regex-based parsing for: +projects, @contexts, due:dates, ^IDs, rec:recurrence, ~note:"text"
-  - File fingerprinting for change detection
-  - `TodoItem` and `TodoKey` structs with Serialize support
+Modular design with focused responsibilities:
+
+- **types.rs**: Core data structures
+  - `TodoItem`, `TodoKey` structs with Serialize support
+  - `DEFAULT_DUE_TIME` constant
+- **config.rs**: Configuration management
+  - `BackendConfig` enum (Local/WebDav)
+  - Path management (`todo_path`, `set_todo_path`)
+- **webdav.rs**: WebDAV client operations
+  - URL construction, Nextcloud fallback logic
+  - `test_webdav_connection`, read/write operations
+- **storage.rs**: Unified storage abstraction
+  - `read_content`, `write_content`, `get_fingerprint`
+  - Dispatches to local filesystem or WebDAV
+- **parser.rs**: Markdown parsing
+  - Regex patterns for: +projects, @contexts, due:dates, ^IDs, rec:recurrence, ~note:"text"
+  - `parse_line`, `extract_title`, `find_line_by_marker`
+- **renderer.rs**: Line rendering
+  - `render_line`, `rewrite_line`, `rewrite_due`
+  - Completion marker handling
+- **todo.rs**: Business logic
+  - `load_todos`, `toggle_todo`, `add_todo`, `delete_todo`
+  - Due date operations (`set_due_today/tomorrow/weekend/sometime`)
+  - `next_due_date` for recurrence
+- **util.rs**: String utilities
+  - `generate_marker`, `encode_base36`
+  - Note escaping/unescaping, token normalization
+- **data.rs**: Backward-compatible re-exports from all modules
 - **i18n.rs**: Translations (de, en, es, fr, ja, sv) with German fallback
   - Environment-based language detection (LANGUAGE, LC_ALL, LANG)
 - **sorting.rs**: `SortMode` enum and sorting functions
