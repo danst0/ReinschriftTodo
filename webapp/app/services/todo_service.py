@@ -371,3 +371,75 @@ def postpone_todo(line_index: int, target: str) -> bool:
     lines[line_index] = new_line
     write_content('\n'.join(lines) + '\n')
     return True
+
+
+def postpone_todos_batch(line_indexes: list[int], target: str) -> dict:
+    """Postpone multiple todos to a new date in a single operation.
+
+    This avoids WebDAV locking issues by doing a single read-modify-write cycle.
+
+    Args:
+        line_indexes: List of line indexes to postpone.
+        target: Postpone target ('today', 'tomorrow', 'weekend', 'sometime').
+
+    Returns:
+        Dict with 'updated' count and 'failed' list of indexes that couldn't be updated.
+    """
+    from app.services.date_service import calculate_postpone_date
+
+    content = read_content()
+    lines = content.splitlines()
+
+    new_datetime, _ = calculate_postpone_date(target)
+    updated = 0
+    failed = []
+
+    for line_index in line_indexes:
+        if line_index >= len(lines):
+            failed.append(line_index)
+            continue
+
+        line = lines[line_index]
+        item = parse_line(line, line_index)
+        if not item:
+            failed.append(line_index)
+            continue
+
+        original_line = lines[line_index]
+        marker = ensure_marker(item.marker)
+
+        new_line = "- [x] " if item.done else "- [ ] "
+        new_line += item.title.strip()
+
+        for project in item.projects:
+            project_clean = normalize_prefix(project, '+')
+            if project_clean:
+                new_line += f" +{project_clean}"
+
+        for context in item.contexts:
+            context_clean = normalize_prefix(context, '@')
+            if context_clean:
+                new_line += f" @{context_clean}"
+
+        new_line += f" due:{format_due(new_datetime)}"
+
+        if item.reference and item.reference.strip():
+            new_line += f" [[{item.reference.strip()}]]"
+
+        if item.note:
+            new_line += f' ~note:"{escape_note(item.note)}"'
+
+        if item.done:
+            match = COMPLETION_RE.search(original_line)
+            if match:
+                new_line += match.group(0)
+
+        new_line += f" ^{marker}"
+
+        lines[line_index] = new_line
+        updated += 1
+
+    if updated > 0:
+        write_content('\n'.join(lines) + '\n')
+
+    return {'updated': updated, 'failed': failed}

@@ -9,6 +9,7 @@ from app.services import (
     add_todo,
     update_todo_by_marker,
     parse_nlp,
+    postpone_todos_batch,
 )
 from app.services.ai_service import parse_nlp_with_debug
 from app.utils.helpers import format_due
@@ -131,3 +132,35 @@ def api_parse_debug():
 
     result = parse_nlp_with_debug(text)
     return jsonify(result)
+
+
+@api_bp.route('/postpone-batch', methods=['POST'])
+@csrf.exempt
+@require_login_json
+def api_postpone_batch():
+    """Postpone multiple todos in a single operation.
+
+    Expects JSON: {"line_indexes": [0, 1, 2], "target": "tomorrow"}
+    Returns: {"ok": true, "updated": 3, "failed": []}
+    """
+    data = request.get_json(silent=True) or {}
+    line_indexes = data.get('line_indexes', [])
+    target = data.get('target', '')
+
+    if not line_indexes:
+        return jsonify({'error': 'No line indexes provided'}), 400
+
+    if not target:
+        return jsonify({'error': 'No target provided'}), 400
+
+    valid_targets = ('today', 'tomorrow', 'weekend', 'sometime')
+    if target not in valid_targets:
+        return jsonify({'error': f'Invalid target. Must be one of: {valid_targets}'}), 400
+
+    try:
+        line_indexes = [int(idx) for idx in line_indexes]
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid line indexes'}), 400
+
+    result = postpone_todos_batch(line_indexes, target)
+    return jsonify({'ok': True, **result})

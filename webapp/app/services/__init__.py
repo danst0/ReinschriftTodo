@@ -43,6 +43,7 @@ from app.services.todo_service import (
     update_todo_by_marker,
     handle_toggle_with_recurrence,
     postpone_todo,
+    postpone_todos_batch,
 )
 
 from app.services.ai_service import (
@@ -86,6 +87,7 @@ __all__ = [
     'update_todo_by_marker',
     'handle_toggle_with_recurrence',
     'postpone_todo',
+    'postpone_todos_batch',
     # AI
     'parse_nlp',
     'collect_recent_context',

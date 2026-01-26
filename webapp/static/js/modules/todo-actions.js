@@ -79,13 +79,17 @@ export async function postponeGroup(event, target, groupKey, groupMode) {
         btn.style.pointerEvents = 'none';
     }
 
-    const requests = matches
+    const lineIndexes = matches
         .map(item => item.dataset.lineIndex)
         .filter(Boolean)
-        .map(idx => fetchWithCsrf('/postpone/' + idx + '/' + target, { method: 'POST' }));
+        .map(idx => parseInt(idx, 10));
 
     try {
-        await Promise.all(requests);
+        await fetchWithCsrf('/api/postpone-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ line_indexes: lineIndexes, target: target })
+        });
     } catch (err) {
         console.error('Postpone group failed', err);
     } finally {
