@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.18.2" date="2026-01-26">
+      <description>
+        <ul>
+          <li>Add Ollama URL and model settings to preferences UI</li>
+          <li>AI configuration no longer requires environment variables</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.17.3" date="2026-01-23">
       <description>
         <ul>
