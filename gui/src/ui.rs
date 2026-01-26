@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::env;
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
@@ -1003,6 +1002,22 @@ impl AppState {
         self.preferences.borrow().ai_timeout_secs
     }
 
+    fn ollama_url(&self) -> String {
+        self.preferences
+            .borrow()
+            .ollama_url
+            .clone()
+            .unwrap_or_else(|| "http://localhost:11434".to_string())
+    }
+
+    fn ollama_model(&self) -> String {
+        self.preferences
+            .borrow()
+            .ollama_model
+            .clone()
+            .unwrap_or_else(|| "llama3.1:8b".to_string())
+    }
+
     fn mark_recently_updated(self: &Rc<Self>, marker: String) {
         {
             let mut slot = self.recently_updated.borrow_mut();
@@ -1356,6 +1371,28 @@ impl AppState {
         ai_timeout_row.set_activatable_widget(Some(&ai_timeout_spin));
         general_group.add(&ai_timeout_row);
 
+        let ollama_url_row = adw::EntryRow::builder()
+            .title(&t("ollama_url"))
+            .text(&self.ollama_url())
+            .build();
+        ollama_url_row.set_tooltip_text(Some(&t("ollama_url_desc")));
+        let state_ollama_url = Rc::clone(self);
+        ollama_url_row.connect_changed(move |row| {
+            state_ollama_url.set_ollama_url(row.text().to_string());
+        });
+        general_group.add(&ollama_url_row);
+
+        let ollama_model_row = adw::EntryRow::builder()
+            .title(&t("ollama_model"))
+            .text(&self.ollama_model())
+            .build();
+        ollama_model_row.set_tooltip_text(Some(&t("ollama_model_desc")));
+        let state_ollama_model = Rc::clone(self);
+        ollama_model_row.connect_changed(move |row| {
+            state_ollama_model.set_ollama_model(row.text().to_string());
+        });
+        general_group.add(&ollama_model_row);
+
         // --- WebDAV Page ---
         let webdav_page = adw::PreferencesPage::builder()
             .title(&t("webdav"))
@@ -1674,6 +1711,30 @@ impl AppState {
         self.persist_preferences();
     }
 
+    fn set_ollama_url(&self, url: String) {
+        let value = if url.trim().is_empty() { None } else { Some(url) };
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.ollama_url == value {
+                return;
+            }
+            prefs.ollama_url = value;
+        }
+        self.persist_preferences();
+    }
+
+    fn set_ollama_model(&self, model: String) {
+        let value = if model.trim().is_empty() { None } else { Some(model) };
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.ollama_model == value {
+                return;
+            }
+            prefs.ollama_model = value;
+        }
+        self.persist_preferences();
+    }
+
     fn add_plain_and_notify(self: &Rc<Self>, title_text: &str, entry: &gtk::Entry) {
         match data::add_todo(title_text) {
             Ok(_) => {
@@ -1729,12 +1790,14 @@ impl AppState {
 
             let (known_projects, known_contexts) = state.collect_existing_tags();
             let timeout_secs = state.ai_timeout_secs();
+            let ollama_url = state.ollama_url();
+            let ollama_model = state.ollama_model();
             let original_for_parse = original.clone();
             let outcome = runtime
                 .spawn(async move {
                     tokio::time::timeout(
                         StdDuration::from_secs(timeout_secs),
-                        request_ai_parse(original_for_parse, known_projects, known_contexts),
+                        request_ai_parse(original_for_parse, known_projects, known_contexts, ollama_url, ollama_model),
                     )
                     .await
                 })
@@ -2991,17 +3054,14 @@ fn build_todo_from_ai(parsed: &AiParseResult, original_text: &str) -> data::Todo
     }
 }
 
-async fn request_ai_parse(text: String, known_projects: Vec<String>, known_contexts: Vec<String>) -> Result<AiParseResult> {
-    let base_url = env::var("OLLAMA_URL")
-        .unwrap_or_else(|_| "http://10.0.2.71:11434/api/generate".to_string());
-
-    let chat_url = if base_url.contains("/api/generate") {
-        base_url.replace("/api/generate", "/api/chat")
-    } else {
-        format!("{}/api/chat", base_url.trim_end_matches('/'))
-    };
-
-    let model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "llama3.1:8b".to_string());
+async fn request_ai_parse(
+    text: String,
+    known_projects: Vec<String>,
+    known_contexts: Vec<String>,
+    ollama_url: String,
+    ollama_model: String,
+) -> Result<AiParseResult> {
+    let chat_url = format!("{}/api/chat", ollama_url.trim_end_matches('/'));
 
     let projects_str = if known_projects.is_empty() {
         String::new()
@@ -3036,7 +3096,7 @@ async fn request_ai_parse(text: String, known_projects: Vec<String>, known_conte
     );
 
     let payload = serde_json::json!({
-        "model": model,
+        "model": ollama_model,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": text},

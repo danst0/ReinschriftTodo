@@ -143,5 +143,9 @@
   "lang_pt": "Portuguese",
   "lang_ru": "Russian",
   "lang_tr": "Turkish",
-  "lang_sv": "Swedish"
+  "lang_sv": "Swedish",
+  "ollama_model": "AI Model",
+  "ollama_model_desc": "Ollama model name (e.g., mistral:7b, llama3.1:8b)",
+  "ollama_url": "Ollama URL",
+  "ollama_url_desc": "Ollama server address (e.g., http://localhost:11434)"
 }

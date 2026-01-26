@@ -130,5 +130,9 @@
   "version": "バージョン",
   "developer": "開発者",
   "website": "ウェブサイト",
-  "license": "ライセンス"
+  "license": "ライセンス",
+  "ollama_model": "AIモデル",
+  "ollama_model_desc": "Ollamaモデル名 (例: mistral:7b, llama3.1:8b)",
+  "ollama_url": "Ollama URL",
+  "ollama_url_desc": "Ollamaサーバーアドレス (例: http://localhost:11434)"
 }

@@ -145,5 +145,9 @@
   "lang_pt": "Portugiesisch",
   "lang_ru": "Russisch",
   "lang_tr": "Türkisch",
-  "lang_sv": "Schwedisch"
+  "lang_sv": "Schwedisch",
+  "ollama_model": "KI-Modell",
+  "ollama_model_desc": "Ollama-Modellname (z.B. mistral:7b, llama3.1:8b)",
+  "ollama_url": "Ollama-URL",
+  "ollama_url_desc": "Ollama-Serveradresse (z.B. http://localhost:11434)"
 }

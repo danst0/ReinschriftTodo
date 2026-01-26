@@ -130,5 +130,9 @@
   "version": "Version",
   "developer": "Développeur",
   "website": "Site web",
-  "license": "Licence"
+  "license": "Licence",
+  "ollama_model": "Modèle IA",
+  "ollama_model_desc": "Nom du modèle Ollama (ex. mistral:7b, llama3.1:8b)",
+  "ollama_url": "URL Ollama",
+  "ollama_url_desc": "Adresse du serveur Ollama (ex. http://localhost:11434)"
 }

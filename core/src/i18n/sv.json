@@ -130,5 +130,9 @@
   "version": "Version",
   "developer": "Utvecklare",
   "website": "Webbplats",
-  "license": "Licens"
+  "license": "Licens",
+  "ollama_model": "AI-modell",
+  "ollama_model_desc": "Ollama-modellnamn (t.ex. mistral:7b, llama3.1:8b)",
+  "ollama_url": "Ollama-URL",
+  "ollama_url_desc": "Ollama-serveradress (t.ex. http://localhost:11434)"
 }

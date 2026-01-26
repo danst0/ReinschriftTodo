@@ -130,5 +130,9 @@
   "use_this_method": "Usar este método",
   "webdav": "WebDAV",
   "webdav_conn_error": "Error de conexión WebDAV: {}",
-  "write_error": "No se pudo escribir {}"
+  "write_error": "No se pudo escribir {}",
+  "ollama_model": "Modelo de IA",
+  "ollama_model_desc": "Nombre del modelo Ollama (ej. mistral:7b, llama3.1:8b)",
+  "ollama_url": "URL de Ollama",
+  "ollama_url_desc": "Dirección del servidor Ollama (ej. http://localhost:11434)"
 }

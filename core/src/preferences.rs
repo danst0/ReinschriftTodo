@@ -44,6 +44,10 @@ pub struct Preferences {
     pub use_ai_on_new_topic: bool,
     #[serde(default = "default_ai_timeout_secs")]
     pub ai_timeout_secs: u64,
+    #[serde(default)]
+    pub ollama_url: Option<String>,
+    #[serde(default)]
+    pub ollama_model: Option<String>,
 }
 
 /// Returns the path to the shared preferences file.
