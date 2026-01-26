@@ -939,22 +939,35 @@ impl AppState {
     }
 
     fn collect_existing_tags(&self) -> (Vec<String>, Vec<String>) {
+        use std::collections::HashMap;
+
         let items = self.cached_items.borrow();
-        
-        let mut projects: Vec<String> = items
-            .iter()
-            .flat_map(|t| t.projects.iter().cloned())
-            .collect();
-        projects.sort();
-        projects.dedup();
-        
-        let mut contexts: Vec<String> = items
-            .iter()
-            .flat_map(|t| t.contexts.iter().cloned())
-            .collect();
-        contexts.sort();
-        contexts.dedup();
-        
+
+        // Count project frequencies
+        let mut project_counts: HashMap<String, usize> = HashMap::new();
+        for item in items.iter() {
+            for project in &item.projects {
+                *project_counts.entry(project.clone()).or_insert(0) += 1;
+            }
+        }
+
+        // Count context frequencies
+        let mut context_counts: HashMap<String, usize> = HashMap::new();
+        for item in items.iter() {
+            for context in &item.contexts {
+                *context_counts.entry(context.clone()).or_insert(0) += 1;
+            }
+        }
+
+        // Sort by frequency (descending) and take top 10
+        let mut projects: Vec<_> = project_counts.into_iter().collect();
+        projects.sort_by(|a, b| b.1.cmp(&a.1));
+        let projects: Vec<String> = projects.into_iter().take(10).map(|(k, _)| k).collect();
+
+        let mut contexts: Vec<_> = context_counts.into_iter().collect();
+        contexts.sort_by(|a, b| b.1.cmp(&a.1));
+        let contexts: Vec<String> = contexts.into_iter().take(10).map(|(k, _)| k).collect();
+
         (projects, contexts)
     }
 
@@ -2913,11 +2926,11 @@ fn format_metadata(item: &TodoItem) -> String {
     parts.join(" • ")
 }
 
-fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::TodoItem {
+fn build_todo_from_ai(parsed: &AiParseResult, original_text: &str) -> data::TodoItem {
     let title = parsed
         .title
         .as_deref()
-        .unwrap_or(fallback_title)
+        .unwrap_or(original_text)
         .trim()
         .to_string();
 
@@ -2943,12 +2956,8 @@ fn build_todo_from_ai(parsed: &AiParseResult, fallback_title: &str) -> data::Tod
         })
         .unwrap_or_default();
 
-    let note = parsed
-        .note
-        .as_deref()
-        .map(str::trim)
-        .filter(|n| !n.is_empty())
-        .map(|n| n.to_string());
+    // Always use original input text as note
+    let note = Some(original_text.trim().to_string());
 
     let due = parsed
         .due
@@ -3018,9 +3027,9 @@ async fn request_ai_parse(text: String, known_projects: Vec<String>, known_conte
         concat!(
             "Parse todo items. Today: {}. {}",
             "TASK: Extract structured data from input. ",
-            "OUTPUT JSON: {{\"title\": str, \"note\": str|null, \"due\": \"YYYY-MM-DD\"|null, \"context\": str, \"project\": str}} ",
+            "OUTPUT JSON: {{\"title\": str, \"due\": \"YYYY-MM-DD\"|null, \"context\": str, \"project\": str}} ",
             "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. Match existing tag case. ",
-            "Example: 'Kaufe morgen Milch' -> {{\"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}}"
+            "Example: 'Kaufe morgen Milch' -> {{\"title\": \"Kaufe Milch\", \"due\": \"2026-01-18\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}}"
         ),
         Local::now().format("%A, %Y-%m-%d"),
         history_hint

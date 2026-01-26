@@ -199,7 +199,6 @@ def build_minimal_prompt(today: str, weekday: str, projects: list[str], contexts
     prompt += '- due: date as "YYYY-MM-DDTHH:MM" or null\n'
     prompt += '- context: where/how (pick from list below)\n'
     prompt += '- project: topic (pick from list below)\n'
-    prompt += '- note: null\n'
 
     if projects:
         prompt += "Projects: " + ", ".join(projects) + "\n"
@@ -224,7 +223,7 @@ def build_system_prompt(today: str, weekday: str, todos: list, style: str = 'ver
         System prompt string.
     """
     if style == 'minimal':
-        top_projects, top_contexts = get_top_tags(todos, max_projects=5, max_contexts=5)
+        top_projects, top_contexts = get_top_tags(todos, max_projects=10, max_contexts=10)
         return build_minimal_prompt(today, weekday, top_projects, top_contexts)
     else:
         # For verbose, collect all tags from recent context
@@ -438,6 +437,9 @@ def parse_nlp(text: str) -> Optional[dict[str, Any]]:
         parsed.pop('rejected', None)
         parsed.pop('confidence', None)
 
+        # Auto-fill note with original input text
+        parsed['note'] = text
+
         return parsed
 
     except requests.RequestException as e:
@@ -650,9 +652,10 @@ def parse_nlp_with_debug(text: str) -> dict[str, Any]:
             parsed['contexts'] = [matched_ctx] if matched_ctx else []
 
         # Store full parsed result (keep rejected/confidence for debug)
+        # Auto-fill note with original input text
         debug_info['parsed_result'] = {
             'title': parsed.get('title'),
-            'note': parsed.get('note'),
+            'note': text,  # Always use original input as note
             'due': parsed.get('due'),
             'contexts': parsed.get('contexts', []),
             'projects': parsed.get('projects', []),
