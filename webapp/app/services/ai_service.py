@@ -193,16 +193,20 @@ def build_minimal_prompt(today: str, weekday: str, projects: list[str], contexts
     Returns:
         Minimal system prompt string (~200 tokens).
     """
-    prompt = f"Extract todo from text. Today: {weekday}, {today}.\n"
-    prompt += 'Return JSON: {"title":"<task>", "due":"YYYY-MM-DDTHH:MM"|null, "context":"<where>", "project":"<topic>", "note":null}\n'
-    prompt += 'Example: "Milch kaufen" -> {"title":"Milch kaufen", "due":null, "context":"einkaufen", "project":"Haushalt", "note":null}\n'
+    prompt = f"Parse the user's text into a todo. Today: {weekday}, {today}.\n"
+    prompt += 'Output JSON with these fields:\n'
+    prompt += '- title: the task from user input\n'
+    prompt += '- due: date as "YYYY-MM-DDTHH:MM" or null\n'
+    prompt += '- context: where/how (pick from list below)\n'
+    prompt += '- project: topic (pick from list below)\n'
+    prompt += '- note: null\n'
 
     if projects:
-        prompt += "Projects: " + " ".join(f"+{p}" for p in projects) + "\n"
+        prompt += "Projects: " + ", ".join(projects) + "\n"
     if contexts:
-        prompt += "Contexts: " + " ".join(f"@{c}" for c in contexts) + "\n"
+        prompt += "Contexts: " + ", ".join(contexts) + "\n"
 
-    prompt += 'Not a task? {"title":null}'
+    prompt += 'If not a task, return {"title":null}'
 
     return prompt
 
