@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 from typing import Optional, Any
 
@@ -323,3 +324,225 @@ def parse_nlp(text: str) -> Optional[dict[str, Any]]:
     except Exception as e:
         logger.error("Unexpected error in NLP parsing: %s", e, exc_info=True)
         return None
+
+
+def parse_nlp_with_debug(text: str) -> dict[str, Any]:
+    """Parse natural language input with full debug information.
+
+    Args:
+        text: Natural language input text.
+
+    Returns:
+        Debug dictionary containing:
+        - system_prompt: The full system prompt sent to LLM
+        - user_input: The original user text
+        - raw_response: The raw string response from Ollama
+        - parsed_result: The normalized/parsed result (or None)
+        - timing_ms: Request duration in milliseconds
+        - model: The model used
+        - endpoint: The API endpoint called
+        - rejected: Whether the input was rejected
+        - confidence: The confidence score (if available)
+        - error: Error message if something failed
+    """
+    debug_info = {
+        'system_prompt': None,
+        'user_input': text,
+        'raw_response': None,
+        'parsed_result': None,
+        'timing_ms': 0,
+        'model': None,
+        'endpoint': None,
+        'rejected': False,
+        'confidence': None,
+        'error': None,
+    }
+
+    if not text:
+        debug_info['error'] = 'No text provided'
+        return debug_info
+
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    weekday = now.strftime("%A")
+
+    todos = load_todos()
+    recent_context = collect_recent_context(todos, window_days=RECENT_CONTEXT_WINDOW_DAYS)
+
+    config = _get_llm_config()
+    debug_info['model'] = config['model']
+    debug_info['endpoint'] = config['chat_url']
+
+    system_prompt = (
+        f"Parse todo items. Today: {weekday}, {today}.\n\n"
+        "TASK: Extract structured data from input OR reject if not actionable.\n\n"
+        "VALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\n"
+        "INVALID: speculative thoughts ('ich glaube vielleicht...'), observations, questions, chat.\n\n"
+        "OUTPUT JSON (all keys required):\n"
+        "{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\n"
+        "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use exact existing case.\n\n"
+        "Example: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\n"
+        "Example: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}"
+    )
+
+    reminder_block = build_context_reminders(recent_context, window_days=RECENT_CONTEXT_WINDOW_DAYS)
+    if reminder_block:
+        system_prompt += "\n\n" + reminder_block
+
+    debug_info['system_prompt'] = system_prompt
+
+    start_time = time.time()
+
+    try:
+        response = requests.post(config['chat_url'], json={
+            "model": config['model'],
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text}
+            ],
+            "stream": False,
+            "format": "json"
+        }, timeout=45)
+
+        debug_info['timing_ms'] = int((time.time() - start_time) * 1000)
+
+        if response.status_code != 200:
+            debug_info['error'] = f"HTTP {response.status_code}: {response.text}"
+            return debug_info
+
+        result = response.json()
+        raw_response = result['message']['content'].strip()
+        debug_info['raw_response'] = raw_response
+
+        # Strip markdown code blocks if present
+        clean_response = raw_response
+        if clean_response.startswith("```"):
+            lines = clean_response.splitlines()
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            clean_response = "\n".join(lines).strip()
+
+        parsed = json.loads(clean_response)
+
+        # Capture rejection status and confidence before processing
+        debug_info['rejected'] = parsed.get('rejected', False)
+        debug_info['confidence'] = parsed.get('confidence')
+
+        # Check if input was rejected as non-actionable
+        if parsed.get('rejected', False):
+            debug_info['parsed_result'] = None
+            return debug_info
+
+        # Check confidence threshold (80%)
+        confidence = parsed.get('confidence', 1.0)
+        if confidence < 0.8:
+            debug_info['error'] = f"Low confidence: {confidence}"
+            debug_info['parsed_result'] = None
+            return debug_info
+
+        # Validate/fix keys
+        if 'title' not in parsed or not parsed['title']:
+            parsed['title'] = text
+        if 'note' not in parsed:
+            parsed['note'] = None
+        if 'due' not in parsed:
+            parsed['due'] = None
+        if 'contexts' not in parsed:
+            parsed['contexts'] = None
+        if 'projects' not in parsed:
+            parsed['projects'] = None
+
+        if parsed.get('note') == "":
+            parsed['note'] = None
+
+        # Normalize tag case to match existing tags
+        existing_projects = recent_context.get('topics') or []
+        existing_contexts = recent_context.get('locations') or []
+
+        # Handle projects - can be string (space-separated) or list
+        if parsed.get('projects'):
+            projects_input = parsed['projects']
+            if isinstance(projects_input, str):
+                projects = [p.strip().lstrip('+') for p in projects_input.split() if p.strip().lstrip('+')]
+            elif isinstance(projects_input, list):
+                projects = [p.strip().lstrip('+') for p in projects_input if p and p.strip().lstrip('+')]
+            else:
+                projects = []
+            # Normalize case
+            normalized_projects = []
+            for proj in projects:
+                matched = False
+                for existing in existing_projects:
+                    if existing.lower() == proj.lower():
+                        normalized_projects.append(existing)
+                        matched = True
+                        break
+                if not matched:
+                    normalized_projects.append(proj)
+            parsed['projects'] = normalized_projects
+        elif parsed.get('project'):
+            # Handle single project field
+            proj = parsed['project'].strip().lstrip('+')
+            matched_proj = proj
+            for existing in existing_projects:
+                if existing.lower() == proj.lower():
+                    matched_proj = existing
+                    break
+            parsed['projects'] = [matched_proj] if matched_proj else []
+
+        # Handle contexts - can be string (space-separated) or list
+        if parsed.get('contexts'):
+            contexts_input = parsed['contexts']
+            if isinstance(contexts_input, str):
+                contexts = [c.strip().lstrip('@') for c in contexts_input.split() if c.strip().lstrip('@')]
+            elif isinstance(contexts_input, list):
+                contexts = [c.strip().lstrip('@') for c in contexts_input if c and c.strip().lstrip('@')]
+            else:
+                contexts = []
+            # Normalize case
+            normalized_contexts = []
+            for ctx in contexts:
+                matched = False
+                for existing in existing_contexts:
+                    if existing.lower() == ctx.lower():
+                        normalized_contexts.append(existing)
+                        matched = True
+                        break
+                if not matched:
+                    normalized_contexts.append(ctx)
+            parsed['contexts'] = normalized_contexts
+        elif parsed.get('context'):
+            # Handle single context field
+            ctx = parsed['context'].strip().lstrip('@')
+            matched_ctx = ctx
+            for existing in existing_contexts:
+                if existing.lower() == ctx.lower():
+                    matched_ctx = existing
+                    break
+            parsed['contexts'] = [matched_ctx] if matched_ctx else []
+
+        # Store full parsed result (keep rejected/confidence for debug)
+        debug_info['parsed_result'] = {
+            'title': parsed.get('title'),
+            'note': parsed.get('note'),
+            'due': parsed.get('due'),
+            'contexts': parsed.get('contexts', []),
+            'projects': parsed.get('projects', []),
+        }
+
+        return debug_info
+
+    except requests.RequestException as e:
+        debug_info['timing_ms'] = int((time.time() - start_time) * 1000)
+        debug_info['error'] = f"Request error: {e}"
+        return debug_info
+    except json.JSONDecodeError as e:
+        debug_info['timing_ms'] = int((time.time() - start_time) * 1000)
+        debug_info['error'] = f"JSON decode error: {e}"
+        return debug_info
+    except Exception as e:
+        debug_info['timing_ms'] = int((time.time() - start_time) * 1000)
+        debug_info['error'] = f"Unexpected error: {e}"
+        return debug_info

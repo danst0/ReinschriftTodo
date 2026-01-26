@@ -44,6 +44,9 @@ class Config:
     OLLAMA_URL = os.environ.get('OLLAMA_URL')
     OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL')
 
+    # AI Debug mode (admin-only)
+    AI_DEBUG_ENABLED = os.environ.get('AI_DEBUG_ENABLED', 'false').lower() == 'true'
+
     # Logging
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
 

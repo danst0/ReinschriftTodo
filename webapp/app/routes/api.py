@@ -1,6 +1,6 @@
 """API routes blueprint - JSON endpoints."""
 
-from flask import Blueprint, request, session, jsonify
+from flask import Blueprint, request, session, jsonify, current_app
 
 from app.extensions import csrf
 from app.services import (
@@ -10,6 +10,7 @@ from app.services import (
     update_todo_by_marker,
     parse_nlp,
 )
+from app.services.ai_service import parse_nlp_with_debug
 from app.utils.helpers import format_due
 
 api_bp = Blueprint('api', __name__)
@@ -109,3 +110,24 @@ def api_improve():
         return jsonify({'error': 'Todo not found'}), 404
 
     return jsonify({'ok': True})
+
+
+@api_bp.route('/parse-debug', methods=['POST'])
+@require_login_json
+def api_parse_debug():
+    """Parse natural language input with full debug information.
+
+    Returns detailed debug info including system prompt, raw response,
+    timing, and parsed result. Only available when AI_DEBUG_ENABLED=true.
+    """
+    if not current_app.config.get('AI_DEBUG_ENABLED', False):
+        return jsonify({'error': 'Debug mode not enabled'}), 403
+
+    data = request.get_json()
+    text = data.get('text') if data else None
+
+    if not text:
+        return jsonify({'error': 'No text provided'}), 400
+
+    result = parse_nlp_with_debug(text)
+    return jsonify(result)

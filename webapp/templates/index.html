@@ -215,6 +215,12 @@
 
                 <button type="submit" class="btn-primary" style="width: 100%;">{{ t.save }}</button>
             </form>
+            {% if ai_debug_enabled %}
+            <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #ddd;">
+            <button type="button" class="btn-secondary" style="width: 100%; background: #6c5ce7; color: white;" onclick="openAiDebug()">
+                {{ t.ai_debug }}
+            </button>
+            {% endif %}
         </div>
     </div>
 
@@ -255,6 +261,71 @@
             </table>
         </div>
     </div>
+
+    {% if ai_debug_enabled %}
+    <!-- AI Debug Modal -->
+    <div id="aiDebugModal" class="modal">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <span class="close" onclick="closeAiDebug()">&times;</span>
+            <h2>{{ t.ai_debug_title }}</h2>
+
+            <div class="form-group">
+                <label for="ai-debug-input">{{ t.ai_debug_test_input }}</label>
+                <input type="text" id="ai-debug-input" placeholder="{{ t.new_task }}" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+
+            <button type="button" id="ai-debug-run-btn" class="btn-primary" style="width: 100%; margin-bottom: 1.5rem;" onclick="runAiDebug()">
+                <span class="btn-text">{{ t.ai_debug_run }}</span>
+                <span class="btn-spinner" style="display: none;">...</span>
+            </button>
+
+            <div id="ai-debug-results" style="display: none;">
+                <!-- Timing & Model Info -->
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; padding: 0.75rem; background: #f6f5f4; border-radius: 8px;">
+                    <div><strong>{{ t.ai_debug_timing }}:</strong> <span id="ai-debug-timing">-</span></div>
+                    <div><strong>{{ t.ai_debug_model }}:</strong> <span id="ai-debug-model">-</span></div>
+                    <div><strong>{{ t.ai_debug_rejected }}:</strong> <span id="ai-debug-rejected">-</span></div>
+                    <div><strong>{{ t.ai_debug_confidence }}:</strong> <span id="ai-debug-confidence">-</span></div>
+                </div>
+
+                <!-- Error (if any) -->
+                <div id="ai-debug-error-section" style="display: none; margin-bottom: 1rem; padding: 0.75rem; background: #ffe5e5; border-radius: 8px; border: 1px solid #e01b24;">
+                    <strong>{{ t.ai_debug_error }}:</strong> <span id="ai-debug-error"></span>
+                </div>
+
+                <!-- Endpoint -->
+                <details style="margin-bottom: 1rem;">
+                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_endpoint }}</summary>
+                    <pre id="ai-debug-endpoint" style="background: #f6f5f4; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap; word-break: break-all;">-</pre>
+                </details>
+
+                <!-- System Prompt -->
+                <details style="margin-bottom: 1rem;">
+                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_system_prompt }}</summary>
+                    <pre id="ai-debug-system-prompt" style="background: #f6f5f4; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">-</pre>
+                </details>
+
+                <!-- User Input -->
+                <details style="margin-bottom: 1rem;">
+                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_user_input }}</summary>
+                    <pre id="ai-debug-user-input" style="background: #f6f5f4; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap;">-</pre>
+                </details>
+
+                <!-- Raw Response -->
+                <details style="margin-bottom: 1rem;">
+                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_raw_response }}</summary>
+                    <pre id="ai-debug-raw-response" style="background: #f6f5f4; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">-</pre>
+                </details>
+
+                <!-- Parsed Result -->
+                <details open style="margin-bottom: 1rem;">
+                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_parsed_result }}</summary>
+                    <pre id="ai-debug-parsed-result" style="background: #e8f5e9; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap;">-</pre>
+                </details>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <script>        // Move AI Logic to the top for better availability
         const SMART_ADD_TIMEOUT_MS = {{ ai_timeout_ms }};
@@ -958,6 +1029,122 @@
             document.getElementById('cheatsheetModal').style.display = "none";
         }
 
+        {% if ai_debug_enabled %}
+        // AI Debug Panel Functions
+        const aiDebugUrl = '/api/parse-debug';
+
+        function openAiDebug() {
+            closeSettings();
+            const modal = document.getElementById('aiDebugModal');
+            if (modal) {
+                modal.style.display = 'block';
+                document.getElementById('ai-debug-input').focus();
+            }
+        }
+
+        function closeAiDebug() {
+            const modal = document.getElementById('aiDebugModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function runAiDebug() {
+            const input = document.getElementById('ai-debug-input');
+            const text = input ? input.value.trim() : '';
+            if (!text) return;
+
+            const btn = document.getElementById('ai-debug-run-btn');
+            const btnText = btn.querySelector('.btn-text');
+            const btnSpinner = btn.querySelector('.btn-spinner');
+
+            // Show loading state
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            btnSpinner.style.display = 'inline';
+
+            try {
+                const res = await fetch(aiDebugUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await res.json();
+
+                if (res.status === 403) {
+                    alert(data.error || 'Debug mode not enabled');
+                    return;
+                }
+
+                // Populate results
+                document.getElementById('ai-debug-results').style.display = 'block';
+
+                // Timing & Model
+                document.getElementById('ai-debug-timing').textContent = data.timing_ms ? `${data.timing_ms} {{ t.ai_debug_ms }}` : '-';
+                document.getElementById('ai-debug-model').textContent = data.model || '-';
+                document.getElementById('ai-debug-rejected').textContent = data.rejected ? 'Yes' : 'No';
+                document.getElementById('ai-debug-rejected').style.color = data.rejected ? '#e01b24' : '#2ec27e';
+                document.getElementById('ai-debug-confidence').textContent = data.confidence !== null ? data.confidence.toFixed(2) : '-';
+
+                // Error
+                const errorSection = document.getElementById('ai-debug-error-section');
+                if (data.error) {
+                    errorSection.style.display = 'block';
+                    document.getElementById('ai-debug-error').textContent = data.error;
+                } else {
+                    errorSection.style.display = 'none';
+                }
+
+                // Endpoint
+                document.getElementById('ai-debug-endpoint').textContent = data.endpoint || '-';
+
+                // System Prompt
+                document.getElementById('ai-debug-system-prompt').textContent = data.system_prompt || '-';
+
+                // User Input
+                document.getElementById('ai-debug-user-input').textContent = data.user_input || '-';
+
+                // Raw Response
+                document.getElementById('ai-debug-raw-response').textContent = data.raw_response || '-';
+
+                // Parsed Result
+                const parsedEl = document.getElementById('ai-debug-parsed-result');
+                if (data.parsed_result) {
+                    parsedEl.textContent = JSON.stringify(data.parsed_result, null, 2);
+                    parsedEl.style.background = '#e8f5e9';
+                } else {
+                    parsedEl.textContent = data.rejected ? '(Rejected as non-actionable)' : '(No result)';
+                    parsedEl.style.background = data.rejected ? '#fff3e0' : '#f6f5f4';
+                }
+
+            } catch (err) {
+                console.error('AI Debug error:', err);
+                alert('Error running AI debug: ' + (err.message || err));
+            } finally {
+                btn.disabled = false;
+                btnText.style.display = 'inline';
+                btnSpinner.style.display = 'none';
+            }
+        }
+
+        // Handle Enter key in debug input
+        document.addEventListener('DOMContentLoaded', function() {
+            const debugInput = document.getElementById('ai-debug-input');
+            if (debugInput) {
+                debugInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        runAiDebug();
+                    }
+                });
+            }
+        });
+        {% endif %}
+
         document.addEventListener('keydown', function(e) {
             // Ignore if inside input or textarea
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
@@ -973,6 +1160,7 @@
                 closeModal();
                 closeSettings();
                 closeCheatsheet();
+                {% if ai_debug_enabled %}closeAiDebug();{% endif %}
             } else if (!e.ctrlKey && !e.metaKey && e.key === 'n') {
                 e.preventDefault();
                 toggleAdd();

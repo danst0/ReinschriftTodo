@@ -1,7 +1,7 @@
 """Main routes blueprint - index, language selection."""
 
 from datetime import datetime
-from flask import Blueprint, render_template, redirect, url_for, session, request
+from flask import Blueprint, render_template, redirect, url_for, session, request, current_app
 
 from translations import TRANSLATIONS
 from app.services import (
@@ -184,7 +184,8 @@ def index():
                               auto_ai_on_add=auto_ai_on_add,
                               skip_delete_confirm=skip_delete_confirm,
                               ai_timeout_secs=ai_timeout_secs,
-                              ai_timeout_ms=ai_timeout_ms)
+                              ai_timeout_ms=ai_timeout_ms,
+                              ai_debug_enabled=current_app.config.get('AI_DEBUG_ENABLED', False))
 
     # Sorting
     sorted_todos = sort_todos(todos_as_dicts, sort_mode)
@@ -229,7 +230,8 @@ def index():
                           auto_ai_on_add=auto_ai_on_add,
                           skip_delete_confirm=skip_delete_confirm,
                           ai_timeout_secs=ai_timeout_secs,
-                          ai_timeout_ms=ai_timeout_ms)
+                          ai_timeout_ms=ai_timeout_ms,
+                          ai_debug_enabled=current_app.config.get('AI_DEBUG_ENABLED', False))
 
 
 @main_bp.route('/set_language/<lang>')
