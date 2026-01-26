@@ -43,6 +43,7 @@ class Config:
     # LLM settings
     OLLAMA_URL = os.environ.get('OLLAMA_URL')
     OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL')
+    OLLAMA_PROMPT_STYLE = os.environ.get('OLLAMA_PROMPT_STYLE', 'verbose')  # 'verbose' or 'minimal'
 
     # AI Debug mode (admin-only)
     AI_DEBUG_ENABLED = os.environ.get('AI_DEBUG_ENABLED', 'false').lower() == 'true'

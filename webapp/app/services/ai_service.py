@@ -108,6 +108,127 @@ def build_context_reminders(context: dict[str, Any], window_days: int = RECENT_C
     return "\n\nPrefer these tags: " + ". ".join(sections) + "."
 
 
+def get_top_tags(todos: list, max_projects: int = 5, max_contexts: int = 5) -> tuple[list[str], list[str]]:
+    """Return most frequently used tags from todos.
+
+    Args:
+        todos: List of all todos.
+        max_projects: Maximum number of projects to return.
+        max_contexts: Maximum number of contexts to return.
+
+    Returns:
+        Tuple of (top_projects, top_contexts) lists.
+    """
+    from collections import Counter
+
+    project_counts: Counter[str] = Counter()
+    context_counts: Counter[str] = Counter()
+
+    for t in todos:
+        if hasattr(t, 'projects'):
+            projects = t.projects
+            contexts = t.contexts
+        else:
+            projects = t.get('projects', [])
+            contexts = t.get('contexts', [])
+
+        for p in projects:
+            if p:
+                project_counts[p] += 1
+        for c in contexts:
+            if c:
+                context_counts[c] += 1
+
+    top_projects = [tag for tag, _ in project_counts.most_common(max_projects)]
+    top_contexts = [tag for tag, _ in context_counts.most_common(max_contexts)]
+
+    return top_projects, top_contexts
+
+
+def build_verbose_prompt(today: str, weekday: str, projects: list[str], contexts: list[str]) -> str:
+    """Build the detailed prompt for large models.
+
+    Args:
+        today: Today's date in YYYY-MM-DD format.
+        weekday: Day of the week (e.g., "Monday").
+        projects: List of existing project tags.
+        contexts: List of existing context tags.
+
+    Returns:
+        Full system prompt string.
+    """
+    prompt = (
+        f"Parse todo items. Today: {weekday}, {today}.\n\n"
+        "TASK: Extract structured data from input OR reject if not actionable.\n\n"
+        "VALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\n"
+        "INVALID: speculative thoughts ('ich glaube vielleicht...'), observations, questions, chat.\n\n"
+        "OUTPUT JSON (all keys required):\n"
+        '{"rejected": bool, "confidence": 0.0-1.0, "title": str|null, "note": str|null, "due": "YYYY-MM-DDTHH:MM"|null, "context": str, "project": str}\n\n'
+        "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use exact existing case.\n\n"
+        'Example: \'Kaufe morgen Milch\' -> {"rejected": false, "confidence": 0.95, "title": "Kaufe Milch", "note": null, "due": "2026-01-18T00:00", "context": "einkaufen", "project": "haushalt"}\n'
+        'Example: \'ich glaube ich gehe schwimmen\' -> {"rejected": true, "confidence": 0.9, "title": null, "note": null, "due": null, "context": null, "project": null}'
+    )
+
+    # Add tag hints if available
+    tag_hints = []
+    if projects:
+        tag_hints.append("Existing projects: " + ", ".join(projects))
+    if contexts:
+        tag_hints.append("Existing contexts: " + ", ".join(contexts))
+    if tag_hints:
+        prompt += "\n\nPrefer these tags: " + ". ".join(tag_hints) + "."
+
+    return prompt
+
+
+def build_minimal_prompt(today: str, weekday: str, projects: list[str], contexts: list[str]) -> str:
+    """Build a simplified prompt for smaller models.
+
+    Args:
+        today: Today's date in YYYY-MM-DD format.
+        weekday: Day of the week (e.g., "Monday").
+        projects: List of top project tags (limited).
+        contexts: List of top context tags (limited).
+
+    Returns:
+        Minimal system prompt string (~200 tokens).
+    """
+    prompt = f"Extract todo. Today: {weekday}, {today}.\n"
+    prompt += 'JSON: {"title":"...", "due":"YYYY-MM-DDTHH:MM"|null, "context":"...", "project":"...", "note":"..."|null}\n'
+
+    if projects:
+        prompt += "Projects: " + " ".join(f"+{p}" for p in projects) + "\n"
+    if contexts:
+        prompt += "Contexts: " + " ".join(f"@{c}" for c in contexts) + "\n"
+
+    prompt += 'Not a task? {"title":null}'
+
+    return prompt
+
+
+def build_system_prompt(today: str, weekday: str, todos: list, style: str = 'verbose') -> str:
+    """Build system prompt based on configured style.
+
+    Args:
+        today: Today's date in YYYY-MM-DD format.
+        weekday: Day of the week (e.g., "Monday").
+        todos: List of all todos for context extraction.
+        style: Prompt style - 'verbose' or 'minimal'.
+
+    Returns:
+        System prompt string.
+    """
+    if style == 'minimal':
+        top_projects, top_contexts = get_top_tags(todos, max_projects=5, max_contexts=5)
+        return build_minimal_prompt(today, weekday, top_projects, top_contexts)
+    else:
+        # For verbose, collect all tags from recent context
+        recent_context = collect_recent_context(todos, window_days=RECENT_CONTEXT_WINDOW_DAYS)
+        projects = recent_context.get('topics') or []
+        contexts = recent_context.get('locations') or []
+        return build_verbose_prompt(today, weekday, projects, contexts)
+
+
 def _get_llm_config() -> dict[str, Any]:
     """Get LLM configuration."""
     app_config = {}
@@ -165,21 +286,12 @@ def parse_nlp(text: str) -> Optional[dict[str, Any]]:
 
     config = _get_llm_config()
 
-    system_prompt = (
-        f"Parse todo items. Today: {weekday}, {today}.\n\n"
-        "TASK: Extract structured data from input OR reject if not actionable.\n\n"
-        "VALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\n"
-        "INVALID: speculative thoughts ('ich glaube vielleicht...'), observations, questions, chat.\n\n"
-        "OUTPUT JSON (all keys required):\n"
-        "{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\n"
-        "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use exact existing case.\n\n"
-        "Example: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\n"
-        "Example: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}"
-    )
+    # Get prompt style from Flask config
+    prompt_style = 'verbose'
+    if current_app:
+        prompt_style = current_app.config.get('OLLAMA_PROMPT_STYLE', 'verbose')
 
-    reminder_block = build_context_reminders(recent_context, window_days=RECENT_CONTEXT_WINDOW_DAYS)
-    if reminder_block:
-        system_prompt += "\n\n" + reminder_block
+    system_prompt = build_system_prompt(today, weekday, todos, style=prompt_style)
 
     try:
         logger.info("Sending request to Ollama (%s) with model %s", config['chat_url'], config['model'])
@@ -218,15 +330,23 @@ def parse_nlp(text: str) -> Optional[dict[str, Any]]:
         logger.info("Parsed JSON: %s", parsed)
 
         # Check if input was rejected as non-actionable
+        # For verbose mode: check 'rejected' field
+        # For minimal mode: check for null/empty title
         if parsed.get('rejected', False):
             logger.info("Input rejected as non-actionable (not a todo/note)")
             return None
 
-        # Check confidence threshold (80%)
-        confidence = parsed.get('confidence', 1.0)
-        if confidence < 0.8:
-            logger.info("Input rejected due to low confidence: %s", confidence)
+        # Handle null title as rejection (minimal prompt style)
+        if parsed.get('title') is None and prompt_style == 'minimal':
+            logger.info("Input rejected: null title (minimal mode)")
             return None
+
+        # Check confidence threshold (80%) - only for verbose mode
+        if prompt_style == 'verbose':
+            confidence = parsed.get('confidence', 1.0)
+            if confidence < 0.8:
+                logger.info("Input rejected due to low confidence: %s", confidence)
+                return None
 
         # Validate/fix keys
         if 'title' not in parsed or not parsed['title']:
@@ -373,22 +493,14 @@ def parse_nlp_with_debug(text: str) -> dict[str, Any]:
     debug_info['model'] = config['model']
     debug_info['endpoint'] = config['chat_url']
 
-    system_prompt = (
-        f"Parse todo items. Today: {weekday}, {today}.\n\n"
-        "TASK: Extract structured data from input OR reject if not actionable.\n\n"
-        "VALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\n"
-        "INVALID: speculative thoughts ('ich glaube vielleicht...'), observations, questions, chat.\n\n"
-        "OUTPUT JSON (all keys required):\n"
-        "{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\n"
-        "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use exact existing case.\n\n"
-        "Example: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-18T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\n"
-        "Example: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}"
-    )
+    # Get prompt style from Flask config
+    prompt_style = 'verbose'
+    if current_app:
+        prompt_style = current_app.config.get('OLLAMA_PROMPT_STYLE', 'verbose')
 
-    reminder_block = build_context_reminders(recent_context, window_days=RECENT_CONTEXT_WINDOW_DAYS)
-    if reminder_block:
-        system_prompt += "\n\n" + reminder_block
+    debug_info['prompt_style'] = prompt_style
 
+    system_prompt = build_system_prompt(today, weekday, todos, style=prompt_style)
     debug_info['system_prompt'] = system_prompt
 
     start_time = time.time()
@@ -431,16 +543,25 @@ def parse_nlp_with_debug(text: str) -> dict[str, Any]:
         debug_info['confidence'] = parsed.get('confidence')
 
         # Check if input was rejected as non-actionable
+        # For verbose mode: check 'rejected' field
+        # For minimal mode: check for null/empty title
         if parsed.get('rejected', False):
             debug_info['parsed_result'] = None
             return debug_info
 
-        # Check confidence threshold (80%)
-        confidence = parsed.get('confidence', 1.0)
-        if confidence < 0.8:
-            debug_info['error'] = f"Low confidence: {confidence}"
+        # Handle null title as rejection (minimal prompt style)
+        if parsed.get('title') is None and prompt_style == 'minimal':
+            debug_info['rejected'] = True
             debug_info['parsed_result'] = None
             return debug_info
+
+        # Check confidence threshold (80%) - only for verbose mode
+        if prompt_style == 'verbose':
+            confidence = parsed.get('confidence', 1.0)
+            if confidence < 0.8:
+                debug_info['error'] = f"Low confidence: {confidence}"
+                debug_info['parsed_result'] = None
+                return debug_info
 
         # Validate/fix keys
         if 'title' not in parsed or not parsed['title']:
