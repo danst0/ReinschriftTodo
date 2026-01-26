@@ -271,7 +271,7 @@
 
             <div class="form-group">
                 <label for="ai-debug-input">{{ t.ai_debug_test_input }}</label>
-                <input type="text" id="ai-debug-input" placeholder="{{ t.new_task }}" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px;">
+                <input type="text" id="ai-debug-input" placeholder="{{ t.new_task }}">
             </div>
 
             <button type="button" id="ai-debug-run-btn" class="btn-primary" style="width: 100%; margin-bottom: 1.5rem;" onclick="runAiDebug()">
@@ -281,7 +281,7 @@
 
             <div id="ai-debug-results" style="display: none;">
                 <!-- Timing & Model Info -->
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; padding: 0.75rem; background: #f6f5f4; border-radius: 8px;">
+                <div class="ai-debug-info-bar">
                     <div><strong>{{ t.ai_debug_timing }}:</strong> <span id="ai-debug-timing">-</span></div>
                     <div><strong>{{ t.ai_debug_model }}:</strong> <span id="ai-debug-model">-</span></div>
                     <div><strong>{{ t.ai_debug_rejected }}:</strong> <span id="ai-debug-rejected">-</span></div>
@@ -289,38 +289,38 @@
                 </div>
 
                 <!-- Error (if any) -->
-                <div id="ai-debug-error-section" style="display: none; margin-bottom: 1rem; padding: 0.75rem; background: #ffe5e5; border-radius: 8px; border: 1px solid #e01b24;">
+                <div id="ai-debug-error-section" class="ai-debug-error">
                     <strong>{{ t.ai_debug_error }}:</strong> <span id="ai-debug-error"></span>
                 </div>
 
                 <!-- Endpoint -->
-                <details style="margin-bottom: 1rem;">
-                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_endpoint }}</summary>
-                    <pre id="ai-debug-endpoint" style="background: #f6f5f4; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap; word-break: break-all;">-</pre>
+                <details class="ai-debug-details">
+                    <summary>{{ t.ai_debug_endpoint }}</summary>
+                    <pre id="ai-debug-endpoint" class="ai-debug-pre">-</pre>
                 </details>
 
                 <!-- System Prompt -->
-                <details style="margin-bottom: 1rem;">
-                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_system_prompt }}</summary>
-                    <pre id="ai-debug-system-prompt" style="background: #f6f5f4; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">-</pre>
+                <details class="ai-debug-details">
+                    <summary>{{ t.ai_debug_system_prompt }}</summary>
+                    <pre id="ai-debug-system-prompt" class="ai-debug-pre" style="max-height: 300px; overflow-y: auto;">-</pre>
                 </details>
 
                 <!-- User Input -->
-                <details style="margin-bottom: 1rem;">
-                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_user_input }}</summary>
-                    <pre id="ai-debug-user-input" style="background: #f6f5f4; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap;">-</pre>
+                <details class="ai-debug-details">
+                    <summary>{{ t.ai_debug_user_input }}</summary>
+                    <pre id="ai-debug-user-input" class="ai-debug-pre">-</pre>
                 </details>
 
                 <!-- Raw Response -->
-                <details style="margin-bottom: 1rem;">
-                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_raw_response }}</summary>
-                    <pre id="ai-debug-raw-response" style="background: #f6f5f4; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">-</pre>
+                <details class="ai-debug-details">
+                    <summary>{{ t.ai_debug_raw_response }}</summary>
+                    <pre id="ai-debug-raw-response" class="ai-debug-pre" style="max-height: 300px; overflow-y: auto;">-</pre>
                 </details>
 
                 <!-- Parsed Result -->
-                <details open style="margin-bottom: 1rem;">
-                    <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem 0;">{{ t.ai_debug_parsed_result }}</summary>
-                    <pre id="ai-debug-parsed-result" style="background: #e8f5e9; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap;">-</pre>
+                <details open class="ai-debug-details">
+                    <summary>{{ t.ai_debug_parsed_result }}</summary>
+                    <pre id="ai-debug-parsed-result" class="ai-debug-pre ai-debug-success">-</pre>
                 </details>
             </div>
         </div>
@@ -1086,8 +1086,9 @@
                 // Timing & Model
                 document.getElementById('ai-debug-timing').textContent = data.timing_ms ? `${data.timing_ms} {{ t.ai_debug_ms }}` : '-';
                 document.getElementById('ai-debug-model').textContent = data.model || '-';
-                document.getElementById('ai-debug-rejected').textContent = data.rejected ? 'Yes' : 'No';
-                document.getElementById('ai-debug-rejected').style.color = data.rejected ? '#e01b24' : '#2ec27e';
+                const rejectedEl = document.getElementById('ai-debug-rejected');
+                rejectedEl.textContent = data.rejected ? 'Yes' : 'No';
+                rejectedEl.className = data.rejected ? 'ai-debug-status-rejected' : 'ai-debug-status-ok';
                 document.getElementById('ai-debug-confidence').textContent = data.confidence !== null ? data.confidence.toFixed(2) : '-';
 
                 // Error
@@ -1113,12 +1114,13 @@
 
                 // Parsed Result
                 const parsedEl = document.getElementById('ai-debug-parsed-result');
+                parsedEl.classList.remove('ai-debug-success', 'ai-debug-rejected', 'ai-debug-empty');
                 if (data.parsed_result) {
                     parsedEl.textContent = JSON.stringify(data.parsed_result, null, 2);
-                    parsedEl.style.background = '#e8f5e9';
+                    parsedEl.classList.add('ai-debug-success');
                 } else {
                     parsedEl.textContent = data.rejected ? '(Rejected as non-actionable)' : '(No result)';
-                    parsedEl.style.background = data.rejected ? '#fff3e0' : '#f6f5f4';
+                    parsedEl.classList.add(data.rejected ? 'ai-debug-rejected' : 'ai-debug-empty');
                 }
 
             } catch (err) {

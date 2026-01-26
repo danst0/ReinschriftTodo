@@ -1138,3 +1138,102 @@ button, a, .checkbox, .filter-link, .todo-item {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(0.97); }
 }
+
+/* ==========================================================================
+   AI Debug Panel
+   ========================================================================== */
+
+.ai-debug-info-bar {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-md);
+    padding: 0.75rem;
+    background: var(--color-bg-elevated);
+    border-radius: var(--radius-md);
+}
+
+.ai-debug-error {
+    display: none;
+    margin-bottom: var(--spacing-md);
+    padding: 0.75rem;
+    background: #ffe5e5;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-danger);
+    color: var(--color-danger);
+}
+
+@media (prefers-color-scheme: dark) {
+    .ai-debug-error {
+        background: #3d2020;
+        color: #ff7b72;
+    }
+}
+
+.ai-debug-details {
+    margin-bottom: var(--spacing-md);
+}
+
+.ai-debug-details summary {
+    cursor: pointer;
+    font-weight: bold;
+    padding: var(--spacing-sm) 0;
+    color: var(--color-text);
+}
+
+.ai-debug-pre {
+    background: var(--color-bg-elevated);
+    color: var(--color-text);
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+}
+
+.ai-debug-pre.ai-debug-success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.ai-debug-pre.ai-debug-rejected {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.ai-debug-pre.ai-debug-empty {
+    background: var(--color-bg-elevated);
+    color: var(--color-text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+    .ai-debug-pre.ai-debug-success {
+        background: #1b3d1f;
+        color: #81c784;
+    }
+
+    .ai-debug-pre.ai-debug-rejected {
+        background: #3d2a1a;
+        color: #ffb74d;
+    }
+}
+
+.ai-debug-status-ok {
+    color: #2ec27e;
+}
+
+.ai-debug-status-rejected {
+    color: var(--color-danger);
+}
+
+@media (prefers-color-scheme: dark) {
+    .ai-debug-status-ok {
+        color: #81c784;
+    }
+
+    .ai-debug-status-rejected {
+        color: #ff7b72;
+    }
+}
