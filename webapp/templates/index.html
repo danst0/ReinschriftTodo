@@ -236,7 +236,7 @@
         <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ t.logout }}</a>
         
         <div class="app-info">
-            <p><strong>Reinschrift</strong> v0.18.6</p>
+            <p><strong>Reinschrift</strong> v0.18.7</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -729,14 +729,13 @@
                 if (linkSort && linkSort === sortMode) {
                     link.classList.add('active');
                 }
-                // Check if it's a toggle link
-                if (linkShowDone !== null && linkShowDone !== (showDone ? '1' : '0')) {
-                     // This is the toggle link for show_done
+                // Check if it's the show_done toggle link (its href matches the new state)
+                if (linkShowDone !== null && linkShowDone === (showDone ? '1' : '0')) {
                      if (showDone) link.classList.add('active');
                      link.innerHTML = showDone ? '☑ {{ t.show_done }}' : '☐ {{ t.show_done }}';
                 }
-                if (linkShowDueOnly !== null && linkShowDueOnly !== (showDueOnly ? '1' : '0')) {
-                     // This is the toggle link for show_due_only
+                // Check if it's the show_due_only toggle link
+                if (linkShowDueOnly !== null && linkShowDueOnly === (showDueOnly ? '1' : '0')) {
                      if (showDueOnly) link.classList.add('active');
                      link.innerHTML = showDueOnly ? '☑ {{ t.hide_future }}' : '☐ {{ t.hide_future }}';
                 }
