@@ -10,9 +10,9 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev_secret_key')
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)
 
-    # Session cookie settings for cross-site OAuth redirects
-    SESSION_COOKIE_SAMESITE = 'None'
-    SESSION_COOKIE_SECURE = True
+    # Session cookie settings - Lax works for same-site navigations
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = False
     SESSION_COOKIE_HTTPONLY = True
 
     # File paths
@@ -63,6 +63,8 @@ class ProductionConfig(Config):
     """Production configuration."""
 
     DEBUG = False
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-site OAuth redirects
 
 
 class TestingConfig(Config):
