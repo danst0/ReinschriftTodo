@@ -76,6 +76,83 @@ fn schedule_poll(state: Rc<AppState>, interval: u32) {
     }));
 }
 
+/// Creates an Entry with a dropdown button for suggestions.
+/// Returns (entry, horizontal_box) where horizontal_box contains entry + button.
+fn create_suggestion_entry(
+    initial_text: &str,
+    suggestions: &[String],
+    prefix: &str,
+) -> (gtk::Entry, gtk::Box) {
+    let entry = gtk::Entry::new();
+    entry.set_text(initial_text);
+    entry.set_activates_default(true);
+    entry.set_hexpand(true);
+
+    let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+    hbox.append(&entry);
+
+    // Only show button if there are suggestions
+    if !suggestions.is_empty() {
+        let popover = gtk::Popover::new();
+        let listbox = gtk::ListBox::new();
+        listbox.set_selection_mode(gtk::SelectionMode::None);
+
+        // Take top 5 suggestions
+        for suggestion in suggestions.iter().take(5) {
+            let label_text = format!("{}{}", prefix, suggestion);
+            let label = gtk::Label::new(Some(&label_text));
+            label.set_xalign(0.0);
+            label.set_margin_start(8);
+            label.set_margin_end(8);
+            label.set_margin_top(4);
+            label.set_margin_bottom(4);
+            let row = gtk::ListBoxRow::new();
+            row.set_child(Some(&label));
+            listbox.append(&row);
+        }
+
+        popover.set_child(Some(&listbox));
+
+        let menu_button = gtk::MenuButton::new();
+        menu_button.set_icon_name("view-more-symbolic");
+        menu_button.set_popover(Some(&popover));
+        menu_button.set_tooltip_text(Some(&t("show_suggestions")));
+        menu_button.add_css_class("flat");
+
+        // Connect row activation to append suggestion to entry
+        let entry_clone = entry.clone();
+        let prefix_owned = prefix.to_string();
+        let suggestions_owned: Vec<String> = suggestions.iter().take(5).cloned().collect();
+        let popover_clone = popover.clone();
+        listbox.connect_row_activated(move |_, row| {
+            let index = row.index() as usize;
+            if let Some(suggestion) = suggestions_owned.get(index) {
+                let suggestion_with_prefix = format!("{}{}", prefix_owned, suggestion);
+                let current = entry_clone.text();
+
+                // Check if already present
+                let already_present = current
+                    .split_whitespace()
+                    .any(|s| s == suggestion_with_prefix);
+
+                if !already_present {
+                    let new_text = if current.is_empty() {
+                        suggestion_with_prefix
+                    } else {
+                        format!("{} {}", current.trim(), suggestion_with_prefix)
+                    };
+                    entry_clone.set_text(&new_text);
+                }
+            }
+            popover_clone.popdown();
+        });
+
+        hbox.append(&menu_button);
+    }
+
+    (entry, hbox)
+}
+
 pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     let provider = gtk::CssProvider::new();
     provider.load_from_string(
@@ -2558,32 +2635,35 @@ impl AppState {
         title_row.append(&title_entry);
         content.append(&title_row);
 
-        let project_entry = gtk::Entry::new();
-        project_entry.set_activates_default(true);
-        if !todo.projects.is_empty() {
-            let projects_display = todo.projects.iter()
+        // Collect existing tags for suggestions
+        let (known_projects, known_contexts) = self.collect_existing_tags();
+
+        let projects_display = if !todo.projects.is_empty() {
+            todo.projects.iter()
                 .map(|p| format!("+{}", p))
                 .collect::<Vec<_>>()
-                .join(" ");
-            project_entry.set_text(&projects_display);
-        }
+                .join(" ")
+        } else {
+            String::new()
+        };
+        let (project_entry, project_input_box) = create_suggestion_entry(&projects_display, &known_projects, "+");
         let project_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         project_row.append(&gtk::Label::builder().label(&t("project_plus")).xalign(0.0).build());
-        project_row.append(&project_entry);
+        project_row.append(&project_input_box);
         content.append(&project_row);
 
-        let context_entry = gtk::Entry::new();
-        context_entry.set_activates_default(true);
-        if !todo.contexts.is_empty() {
-            let contexts_display = todo.contexts.iter()
+        let contexts_display = if !todo.contexts.is_empty() {
+            todo.contexts.iter()
                 .map(|c| format!("@{}", c))
                 .collect::<Vec<_>>()
-                .join(" ");
-            context_entry.set_text(&contexts_display);
-        }
+                .join(" ")
+        } else {
+            String::new()
+        };
+        let (context_entry, context_input_box) = create_suggestion_entry(&contexts_display, &known_contexts, "@");
         let context_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         context_row.append(&gtk::Label::builder().label(&t("location_at")).xalign(0.0).build());
-        context_row.append(&context_entry);
+        context_row.append(&context_input_box);
         content.append(&context_row);
 
         let note_buffer = gtk::TextBuffer::builder()

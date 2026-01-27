@@ -26,11 +26,15 @@
                 </div>
                 <div class="form-group">
                     <label for="edit-projects">{{ t.project }}</label>
-                    <input type="text" id="edit-projects" name="projects">
+                    <div class="suggestion-input-wrapper" data-field="projects" data-prefix="+">
+                        <input type="text" id="edit-projects" name="projects">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="edit-contexts">{{ t.context }}</label>
-                    <input type="text" id="edit-contexts" name="contexts">
+                    <div class="suggestion-input-wrapper" data-field="contexts" data-prefix="@">
+                        <input type="text" id="edit-contexts" name="contexts">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="edit-note">{{ t.note }}</label>
@@ -236,7 +240,7 @@
         <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ t.logout }}</a>
         
         <div class="app-info">
-            <p><strong>Reinschrift</strong> v0.18.10</p>
+            <p><strong>Reinschrift</strong> v0.18.11</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -1485,7 +1489,7 @@
         // ==========================================================================
         // Service Worker Registration (PWA)
         // ==========================================================================
-        
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/sw.js')
@@ -1497,6 +1501,100 @@
                     });
             });
         }
+
+        // ==========================================================================
+        // Suggestion Dropdowns for Project/Context Fields
+        // ==========================================================================
+
+        let cachedSuggestions = null;
+
+        async function fetchSuggestions() {
+            if (cachedSuggestions) return cachedSuggestions;
+            try {
+                const res = await fetch('/api/suggestions', {
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                cachedSuggestions = await res.json();
+                return cachedSuggestions;
+            } catch (err) {
+                console.error('Failed to fetch suggestions:', err);
+                return { projects: [], contexts: [] };
+            }
+        }
+
+        function createSuggestionDropdown(input, suggestions, prefix) {
+            const wrapper = input.closest('.suggestion-input-wrapper');
+            if (!wrapper || suggestions.length === 0) return;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'suggestion-btn';
+            btn.innerHTML = '&#9662;';
+            btn.title = '{{ t.show_suggestions if t.show_suggestions else "Show suggestions" }}';
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'suggestion-dropdown';
+
+            suggestions.forEach(suggestion => {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.textContent = `${prefix}${suggestion}`;
+                item.addEventListener('click', () => {
+                    appendSuggestion(input, suggestion, prefix);
+                    dropdown.classList.remove('visible');
+                });
+                dropdown.appendChild(item);
+            });
+
+            wrapper.appendChild(btn);
+            wrapper.appendChild(dropdown);
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropdown.classList.toggle('visible');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!wrapper.contains(e.target)) {
+                    dropdown.classList.remove('visible');
+                }
+            });
+        }
+
+        function appendSuggestion(input, suggestion, prefix) {
+            const value = input.value.trim();
+            const fullTag = `${prefix}${suggestion}`;
+            const existingTags = value.split(/\s+/).filter(t => t);
+            const isDuplicate = existingTags.some(
+                tag => tag.toLowerCase() === fullTag.toLowerCase()
+            );
+            if (isDuplicate) return;
+
+            input.value = value ? value + ' ' + fullTag : fullTag;
+            input.focus();
+        }
+
+        async function initSuggestions() {
+            const wrappers = document.querySelectorAll('.suggestion-input-wrapper');
+            if (wrappers.length === 0) return;
+
+            const data = await fetchSuggestions();
+
+            wrappers.forEach(wrapper => {
+                const input = wrapper.querySelector('input');
+                const field = wrapper.dataset.field;
+                const prefix = wrapper.dataset.prefix;
+                if (!input || !field || !prefix) return;
+
+                const suggestions = data[field] || [];
+                createSuggestionDropdown(input, suggestions, prefix);
+            });
+        }
+
+        // Initialize suggestions when DOM is ready
+        document.addEventListener('DOMContentLoaded', initSuggestions);
 
         console.log("Reinschrift JS loaded");
     </script>

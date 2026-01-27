@@ -149,5 +149,6 @@
   "ollama_model": "KI-Modell",
   "ollama_model_desc": "Ollama-Modellname (z.B. mistral:7b, llama3.1:8b)",
   "ollama_url": "Ollama-URL",
-  "ollama_url_desc": "Ollama-Serveradresse (z.B. http://localhost:11434)"
+  "ollama_url_desc": "Ollama-Serveradresse (z.B. http://localhost:11434)",
+  "show_suggestions": "Vorschläge anzeigen"
 }

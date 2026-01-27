@@ -10,8 +10,9 @@ from app.services import (
     update_todo_by_marker,
     parse_nlp,
     postpone_todos_batch,
+    load_todos,
 )
-from app.services.ai_service import parse_nlp_with_debug
+from app.services.ai_service import parse_nlp_with_debug, get_top_tags
 from app.utils.helpers import format_due
 
 api_bp = Blueprint('api', __name__)
@@ -164,3 +165,15 @@ def api_postpone_batch():
 
     result = postpone_todos_batch(line_indexes, target)
     return jsonify({'ok': True, **result})
+
+
+@api_bp.route('/suggestions')
+@require_login_json
+def get_suggestions():
+    """Return top 5 projects and contexts for autocomplete."""
+    todos = load_todos()
+    projects, contexts = get_top_tags(todos, max_projects=5, max_contexts=5)
+    return jsonify({
+        'projects': projects,
+        'contexts': contexts
+    })

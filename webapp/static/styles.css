@@ -1237,3 +1237,84 @@ button, a, .checkbox, .filter-link, .todo-item {
         color: #ff7b72;
     }
 }
+
+/* ==========================================================================
+   Suggestion Dropdowns (Project/Context Fields)
+   ========================================================================== */
+
+.suggestion-input-wrapper {
+    position: relative;
+    display: flex;
+    gap: 0;
+}
+
+.suggestion-input-wrapper input {
+    flex: 1;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm) !important;
+    border-right: none !important;
+}
+
+.suggestion-btn {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-strong);
+    border-left: none;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 0 0.75rem;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    min-height: var(--touch-target-comfortable);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.suggestion-btn:hover {
+    background: var(--color-border);
+    color: var(--color-text);
+}
+
+.suggestion-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    z-index: 50;
+    margin-top: 2px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.suggestion-dropdown.visible {
+    display: block;
+}
+
+.suggestion-item {
+    padding: 0.6rem 0.8rem;
+    cursor: pointer;
+    color: var(--color-text);
+    transition: background var(--transition-fast);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover {
+    background: var(--color-bg-elevated);
+}
+
+.suggestion-item[data-prefix="+"] {
+    color: var(--color-project);
+}
+
+.suggestion-item[data-prefix="@"] {
+    color: var(--color-context);
+}

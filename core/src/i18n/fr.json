@@ -134,5 +134,6 @@
   "ollama_model": "Modèle IA",
   "ollama_model_desc": "Nom du modèle Ollama (ex. mistral:7b, llama3.1:8b)",
   "ollama_url": "URL Ollama",
-  "ollama_url_desc": "Adresse du serveur Ollama (ex. http://localhost:11434)"
+  "ollama_url_desc": "Adresse du serveur Ollama (ex. http://localhost:11434)",
+  "show_suggestions": "Afficher les suggestions"
 }

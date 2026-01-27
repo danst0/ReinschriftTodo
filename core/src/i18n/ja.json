@@ -134,5 +134,6 @@
   "ollama_model": "AIモデル",
   "ollama_model_desc": "Ollamaモデル名 (例: mistral:7b, llama3.1:8b)",
   "ollama_url": "Ollama URL",
-  "ollama_url_desc": "Ollamaサーバーアドレス (例: http://localhost:11434)"
+  "ollama_url_desc": "Ollamaサーバーアドレス (例: http://localhost:11434)",
+  "show_suggestions": "候補を表示"
 }
