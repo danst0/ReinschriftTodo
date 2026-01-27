@@ -236,7 +236,7 @@
         <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ t.logout }}</a>
         
         <div class="app-info">
-            <p><strong>Reinschrift</strong> v0.17.1</p>
+            <p><strong>Reinschrift</strong> v0.18.5</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -569,7 +569,7 @@
 
         function postponeTodo(event, lineIndex, target) {
             event.stopPropagation();
-            fetch('/postpone/' + lineIndex + '/' + target, { 
+            fetch('/postpone/' + lineIndex + '/' + target, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': "{{ csrf_token() }}" }
             })
@@ -603,16 +603,20 @@
                 btn.style.pointerEvents = 'none';
             }
 
-            const requests = matches
+            const lineIndexes = matches
                 .map(item => item.dataset.lineIndex)
                 .filter(Boolean)
-                .map(idx => fetch('/postpone/' + idx + '/' + target, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': "{{ csrf_token() }}" }
-                }));
+                .map(idx => parseInt(idx, 10));
 
             try {
-                await Promise.all(requests);
+                await fetch('/api/postpone-batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': "{{ csrf_token() }}"
+                    },
+                    body: JSON.stringify({ line_indexes: lineIndexes, target: target })
+                });
             } catch (err) {
                 console.error('Postpone group failed', err);
             } finally {
