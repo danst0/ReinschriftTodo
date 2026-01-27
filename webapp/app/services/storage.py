@@ -3,10 +3,15 @@
 import json
 import logging
 import os
+import time
 from typing import Any
 
 import requests
 from requests.auth import HTTPBasicAuth
+
+# Retry settings for WebDAV locked files (423 status)
+MAX_RETRIES = 3
+RETRY_DELAY = 0.5  # seconds, will be multiplied for exponential backoff
 
 from flask import current_app
 
@@ -88,21 +93,40 @@ def write_content(content: str) -> None:
     if config['use_webdav']:
         if not config['webdav_url']:
             return
-        try:
-            auth = None
-            if config['webdav_username'] and config['webdav_password']:
-                auth = HTTPBasicAuth(config['webdav_username'], config['webdav_password'])
 
-            response = requests.put(
-                config['webdav_url'],
-                data=content.encode('utf-8'),
-                auth=auth,
-                timeout=10
-            )
-            response.raise_for_status()
-        except requests.RequestException as e:
-            logger.error("WebDAV write error: %s", e)
-            raise StorageError(f"WebDAV write error: {e}") from e
+        auth = None
+        if config['webdav_username'] and config['webdav_password']:
+            auth = HTTPBasicAuth(config['webdav_username'], config['webdav_password'])
+
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                response = requests.put(
+                    config['webdav_url'],
+                    data=content.encode('utf-8'),
+                    auth=auth,
+                    timeout=10
+                )
+                response.raise_for_status()
+                return  # Success
+            except requests.HTTPError as e:
+                last_error = e
+                # Retry on 423 Locked (Nextcloud file locking)
+                if e.response is not None and e.response.status_code == 423:
+                    if attempt < MAX_RETRIES - 1:
+                        delay = RETRY_DELAY * (2 ** attempt)
+                        logger.warning("File locked (423), retrying in %.1fs (attempt %d/%d)",
+                                     delay, attempt + 1, MAX_RETRIES)
+                        time.sleep(delay)
+                        continue
+                raise StorageError(f"WebDAV write error: {e}") from e
+            except requests.RequestException as e:
+                logger.error("WebDAV write error: %s", e)
+                raise StorageError(f"WebDAV write error: {e}") from e
+
+        # All retries exhausted
+        logger.error("WebDAV write failed after %d retries: %s", MAX_RETRIES, last_error)
+        raise StorageError(f"WebDAV write error (file locked): {last_error}") from last_error
     else:
         try:
             with open(config['todo_path'], 'w', encoding='utf-8') as f:
