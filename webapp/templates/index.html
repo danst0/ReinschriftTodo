@@ -94,28 +94,28 @@
     </div>
     
     <div class="filters" style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: center;">
-          <a href="{{ url_for('main.index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" 
-              class="filter-link {% if show_done %}active{% endif %}" onclick="applyFilter(event, this.href)">
+          <a href="{{ url_for('main.index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}"
+              class="filter-link {% if show_done %}active{% endif %}" data-filter="show_done" onclick="applyFilter(event, this.href)">
               {% if show_done %}☑ {{ t.show_done }}{% else %}☐ {{ t.show_done }}{% endif %}
           </a>
-        
+
           <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=0 if show_due_only else 1, sort_mode=sort_mode) }}"
-              class="filter-link {% if show_due_only %}active{% endif %}" onclick="applyFilter(event, this.href)">
+              class="filter-link {% if show_due_only %}active{% endif %}" data-filter="show_due_only" onclick="applyFilter(event, this.href)">
               {% if show_due_only %}☑ {{ t.hide_future }}{% else %}☐ {{ t.hide_future }}{% endif %}
           </a>
 
           <span style="color: #ccc;">|</span>
 
         <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='topic') }}"
-           class="filter-link {% if sort_mode == 'topic' %}active{% endif %}" onclick="applyFilter(event, this.href)">
+           class="filter-link {% if sort_mode == 'topic' %}active{% endif %}" data-filter="sort" onclick="applyFilter(event, this.href)">
            {{ t.topic }}
         </a>
         <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='location') }}"
-           class="filter-link {% if sort_mode == 'location' %}active{% endif %}" onclick="applyFilter(event, this.href)">
+           class="filter-link {% if sort_mode == 'location' %}active{% endif %}" data-filter="sort" onclick="applyFilter(event, this.href)">
            {{ t.location }}
         </a>
         <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='date') }}"
-           class="filter-link {% if sort_mode == 'date' %}active{% endif %}" onclick="applyFilter(event, this.href)">
+           class="filter-link {% if sort_mode == 'date' %}active{% endif %}" data-filter="sort" onclick="applyFilter(event, this.href)">
            {{ t.date }}
         </a>
 
@@ -236,7 +236,7 @@
         <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ t.logout }}</a>
         
         <div class="app-info">
-            <p><strong>Reinschrift</strong> v0.18.7</p>
+            <p><strong>Reinschrift</strong> v0.18.8</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -718,38 +718,38 @@
             const sortMode = url.searchParams.get('sort_mode') || 'topic';
 
             document.querySelectorAll('.filter-link').forEach(link => {
+                const filterType = link.dataset.filter;
                 const linkUrl = new URL(link.href);
                 const linkSort = linkUrl.searchParams.get('sort_mode');
-                const linkShowDone = linkUrl.searchParams.get('show_done');
-                const linkShowDueOnly = linkUrl.searchParams.get('show_due_only');
 
                 link.classList.remove('active');
 
-                // Check if it's a sort link
-                if (linkSort && linkSort === sortMode) {
-                    link.classList.add('active');
+                // Update active state and labels based on filter type
+                if (filterType === 'sort') {
+                    if (linkSort === sortMode) {
+                        link.classList.add('active');
+                    }
+                } else if (filterType === 'show_done') {
+                    if (showDone) link.classList.add('active');
+                    link.innerHTML = showDone ? '☑ {{ t.show_done }}' : '☐ {{ t.show_done }}';
+                } else if (filterType === 'show_due_only') {
+                    if (showDueOnly) link.classList.add('active');
+                    link.innerHTML = showDueOnly ? '☑ {{ t.hide_future }}' : '☐ {{ t.hide_future }}';
                 }
-                // Check if it's the show_done toggle link (its href matches the new state)
-                if (linkShowDone !== null && linkShowDone === (showDone ? '1' : '0')) {
-                     if (showDone) link.classList.add('active');
-                     link.innerHTML = showDone ? '☑ {{ t.show_done }}' : '☐ {{ t.show_done }}';
-                }
-                // Check if it's the show_due_only toggle link
-                if (linkShowDueOnly !== null && linkShowDueOnly === (showDueOnly ? '1' : '0')) {
-                     if (showDueOnly) link.classList.add('active');
-                     link.innerHTML = showDueOnly ? '☑ {{ t.hide_future }}' : '☐ {{ t.hide_future }}';
-                }
-                
+
                 // Update href to reflect new state
                 const newHref = new URL(link.href);
-                if (linkSort) {
+                if (filterType === 'sort') {
+                    // Sort links: preserve toggle states
                     newHref.searchParams.set('show_done', showDone ? '1' : '0');
                     newHref.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
-                } else if (linkShowDone !== null) {
+                } else if (filterType === 'show_done') {
+                    // show_done toggle: flip show_done, preserve show_due_only
                     newHref.searchParams.set('show_done', showDone ? '0' : '1');
                     newHref.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
                     newHref.searchParams.set('sort_mode', sortMode);
-                } else if (linkShowDueOnly !== null) {
+                } else if (filterType === 'show_due_only') {
+                    // show_due_only toggle: preserve show_done, flip show_due_only
                     newHref.searchParams.set('show_done', showDone ? '1' : '0');
                     newHref.searchParams.set('show_due_only', showDueOnly ? '0' : '1');
                     newHref.searchParams.set('sort_mode', sortMode);
