@@ -217,7 +217,7 @@ webapp/
 │   ├── css/styles.css
 │   └── js/
 │       ├── app.js           # Main entry point
-│       └── modules/         # ES6 modules (api, modal, etc.)
+│       └── modules/         # ES6 modules (api, modal, drag-drop, etc.)
 ├── templates/               # Jinja2 templates
 ├── tests/                   # pytest test suite
 ├── run.py                   # Entry point
@@ -225,6 +225,19 @@ webapp/
 ├── requirements.txt
 └── pyproject.toml           # Project configuration
 ```
+
+**JS Modules (static/js/modules/):**
+- **drag-drop.js**: Drag-and-drop between section groups (projects/contexts) with mouse and touch (long-press) support
+- **swipe.js**: Swipe gestures on todo items (right=complete, left=postpone)
+- **auto-reload.js**: Background partial reload every 30s
+- **pull-refresh.js**: Pull-to-refresh on mobile
+- **api.js**: CSRF-aware fetch wrapper
+- **modal.js**: Edit modal with bottom-sheet on mobile
+- **todo-actions.js**: Toggle, postpone, group postpone
+- **ai.js**: Smart Add with Ollama/LLM parsing
+- **filters.js**: Filter UI state management
+- **keyboard.js**: Keyboard shortcuts
+- **voice.js**: Web Speech API voice input
 
 **Key Services:**
 - **parser.py**: Regex patterns matching Rust core, parse_line, extract_title
@@ -236,7 +249,7 @@ webapp/
 - `main_bp`: Index view, language selection
 - `auth_bp`: Login (form + OIDC), logout
 - `todo_bp`: Toggle, postpone, edit, delete, add
-- `api_bp`: JSON endpoints (/api/todo, /api/parse, /api/add)
+- `api_bp`: JSON endpoints (/api/todo, /api/parse, /api/add, /api/move-to-section)
 
 ## Markdown Todo Format
 

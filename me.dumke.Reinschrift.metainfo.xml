@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.18.12" date="2026-01-28">
+      <description>
+        <ul>
+          <li>Webapp: Add drag-and-drop to move todos between project/context sections</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.18.10" date="2026-01-27">
       <description>
         <ul>
