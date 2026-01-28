@@ -1318,3 +1318,52 @@ button, a, .checkbox, .filter-link, .todo-item {
 .suggestion-item[data-prefix="@"] {
     color: var(--color-context);
 }
+
+/* ==========================================================================
+   Drag and Drop between Sections
+   ========================================================================== */
+
+.section-items {
+    min-height: 20px;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: var(--color-text-muted);
+    font-size: 1.1rem;
+    padding: var(--spacing-xs);
+    margin-right: var(--spacing-xs);
+    user-select: none;
+    -webkit-user-select: none;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    touch-action: none;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.drag-ghost {
+    opacity: 0.3;
+}
+
+.drag-clone {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+    opacity: 0.9;
+    transform: rotate(1deg);
+    background: var(--color-bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.drag-over {
+    background: var(--color-primary-light);
+    border-radius: var(--radius-md);
+    outline: 2px dashed var(--color-primary);
+    outline-offset: -2px;
+}

@@ -1,6 +1,11 @@
 {% set current_group = namespace(value=None) %}
 {% for todo in todos %}
     {% if todo.section and todo.section != current_group.value %}
+        {% if current_group.value is not none %}
+            </div>{# close previous section-items #}
+        </div>{# close previous section-group #}
+        {% endif %}
+        <div class="section-group">
         <div class="section-header" data-group-mode="{{ sort_mode }}" data-group-key="{{ todo.group_key or '' }}">
             <span>
                 {% if sort_mode == 'topic' %}
@@ -18,14 +23,18 @@
             </div>
             {% endif %}
         </div>
+        <div class="section-items" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}">
         {% set current_group.value = todo.section %}
     {% endif %}
-    
+
     <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" data-marker="{{ todo.marker or '' }}" onclick="openEditModal({{ todo.line_index }})">
         <!-- Swipe indicators (populated by JS) -->
         <span class="swipe-indicator swipe-indicator-left">✓</span>
         <span class="swipe-indicator swipe-indicator-right">📅</span>
-        
+
+        {% if sort_mode in ['topic', 'location'] %}
+        <span class="drag-handle" title="Drag to move">⠿</span>
+        {% endif %}
         <a href="javascript:void(0)" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="toggleTodo(event, {{ todo.line_index }})">
             {% if todo.done %}☑{% else %}☐{% endif %}
         </a>
@@ -53,7 +62,7 @@
                 {% endif %}
                 {% if todo.due %}
                     <span class="due">
-                        {{ t.due }} 
+                        {{ t.due }}
                         {% if todo.due_is_sometime %}
                             {{ t.sometime }}
                         {% else %}
@@ -71,3 +80,7 @@
         </div>
     </div>
 {% endfor %}
+{% if current_group.value is not none %}
+    </div>{# close last section-items #}
+</div>{# close last section-group #}
+{% endif %}

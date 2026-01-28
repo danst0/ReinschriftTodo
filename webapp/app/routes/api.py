@@ -6,6 +6,7 @@ from app.extensions import csrf
 from app.services import (
     read_content,
     parse_line,
+    find_line_by_marker,
     add_todo,
     update_todo_by_marker,
     parse_nlp,
@@ -165,6 +166,65 @@ def api_postpone_batch():
 
     result = postpone_todos_batch(line_indexes, target)
     return jsonify({'ok': True, **result})
+
+
+@api_bp.route('/move-to-section', methods=['POST'])
+@csrf.exempt
+@require_login_json
+def api_move_to_section():
+    """Move a todo from one project/context section to another.
+
+    Expects JSON: {"marker": "ABC", "group_mode": "topic", "from_key": "A", "to_key": "C"}
+    For topic mode, replaces the from_key project with to_key project.
+    For location mode, replaces the from_key context with to_key context.
+    """
+    data = request.get_json(silent=True) or {}
+    marker = data.get('marker')
+    group_mode = data.get('group_mode')
+    from_key = data.get('from_key', '')
+    to_key = data.get('to_key', '')
+
+    if not marker:
+        return jsonify({'error': 'Marker required'}), 400
+
+    if group_mode not in ('topic', 'location'):
+        return jsonify({'error': 'Invalid group_mode'}), 400
+
+    if from_key == to_key:
+        return jsonify({'error': 'Source and target are the same'}), 400
+
+    # Load and find the todo
+    content = read_content()
+    lines = content.splitlines()
+    target_index = find_line_by_marker(lines, marker)
+    if target_index is None:
+        return jsonify({'error': 'Todo not found'}), 404
+
+    item = parse_line(lines[target_index], target_index)
+    if not item:
+        return jsonify({'error': 'Invalid item'}), 400
+
+    if group_mode == 'topic':
+        projects = list(item.projects)
+        # Remove from_key project (if present)
+        if from_key and from_key in projects:
+            projects.remove(from_key)
+        # Add to_key project (if not empty and not already present)
+        if to_key and to_key not in projects:
+            projects.append(to_key)
+        if not update_todo_by_marker(marker, {'projects': projects}):
+            return jsonify({'error': 'Update failed'}), 500
+    else:
+        # location mode
+        contexts = list(item.contexts)
+        if from_key and from_key in contexts:
+            contexts.remove(from_key)
+        if to_key and to_key not in contexts:
+            contexts.append(to_key)
+        if not update_todo_by_marker(marker, {'contexts': contexts}):
+            return jsonify({'error': 'Update failed'}), 500
+
+    return jsonify({'ok': True})
 
 
 @api_bp.route('/suggestions')

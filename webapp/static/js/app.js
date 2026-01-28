@@ -25,6 +25,7 @@ import { initSwipeGestures } from './modules/swipe.js';
 import { initPullToRefresh } from './modules/pull-refresh.js';
 import { autoReload, startAutoReload, manualReload, setReloadCallback } from './modules/auto-reload.js';
 import { applyFilter, updateFilterUI } from './modules/filters.js';
+import { initDragDrop, setDragReloadCallback } from './modules/drag-drop.js';
 
 // Configuration - will be set by template
 let appConfig = {
@@ -87,6 +88,10 @@ function initApp(config = {}) {
     // Initialize pull-to-refresh
     initPullToRefresh(handleReload);
 
+    // Initialize drag-and-drop between sections
+    setDragReloadCallback(handleReload);
+    initDragDrop();
+
     // Start auto-reload (every 30 seconds)
     startAutoReload(30000, handleReloadComplete);
 
@@ -111,6 +116,7 @@ async function handleReload() {
  */
 function handleReloadComplete() {
     initSwipeGestures();
+    initDragDrop();
     if (lastImprovedMarker) {
         highlightMarker(lastImprovedMarker);
     }
