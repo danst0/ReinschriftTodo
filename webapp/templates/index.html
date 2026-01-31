@@ -11,6 +11,7 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
 </head>
 <body>
     <!-- Modal -->
@@ -240,7 +241,7 @@
         <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ t.logout }}</a>
         
         <div class="app-info">
-            <p><strong>Reinschrift</strong> v0.18.11</p>
+            <p><strong>Reinschrift</strong> v0.18.12</p>
             <p>{{ t.developer }}: Dr. Daniel Dumke</p>
             <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank">{{ t.website }}</a> | CC-BY-SA-4.0</p>
         </div>
@@ -331,1175 +332,34 @@
     </div>
     {% endif %}
 
-    <script>        // Move AI Logic to the top for better availability
-        const SMART_ADD_TIMEOUT_MS = {{ ai_timeout_ms }};
-        const smartAddUrl = {{ url_for('api.api_parse_nlp') | tojson }};
-        const csrfToken = {{ csrf_token() | tojson }};
-        const autoAiOnAdd = {{ 'true' if auto_ai_on_add else 'false' }};
-        const autoAiOnAddFlag = autoAiOnAdd === true || autoAiOnAdd === 'true';
-        const skipDeleteConfirm = {{ 'true' if skip_delete_confirm else 'false' }};
-        const aiTimeoutMessage = {{ t.ai_timeout_notice | tojson }};
-        const aiErrorMessage = {{ t.ai_parse_failed | tojson }};
+    <script>
+        // ==========================================================================
+        // Configuration from template
+        // ==========================================================================
 
-        let smartAddController = null;
-
-        async function callAiParse({ btn = null, text, returnParsed = false }) {
-            if (!text) return null;
-
-            const controller = buildSmartAddController();
-            const timeoutId = setTimeout(() => controller.abort(), SMART_ADD_TIMEOUT_MS);
-            setSmartButtonState(btn, true);
-
-            try {
-                const res = await fetch(smartAddUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({ text }),
-                    signal: controller.signal
-                });
-
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
-
-                const data = await res.json();
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
-                return returnParsed ? { parsed: data } : formatSmartResult(data, text);
-            } catch (err) {
-                if (err.name === 'AbortError') {
-                    throw new Error('timeout');
-                }
-                throw err;
-            } finally {
-                clearTimeout(timeoutId);
-                if (smartAddController === controller) {
-                    smartAddController = null;
-                }
-                setSmartButtonState(btn, false);
+        const appConfig = {
+            csrfToken: {{ csrf_token() | tojson }},
+            smartAddUrl: {{ url_for('api.api_parse_nlp') | tojson }},
+            aiTimeoutMs: {{ ai_timeout_ms }},
+            autoAiOnAdd: {{ 'true' if auto_ai_on_add else 'false' }},
+            skipDeleteConfirm: {{ 'true' if skip_delete_confirm else 'false' }},
+            language: {{ current_lang | tojson }},
+            translations: {
+                aiTimeoutNotice: {{ t.ai_timeout_notice | tojson }},
+                aiParseFailed: {{ t.ai_parse_failed | tojson }},
+                deleteConfirm: {{ t.delete_confirm | tojson }}
             }
-        }
-
-        function setSmartButtonState(btn, loading) {
-            if (!btn) return;
-            if (loading) {
-                btn.classList.add('loading');
-                btn.disabled = true;
-            } else {
-                btn.classList.remove('loading');
-                btn.disabled = false;
-            }
-        }
-
-        function buildSmartAddController() {
-            if (smartAddController) {
-                smartAddController.abort();
-            }
-            smartAddController = new AbortController();
-            return smartAddController;
-        }
-
-        function formatSmartResult(data, fallbackText) {
-            if (!data) return fallbackText;
-            const base = (data.title || data.task || fallbackText || '').trim();
-            if (!base) return fallbackText;
-
-            let formatted = base;
-            if (data.due && data.due !== 'null' && data.due !== 'None') {
-                formatted += ` due:${data.due}`;
-            }
-            // Handle both single context and list of contexts
-            if (data.contexts && Array.isArray(data.contexts) && data.contexts.length > 0) {
-                formatted += ' ' + data.contexts.map(c => `@${String(c).replace(/^@/, '')}`).join(' ');
-            } else if (data.context && data.context !== 'null' && data.context !== 'None') {
-                formatted += ` @${String(data.context).replace(/^@/, '')}`;
-            }
-            // Handle both single project and list of projects
-            if (data.projects && Array.isArray(data.projects) && data.projects.length > 0) {
-                formatted += ' ' + data.projects.map(p => `+${String(p).replace(/^\+/, '')}`).join(' ');
-            } else if (data.project && data.project !== 'null' && data.project !== 'None') {
-                formatted += ` +${String(data.project).replace(/^\+/, '')}`;
-            }
-            return formatted;
-        }
-
-        async function runSmartAdd({ btn = null, textOverride = null, returnParsed = false } = {}) {
-            const input = document.getElementById('add-input');
-            const text = textOverride ?? (input ? input.value : '');
-            if (!text) return null;
-            const result = await callAiParse({ btn, text, returnParsed });
-            if (returnParsed) {
-                const parsed = result ? result.parsed : null;
-                return parsed ? { parsed, formatted: formatSmartResult(parsed, text) } : null;
-            }
-            return result;
-        }
-
-        function notifyAiFallback(message) {
-            alert(message);
-        }
-
-        async function handleSmartAdd(btn) {
-            try {
-                const formatted = await runSmartAdd({ btn });
-                if (!formatted) {
-                    return;
-                }
-                const input = document.getElementById('add-input');
-                input.value = formatted;
-                input.style.backgroundColor = '#6c5ce733';
-                setTimeout(() => input.style.backgroundColor = '', 1000);
-            } catch (err) {
-                if (err && err.message === 'timeout') {
-                    notifyAiFallback(aiTimeoutMessage);
-                } else {
-                    console.error('AI Error:', err);
-                    notifyAiFallback(`${aiErrorMessage} ${err && err.message ? err.message : ''}`.trim());
-                }
-            }
-        }
-
-        let lastImprovedMarker = null;
-
-        function highlightMarker(marker) {
-            if (!marker) return;
-            const el = document.querySelector(`.todo-item[data-marker="${marker}"]`);
-            if (el) {
-                el.classList.add('pulse');
-                el.style.outline = '2px solid #6c5ce7';
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setTimeout(() => {
-                    el.classList.remove('pulse');
-                    el.style.outline = '';
-                }, 1800);
-                lastImprovedMarker = null;
-            }
-        }
-
-        async function improveTodoWithAi(marker, originalText) {
-            try {
-                const result = await runSmartAdd({ textOverride: originalText, returnParsed: true });
-                const parsed = result && result.parsed ? result.parsed : null;
-                if (!parsed) return;
-
-                const payload = {
-                    marker,
-                    title: parsed.title || originalText,
-                    note: parsed.note,
-                    due: parsed.due,
-                    contexts: parsed.contexts || (parsed.context ? [parsed.context] : []),
-                    projects: parsed.projects || (parsed.project ? [parsed.project] : []),
-                };
-
-                const res = await fetch('/api/improve', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify(payload),
-                });
-
-                if (!res.ok) {
-                    const errTxt = await res.text();
-                    console.error('Improve failed', errTxt);
-                    return;
-                }
-
-                lastImprovedMarker = marker;
-                autoReload().then(() => highlightMarker(marker));
-            } catch (err) {
-                if (err && err.message === 'timeout') {
-                    console.warn('AI improve timed out');
-                } else {
-                    console.error('AI improve failed', err);
-                }
-            }
-        }
-
-        const addForm = document.getElementById('addForm');
-        if (addForm) {
-            addForm.onsubmit = async function(e) {
-                e.preventDefault();
-
-                const input = document.getElementById('add-input');
-                const original = input ? input.value.trim() : '';
-                if (!original) return;
-
-                try {
-                    const res = await fetch('/api/add', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken
-                        },
-                        body: JSON.stringify({ title: original })
-                    });
-
-                    if (!res.ok) {
-                        throw new Error(`HTTP ${res.status}`);
-                    }
-
-                    const data = await res.json();
-                    this.reset();
-                    if (input) input.focus();
-
-                    autoReload().then(() => highlightMarker(data.marker));
-
-                    if (autoAiOnAddFlag && data.marker) {
-                        improveTodoWithAi(data.marker, original);
-                    }
-                } catch (err) {
-                    console.error('Add failed', err);
-                    notifyAiFallback('Add failed');
-                }
-            };
-        }
-        var modal = document.getElementById("editModal");
-
-        function toggleTodo(event, lineIndex) {
-            event.stopPropagation();
-            fetch('/toggle/' + lineIndex, { 
-                method: 'POST',
-                headers: { 'X-CSRFToken': "{{ csrf_token() }}" }
-            })
-                .then(() => autoReload());
-        }
-
-        function postponeTodo(event, lineIndex, target) {
-            event.stopPropagation();
-            fetch('/postpone/' + lineIndex + '/' + target, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': "{{ csrf_token() }}" }
-            })
-                .then(() => autoReload());
-        }
-
-        async function postponeGroup(event, target, groupKey, groupMode) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-
-            if (!groupMode) {
-                return;
-            }
-
-            const items = Array.from(document.querySelectorAll('.todo-item[data-group-mode]'));
-            const matches = items.filter(item => {
-                const mode = item.dataset.groupMode || '';
-                const key = item.dataset.groupKey || '';
-                return mode === groupMode && key === (groupKey || '');
-            });
-
-            if (matches.length === 0) {
-                return;
-            }
-
-            const btn = event && event.currentTarget ? event.currentTarget : null;
-            if (btn) {
-                btn.style.opacity = '0.6';
-                btn.style.pointerEvents = 'none';
-            }
-
-            const lineIndexes = matches
-                .map(item => item.dataset.lineIndex)
-                .filter(Boolean)
-                .map(idx => parseInt(idx, 10));
-
-            try {
-                await fetch('/api/postpone-batch', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': "{{ csrf_token() }}"
-                    },
-                    body: JSON.stringify({ line_indexes: lineIndexes, target: target })
-                });
-            } catch (err) {
-                console.error('Postpone group failed', err);
-            } finally {
-                if (btn) {
-                    btn.style.opacity = '';
-                    btn.style.pointerEvents = '';
-                }
-                autoReload();
-            }
-        }
-
-        document.getElementById('editForm').onsubmit = function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            fetch(this.action, {
-                method: 'POST',
-                body: formData
-            }).then(() => {
-                closeModal();
-                autoReload();
-            });
         };
 
-        document.getElementById('editForm').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
-                e.preventDefault();
-                this.requestSubmit();
-            }
-        });
-
-        // Clear search on Esc
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const searchInput = document.getElementById('search-input');
-                const searchForm = document.getElementById('search-form');
-                const addForm = document.getElementById('addForm');
-                
-                if (searchInput && searchInput.value) {
-                    window.location.href = "{{ url_for('main.index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}";
-                } else {
-                    if (searchForm.classList.contains('visible')) toggleSearch();
-                    if (addForm.classList.contains('visible')) toggleAdd();
-                }
-            }
-        });
-
-        function toggleSearch() {
-            const form = document.getElementById('search-form');
-            const btn = document.getElementById('toggle-search');
-            const input = document.getElementById('search-input');
-            const isVisible = form.classList.toggle('visible');
-            btn.classList.toggle('active', isVisible || "{{ q }}" !== "");
-            if (isVisible) {
-                input.focus();
-                document.getElementById('addForm').classList.remove('visible');
-                document.getElementById('toggle-add').classList.remove('active');
-            }
-        }
-
-        function toggleAdd() {
-            const form = document.getElementById('addForm');
-            const btn = document.getElementById('toggle-add');
-            const input = document.getElementById('add-input');
-            const isVisible = form.classList.toggle('visible');
-            btn.classList.toggle('active', isVisible);
-            if (isVisible) {
-                input.focus();
-                document.getElementById('search-form').classList.remove('visible');
-                if ("{{ q }}" === "") {
-                    document.getElementById('toggle-search').classList.remove('active');
-                }
-            }
-        }
-
-        // Add form submission is handled once above (with optional AI preprocessing).
-
-        function applyFilter(event, url) {
-            event.preventDefault();
-            // Update URL without reload
-            window.history.pushState({}, '', url);
-            
-            // Fetch partial content
-            const fetchUrl = new URL(url);
-            fetchUrl.searchParams.set('partial', '1');
-            
-            fetch(fetchUrl)
-                .then(response => response.text())
-                .then(html => {
-                    document.querySelector('.todo-list').innerHTML = html;
-                    // Update active classes in filters
-                    updateFilterUI(url);
-                });
-        }
-
-        function updateFilterUI(currentUrl) {
-            const url = new URL(currentUrl);
-            const showDone = url.searchParams.get('show_done') === '1';
-            const showDueOnly = url.searchParams.get('show_due_only') === '1';
-            const sortMode = url.searchParams.get('sort_mode') || 'topic';
-
-            document.querySelectorAll('.filter-link').forEach(link => {
-                const filterType = link.dataset.filter;
-                const linkUrl = new URL(link.href);
-                const linkSort = linkUrl.searchParams.get('sort_mode');
-
-                link.classList.remove('active');
-
-                // Update active state and labels based on filter type
-                if (filterType === 'sort') {
-                    if (linkSort === sortMode) {
-                        link.classList.add('active');
-                    }
-                } else if (filterType === 'show_done') {
-                    if (showDone) link.classList.add('active');
-                    link.innerHTML = showDone ? '☑ {{ t.show_done }}' : '☐ {{ t.show_done }}';
-                } else if (filterType === 'show_due_only') {
-                    if (showDueOnly) link.classList.add('active');
-                    link.innerHTML = showDueOnly ? '☑ {{ t.hide_future }}' : '☐ {{ t.hide_future }}';
-                }
-
-                // Update href to reflect new state
-                const newHref = new URL(link.href);
-                if (filterType === 'sort') {
-                    // Sort links: preserve toggle states
-                    newHref.searchParams.set('show_done', showDone ? '1' : '0');
-                    newHref.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
-                } else if (filterType === 'show_done') {
-                    // show_done toggle: flip show_done, preserve show_due_only
-                    newHref.searchParams.set('show_done', showDone ? '0' : '1');
-                    newHref.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
-                    newHref.searchParams.set('sort_mode', sortMode);
-                } else if (filterType === 'show_due_only') {
-                    // show_due_only toggle: preserve show_done, flip show_due_only
-                    newHref.searchParams.set('show_done', showDone ? '1' : '0');
-                    newHref.searchParams.set('show_due_only', showDueOnly ? '0' : '1');
-                    newHref.searchParams.set('sort_mode', sortMode);
-                }
-                link.href = newHref.toString();
+        // Initialize app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.ReinschriftApp.init(appConfig);
+                initSuggestions();
             });
-            
-            // Update the Add form action to preserve filters
-            const addForm = document.getElementById('addForm');
-            const addUrl = new URL(addForm.action);
-            addUrl.searchParams.set('show_done', showDone ? '1' : '0');
-            addUrl.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
-            addUrl.searchParams.set('sort_mode', sortMode);
-            addForm.action = addUrl.toString();
-        }
-
-        function openEditModal(lineIndex) {
-            fetch('/api/todo/' + lineIndex)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert('{{ t.error_loading }} ' + data.error);
-                        return;
-                    }
-                    
-                    document.getElementById('edit-title').value = data.title;
-                    // Format projects with + prefix, space-separated
-                    const projects = data.projects || [];
-                    document.getElementById('edit-projects').value = projects.map(p => `+${p}`).join(' ');
-                    // Format contexts with @ prefix, space-separated
-                    const contexts = data.contexts || [];
-                    document.getElementById('edit-contexts').value = contexts.map(c => `@${c}`).join(' ');
-                    document.getElementById('edit-due').value = data.due || '';
-                    document.getElementById('edit-recurrence').value = data.recurrence || '';
-                    document.getElementById('edit-reference').value = data.reference || '';
-                    document.getElementById('edit-note').value = data.note || '';
-                    document.getElementById('edit-done').checked = data.done;
-                    document.getElementById('btn-close-comment').style.display = data.done ? 'none' : 'inline-block';
-                    document.getElementById('btn-save-main').style.display = 'inline-block';
-                    document.getElementById('comment-section').style.display = 'none';
-                    
-                    document.getElementById('editForm').action = '/edit/' + lineIndex;
-                    
-                    modal.style.display = "block";
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('{{ t.failed_details }}');
-                });
-        }
-
-        function closeModal() {
-            modal.style.display = "none";
-            document.getElementById('comment-section').style.display = 'none';
-            document.getElementById('btn-close-comment').style.display = 'inline-block';
-            document.getElementById('btn-save-main').style.display = 'inline-block';
-            document.getElementById('edit-note').value = '';
-            document.getElementById('edit-comment').value = '';
-        }
-
-        function deleteTodoFromModal() {
-            const action = document.getElementById('editForm').action;
-            const lineIndex = action.split('/').pop();
-            const shouldDelete = skipDeleteConfirm || confirm('{{ t.delete_confirm }}');
-            if (!shouldDelete) {
-                return;
-            }
-
-            fetch('/delete/' + lineIndex, { 
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': "{{ csrf_token() }}"
-                }
-            })
-                .then(() => {
-                    closeModal();
-                    autoReload();
-                });
-        }
-
-        function showCommentField() {
-            document.getElementById('comment-section').style.display = 'block';
-            document.getElementById('edit-done').checked = true;
-            document.getElementById('btn-close-comment').style.display = 'none';
-            document.getElementById('btn-save-main').style.display = 'none';
-            const commentInput = document.getElementById('edit-comment');
-            commentInput.focus();
-            setTimeout(() => {
-                commentInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 300);
-        }
-
-        function focusRelative(form, current, backwards) {
-            const focusables = Array.from(form.querySelectorAll('input, select, textarea, button'));
-            const idx = focusables.indexOf(current);
-            if (idx === -1) return;
-            const nextIdx = backwards ? idx - 1 : idx + 1;
-            if (nextIdx >= 0 && nextIdx < focusables.length) {
-                focusables[nextIdx].focus();
-            }
-        }
-
-        const editNote = document.getElementById('edit-note');
-        if (editNote) {
-            editNote.addEventListener('keydown', function(e) {
-                if (e.key === 'Tab') {
-                    e.preventDefault();
-                    focusRelative(document.getElementById('editForm'), e.target, e.shiftKey);
-                } else if ((e.key === 'Enter' || e.key === 'NumpadEnter') && e.ctrlKey) {
-                    e.preventDefault();
-                    document.getElementById('editForm').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                }
-            });
-        }
-
-        function submitWithComment() {
-            const form = document.getElementById('editForm');
-            form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-        }
-
-        function modalTimePart(inputEl) {
-            if (!inputEl) return '00:00';
-            const raw = inputEl.value || '';
-            if (raw.includes('T')) {
-                const maybeTime = raw.split('T')[1].slice(0, 5);
-                return maybeTime || '00:00';
-            }
-            return '00:00';
-        }
-
-        function setModalDate(offset) {
-            const dateInput = document.getElementById('edit-due');
-            if (!dateInput) return;
-            const now = new Date();
-            let targetDate = new Date();
-            let targetTime;
-            
-            if (offset === 0) {
-                // Smart "Today" logic: at least 4 hours from now
-                const currentHour = now.getHours();
-                if (currentHour < 8) {
-                    targetTime = '12:00';
-                } else if (currentHour < 14) {
-                    targetTime = '18:00';
-                } else {
-                    targetTime = '18:00';
-                }
-            } else {
-                targetDate.setDate(now.getDate() + offset);
-                targetTime = '12:00';
-            }
-            
-            const yyyy = targetDate.getFullYear();
-            const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(targetDate.getDate()).padStart(2, '0');
-            dateInput.value = `${yyyy}-${mm}-${dd}T${targetTime}`;
-        }
-
-        function setModalNextWeekend() {
-            const dateInput = document.getElementById('edit-due');
-            if (!dateInput) return;
-            const now = new Date();
-            const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
-            let daysUntilSaturday;
-            
-            if (dayOfWeek === 6) {
-                // Today is Saturday, go to next Saturday
-                daysUntilSaturday = 7;
-            } else if (dayOfWeek === 0) {
-                // Today is Sunday, go to next Saturday (6 days)
-                daysUntilSaturday = 6;
-            } else {
-                // Monday-Friday: days until this Saturday
-                daysUntilSaturday = 6 - dayOfWeek;
-            }
-            
-            const targetDate = new Date(now);
-            targetDate.setDate(now.getDate() + daysUntilSaturday);
-            
-            const yyyy = targetDate.getFullYear();
-            const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(targetDate.getDate()).padStart(2, '0');
-            dateInput.value = `${yyyy}-${mm}-${dd}T12:00`;
-        }
-
-        function setModalSometime() {
-            const dateInput = document.getElementById('edit-due');
-            if (!dateInput) return;
-            dateInput.value = `9999-12-31T00:00`;
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                closeModal();
-            }
-        }
-
-        function manualReload() {
-            window.location.reload();
-        }
-
-        let isRefreshing = false;
-        
-        function autoReload() {
-            if (isRefreshing) return Promise.resolve();
-            isRefreshing = true;
-            
-            // Construct URL with current params + partial=1
-            const url = new URL(window.location.href);
-            url.searchParams.set('partial', '1');
-            
-            return fetch(url)
-                .then(response => response.text())
-                .then(html => {
-                    document.querySelector('.todo-list').innerHTML = html;
-                    if (lastImprovedMarker) {
-                        highlightMarker(lastImprovedMarker);
-                    }
-                })
-                .catch(err => console.error('Auto-reload failed', err))
-                .finally(() => {
-                    isRefreshing = false;
-                });
-        }
-        
-        // Background refresh every 30 seconds (skip if tab hidden or modal open)
-        setInterval(function() {
-            const modalOpen = document.getElementById('editModal').style.display === 'block';
-            if (!document.hidden && !modalOpen) {
-                autoReload();
-            }
-        }, 30000);
-
-        // Smart Add Logic (Function moved to top)
-
-        // Scroll position persistence
-        window.addEventListener('beforeunload', () => {
-            sessionStorage.setItem('scrollPos', window.scrollY);
-        });
-
-        window.addEventListener('load', () => {
-            const scrollPos = sessionStorage.getItem('scrollPos');
-            if (scrollPos) {
-                window.scrollTo(0, parseInt(scrollPos));
-                sessionStorage.removeItem('scrollPos');
-            }
-        });
-
-        // Keyboard Navigation
-        let selectedIndex = -1;
-
-        function updateSelection() {
-            const items = document.querySelectorAll('.todo-item');
-            items.forEach((item, index) => {
-                if (index === selectedIndex) {
-                    item.style.border = '2px solid #3584e4';
-                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } else {
-                    item.style.border = '1px solid #eee';
-                }
-            });
-        }
-
-        function openSettings() {
-            const modal = document.getElementById('settingsModal');
-            if (modal) {
-                modal.style.display = "block";
-            }
-        }
-
-        function closeSettings() {
-            const modal = document.getElementById('settingsModal');
-            if (modal) {
-                modal.style.display = "none";
-            }
-        }
-
-        function closeCheatsheet() {
-            document.getElementById('cheatsheetModal').style.display = "none";
-        }
-
-        {% if ai_debug_enabled %}
-        // AI Debug Panel Functions
-        const aiDebugUrl = '/api/parse-debug';
-
-        function openAiDebug() {
-            closeSettings();
-            const modal = document.getElementById('aiDebugModal');
-            if (modal) {
-                modal.style.display = 'block';
-                document.getElementById('ai-debug-input').focus();
-            }
-        }
-
-        function closeAiDebug() {
-            const modal = document.getElementById('aiDebugModal');
-            if (modal) {
-                modal.style.display = 'none';
-            }
-        }
-
-        async function runAiDebug() {
-            const input = document.getElementById('ai-debug-input');
-            const text = input ? input.value.trim() : '';
-            if (!text) return;
-
-            const btn = document.getElementById('ai-debug-run-btn');
-            const btnText = btn.querySelector('.btn-text');
-            const btnSpinner = btn.querySelector('.btn-spinner');
-
-            // Show loading state
-            btn.disabled = true;
-            btnText.style.display = 'none';
-            btnSpinner.style.display = 'inline';
-
-            try {
-                const res = await fetch(aiDebugUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({ text })
-                });
-
-                const data = await res.json();
-
-                if (res.status === 403) {
-                    alert(data.error || 'Debug mode not enabled');
-                    return;
-                }
-
-                // Populate results
-                document.getElementById('ai-debug-results').style.display = 'block';
-
-                // Timing & Model
-                document.getElementById('ai-debug-timing').textContent = data.timing_ms ? `${data.timing_ms} {{ t.ai_debug_ms }}` : '-';
-                document.getElementById('ai-debug-model').textContent = data.model || '-';
-                const rejectedEl = document.getElementById('ai-debug-rejected');
-                rejectedEl.textContent = data.rejected ? 'Yes' : 'No';
-                rejectedEl.className = data.rejected ? 'ai-debug-status-rejected' : 'ai-debug-status-ok';
-                document.getElementById('ai-debug-confidence').textContent = data.confidence !== null ? data.confidence.toFixed(2) : '-';
-
-                // Error
-                const errorSection = document.getElementById('ai-debug-error-section');
-                if (data.error) {
-                    errorSection.style.display = 'block';
-                    document.getElementById('ai-debug-error').textContent = data.error;
-                } else {
-                    errorSection.style.display = 'none';
-                }
-
-                // Endpoint
-                document.getElementById('ai-debug-endpoint').textContent = data.endpoint || '-';
-
-                // System Prompt
-                document.getElementById('ai-debug-system-prompt').textContent = data.system_prompt || '-';
-
-                // User Input
-                document.getElementById('ai-debug-user-input').textContent = data.user_input || '-';
-
-                // Raw Response
-                document.getElementById('ai-debug-raw-response').textContent = data.raw_response || '-';
-
-                // Parsed Result
-                const parsedEl = document.getElementById('ai-debug-parsed-result');
-                parsedEl.classList.remove('ai-debug-success', 'ai-debug-rejected', 'ai-debug-empty');
-                if (data.parsed_result) {
-                    parsedEl.textContent = JSON.stringify(data.parsed_result, null, 2);
-                    parsedEl.classList.add('ai-debug-success');
-                } else {
-                    parsedEl.textContent = data.rejected ? '(Rejected as non-actionable)' : '(No result)';
-                    parsedEl.classList.add(data.rejected ? 'ai-debug-rejected' : 'ai-debug-empty');
-                }
-
-            } catch (err) {
-                console.error('AI Debug error:', err);
-                alert('Error running AI debug: ' + (err.message || err));
-            } finally {
-                btn.disabled = false;
-                btnText.style.display = 'inline';
-                btnSpinner.style.display = 'none';
-            }
-        }
-
-        // Handle Enter key in debug input
-        document.addEventListener('DOMContentLoaded', function() {
-            const debugInput = document.getElementById('ai-debug-input');
-            if (debugInput) {
-                debugInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        runAiDebug();
-                    }
-                });
-            }
-        });
-        {% endif %}
-
-        document.addEventListener('keydown', function(e) {
-            // Ignore if inside input or textarea
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                if (e.key === 'Escape') {
-                    e.target.blur();
-                }
-                return;
-            }
-
-            if (e.key === '?') {
-                document.getElementById('cheatsheetModal').style.display = "block";
-            } else if (e.key === 'Escape') {
-                closeModal();
-                closeSettings();
-                closeCheatsheet();
-                {% if ai_debug_enabled %}closeAiDebug();{% endif %}
-            } else if (!e.ctrlKey && !e.metaKey && e.key === 'n') {
-                e.preventDefault();
-                toggleAdd();
-            } else if (!e.ctrlKey && !e.metaKey && (e.key === 'f' || e.key === '/')) {
-                e.preventDefault();
-                toggleSearch();
-            } else if (e.key === 'j' || e.key === 'ArrowDown') {
-                const items = document.querySelectorAll('.todo-item');
-                if (selectedIndex < items.length - 1) {
-                    selectedIndex++;
-                    updateSelection();
-                }
-            } else if (e.key === 'k' || e.key === 'ArrowUp') {
-                if (selectedIndex > 0) {
-                    selectedIndex--;
-                    updateSelection();
-                } else if (selectedIndex === -1) {
-                    selectedIndex = 0;
-                    updateSelection();
-                }
-            } else if (e.key === ' ' && selectedIndex !== -1) {
-                e.preventDefault();
-                const items = document.querySelectorAll('.todo-item');
-                const link = items[selectedIndex].querySelector('.checkbox');
-                if (link) link.click();
-            } else if (e.key === 'Enter' && selectedIndex !== -1) {
-                const items = document.querySelectorAll('.todo-item');
-                items[selectedIndex].click();
-            } else if (e.key === 't' && selectedIndex !== -1) {
-                 const items = document.querySelectorAll('.todo-item');
-                 const onclick = items[selectedIndex].getAttribute('onclick');
-                 const match = onclick.match(/openEditModal\((\d+)\)/);
-                 if (match) {
-                     const idx = match[1];
-                     window.location.href = '/postpone/' + idx + '/today';
-                 }
-            } else if (e.key === '+' && selectedIndex !== -1) {
-                 const items = document.querySelectorAll('.todo-item');
-                 const onclick = items[selectedIndex].getAttribute('onclick');
-                 const match = onclick.match(/openEditModal\((\d+)\)/);
-                 if (match) {
-                     const idx = match[1];
-                     window.location.href = '/postpone/' + idx + '/tomorrow';
-                 }
-            } else if (e.key === 'w' && selectedIndex !== -1) {
-                 const items = document.querySelectorAll('.todo-item');
-                 const onclick = items[selectedIndex].getAttribute('onclick');
-                 const match = onclick.match(/openEditModal\((\d+)\)/);
-                 if (match) {
-                     const idx = match[1];
-                     window.location.href = '/postpone/' + idx + '/weekend';
-                 }
-            } else if (e.key === 's' && selectedIndex !== -1) {
-                 const items = document.querySelectorAll('.todo-item');
-                 const onclick = items[selectedIndex].getAttribute('onclick');
-                 const match = onclick.match(/openEditModal\((\d+)\)/);
-                 if (match) {
-                     const idx = match[1];
-                     window.location.href = '/postpone/' + idx + '/sometime';
-                 }
-            }
-        });
-
-        // Web Speech API Integration
-        const voiceBtn = document.getElementById('voice-btn');
-        const addInput = document.getElementById('add-input');
-        const addFormVoice = document.getElementById('addForm');
-
-        // Disable voice input on mobile; allow on desktop only
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-        if (!isMobile && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-
-            recognition.lang = "{{ current_lang }}";
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
-            voiceBtn.style.display = 'flex';
-
-            voiceBtn.onclick = () => {
-                if (voiceBtn.classList.contains('recording')) {
-                    recognition.stop();
-                } else {
-                    recognition.start();
-                }
-            };
-
-            recognition.onstart = () => {
-                voiceBtn.classList.add('recording');
-            };
-
-            recognition.onend = () => {
-                voiceBtn.classList.remove('recording');
-            };
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                addInput.value = transcript;
-                // Auto-submit form
-                if (addFormVoice) {
-                    addFormVoice.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                }
-            };
-
-            recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                voiceBtn.classList.remove('recording');
-            };
-        }
-
-        // ==========================================================================
-        // Swipe Gestures for Todo Items
-        // ==========================================================================
-        
-        const SWIPE_THRESHOLD = 80;
-        const SWIPE_MAX = 120;
-        
-        function initSwipeGestures() {
-            const todoItems = document.querySelectorAll('.todo-item');
-            
-            todoItems.forEach(item => {
-                let startX = 0;
-                let startY = 0;
-                let currentX = 0;
-                let isDragging = false;
-                let isHorizontalSwipe = null;
-                
-                // Add swipe indicator elements if not present
-                if (!item.querySelector('.swipe-indicator-left')) {
-                    const leftIndicator = document.createElement('span');
-                    leftIndicator.className = 'swipe-indicator swipe-indicator-left';
-                    leftIndicator.textContent = '✓';
-                    item.appendChild(leftIndicator);
-                    
-                    const rightIndicator = document.createElement('span');
-                    rightIndicator.className = 'swipe-indicator swipe-indicator-right';
-                    rightIndicator.textContent = '📅';
-                    item.appendChild(rightIndicator);
-                }
-                
-                item.addEventListener('touchstart', (e) => {
-                    if (e.touches.length > 1) return;
-                    startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
-                    isDragging = true;
-                    isHorizontalSwipe = null;
-                    item.style.transition = 'none';
-                }, { passive: true });
-                
-                item.addEventListener('touchmove', (e) => {
-                    if (!isDragging) return;
-                    
-                    currentX = e.touches[0].clientX - startX;
-                    const currentY = e.touches[0].clientY - startY;
-                    
-                    // Determine swipe direction on first significant move
-                    if (isHorizontalSwipe === null && (Math.abs(currentX) > 10 || Math.abs(currentY) > 10)) {
-                        isHorizontalSwipe = Math.abs(currentX) > Math.abs(currentY);
-                    }
-                    
-                    if (!isHorizontalSwipe) return;
-                    
-                    // Prevent vertical scrolling during horizontal swipe
-                    e.preventDefault();
-                    
-                    // Clamp movement
-                    const clampedX = Math.max(-SWIPE_MAX, Math.min(SWIPE_MAX, currentX));
-                    
-                    // Apply transform
-                    item.style.transform = `translateX(${clampedX}px)`;
-                    
-                    // Add visual feedback classes
-                    item.classList.toggle('swiping-right', currentX > SWIPE_THRESHOLD / 2);
-                    item.classList.toggle('swiping-left', currentX < -SWIPE_THRESHOLD / 2);
-                }, { passive: false });
-                
-                item.addEventListener('touchend', () => {
-                    if (!isDragging) return;
-                    isDragging = false;
-                    
-                    item.style.transition = 'transform 0.2s ease';
-                    item.style.transform = '';
-                    item.classList.remove('swiping-right', 'swiping-left');
-                    
-                    if (isHorizontalSwipe) {
-                        const lineIndex = item.dataset.lineIndex;
-                        
-                        if (currentX > SWIPE_THRESHOLD) {
-                            // Swipe right: Mark as done
-                            if (lineIndex) {
-                                item.classList.add('haptic-feedback');
-                                toggleTodo({ stopPropagation: () => {} }, lineIndex);
-                            }
-                        } else if (currentX < -SWIPE_THRESHOLD) {
-                            // Swipe left: Postpone to tomorrow
-                            if (lineIndex) {
-                                item.classList.add('haptic-feedback');
-                                postponeTodo({ stopPropagation: () => {} }, lineIndex, 'tomorrow');
-                            }
-                        }
-                    }
-                    
-                    currentX = 0;
-                    isHorizontalSwipe = null;
-                }, { passive: true });
-                
-                item.addEventListener('touchcancel', () => {
-                    isDragging = false;
-                    item.style.transition = 'transform 0.2s ease';
-                    item.style.transform = '';
-                    item.classList.remove('swiping-right', 'swiping-left');
-                    currentX = 0;
-                    isHorizontalSwipe = null;
-                }, { passive: true });
-            });
-        }
-        
-        // Initialize swipe gestures on load and after content updates
-        document.addEventListener('DOMContentLoaded', initSwipeGestures);
-        
-        // Re-initialize after auto-reload
-        const originalAutoReload = autoReload;
-        autoReload = function() {
-            return originalAutoReload().then(() => {
-                initSwipeGestures();
-            });
-        };
-
-        // ==========================================================================
-        // Pull to Refresh
-        // ==========================================================================
-        
-        let pullStartY = 0;
-        let pullMoveY = 0;
-        let isPulling = false;
-        let canPull = true;
-        const pullThreshold = 80;
-        const pullToRefresh = document.getElementById('pull-to-refresh');
-        
-        document.addEventListener('touchstart', (e) => {
-            if (window.scrollY === 0 && canPull) {
-                pullStartY = e.touches[0].clientY;
-                isPulling = true;
-            }
-        }, { passive: true });
-        
-        document.addEventListener('touchmove', (e) => {
-            if (!isPulling || window.scrollY > 0) {
-                isPulling = false;
-                return;
-            }
-            
-            pullMoveY = e.touches[0].clientY - pullStartY;
-            
-            if (pullMoveY > 0) {
-                // Apply resistance
-                const resistance = Math.min(pullMoveY / 2.5, pullThreshold);
-                pullToRefresh.style.transform = `translateY(${resistance - 60}px)`;
-                
-                if (pullMoveY > pullThreshold) {
-                    pullToRefresh.classList.add('visible');
-                }
-            }
-        }, { passive: true });
-        
-        document.addEventListener('touchend', () => {
-            if (!isPulling) return;
-            
-            if (pullMoveY > pullThreshold) {
-                // Trigger refresh
-                pullToRefresh.classList.add('refreshing');
-                canPull = false;
-                
-                autoReload().then(() => {
-                    setTimeout(() => {
-                        pullToRefresh.classList.remove('visible', 'refreshing');
-                        pullToRefresh.style.transform = '';
-                        canPull = true;
-                    }, 500);
-                });
-            } else {
-                pullToRefresh.classList.remove('visible');
-                pullToRefresh.style.transform = '';
-            }
-            
-            isPulling = false;
-            pullMoveY = 0;
-        }, { passive: true });
-
-        // ==========================================================================
-        // Bottom Navigation State
-        // ==========================================================================
-        
-        function updateBottomNavState() {
-            const addForm = document.getElementById('addForm');
-            const searchForm = document.getElementById('search-form');
-            
-            document.getElementById('bottom-nav-add')?.classList.toggle('active', addForm?.classList.contains('visible'));
-            document.getElementById('bottom-nav-search')?.classList.toggle('active', searchForm?.classList.contains('visible') || "{{ q }}" !== "");
-        }
-        
-        // Wrap toggle functions to update bottom nav state
-        const originalToggleAdd = toggleAdd;
-        toggleAdd = function() {
-            originalToggleAdd();
-            updateBottomNavState();
-        };
-        
-        const originalToggleSearch = toggleSearch;
-        toggleSearch = function() {
-            originalToggleSearch();
-            updateBottomNavState();
-        };
-
-        // ==========================================================================
-        // Service Worker Registration (PWA)
-        // ==========================================================================
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registered:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('ServiceWorker registration failed:', error);
-                    });
-            });
+        } else {
+            window.ReinschriftApp.init(appConfig);
+            initSuggestions();
         }
 
         // ==========================================================================
@@ -1512,7 +372,7 @@
             if (cachedSuggestions) return cachedSuggestions;
             try {
                 const res = await fetch('/api/suggestions', {
-                    headers: { 'X-CSRFToken': csrfToken }
+                    headers: { 'X-CSRFToken': appConfig.csrfToken }
                 });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 cachedSuggestions = await res.json();
@@ -1596,7 +456,114 @@
         // Initialize suggestions when DOM is ready
         document.addEventListener('DOMContentLoaded', initSuggestions);
 
-        console.log("Reinschrift JS loaded");
+        {% if ai_debug_enabled %}
+        // ==========================================================================
+        // AI Debug Panel (template-conditional)
+        // ==========================================================================
+
+        const aiDebugUrl = '/api/parse-debug';
+        const csrfToken = appConfig.csrfToken;
+
+        function openAiDebug() {
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) settingsModal.style.display = 'none';
+            const modal = document.getElementById('aiDebugModal');
+            if (modal) {
+                modal.style.display = 'block';
+                document.getElementById('ai-debug-input').focus();
+            }
+        }
+
+        function closeAiDebug() {
+            const modal = document.getElementById('aiDebugModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function runAiDebug() {
+            const input = document.getElementById('ai-debug-input');
+            const text = input ? input.value.trim() : '';
+            if (!text) return;
+
+            const btn = document.getElementById('ai-debug-run-btn');
+            const btnText = btn.querySelector('.btn-text');
+            const btnSpinner = btn.querySelector('.btn-spinner');
+
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            btnSpinner.style.display = 'inline';
+
+            try {
+                const res = await fetch(aiDebugUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await res.json();
+
+                if (res.status === 403) {
+                    alert(data.error || 'Debug mode not enabled');
+                    return;
+                }
+
+                document.getElementById('ai-debug-results').style.display = 'block';
+                document.getElementById('ai-debug-timing').textContent = data.timing_ms ? `${data.timing_ms} {{ t.ai_debug_ms }}` : '-';
+                document.getElementById('ai-debug-model').textContent = data.model || '-';
+                const rejectedEl = document.getElementById('ai-debug-rejected');
+                rejectedEl.textContent = data.rejected ? 'Yes' : 'No';
+                rejectedEl.className = data.rejected ? 'ai-debug-status-rejected' : 'ai-debug-status-ok';
+                document.getElementById('ai-debug-confidence').textContent = data.confidence !== null ? data.confidence.toFixed(2) : '-';
+
+                const errorSection = document.getElementById('ai-debug-error-section');
+                if (data.error) {
+                    errorSection.style.display = 'block';
+                    document.getElementById('ai-debug-error').textContent = data.error;
+                } else {
+                    errorSection.style.display = 'none';
+                }
+
+                document.getElementById('ai-debug-endpoint').textContent = data.endpoint || '-';
+                document.getElementById('ai-debug-system-prompt').textContent = data.system_prompt || '-';
+                document.getElementById('ai-debug-user-input').textContent = data.user_input || '-';
+                document.getElementById('ai-debug-raw-response').textContent = data.raw_response || '-';
+
+                const parsedEl = document.getElementById('ai-debug-parsed-result');
+                parsedEl.classList.remove('ai-debug-success', 'ai-debug-rejected', 'ai-debug-empty');
+                if (data.parsed_result) {
+                    parsedEl.textContent = JSON.stringify(data.parsed_result, null, 2);
+                    parsedEl.classList.add('ai-debug-success');
+                } else {
+                    parsedEl.textContent = data.rejected ? '(Rejected as non-actionable)' : '(No result)';
+                    parsedEl.classList.add(data.rejected ? 'ai-debug-rejected' : 'ai-debug-empty');
+                }
+
+            } catch (err) {
+                console.error('AI Debug error:', err);
+                alert('Error running AI debug: ' + (err.message || err));
+            } finally {
+                btn.disabled = false;
+                btnText.style.display = 'inline';
+                btnSpinner.style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const debugInput = document.getElementById('ai-debug-input');
+            if (debugInput) {
+                debugInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        runAiDebug();
+                    }
+                });
+            }
+        });
+        {% endif %}
     </script>
 </body>
 </html>
