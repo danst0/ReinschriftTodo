@@ -466,6 +466,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     font-size: 1.5rem;
     opacity: 0;
     transition: opacity var(--transition-fast);
+    pointer-events: none;
 }
 
 .todo-item::before {
