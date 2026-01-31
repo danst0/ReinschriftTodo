@@ -442,7 +442,6 @@ button, a, .checkbox, .filter-link, .todo-item {
     display: flex;
     align-items: flex-start;
     border: 1px solid var(--color-border);
-    cursor: pointer;
     position: relative;
     overflow: hidden;
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);
@@ -538,6 +537,7 @@ button, a, .checkbox, .filter-link, .todo-item {
 .content {
     flex-grow: 1;
     min-width: 0;
+    cursor: pointer;
 }
 
 .title {

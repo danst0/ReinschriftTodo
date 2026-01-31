@@ -27,7 +27,7 @@
         {% set current_group.value = todo.section %}
     {% endif %}
 
-    <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" data-marker="{{ todo.marker or '' }}" onclick="openEditModal({{ todo.line_index }})">
+    <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" data-marker="{{ todo.marker or '' }}">
         <!-- Swipe indicators (populated by JS) -->
         <span class="swipe-indicator swipe-indicator-left">✓</span>
         <span class="swipe-indicator swipe-indicator-right">📅</span>
@@ -38,7 +38,7 @@
         <a href="javascript:void(0)" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="toggleTodo(event, {{ todo.line_index }})">
             {% if todo.done %}☑{% else %}☐{% endif %}
         </a>
-        <div class="content">
+        <div class="content" onclick="openEditModal({{ todo.line_index }})">
             <div class="title">{{ todo.title }}</div>
             <div class="meta">
                 {% if todo.projects and sort_mode != 'topic' %}{% for project in todo.projects %}<span class="tag project">+{{ project }}</span> {% endfor %}{% endif %}

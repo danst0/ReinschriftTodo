@@ -18,7 +18,14 @@
       "Bash(cargo run:*)",
       "Bash(TODOS_DB_PATH=screenshots/db_en.md cargo run:*)",
       "Bash(TODOS_DB_PATH=/home/danst/development/TodosExtension/screenshots/db_en.md cargo run:*)",
-      "Bash(cargo update:*)"
+      "Bash(cargo update:*)",
+      "Bash(./build_flatpak.sh:*)",
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Bash(python -m mypy:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(python -m pytest:*)",
+      "Bash(python3 -m py_compile:*)"
     ]
   }
 }
