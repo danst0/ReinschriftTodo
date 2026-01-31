@@ -48,9 +48,8 @@ function getSelectedLineIndex() {
     const items = document.querySelectorAll('.todo-item');
     if (selectedIndex === -1 || selectedIndex >= items.length) return null;
 
-    const onclick = items[selectedIndex].getAttribute('onclick');
-    const match = onclick ? onclick.match(/openEditModal\((\d+)\)/) : null;
-    return match ? parseInt(match[1]) : null;
+    const lineIndex = items[selectedIndex].dataset.lineIndex;
+    return lineIndex != null ? parseInt(lineIndex) : null;
 }
 
 function handleKeydown(e) {
@@ -94,7 +93,8 @@ function handleKeydown(e) {
         const link = items[selectedIndex].querySelector('.checkbox');
         if (link) link.click();
     } else if (e.key === 'Enter' && selectedIndex !== -1) {
-        items[selectedIndex].click();
+        const content = items[selectedIndex].querySelector('.content');
+        if (content) content.click();
     } else if (e.key === 't' && selectedIndex !== -1) {
         const idx = getSelectedLineIndex();
         if (idx !== null) {
