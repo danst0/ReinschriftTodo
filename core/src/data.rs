@@ -24,7 +24,7 @@ pub use crate::config::{
 pub use crate::storage::get_fingerprint;
 
 // Re-export webdav
-pub use crate::webdav::test_webdav_connection;
+pub use crate::webdav::{initiate_nextcloud_login, poll_nextcloud_login, test_webdav_connection};
 
 // Re-export parser functions (used by tests in lib.rs)
 #[allow(unused_imports)]

@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.19.4" date="2026-02-01">
+      <description>
+        <ul>
+          <li>GUI: Add Nextcloud Login Flow v2 for browser-based WebDAV authentication</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.19.3" date="2026-02-01">
       <description>
         <ul>

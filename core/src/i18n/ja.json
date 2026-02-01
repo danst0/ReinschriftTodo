@@ -135,5 +135,9 @@
   "ollama_model_desc": "Ollamaモデル名 (例: mistral:7b, llama3.1:8b)",
   "ollama_url": "Ollama URL",
   "ollama_url_desc": "Ollamaサーバーアドレス (例: http://localhost:11434)",
-  "show_suggestions": "候補を表示"
+  "show_suggestions": "候補を表示",
+  "nextcloud_login": "Nextcloudでログイン",
+  "nextcloud_login_pending": "ブラウザでのログインを待っています…",
+  "nextcloud_login_success": "Nextcloudログインに成功しました！",
+  "nextcloud_login_failed": "Nextcloudログインに失敗しました: {}"
 }

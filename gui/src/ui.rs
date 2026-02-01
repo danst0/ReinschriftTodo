@@ -1498,6 +1498,157 @@ impl AppState {
         });
         webdav_group.add(&url_row);
 
+        // --- Nextcloud Login Flow v2 ---
+        let nc_login_row = adw::ActionRow::builder()
+            .title(&t("nextcloud_login"))
+            .build();
+        let nc_login_button = gtk::Button::builder()
+            .label(&t("nextcloud_login"))
+            .valign(gtk::Align::Center)
+            .build();
+        nc_login_button.add_css_class("flat");
+        nc_login_row.add_suffix(&nc_login_button);
+
+        let url_row_ref = url_row.clone();
+        let url_row_for_nc: Rc<RefCell<Option<adw::EntryRow>>> = Rc::new(RefCell::new(Some(url_row.clone())));
+        let user_row_clone: Rc<RefCell<Option<adw::EntryRow>>> = Rc::new(RefCell::new(None));
+        let pass_row_clone: Rc<RefCell<Option<adw::PasswordEntryRow>>> = Rc::new(RefCell::new(None));
+        let url_row_for_nc2 = Rc::clone(&url_row_for_nc);
+        let user_row_for_nc = Rc::clone(&user_row_clone);
+        let pass_row_for_nc = Rc::clone(&pass_row_clone);
+        let state_for_nc = Rc::clone(self);
+
+        nc_login_button.connect_clicked(move |btn| {
+            let server_url = url_row_ref.text().to_string();
+            if server_url.trim().is_empty() {
+                state_for_nc.show_error(&t("no_url_error"));
+                return;
+            }
+
+            btn.set_sensitive(false);
+            btn.set_label(&t("nextcloud_login_pending"));
+
+            let state_bg = state_for_nc.clone();
+            let btn_clone = btn.clone();
+            let url_row_bg = Rc::clone(&url_row_for_nc2);
+            let user_row_bg = Rc::clone(&user_row_for_nc);
+            let pass_row_bg = Rc::clone(&pass_row_for_nc);
+
+            let (init_sender, init_receiver) = std::sync::mpsc::channel();
+            let server_url_clone = server_url.clone();
+            std::thread::spawn(move || {
+                let result = data::initiate_nextcloud_login(&server_url_clone);
+                let _ = init_sender.send(result);
+            });
+
+            glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                match init_receiver.try_recv() {
+                    Ok(result) => {
+                        match result {
+                            Ok((login_url, endpoint, token)) => {
+                                // Open browser
+                                let launcher = gtk::UriLauncher::new(&login_url);
+                                launcher.launch(gtk::Window::NONE, gio::Cancellable::NONE, |_| {});
+
+                                // Start polling
+                                let state_poll = state_bg.clone();
+                                let btn_poll = btn_clone.clone();
+                                let url_row_poll = Rc::clone(&url_row_bg);
+                                let user_row_poll = Rc::clone(&user_row_bg);
+                                let pass_row_poll = Rc::clone(&pass_row_bg);
+                                let poll_count = Rc::new(RefCell::new(0u32));
+
+                                glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
+                                    let count = {
+                                        let mut c = poll_count.borrow_mut();
+                                        *c += 1;
+                                        *c
+                                    };
+                                    // Timeout after 120 polls (~2 minutes)
+                                    if count > 120 {
+                                        btn_poll.set_label(&t("nextcloud_login"));
+                                        btn_poll.set_sensitive(true);
+                                        state_poll.show_error(&t("nextcloud_login_failed").replace("{}", "timeout"));
+                                        return glib::ControlFlow::Break;
+                                    }
+
+                                    let endpoint_c = endpoint.clone();
+                                    let token_c = token.clone();
+                                    // Synchronous poll in a thread
+                                    let (poll_sender, poll_receiver) = std::sync::mpsc::channel();
+                                    std::thread::spawn(move || {
+                                        let result = data::poll_nextcloud_login(&endpoint_c, &token_c);
+                                        let _ = poll_sender.send(result);
+                                    });
+
+                                    let state_inner = state_poll.clone();
+                                    let btn_inner = btn_poll.clone();
+                                    let url_row_inner = Rc::clone(&url_row_poll);
+                                    let user_row_inner = Rc::clone(&user_row_poll);
+                                    let pass_row_inner = Rc::clone(&pass_row_poll);
+                                    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                                        match poll_receiver.try_recv() {
+                                            Ok(result) => {
+                                                match result {
+                                                    Ok(Some((server, login_name, app_password))) => {
+                                                        // Fill in the fields
+                                                        if let Some(ref ur) = *user_row_inner.borrow() {
+                                                            ur.set_text(&login_name);
+                                                        }
+                                                        if let Some(ref pr) = *pass_row_inner.borrow() {
+                                                            pr.set_text(&app_password);
+                                                        }
+                                                        // Auto-construct WebDAV URL
+                                                        let webdav_url = format!(
+                                                            "{}/remote.php/dav/files/{}",
+                                                            server.trim_end_matches('/'),
+                                                            login_name
+                                                        );
+                                                        state_inner.set_webdav_url(webdav_url.clone());
+                                                        if let Some(ref ur) = *url_row_inner.borrow() {
+                                                            ur.set_text(&webdav_url);
+                                                        }
+                                                        state_inner.set_webdav_username(login_name.clone());
+                                                        state_inner.set_webdav_password(app_password);
+
+                                                        btn_inner.set_label(&t("nextcloud_login"));
+                                                        btn_inner.set_sensitive(true);
+                                                        state_inner.show_info(&t("nextcloud_login_success"));
+                                                    }
+                                                    Ok(None) => {
+                                                        // Still pending, nothing to do — outer loop continues
+                                                    }
+                                                    Err(e) => {
+                                                        btn_inner.set_label(&t("nextcloud_login"));
+                                                        btn_inner.set_sensitive(true);
+                                                        state_inner.show_error(&t("nextcloud_login_failed").replace("{}", &e.to_string()));
+                                                    }
+                                                }
+                                                glib::ControlFlow::Break
+                                            }
+                                            Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
+                                            Err(std::sync::mpsc::TryRecvError::Disconnected) => glib::ControlFlow::Break,
+                                        }
+                                    });
+
+                                    glib::ControlFlow::Continue
+                                });
+                            }
+                            Err(e) => {
+                                btn_clone.set_label(&t("nextcloud_login"));
+                                btn_clone.set_sensitive(true);
+                                state_bg.show_error(&t("nextcloud_login_failed").replace("{}", &e.to_string()));
+                            }
+                        }
+                        glib::ControlFlow::Break
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => glib::ControlFlow::Break,
+                }
+            });
+        });
+        webdav_group.add(&nc_login_row);
+
         let path_row = adw::EntryRow::builder()
             .title(&t("path_relative"))
             .text(wd_path.unwrap_or_default())
@@ -1517,6 +1668,7 @@ impl AppState {
             state_user.set_webdav_username(row.text().to_string());
         });
         webdav_group.add(&user_row);
+        *user_row_clone.borrow_mut() = Some(user_row.clone());
 
         let pass_row = adw::PasswordEntryRow::builder()
             .title(&t("password"))
@@ -1527,6 +1679,7 @@ impl AppState {
             state_pass.set_webdav_password(row.text().to_string());
         });
         webdav_group.add(&pass_row);
+        *pass_row_clone.borrow_mut() = Some(pass_row.clone());
 
         let check_row = adw::ActionRow::builder()
             .title(&t("check_connection"))

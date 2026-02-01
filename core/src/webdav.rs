@@ -2,6 +2,7 @@
 
 use anyhow::{bail, Result};
 use reqwest::blocking::Client;
+use serde_json;
 
 use crate::config::{set_backend_config, BackendConfig};
 use crate::i18n::t;
@@ -205,6 +206,77 @@ pub fn write_content_webdav(
             Err(e)
         }
     }
+}
+
+/// Initiate Nextcloud Login Flow v2.
+/// Returns (login_url, poll_endpoint, poll_token).
+pub fn initiate_nextcloud_login(server_url: &str) -> Result<(String, String, String)> {
+    let url = format!(
+        "{}/index.php/login/v2",
+        server_url.trim_end_matches('/')
+    );
+
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()?;
+
+    let resp = client.post(&url).send()?;
+    if !resp.status().is_success() {
+        bail!("Login Flow v2 initiation failed: HTTP {}", resp.status());
+    }
+
+    let body: serde_json::Value = resp.json()?;
+    let login = body["login"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing 'login' field in response"))?
+        .to_string();
+    let endpoint = body["poll"]["endpoint"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing 'poll.endpoint' field in response"))?
+        .to_string();
+    let token = body["poll"]["token"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing 'poll.token' field in response"))?
+        .to_string();
+
+    Ok((login, endpoint, token))
+}
+
+/// Poll the Login Flow v2 endpoint.
+/// Returns Ok(Some((server, login_name, app_password))) when the user has completed login,
+/// Ok(None) if still pending.
+pub fn poll_nextcloud_login(endpoint: &str, token: &str) -> Result<Option<(String, String, String)>> {
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()?;
+
+    let resp = client
+        .post(endpoint)
+        .form(&[("token", token)])
+        .send()?;
+
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    if !resp.status().is_success() {
+        bail!("Login Flow v2 poll failed: HTTP {}", resp.status());
+    }
+
+    let body: serde_json::Value = resp.json()?;
+    let server = body["server"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing 'server' field in poll response"))?
+        .to_string();
+    let login_name = body["loginName"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing 'loginName' field in poll response"))?
+        .to_string();
+    let app_password = body["appPassword"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing 'appPassword' field in poll response"))?
+        .to_string();
+
+    Ok(Some((server, login_name, app_password)))
 }
 
 /// Test WebDAV connection without modifying config.

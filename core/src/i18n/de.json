@@ -150,5 +150,9 @@
   "ollama_model_desc": "Ollama-Modellname (z.B. mistral:7b, llama3.1:8b)",
   "ollama_url": "Ollama-URL",
   "ollama_url_desc": "Ollama-Serveradresse (z.B. http://localhost:11434)",
-  "show_suggestions": "Vorschläge anzeigen"
+  "show_suggestions": "Vorschläge anzeigen",
+  "nextcloud_login": "Mit Nextcloud anmelden",
+  "nextcloud_login_pending": "Warte auf Browser-Anmeldung…",
+  "nextcloud_login_success": "Nextcloud-Anmeldung erfolgreich!",
+  "nextcloud_login_failed": "Nextcloud-Anmeldung fehlgeschlagen: {}"
 }
