@@ -42,6 +42,7 @@ enum ListEntry {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 struct AiParseResult {
     title: Option<String>,
     due: Option<String>,
@@ -1224,54 +1225,7 @@ impl AppState {
         Ok(())
     }
 
-    fn show_due_shortcuts(self: &Rc<Self>, todo: &TodoItem) {
-        let Some(parent) = self.window.upgrade() else {
-            self.show_error("Kein Fenster verfügbar");
-            return;
-        };
 
-        let dialog = AlertDialog::builder()
-            .modal(true)
-            .build();
-        dialog.set_message("Fälligkeit verschieben");
-        dialog.set_detail("Bitte Ziel wählen");
-        dialog.set_buttons(&["Morgen", "In 3 Tagen", "In 7 Tagen", "In einem Monat", "Irgendwann", "Abbrechen"]);
-        dialog.set_default_button(0);
-        dialog.set_cancel_button(5);
-
-        let state = Rc::clone(self);
-        let base_todo = todo.clone();
-        dialog.choose(
-            Some(&parent),
-            Option::<&gio::Cancellable>::None,
-            clone!(#[strong] state, #[strong] base_todo, move |result| {
-                match result {
-                    Ok(index) => {
-                        let action = match index {
-                            0 => Some(1),
-                            1 => Some(3),
-                            2 => Some(7),
-                            3 => Some(30),
-                            4 => None,
-                            _ => return,
-                        };
-
-                        let outcome = match action {
-                            Some(days) => state.set_due_in_days(&base_todo, days),
-                            None => state.set_due_sometimes(&base_todo),
-                        };
-
-                        if let Err(err) = outcome {
-                            state.show_error(&format!("Konnte verschieben: {err}"));
-                        }
-                    }
-                    Err(err) => {
-                        state.show_error(&format!("Konnte Dialog nicht anzeigen: {err}"));
-                    }
-                }
-            }),
-        );
-    }
 
     fn show_cheatsheet(self: &Rc<Self>) {
         let Some(parent) = self.window.upgrade() else {
@@ -1963,22 +1917,6 @@ impl AppState {
             prefs.ollama_model = value;
         }
         self.persist_preferences();
-    }
-
-    fn add_plain_and_notify(self: &Rc<Self>, title_text: &str, entry: &gtk::Entry) {
-        match data::add_todo(title_text) {
-            Ok(_) => {
-                entry.set_text("");
-                if let Err(err) = self.reload() {
-                    self.show_error(&t("reload_error").replace("{}", &err.to_string()));
-                } else {
-                    self.show_info(&t("task_added"));
-                }
-            }
-            Err(err) => {
-                self.show_error(&t("create_error").replace("{}", &err.to_string()));
-            }
-        }
     }
 
     fn handle_add_submission(self: &Rc<Self>, entry: &gtk::Entry) {

@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.19.5" date="2026-02-01">
+      <description>
+        <ul>
+          <li>Remove dead code and suppress deserialization-only field warnings</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.19.4" date="2026-02-01">
       <description>
         <ul>

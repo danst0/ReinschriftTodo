@@ -4,7 +4,6 @@ use chrono::{Local, NaiveDateTime};
 
 pub struct OutputContext {
     pub json: bool,
-    pub color: bool,
 }
 
 impl OutputContext {
@@ -12,7 +11,7 @@ impl OutputContext {
         if !color {
             colored::control::set_override(false);
         }
-        Self { json, color }
+        Self { json }
     }
 
     pub fn success(&self, msg: &str) {
@@ -36,16 +35,6 @@ impl OutputContext {
             println!(r#"{{"status":"info","message":"{}"}}"#, escape_json(msg));
         } else {
             println!("{}", msg.dimmed());
-        }
-    }
-
-    pub fn print_todo(&self, item: &TodoItem) {
-        if self.json {
-            if let Ok(json) = serde_json::to_string(item) {
-                println!("{}", json);
-            }
-        } else {
-            print_todo_colored(item);
         }
     }
 
