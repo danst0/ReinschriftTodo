@@ -1483,16 +1483,27 @@ impl AppState {
         webdav_group.add(&pass_row);
 
         // --- Nextcloud Login Flow v2 ---
-        let nc_switch_row = adw::SwitchRow::builder()
+        let nc_login_row = adw::ActionRow::builder()
             .title(&t("nextcloud_login"))
+            .activatable(true)
             .build();
+        nc_login_row.add_suffix(&gtk::Image::from_icon_name("web-browser-symbolic"));
 
-        // Determine initial state: if URL looks like a Nextcloud Login Flow URL, activate
+        // Hide user/pass when URL indicates Nextcloud Login Flow was used
         let current_url = url_row.text().to_string();
         let is_nc = current_url.contains("remote.php/dav/files");
-        nc_switch_row.set_active(is_nc);
         user_row.set_visible(!is_nc);
         pass_row.set_visible(!is_nc);
+
+        // Also toggle user/pass visibility when URL changes
+        let user_row_for_url = user_row.clone();
+        let pass_row_for_url = pass_row.clone();
+        url_row.connect_changed(move |row| {
+            let url = row.text().to_string();
+            let nc = url.contains("remote.php/dav/files");
+            user_row_for_url.set_visible(!nc);
+            pass_row_for_url.set_visible(!nc);
+        });
 
         let url_row_for_nc = url_row.clone();
         let user_row_for_nc = user_row.clone();
@@ -1501,20 +1512,16 @@ impl AppState {
         let nc_polling = Rc::new(RefCell::new(false));
         let nc_polling_for_handler = Rc::clone(&nc_polling);
 
-        nc_switch_row.connect_active_notify(move |row| {
-            let active = row.is_active();
-            user_row_for_nc.set_visible(!active);
-            pass_row_for_nc.set_visible(!active);
-
-            if !active {
-                return;
-            }
-
-            // Initiate Login Flow v2
+        nc_login_row.connect_activated(move |row| {
             let server_url = url_row_for_nc.text().to_string();
+            // Strip Nextcloud WebDAV path to get the base server URL
+            let server_url = if let Some(pos) = server_url.find("/remote.php/") {
+                server_url[..pos].to_string()
+            } else {
+                server_url
+            };
             if server_url.trim().is_empty() {
                 state_for_nc.show_error(&t("no_url_error"));
-                row.set_active(false);
                 return;
             }
 
@@ -1563,18 +1570,10 @@ impl AppState {
                                         *c += 1;
                                         *c
                                     };
-                                    // Timeout after 120 polls (~2 minutes)
                                     if count > 120 {
                                         row_poll.set_subtitle("");
                                         *nc_polling_poll.borrow_mut() = false;
                                         state_poll.show_error(&t("nextcloud_login_failed").replace("{}", "timeout"));
-                                        return glib::ControlFlow::Break;
-                                    }
-
-                                    // If user toggled off during polling, stop
-                                    if !row_poll.is_active() {
-                                        row_poll.set_subtitle("");
-                                        *nc_polling_poll.borrow_mut() = false;
                                         return glib::ControlFlow::Break;
                                     }
 
@@ -1645,7 +1644,7 @@ impl AppState {
                 }
             });
         });
-        webdav_group.add(&nc_switch_row);
+        webdav_group.add(&nc_login_row);
 
         let check_row = adw::ActionRow::builder()
             .title(&t("check_connection"))
