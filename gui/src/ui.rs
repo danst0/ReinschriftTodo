@@ -2966,9 +2966,16 @@ impl AppState {
     }
 
     fn show_error(&self, message: &str) {
+        let display_msg = if message.chars().count() > 120 {
+            let truncated: String = message.chars().take(120).collect();
+            format!("{}…", truncated)
+        } else {
+            message.to_string()
+        };
         let toast = adw::Toast::builder()
-            .title(message)
+            .title(&display_msg)
             .priority(adw::ToastPriority::High)
+            .timeout(10)
             .build();
         self.overlay.add_toast(toast);
     }
