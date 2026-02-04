@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.19.8" date="2026-02-04">
+      <description>
+        <ul>
+          <li>Webapp: Add OIDC refresh token support for transparent token renewal</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.19.7" date="2026-02-01">
       <description>
         <ul>

@@ -22,5 +22,5 @@ def init_extensions(app):
             server_metadata_url=app.config.get('OIDC_ISSUER'),
             client_id=app.config.get('OIDC_CLIENT_ID'),
             client_secret=app.config.get('OIDC_CLIENT_SECRET'),
-            client_kwargs={'scope': 'openid email profile'},
+            client_kwargs={'scope': 'openid email profile offline_access'},
         )

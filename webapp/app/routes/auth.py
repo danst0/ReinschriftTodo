@@ -60,6 +60,9 @@ def authorize():
     if allowed_user and email == allowed_user:
         session.permanent = True
         session['logged_in'] = True
+        session['oidc_token'] = token.get('access_token')
+        session['oidc_refresh_token'] = token.get('refresh_token')
+        session['oidc_expires_at'] = token.get('expires_at')
         return redirect(url_for('main.index'))
     else:
         lang = get_locale()
@@ -71,4 +74,7 @@ def authorize():
 def logout():
     """Handle logout."""
     session.pop('logged_in', None)
+    session.pop('oidc_token', None)
+    session.pop('oidc_refresh_token', None)
+    session.pop('oidc_expires_at', None)
     return redirect(url_for('auth.login'))

@@ -2,8 +2,10 @@
 
 import logging
 import os
+import time
 
-from flask import Flask
+import requests as http_requests
+from flask import Flask, session, redirect, url_for, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.config import config
@@ -46,6 +48,9 @@ def create_app(config_name: str | None = None) -> Flask:
     # Initialize extensions
     init_extensions(app)
 
+    # Register OIDC token refresh hook
+    register_token_refresh(app)
+
     # Register blueprints
     register_blueprints(app)
 
@@ -56,6 +61,82 @@ def create_app(config_name: str | None = None) -> Flask:
     register_error_handlers(app)
 
     return app
+
+
+def register_token_refresh(app: Flask) -> None:
+    """Register a before_request hook that refreshes expired OIDC tokens."""
+    logger = logging.getLogger(__name__)
+
+    @app.before_request
+    def refresh_oidc_token():
+        # Skip if no OIDC refresh token in session (password login or unauthenticated)
+        if 'oidc_refresh_token' not in session:
+            return
+
+        # Skip auth routes to avoid redirect loops
+        if request.endpoint and request.endpoint.startswith('auth.'):
+            return
+
+        # Skip static files
+        if request.endpoint == 'static':
+            return
+
+        expires_at = session.get('oidc_expires_at')
+        if expires_at is None:
+            return
+
+        # Check if token is expired or will expire within 60 seconds
+        if time.time() < (expires_at - 60):
+            return
+
+        # Token is expired — attempt refresh
+        issuer = app.config.get('OIDC_ISSUER')
+        client_id = app.config.get('OIDC_CLIENT_ID')
+        client_secret = app.config.get('OIDC_CLIENT_SECRET')
+        refresh_token = session.get('oidc_refresh_token')
+
+        if not all([issuer, client_id, refresh_token]):
+            logger.warning('Missing OIDC config for token refresh, clearing session')
+            session.clear()
+            return redirect(url_for('auth.login'))
+
+        # Discover the token endpoint from the OIDC provider metadata
+        try:
+            metadata = http_requests.get(issuer, timeout=10).json()
+            token_endpoint = metadata.get('token_endpoint')
+        except Exception:
+            logger.error('Failed to fetch OIDC metadata for token refresh')
+            session.clear()
+            return redirect(url_for('auth.login'))
+
+        if not token_endpoint:
+            logger.error('No token_endpoint in OIDC metadata')
+            session.clear()
+            return redirect(url_for('auth.login'))
+
+        # Exchange the refresh token for a new access token
+        try:
+            resp = http_requests.post(token_endpoint, data={
+                'grant_type': 'refresh_token',
+                'refresh_token': refresh_token,
+                'client_id': client_id,
+                'client_secret': client_secret,
+            }, timeout=10)
+            resp.raise_for_status()
+            token_data = resp.json()
+        except Exception:
+            logger.error('OIDC token refresh failed')
+            session.clear()
+            return redirect(url_for('auth.login'))
+
+        # Update session with new tokens
+        session['oidc_token'] = token_data.get('access_token')
+        session['oidc_expires_at'] = token_data.get('expires_at')
+        # Some IdPs issue a new refresh token with each refresh
+        if token_data.get('refresh_token'):
+            session['oidc_refresh_token'] = token_data['refresh_token']
+
+        logger.info('OIDC access token refreshed successfully')
 
 
 def register_blueprints(app: Flask) -> None:
