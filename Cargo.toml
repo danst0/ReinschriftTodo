@@ -3,7 +3,7 @@ members = ["core", "gui", "cli"]
 resolver = "3"
 
 [workspace.package]
-version = "0.19.9"
+version = "0.20.0"
 edition = "2024"
 license = "CC-BY-SA-4.0"
 
