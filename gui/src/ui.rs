@@ -1128,9 +1128,12 @@ impl AppState {
         let weak = Rc::downgrade(self);
         glib::timeout_add_seconds_local(2, move || {
             if let Some(state) = weak.upgrade() {
-                let mut slot = state.recently_updated.borrow_mut();
-                if slot.as_deref() == Some(marker.as_str()) {
-                    *slot = None;
+                let should_clear = {
+                    let slot = state.recently_updated.borrow();
+                    slot.as_deref() == Some(marker.as_str())
+                };
+                if should_clear {
+                    *state.recently_updated.borrow_mut() = None;
                     state.repopulate_store();
                 }
             }

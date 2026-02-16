@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.20.1" date="2026-02-16">
+      <description>
+        <ul>
+          <li>Fix RefCell re-entrancy crash in highlight timeout callback</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.20.0" date="2026-02-16">
       <description>
         <ul>
