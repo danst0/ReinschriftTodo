@@ -6,8 +6,9 @@ use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
 use crate::i18n::t;
 use crate::parser::{find_line_by_marker, parse_line};
 use crate::renderer::{render_line, rewrite_due, rewrite_line};
-use crate::storage::{read_content, write_content};
+use crate::storage::{read_content, read_content_with_fingerprint, write_content, write_content_checked};
 use crate::types::{TodoItem, TodoKey, DEFAULT_DUE_TIME};
+use crate::undo::push_undo;
 use crate::util::generate_marker;
 
 /// Load all todos from the configured backend.
@@ -25,33 +26,51 @@ pub fn load_todos() -> Result<Vec<TodoItem>> {
     Ok(items)
 }
 
-/// Toggle a todo's completion state.
-pub fn toggle_todo(key: &TodoKey, done: bool) -> Result<()> {
-    let content = read_content()?;
-    let mut lines: Vec<String> = content.lines().map(|line| line.to_string()).collect();
-    let had_trailing_newline = content.ends_with('\n');
+/// Core helper: read file with fingerprint, push undo, apply rewrite, write with conflict check.
+/// The `rewrite` closure receives the lines and must return the modified output string.
+fn mutate_file<F>(description: &str, rewrite: F) -> Result<()>
+where
+    F: FnOnce(&mut Vec<String>, bool) -> Result<String>,
+{
+    let snapshot = read_content_with_fingerprint()?;
+    push_undo(snapshot.content.clone(), description.to_string());
 
+    let mut lines: Vec<String> = snapshot.content.lines().map(|l| l.to_string()).collect();
+    let had_trailing_newline = snapshot.content.ends_with('\n');
+
+    let output = rewrite(&mut lines, had_trailing_newline)?;
+    write_content_checked(output, &snapshot.fingerprint)?;
+    Ok(())
+}
+
+/// Find the target line index for a given key.
+fn resolve_key(lines: &[String], key: &TodoKey) -> Result<usize> {
     let mut target_index = None;
     if let Some(marker) = &key.marker {
-        target_index = find_line_by_marker(&lines, marker);
+        target_index = find_line_by_marker(lines, marker);
     }
     if target_index.is_none() && key.line_index < lines.len() {
         target_index = Some(key.line_index);
     }
+    target_index.ok_or_else(|| anyhow!(t("todo_not_found")))
+}
 
-    let index = target_index.ok_or_else(|| anyhow!(t("todo_not_found")))?;
-    let updated_line = rewrite_line(&lines[index], done)
-        .with_context(|| t("line_update_error").replace("{}", &(index + 1).to_string()))?;
-    lines[index] = updated_line;
+/// Toggle a todo's completion state.
+pub fn toggle_todo(key: &TodoKey, done: bool) -> Result<()> {
+    let key = key.clone();
+    let action = if done { "complete" } else { "reopen" };
+    mutate_file(action, |lines, had_trailing_newline| {
+        let index = resolve_key(lines, &key)?;
+        let updated_line = rewrite_line(&lines[index], done)
+            .with_context(|| t("line_update_error").replace("{}", &(index + 1).to_string()))?;
+        lines[index] = updated_line;
 
-    let mut output = lines.join("\n");
-    if had_trailing_newline {
-        output.push('\n');
-    }
-
-    write_content(output)?;
-
-    Ok(())
+        let mut output = lines.join("\n");
+        if had_trailing_newline {
+            output.push('\n');
+        }
+        Ok(output)
+    })
 }
 
 /// Set a todo's due date to today (smart time selection).
@@ -70,7 +89,7 @@ pub fn set_due_today(key: &TodoKey) -> Result<NaiveDateTime> {
     };
 
     let due_dt = NaiveDateTime::new(today, time);
-    update_line(key, |line| rewrite_due(line, due_dt))?;
+    update_line(key, "set due today", |line| rewrite_due(line, due_dt))?;
     Ok(due_dt)
 }
 
@@ -79,7 +98,7 @@ pub fn set_due_tomorrow(key: &TodoKey) -> Result<NaiveDateTime> {
     let tomorrow = Local::now().date_naive() + chrono::Duration::days(1);
     let time = NaiveTime::from_hms_opt(12, 0, 0).unwrap();
     let due_dt = NaiveDateTime::new(tomorrow, time);
-    update_line(key, |line| rewrite_due(line, due_dt))?;
+    update_line(key, "set due tomorrow", |line| rewrite_due(line, due_dt))?;
     Ok(due_dt)
 }
 
@@ -99,7 +118,7 @@ pub fn set_due_weekend(key: &TodoKey) -> Result<NaiveDateTime> {
     let target_date = today + chrono::Duration::days(days_until_saturday);
     let time = NaiveTime::from_hms_opt(12, 0, 0).unwrap();
     let due_dt = NaiveDateTime::new(target_date, time);
-    update_line(key, |line| rewrite_due(line, due_dt))?;
+    update_line(key, "set due weekend", |line| rewrite_due(line, due_dt))?;
     Ok(due_dt)
 }
 
@@ -107,14 +126,14 @@ pub fn set_due_weekend(key: &TodoKey) -> Result<NaiveDateTime> {
 pub fn set_due_sometime(key: &TodoKey) -> Result<NaiveDateTime> {
     let sometime = NaiveDate::from_ymd_opt(9999, 12, 31).unwrap();
     let due_dt = NaiveDateTime::new(sometime, DEFAULT_DUE_TIME);
-    update_line(key, |line| rewrite_due(line, due_dt))?;
+    update_line(key, "set due sometime", |line| rewrite_due(line, due_dt))?;
     Ok(due_dt)
 }
 
 /// Update a todo's details (full re-render).
 pub fn update_todo_details(item: &TodoItem) -> Result<()> {
     let rendered = render_line(item)?;
-    update_line(&item.key, |_| Ok(rendered))
+    update_line(&item.key, "edit", |_| Ok(rendered))
 }
 
 /// Delete a todo.
@@ -166,8 +185,10 @@ pub fn add_todo_full(item: &TodoItem) -> Result<TodoKey> {
 
 /// Insert a new line before the "---" separator (or at end).
 fn insert_line(line: String, marker: String) -> Result<TodoKey> {
-    let content = read_content()?;
-    let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+    let snapshot = read_content_with_fingerprint()?;
+    push_undo(snapshot.content.clone(), "add".to_string());
+
+    let mut lines: Vec<String> = snapshot.content.lines().map(|l| l.to_string()).collect();
 
     let insert_index = lines
         .iter()
@@ -177,11 +198,11 @@ fn insert_line(line: String, marker: String) -> Result<TodoKey> {
     lines.insert(insert_index, line);
 
     let mut output = lines.join("\n");
-    if content.ends_with('\n') {
+    if snapshot.content.ends_with('\n') {
         output.push('\n');
     }
 
-    write_content(output)?;
+    write_content_checked(output, &snapshot.fingerprint)?;
     Ok(TodoKey {
         line_index: insert_index,
         marker: Some(marker),
@@ -189,54 +210,51 @@ fn insert_line(line: String, marker: String) -> Result<TodoKey> {
 }
 
 /// Update a specific line using a rewrite function.
-fn update_line<F>(key: &TodoKey, rewrite: F) -> Result<()>
+fn update_line<F>(key: &TodoKey, description: &str, rewrite: F) -> Result<()>
 where
     F: FnOnce(&str) -> Result<String>,
 {
-    let content = read_content()?;
-    let mut lines: Vec<String> = content.lines().map(|line| line.to_string()).collect();
-    let had_trailing_newline = content.ends_with('\n');
+    let key = key.clone();
+    mutate_file(description, |lines, had_trailing_newline| {
+        let index = resolve_key(lines, &key)?;
+        let updated_line = rewrite(&lines[index])
+            .with_context(|| t("line_update_error").replace("{}", &(index + 1).to_string()))?;
+        lines[index] = updated_line;
 
-    let mut target_index = None;
-    if let Some(marker) = &key.marker {
-        target_index = find_line_by_marker(&lines, marker);
-    }
-    if target_index.is_none() && key.line_index < lines.len() {
-        target_index = Some(key.line_index);
-    }
-
-    let index = target_index.ok_or_else(|| anyhow!(t("todo_not_found")))?;
-    let updated_line = rewrite(&lines[index])
-        .with_context(|| t("line_update_error").replace("{}", &(index + 1).to_string()))?;
-    lines[index] = updated_line;
-
-    let mut output = lines.join("\n");
-    if had_trailing_newline {
-        output.push('\n');
-    }
-
-    write_content(output)?;
-
-    Ok(())
+        let mut output = lines.join("\n");
+        if had_trailing_newline {
+            output.push('\n');
+        }
+        Ok(output)
+    })
 }
 
 /// Delete a line by its key.
 fn delete_line(key: &TodoKey) -> Result<()> {
-    let content = read_content()?;
-    let mut lines: Vec<String> = content.lines().map(|line| line.to_string()).collect();
-    let index = key.line_index;
-    if index >= lines.len() {
-        bail!(t("todo_not_found"));
-    }
+    let key = key.clone();
+    mutate_file("delete", |lines, _| {
+        let index = key.line_index;
+        if index >= lines.len() {
+            bail!(t("todo_not_found"));
+        }
 
-    lines.remove(index);
+        lines.remove(index);
 
-    let mut output = lines.join("\n");
-    output.push('\n');
+        let mut output = lines.join("\n");
+        output.push('\n');
+        Ok(output)
+    })
+}
 
-    write_content(output)?;
-
-    Ok(())
+/// Undo the most recent mutation by restoring the previous file content.
+/// Returns the description of the undone action, or None if the stack is empty.
+pub fn undo() -> Result<Option<String>> {
+    let entry = match crate::undo::pop_undo() {
+        Some(e) => e,
+        None => return Ok(None),
+    };
+    write_content(entry.content)?;
+    Ok(Some(entry.description))
 }
 
 /// Add months to a date, handling month-end edge cases.

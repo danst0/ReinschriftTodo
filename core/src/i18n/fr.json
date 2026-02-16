@@ -139,5 +139,17 @@
   "nextcloud_login": "Se connecter avec Nextcloud",
   "nextcloud_login_pending": "En attente de la connexion dans le navigateur…",
   "nextcloud_login_success": "Connexion Nextcloud réussie !",
-  "nextcloud_login_failed": "Échec de la connexion Nextcloud : {}"
+  "nextcloud_login_failed": "Échec de la connexion Nextcloud : {}",
+  "conflict_title": "Le fichier a été modifié en externe",
+  "conflict_reload": "Recharger",
+  "conflict_overwrite": "Écraser",
+  "undo": "Annuler",
+  "undone_action": "Annulé : {}",
+  "nothing_to_undo": "Rien à annuler",
+  "reminder_title": "Tâche due",
+  "task_due": "Échéance : {}",
+  "enable_reminders": "Activer les rappels",
+  "remind_before_minutes": "Fenêtre de rappel (minutes)",
+  "key_undo": "Annuler la dernière action",
+  "overdue_warning": "{} tâche(s) en retard"
 }

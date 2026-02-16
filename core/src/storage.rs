@@ -5,6 +5,7 @@ use std::fs;
 use anyhow::{bail, Context, Result};
 
 use crate::config::{get_backend_config, BackendConfig};
+use crate::conflict::{ConflictError, ReadSnapshot};
 use crate::i18n::t;
 use crate::webdav::{get_fingerprint_webdav, read_content_webdav, write_content_webdav};
 
@@ -57,6 +58,49 @@ pub fn write_content(content: String) -> Result<()> {
             path,
             username,
             password,
-        } => write_content_webdav(&url, path, username, password, content),
+        } => write_content_webdav(&url, path, username, password, content, None),
+    }
+}
+
+/// Read content together with its fingerprint (for conflict detection).
+pub fn read_content_with_fingerprint() -> Result<ReadSnapshot> {
+    let content = read_content()?;
+    let fingerprint = get_fingerprint()?;
+    Ok(ReadSnapshot {
+        content,
+        fingerprint,
+    })
+}
+
+/// Write content only if the fingerprint has not changed since it was read.
+/// Returns `ConflictError` (as `anyhow::Error`) on mismatch.
+pub fn write_content_checked(content: String, expected_fingerprint: &str) -> Result<()> {
+    let config = get_backend_config();
+    match config {
+        BackendConfig::Local(path) => {
+            let current = get_fingerprint()?;
+            if current != expected_fingerprint {
+                return Err(ConflictError {
+                    local_fingerprint: expected_fingerprint.to_string(),
+                    remote_fingerprint: current,
+                }
+                .into());
+            }
+            fs::write(&path, content)
+                .with_context(|| t("write_error").replace("{}", &path.display().to_string()))
+        }
+        BackendConfig::WebDav {
+            url,
+            path,
+            username,
+            password,
+        } => write_content_webdav(
+            &url,
+            path,
+            username,
+            password,
+            content,
+            Some(expected_fingerprint),
+        ),
     }
 }

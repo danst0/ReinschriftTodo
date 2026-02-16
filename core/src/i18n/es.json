@@ -139,5 +139,17 @@
   "nextcloud_login": "Iniciar sesión con Nextcloud",
   "nextcloud_login_pending": "Esperando inicio de sesión en el navegador…",
   "nextcloud_login_success": "¡Inicio de sesión en Nextcloud exitoso!",
-  "nextcloud_login_failed": "Inicio de sesión en Nextcloud fallido: {}"
+  "nextcloud_login_failed": "Inicio de sesión en Nextcloud fallido: {}",
+  "conflict_title": "El archivo fue modificado externamente",
+  "conflict_reload": "Recargar",
+  "conflict_overwrite": "Sobrescribir",
+  "undo": "Deshacer",
+  "undone_action": "Deshecho: {}",
+  "nothing_to_undo": "Nada que deshacer",
+  "reminder_title": "Tarea pendiente",
+  "task_due": "Vence: {}",
+  "enable_reminders": "Activar recordatorios",
+  "remind_before_minutes": "Ventana de recordatorio (minutos)",
+  "key_undo": "Deshacer última acción",
+  "overdue_warning": "{} tarea(s) vencida(s)"
 }

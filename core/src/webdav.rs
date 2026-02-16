@@ -151,12 +151,15 @@ pub fn read_content_webdav(
 }
 
 /// Write content to WebDAV server.
+/// When `expected_etag` is provided, sends an `If-Match` header and returns
+/// `ConflictError` on HTTP 412 Precondition Failed.
 pub fn write_content_webdav(
     url: &str,
     path: Option<String>,
     username: Option<String>,
     password: Option<String>,
     content: String,
+    expected_etag: Option<&str>,
 ) -> Result<()> {
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -166,15 +169,35 @@ pub fn write_content_webdav(
     let username_ref = username.as_deref();
     let password_ref = password.as_deref();
     let content_clone = content.clone();
+    let etag_clone = expected_etag.map(|s| s.to_string());
 
     let try_put = |target_url: &str| -> Result<()> {
         let mut req = client.put(target_url);
         if let (Some(u), Some(p)) = (username_ref, password_ref) {
             req = req.basic_auth(u, Some(p));
         }
+        if let Some(ref etag) = etag_clone {
+            // Extract just the ETag portion (fingerprint is "etag-lastmod")
+            let etag_value = etag.split('-').next().unwrap_or(etag);
+            if !etag_value.is_empty() {
+                req = req.header("If-Match", etag_value);
+            }
+        }
         req = req.body(content_clone.clone());
         let resp = req.send()?;
         if !resp.status().is_success() {
+            if resp.status() == reqwest::StatusCode::PRECONDITION_FAILED {
+                return Err(crate::conflict::ConflictError {
+                    local_fingerprint: etag_clone.clone().unwrap_or_default(),
+                    remote_fingerprint: resp
+                        .headers()
+                        .get("etag")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("unknown")
+                        .to_string(),
+                }
+                .into());
+            }
             if resp.status() == reqwest::StatusCode::NOT_FOUND {
                 bail!("404 Not Found");
             }
@@ -187,6 +210,10 @@ pub fn write_content_webdav(
     match try_put(&full_url) {
         Ok(_) => Ok(()),
         Err(e) => {
+            // Don't retry on conflict — propagate immediately
+            if e.downcast_ref::<crate::conflict::ConflictError>().is_some() {
+                return Err(e);
+            }
             // Try Nextcloud fallback
             if let Ok(Some((_, candidate_base))) =
                 try_nextcloud_fallback(url, path_ref, username_ref, try_put)

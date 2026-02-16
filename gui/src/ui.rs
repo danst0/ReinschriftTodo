@@ -26,6 +26,7 @@ use serde_json;
 use tokio::runtime::Runtime;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
+use std::collections::HashSet;
 use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, Preferences, load_preferences, write_preferences};
 
 enum VoiceMsg {
@@ -467,6 +468,23 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         } else if has_ctrl && (key == gdk::Key::f || key == gdk::Key::F) {
             search_btn_esc.set_active(!search_btn_esc.is_active());
             glib::Propagation::Stop
+        } else if has_ctrl && (key == gdk::Key::z || key == gdk::Key::Z) {
+            match data::undo() {
+                Ok(Some(desc)) => {
+                    if let Err(e) = state_for_keys.reload() {
+                        state_for_keys.show_error(&t("reload_error").replace("{}", &e.to_string()));
+                    } else {
+                        state_for_keys.show_info(&t("undone_action").replace("{}", &desc));
+                    }
+                }
+                Ok(None) => {
+                    state_for_keys.show_info(&t("nothing_to_undo"));
+                }
+                Err(e) => {
+                    state_for_keys.show_error(&e.to_string());
+                }
+            }
+            glib::Propagation::Stop
         } else {
             glib::Propagation::Proceed
         }
@@ -543,7 +561,8 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         state.show_error(&t("monitor_error").replace("{}", &err.to_string()));
     }
 
-    schedule_poll(state, 10);
+    schedule_poll(Rc::clone(&state), 10);
+    state.schedule_reminder_check();
 
     Ok(())
 }
@@ -945,6 +964,7 @@ struct AppState {
     is_recording: Arc<AtomicBool>,
     ai_runtime: Arc<Runtime>,
     recently_updated: RefCell<Option<String>>,
+    notified_items: RefCell<HashSet<String>>,
     _debug_mode: bool,
 }
 
@@ -1011,6 +1031,7 @@ impl AppState {
             ai_runtime: ai_runtime.clone(),
             _debug_mode: debug_mode,
             recently_updated: RefCell::new(None),
+            notified_items: RefCell::new(HashSet::new()),
             last_fingerprint: RefCell::new(None),
         }
     }
@@ -1149,20 +1170,27 @@ impl AppState {
         Ok(())
     }
 
-    fn toggle_item(&self, todo: &TodoItem, done: bool) -> Result<()> {
+    fn toggle_item(self: &Rc<Self>, todo: &TodoItem, done: bool) -> Result<()> {
         let now = Local::now().naive_local();
         let is_historic = todo.due.map(|d| d < now).unwrap_or(false);
         let is_recurring = todo.recurrence.is_some();
 
-        if done && is_historic && is_recurring {
+        let result = if done && is_historic && is_recurring {
             let mut updated = todo.clone();
             let time = todo.due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
             let today = Local::now().date_naive();
             updated.due = Some(NaiveDateTime::new(today, time));
             updated.done = true;
-            data::update_todo_details(&updated)?;
+            data::update_todo_details(&updated)
         } else {
-            data::toggle_todo(&todo.key, done)?;
+            data::toggle_todo(&todo.key, done)
+        };
+
+        if let Err(ref err) = result {
+            if self.handle_conflict(err) {
+                return Ok(());
+            }
+            return result;
         }
 
         if done {
@@ -1185,32 +1213,53 @@ impl AppState {
         } else {
             format!("Reaktiviert: {}", todo.title)
         };
-        self.show_info(&message);
+        self.show_undo_toast(&message);
         Ok(())
     }
 
-    fn set_due_today(&self, todo: &TodoItem) -> Result<()> {
-        let today = data::set_due_today(&todo.key)?;
-        self.reload()?;
-        self.show_info(&format!("Fällig heute ({})", today.format("%Y-%m-%dT%H:%M")));
-        Ok(())
+    fn set_due_today(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
+        match data::set_due_today(&todo.key) {
+            Ok(today) => {
+                self.reload()?;
+                self.show_undo_toast(&format!("Fällig heute ({})", today.format("%Y-%m-%dT%H:%M")));
+                Ok(())
+            }
+            Err(err) => {
+                if self.handle_conflict(&err) { return Ok(()); }
+                Err(err)
+            }
+        }
     }
 
-    fn set_due_tomorrow(&self, todo: &TodoItem) -> Result<()> {
-        let tomorrow = data::set_due_tomorrow(&todo.key)?;
-        self.reload()?;
-        self.show_info(&format!("Fällig morgen ({})", tomorrow.format("%Y-%m-%dT%H:%M")));
-        Ok(())
+    fn set_due_tomorrow(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
+        match data::set_due_tomorrow(&todo.key) {
+            Ok(tomorrow) => {
+                self.reload()?;
+                self.show_undo_toast(&format!("Fällig morgen ({})", tomorrow.format("%Y-%m-%dT%H:%M")));
+                Ok(())
+            }
+            Err(err) => {
+                if self.handle_conflict(&err) { return Ok(()); }
+                Err(err)
+            }
+        }
     }
 
-    fn set_due_weekend(&self, todo: &TodoItem) -> Result<()> {
-        let weekend = data::set_due_weekend(&todo.key)?;
-        self.reload()?;
-        self.show_info(&format!("Fällig am Wochenende ({})", weekend.format("%Y-%m-%dT%H:%M")));
-        Ok(())
+    fn set_due_weekend(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
+        match data::set_due_weekend(&todo.key) {
+            Ok(weekend) => {
+                self.reload()?;
+                self.show_undo_toast(&format!("Fällig am Wochenende ({})", weekend.format("%Y-%m-%dT%H:%M")));
+                Ok(())
+            }
+            Err(err) => {
+                if self.handle_conflict(&err) { return Ok(()); }
+                Err(err)
+            }
+        }
     }
 
-    fn set_due_in_days(&self, todo: &TodoItem, days: i64) -> Result<()> {
+    fn set_due_in_days(self: &Rc<Self>, todo: &TodoItem, days: i64) -> Result<()> {
         let mut updated = todo.clone();
         let base_time = todo.due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
         let target_date = Local::now().date_naive() + Duration::days(days);
@@ -1218,11 +1267,18 @@ impl AppState {
         self.save_item(&updated)
     }
 
-    fn set_due_sometimes(&self, todo: &TodoItem) -> Result<()> {
-        let sometime = data::set_due_sometime(&todo.key)?;
-        self.reload()?;
-        self.show_info(&format!("Fällig irgendwann ({})", sometime.format("%Y-%m-%dT%H:%M")));
-        Ok(())
+    fn set_due_sometimes(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
+        match data::set_due_sometime(&todo.key) {
+            Ok(sometime) => {
+                self.reload()?;
+                self.show_undo_toast(&format!("Fällig irgendwann ({})", sometime.format("%Y-%m-%dT%H:%M")));
+                Ok(())
+            }
+            Err(err) => {
+                if self.handle_conflict(&err) { return Ok(()); }
+                Err(err)
+            }
+        }
     }
 
 
@@ -1269,6 +1325,7 @@ impl AppState {
             ("key_new", "Ctrl + N"),
             ("key_search", "Ctrl + F"),
             ("key_reload", "Ctrl + R"),
+            ("key_undo", "Ctrl + Z"),
             ("key_quit", "Ctrl + Q"),
             ("key_nav", "↑ / ↓"),
             ("key_toggle", "Space"),
@@ -1372,6 +1429,37 @@ impl AppState {
             state_delete_pref.set_skip_delete_confirmation(row.is_active());
         });
         general_group.add(&delete_confirm_row);
+
+        // Reminders
+        let enable_reminders_row = adw::SwitchRow::builder()
+            .title(&t("enable_reminders"))
+            .active(self.preferences.borrow().enable_reminders)
+            .build();
+        enable_reminders_row.add_prefix(&gtk::Image::from_icon_name("alarm-symbolic"));
+        let state_reminders = Rc::clone(self);
+        enable_reminders_row.connect_active_notify(move |row| {
+            let mut prefs = state_reminders.preferences.borrow_mut();
+            prefs.enable_reminders = row.is_active();
+            let _ = write_preferences(&prefs);
+        });
+        general_group.add(&enable_reminders_row);
+
+        let remind_minutes_row = adw::ActionRow::builder()
+            .title(&t("remind_before_minutes"))
+            .build();
+        let remind_spin = gtk::SpinButton::with_range(5.0, 120.0, 5.0);
+        remind_spin.set_value(self.preferences.borrow().remind_before_minutes as f64);
+        remind_spin.set_width_chars(4);
+        let state_remind_min = Rc::clone(self);
+        remind_spin.connect_value_changed(move |spin| {
+            let mins = spin.value().round() as i64;
+            let mut prefs = state_remind_min.preferences.borrow_mut();
+            prefs.remind_before_minutes = mins;
+            let _ = write_preferences(&prefs);
+        });
+        remind_minutes_row.add_suffix(&remind_spin);
+        remind_minutes_row.set_activatable_widget(Some(&remind_spin));
+        general_group.add(&remind_minutes_row);
 
         let ai_row = adw::SwitchRow::builder()
             .title(&t("use_ai_on_new_topic"))
@@ -2479,11 +2567,18 @@ impl AppState {
         }
     }
 
-    fn save_item(&self, updated: &TodoItem) -> Result<()> {
-        data::update_todo_details(updated)?;
-        self.reload()?;
-        self.show_info(&t("updated_task").replace("{}", &updated.title));
-        Ok(())
+    fn save_item(self: &Rc<Self>, updated: &TodoItem) -> Result<()> {
+        match data::update_todo_details(updated) {
+            Ok(()) => {
+                self.reload()?;
+                self.show_undo_toast(&t("updated_task").replace("{}", &updated.title));
+                Ok(())
+            }
+            Err(err) => {
+                if self.handle_conflict(&err) { return Ok(()); }
+                Err(err)
+            }
+        }
     }
 
     fn toggle_recording(self: &Rc<Self>, voice_btn: &gtk::Button, entry: &gtk::Entry) {
@@ -3080,6 +3175,120 @@ impl AppState {
             .timeout(10)
             .build();
         self.overlay.add_toast(toast);
+    }
+
+    /// Handle a ConflictError by showing an alert dialog.
+    /// Returns true if the user chose "Overwrite", false otherwise.
+    fn handle_conflict(self: &Rc<Self>, err: &anyhow::Error) -> bool {
+        if err.downcast_ref::<data::ConflictError>().is_none() {
+            return false;
+        }
+        let Some(parent) = self.window.upgrade() else {
+            return false;
+        };
+        let dialog = AlertDialog::builder().modal(true).build();
+        dialog.set_message(&t("conflict_title"));
+        dialog.set_buttons(&[&t("conflict_reload"), &t("conflict_overwrite"), &t("cancel")]);
+        dialog.set_default_button(0);
+        dialog.set_cancel_button(2);
+
+        let state = Rc::clone(self);
+        dialog.choose(
+            Some(&parent),
+            Option::<&gio::Cancellable>::None,
+            move |result| {
+                match result {
+                    Ok(0) => {
+                        // Reload
+                        if let Err(e) = state.reload() {
+                            state.show_error(&t("reload_error").replace("{}", &e.to_string()));
+                        }
+                    }
+                    Ok(1) => {
+                        // Overwrite — pop the undo entry which still contains the pre-mutation
+                        // snapshot and is no longer useful, then let user retry manually.
+                        let _ = data::undo();
+                        if let Err(e) = state.reload() {
+                            state.show_error(&t("reload_error").replace("{}", &e.to_string()));
+                        }
+                    }
+                    _ => {}
+                }
+            },
+        );
+        true
+    }
+
+    /// Show a toast with an "Undo" button after a destructive action.
+    fn show_undo_toast(self: &Rc<Self>, message: &str) {
+        let toast = adw::Toast::builder()
+            .title(message)
+            .button_label(&t("undo"))
+            .timeout(8)
+            .build();
+        let state = Rc::clone(self);
+        toast.connect_button_clicked(move |_| {
+            match data::undo() {
+                Ok(Some(desc)) => {
+                    if let Err(e) = state.reload() {
+                        state.show_error(&t("reload_error").replace("{}", &e.to_string()));
+                    } else {
+                        state.show_info(&t("undone_action").replace("{}", &desc));
+                    }
+                }
+                Ok(None) => {
+                    state.show_info(&t("nothing_to_undo"));
+                }
+                Err(e) => {
+                    state.show_error(&e.to_string());
+                }
+            }
+        });
+        self.overlay.add_toast(toast);
+    }
+
+    /// Schedule periodic reminder checks (every 5 minutes).
+    fn schedule_reminder_check(self: &Rc<Self>) {
+        let weak = Rc::downgrade(self);
+        glib::timeout_add_seconds_local(300, move || {
+            let Some(state) = weak.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            state.check_reminders();
+            glib::ControlFlow::Continue
+        });
+    }
+
+    fn check_reminders(&self) {
+        let prefs = self.preferences.borrow();
+        if !prefs.enable_reminders {
+            return;
+        }
+        let remind_minutes = prefs.remind_before_minutes;
+        drop(prefs);
+
+        let items = self.cached_items.borrow();
+        let due_items = data::get_due_reminders(&items, remind_minutes);
+
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        let Some(app) = window.application() else {
+            return;
+        };
+
+        let mut notified = self.notified_items.borrow_mut();
+        for item in due_items {
+            let key = item.key.marker.clone().unwrap_or_else(|| format!("line:{}", item.key.line_index));
+            if notified.contains(&key) {
+                continue;
+            }
+            notified.insert(key.clone());
+
+            let notification = gio::Notification::new(&t("reminder_title"));
+            notification.set_body(Some(&item.title));
+            app.send_notification(Some(&key), &notification);
+        }
     }
 
     fn install_monitor(self: &Rc<Self>) -> Result<()> {

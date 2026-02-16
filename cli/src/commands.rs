@@ -3,9 +3,20 @@ use chrono::{Duration, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use reinschrift_core::{
     data, load_todos, toggle_todo, set_due_today, update_todo_details, delete_todo, add_todo,
     add_todo_full, get_backend_config, test_webdav_connection,
-    TodoItem, TodoKey, SortMode, sort_items,
+    TodoItem, TodoKey, SortMode, sort_items, t,
 };
 use std::io::{self, Write};
+
+/// Check if an error is a ConflictError and print a warning.
+/// Returns true if it was a conflict.
+fn check_conflict(ctx: &OutputContext, err: &anyhow::Error) -> bool {
+    if err.downcast_ref::<data::ConflictError>().is_some() {
+        ctx.error(&t("conflict_title"));
+        true
+    } else {
+        false
+    }
+}
 
 use crate::output::{OutputContext, format_id};
 
@@ -166,9 +177,17 @@ pub fn edit(
         item.note = if n.is_empty() { None } else { Some(n.to_string()) };
     }
 
-    update_todo_details(&item)?;
-    ctx.success(&format!("Updated: {}", item.title));
-    Ok(())
+    match update_todo_details(&item) {
+        Ok(()) => {
+            ctx.success(&format!("Updated: {}", item.title));
+            ctx.info("(undo with: reinschrift undo)");
+            Ok(())
+        }
+        Err(err) => {
+            if check_conflict(ctx, &err) { return Ok(()); }
+            Err(err)
+        }
+    }
 }
 
 pub fn delete(ctx: &OutputContext, ids: &[String], force: bool) -> Result<()> {
@@ -188,8 +207,17 @@ pub fn delete(ctx: &OutputContext, ids: &[String], force: bool) -> Result<()> {
             }
         }
 
-        delete_todo(&item)?;
-        ctx.success(&format!("Deleted: {}", item.title));
+        match delete_todo(&item) {
+            Ok(()) => {
+                ctx.success(&format!("Deleted: {}", item.title));
+                ctx.info("(undo with: reinschrift undo)");
+            }
+            Err(err) => {
+                if !check_conflict(ctx, &err) {
+                    return Err(err);
+                }
+            }
+        }
     }
 
     Ok(())
@@ -200,8 +228,17 @@ pub fn done(ctx: &OutputContext, ids: &[String]) -> Result<()> {
 
     for id in ids {
         let item = find_item_by_id(&items, id)?;
-        toggle_todo(&item.key, true)?;
-        ctx.success(&format!("Completed: {}", item.title));
+        match toggle_todo(&item.key, true) {
+            Ok(()) => {
+                ctx.success(&format!("Completed: {}", item.title));
+                ctx.info("(undo with: reinschrift undo)");
+            }
+            Err(err) => {
+                if !check_conflict(ctx, &err) {
+                    return Err(err);
+                }
+            }
+        }
     }
 
     Ok(())
@@ -212,8 +249,17 @@ pub fn undone(ctx: &OutputContext, ids: &[String]) -> Result<()> {
 
     for id in ids {
         let item = find_item_by_id(&items, id)?;
-        toggle_todo(&item.key, false)?;
-        ctx.success(&format!("Reopened: {}", item.title));
+        match toggle_todo(&item.key, false) {
+            Ok(()) => {
+                ctx.success(&format!("Reopened: {}", item.title));
+                ctx.info("(undo with: reinschrift undo)");
+            }
+            Err(err) => {
+                if !check_conflict(ctx, &err) {
+                    return Err(err);
+                }
+            }
+        }
     }
 
     Ok(())
@@ -222,9 +268,17 @@ pub fn undone(ctx: &OutputContext, ids: &[String]) -> Result<()> {
 pub fn today(ctx: &OutputContext, id: &str) -> Result<()> {
     let items = load_todos()?;
     let item = find_item_by_id(&items, id)?;
-    let new_due = set_due_today(&item.key)?;
-    ctx.success(&format!("Set due date to {}: {}", new_due.date(), item.title));
-    Ok(())
+    match set_due_today(&item.key) {
+        Ok(new_due) => {
+            ctx.success(&format!("Set due date to {}: {}", new_due.date(), item.title));
+            ctx.info("(undo with: reinschrift undo)");
+            Ok(())
+        }
+        Err(err) => {
+            if check_conflict(ctx, &err) { return Ok(()); }
+            Err(err)
+        }
+    }
 }
 
 pub fn tomorrow(ctx: &OutputContext, id: &str) -> Result<()> {
@@ -235,9 +289,30 @@ pub fn tomorrow(ctx: &OutputContext, id: &str) -> Result<()> {
     let due_dt = NaiveDateTime::new(tomorrow, DEFAULT_DUE_TIME);
     item.due = Some(due_dt);
 
-    update_todo_details(&item)?;
-    ctx.success(&format!("Set due date to {}: {}", tomorrow, item.title));
-    Ok(())
+    match update_todo_details(&item) {
+        Ok(()) => {
+            ctx.success(&format!("Set due date to {}: {}", tomorrow, item.title));
+            ctx.info("(undo with: reinschrift undo)");
+            Ok(())
+        }
+        Err(err) => {
+            if check_conflict(ctx, &err) { return Ok(()); }
+            Err(err)
+        }
+    }
+}
+
+pub fn undo(ctx: &OutputContext) -> Result<()> {
+    match data::undo()? {
+        Some(desc) => {
+            ctx.success(&t("undone_action").replace("{}", &desc));
+            Ok(())
+        }
+        None => {
+            ctx.info(&t("nothing_to_undo"));
+            Ok(())
+        }
+    }
 }
 
 pub fn search(ctx: &OutputContext, query: &str, show_all: bool) -> Result<()> {

@@ -152,5 +152,17 @@
   "nextcloud_login": "Login with Nextcloud",
   "nextcloud_login_pending": "Waiting for browser login…",
   "nextcloud_login_success": "Nextcloud login successful!",
-  "nextcloud_login_failed": "Nextcloud login failed: {}"
+  "nextcloud_login_failed": "Nextcloud login failed: {}",
+  "conflict_title": "File was changed externally",
+  "conflict_reload": "Reload",
+  "conflict_overwrite": "Overwrite",
+  "undo": "Undo",
+  "undone_action": "Undone: {}",
+  "nothing_to_undo": "Nothing to undo",
+  "reminder_title": "Task due",
+  "task_due": "Due: {}",
+  "enable_reminders": "Enable reminders",
+  "remind_before_minutes": "Reminder window (minutes)",
+  "key_undo": "Undo last action",
+  "overdue_warning": "{} task(s) overdue"
 }

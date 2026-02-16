@@ -2,6 +2,7 @@
 
 from flask import Blueprint, request, session, jsonify, current_app
 
+from app.exceptions import ConflictError
 from app.extensions import csrf
 from app.services import (
     read_content,
@@ -14,6 +15,8 @@ from app.services import (
     load_todos,
 )
 from app.services.ai_service import parse_nlp_with_debug, get_top_tags
+from app.services.storage import write_content
+from app.services.undo_service import push_undo, pop_undo, can_undo
 from app.utils.helpers import format_due
 
 api_bp = Blueprint('api', __name__)
@@ -225,6 +228,21 @@ def api_move_to_section():
             return jsonify({'error': 'Update failed'}), 500
 
     return jsonify({'ok': True})
+
+
+@api_bp.route('/undo', methods=['POST'])
+@csrf.exempt
+@require_login_json
+def api_undo():
+    """Undo the last destructive action."""
+    entry = pop_undo()
+    if not entry:
+        return jsonify({'error': 'Nothing to undo'}), 404
+    try:
+        write_content(entry['content'])
+        return jsonify({'ok': True, 'description': entry['description']})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @api_bp.route('/suggestions')

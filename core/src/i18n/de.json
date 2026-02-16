@@ -154,5 +154,17 @@
   "nextcloud_login": "Mit Nextcloud anmelden",
   "nextcloud_login_pending": "Warte auf Browser-Anmeldung…",
   "nextcloud_login_success": "Nextcloud-Anmeldung erfolgreich!",
-  "nextcloud_login_failed": "Nextcloud-Anmeldung fehlgeschlagen: {}"
+  "nextcloud_login_failed": "Nextcloud-Anmeldung fehlgeschlagen: {}",
+  "conflict_title": "Datei wurde extern geändert",
+  "conflict_reload": "Neu laden",
+  "conflict_overwrite": "Überschreiben",
+  "undo": "Rückgängig",
+  "undone_action": "Rückgängig: {}",
+  "nothing_to_undo": "Nichts zum Rückgängigmachen",
+  "reminder_title": "Aufgabe fällig",
+  "task_due": "Fällig: {}",
+  "enable_reminders": "Erinnerungen aktivieren",
+  "remind_before_minutes": "Erinnerungsfenster (Minuten)",
+  "key_undo": "Letzte Aktion rückgängig",
+  "overdue_warning": "{} Aufgabe(n) überfällig"
 }

@@ -37,8 +37,17 @@ pub(crate) use crate::renderer::{render_line, rewrite_due, rewrite_line};
 // Re-export todo business logic
 pub use crate::todo::{
     add_todo, add_todo_full, delete_todo, load_todos, next_due_date, set_due_sometime,
-    set_due_today, set_due_tomorrow, set_due_weekend, toggle_todo, update_todo_details,
+    set_due_today, set_due_tomorrow, set_due_weekend, toggle_todo, undo, update_todo_details,
 };
+
+// Re-export conflict types
+pub use crate::conflict::ConflictError;
+
+// Re-export undo helpers
+pub use crate::undo::can_undo;
+
+// Re-export reminders
+pub use crate::reminders::{get_due_reminders, overdue_summary};
 
 // Re-export util (used by tests in lib.rs)
 #[allow(unused_imports)]

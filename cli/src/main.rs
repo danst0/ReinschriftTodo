@@ -142,6 +142,9 @@ enum Commands {
         id: String,
     },
 
+    /// Undo the last destructive action
+    Undo,
+
     /// Search todos
     Search {
         /// Search query
@@ -205,6 +208,16 @@ fn main() -> Result<()> {
     // Create output context
     let ctx = output::OutputContext::new(cli.json, !cli.no_color);
 
+    // Show overdue warning if reminders are enabled
+    if prefs.enable_reminders {
+        if let Ok(items) = data::load_todos() {
+            let (count, _titles) = data::overdue_summary(&items);
+            if count > 0 {
+                eprintln!("{}", i18n::t("overdue_warning").replace("{}", &count.to_string()));
+            }
+        }
+    }
+
     // Dispatch commands
     match cli.command {
         Commands::List { sort, all, due_only, project, context } => {
@@ -230,6 +243,9 @@ fn main() -> Result<()> {
         }
         Commands::Tomorrow { id } => {
             commands::tomorrow(&ctx, &id)
+        }
+        Commands::Undo => {
+            commands::undo(&ctx)
         }
         Commands::Search { query, all } => {
             commands::search(&ctx, &query, all)

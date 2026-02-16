@@ -5,6 +5,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
 
 from translations import TRANSLATIONS
+from app.exceptions import ConflictError
 from app.models.todo import ID_RE, COMPLETION_RE
 from app.services import (
     read_content,
@@ -18,6 +19,8 @@ from app.services import (
     next_due_date,
     insert_line,
 )
+from app.services.storage import read_content_with_fingerprint, write_content_checked
+from app.services.undo_service import push_undo, pop_undo
 from app.utils.markers import ensure_marker, generate_marker
 from app.utils.escaping import escape_note, normalize_note
 from app.utils.helpers import format_due, normalize_prefix
@@ -43,6 +46,8 @@ def require_login(f):
 @require_login
 def toggle(line_index):
     """Toggle a todo's completion status."""
+    content = read_content()
+    push_undo(content, 'toggle')
     handle_toggle_with_recurrence(line_index)
     return redirect(url_for('main.index'))
 
@@ -51,6 +56,8 @@ def toggle(line_index):
 @require_login
 def postpone(line_index, target):
     """Postpone a todo to a new date."""
+    content = read_content()
+    push_undo(content, 'postpone')
     postpone_todo(line_index, target)
     return redirect(url_for('main.index'))
 
@@ -192,6 +199,8 @@ def _handle_edit_post(lines, line_index):
 @require_login
 def delete(line_index):
     """Delete a todo."""
+    content = read_content()
+    push_undo(content, 'delete')
     delete_todo(line_index)
     return redirect(url_for('main.index'))
 
@@ -202,5 +211,17 @@ def add():
     """Add a new todo from form."""
     title = request.form.get('title')
     if title:
+        content = read_content()
+        push_undo(content, 'add')
         add_todo(title)
+    return redirect(url_for('main.index'))
+
+
+@todo_bp.route('/undo', methods=['POST'])
+@require_login
+def undo():
+    """Undo the last destructive action."""
+    entry = pop_undo()
+    if entry:
+        write_content(entry['content'])
     return redirect(url_for('main.index'))

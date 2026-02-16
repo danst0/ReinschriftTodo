@@ -39,3 +39,15 @@ class ConfigurationError(ReinschriftError):
 class AuthenticationError(ReinschriftError):
     """Exception raised for authentication errors."""
     pass
+
+
+class ConflictError(ReinschriftError):
+    """Exception raised when writing to a file that was modified externally."""
+
+    def __init__(self, local_fingerprint: str = "", remote_fingerprint: str = ""):
+        self.local_fingerprint = local_fingerprint
+        self.remote_fingerprint = remote_fingerprint
+        super().__init__(
+            f"Conflict: local fingerprint '{local_fingerprint}' "
+            f"does not match remote '{remote_fingerprint}'"
+        )

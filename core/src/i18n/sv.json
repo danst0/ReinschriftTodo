@@ -139,5 +139,17 @@
   "nextcloud_login": "Logga in med Nextcloud",
   "nextcloud_login_pending": "Väntar på inloggning i webbläsaren…",
   "nextcloud_login_success": "Nextcloud-inloggning lyckades!",
-  "nextcloud_login_failed": "Nextcloud-inloggning misslyckades: {}"
+  "nextcloud_login_failed": "Nextcloud-inloggning misslyckades: {}",
+  "conflict_title": "Filen har ändrats externt",
+  "conflict_reload": "Ladda om",
+  "conflict_overwrite": "Skriv över",
+  "undo": "Ångra",
+  "undone_action": "Ångrad: {}",
+  "nothing_to_undo": "Inget att ångra",
+  "reminder_title": "Uppgift förfaller",
+  "task_due": "Förfaller: {}",
+  "enable_reminders": "Aktivera påminnelser",
+  "remind_before_minutes": "Påminnelsefönster (minuter)",
+  "key_undo": "Ångra senaste åtgärd",
+  "overdue_warning": "{} uppgift(er) försenad(e)"
 }

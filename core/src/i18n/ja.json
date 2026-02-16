@@ -139,5 +139,17 @@
   "nextcloud_login": "Nextcloudでログイン",
   "nextcloud_login_pending": "ブラウザでのログインを待っています…",
   "nextcloud_login_success": "Nextcloudログインに成功しました！",
-  "nextcloud_login_failed": "Nextcloudログインに失敗しました: {}"
+  "nextcloud_login_failed": "Nextcloudログインに失敗しました: {}",
+  "conflict_title": "ファイルが外部で変更されました",
+  "conflict_reload": "再読み込み",
+  "conflict_overwrite": "上書き",
+  "undo": "元に戻す",
+  "undone_action": "元に戻しました: {}",
+  "nothing_to_undo": "元に戻す操作がありません",
+  "reminder_title": "タスクの期限",
+  "task_due": "期限: {}",
+  "enable_reminders": "リマインダーを有効にする",
+  "remind_before_minutes": "リマインダー時間 (分)",
+  "key_undo": "最後の操作を元に戻す",
+  "overdue_warning": "{}件のタスクが期限超過"
 }

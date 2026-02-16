@@ -1,13 +1,16 @@
 pub mod config;
+pub mod conflict;
 pub mod data;
 pub mod i18n;
 pub mod parser;
 pub mod preferences;
+pub mod reminders;
 pub mod renderer;
 pub mod sorting;
 pub mod storage;
 pub mod todo;
 pub mod types;
+pub mod undo;
 pub mod util;
 pub mod webdav;
 

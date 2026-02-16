@@ -1368,3 +1368,41 @@ button, a, .checkbox, .filter-link, .todo-item {
     outline: 2px dashed var(--color-primary);
     outline-offset: -2px;
 }
+
+/* Undo toast */
+.undo-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--color-text, #333);
+    color: var(--color-bg, #fff);
+    padding: 12px 20px;
+    border-radius: var(--radius-md, 8px);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    max-width: 90vw;
+}
+.undo-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+.undo-toast-message {
+    flex: 1;
+    font-size: 0.95rem;
+}
+.undo-toast-btn {
+    background: transparent;
+    color: var(--color-primary, #6c5ce7);
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+}

@@ -15,7 +15,7 @@ RETRY_DELAY = 0.5  # seconds, will be multiplied for exponential backoff
 
 from flask import current_app
 
-from app.exceptions import StorageError
+from app.exceptions import ConflictError, StorageError
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +134,63 @@ def write_content(content: str) -> None:
         except IOError as e:
             logger.error("Local file write error: %s", e)
             raise StorageError(f"Local file write error: {e}") from e
+
+
+def get_fingerprint() -> str:
+    """Get a fingerprint for the current file (for conflict detection).
+
+    Returns:
+        A string fingerprint (mtime for local, ETag for WebDAV).
+    """
+    config = _get_config()
+
+    if config['use_webdav']:
+        if not config['webdav_url']:
+            return ""
+        try:
+            auth = None
+            if config['webdav_username'] and config['webdav_password']:
+                auth = HTTPBasicAuth(config['webdav_username'], config['webdav_password'])
+            response = requests.head(config['webdav_url'], auth=auth, timeout=5)
+            response.raise_for_status()
+            etag = response.headers.get('etag', '')
+            last_mod = response.headers.get('last-modified', '')
+            return f"{etag}-{last_mod}"
+        except requests.RequestException as e:
+            logger.warning("Failed to get WebDAV fingerprint: %s", e)
+            return ""
+    else:
+        todo_path = config['todo_path']
+        if not os.path.exists(todo_path):
+            return ""
+        return str(os.path.getmtime(todo_path))
+
+
+def read_content_with_fingerprint() -> tuple[str, str]:
+    """Read content together with its fingerprint.
+
+    Returns:
+        Tuple of (content, fingerprint).
+    """
+    content = read_content()
+    fingerprint = get_fingerprint()
+    return content, fingerprint
+
+
+def write_content_checked(content: str, expected_fingerprint: str) -> None:
+    """Write content only if the fingerprint has not changed.
+
+    Args:
+        content: Content to write.
+        expected_fingerprint: Expected fingerprint from when content was read.
+
+    Raises:
+        ConflictError: If the file was modified since it was read.
+    """
+    current = get_fingerprint()
+    if current and expected_fingerprint and current != expected_fingerprint:
+        raise ConflictError(expected_fingerprint, current)
+    write_content(content)
 
 
 def load_settings() -> dict[str, Any]:

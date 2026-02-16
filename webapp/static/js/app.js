@@ -26,6 +26,8 @@ import { initPullToRefresh } from './modules/pull-refresh.js';
 import { autoReload, startAutoReload, manualReload, setReloadCallback } from './modules/auto-reload.js';
 import { applyFilter, updateFilterUI } from './modules/filters.js';
 import { initDragDrop, setDragReloadCallback } from './modules/drag-drop.js';
+import { showUndoToast, setUndoReloadCallback } from './modules/undo-toast.js';
+import { startNotificationCheck } from './modules/notifications.js';
 
 // Configuration - will be set by template
 let appConfig = {
@@ -91,6 +93,12 @@ function initApp(config = {}) {
     // Initialize drag-and-drop between sections
     setDragReloadCallback(handleReload);
     initDragDrop();
+
+    // Set up undo toast
+    setUndoReloadCallback(handleReload);
+
+    // Start browser notifications for due reminders
+    startNotificationCheck();
 
     // Start auto-reload (every 30 seconds)
     startAutoReload(30000, handleReloadComplete);
@@ -331,7 +339,8 @@ window.ReinschriftApp = {
     closeCheatsheet,
     applyFilter,
     autoReload: handleReload,
-    manualReload
+    manualReload,
+    showUndoToast
 };
 
 // Also expose as simple globals for backwards compatibility

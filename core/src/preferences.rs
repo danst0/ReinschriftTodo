@@ -14,6 +14,10 @@ fn default_skip_delete_confirmation() -> bool {
     true
 }
 
+fn default_remind_before_minutes() -> i64 {
+    30
+}
+
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
 pub struct Preferences {
     #[serde(default)]
@@ -22,6 +26,10 @@ pub struct Preferences {
     pub show_done: bool,
     #[serde(default = "default_skip_delete_confirmation")]
     pub skip_delete_confirmation: bool,
+    #[serde(default)]
+    pub enable_reminders: bool,
+    #[serde(default = "default_remind_before_minutes")]
+    pub remind_before_minutes: i64,
     #[serde(default)]
     pub db_path: Option<String>,
     #[serde(default)]
