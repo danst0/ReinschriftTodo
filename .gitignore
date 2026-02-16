@@ -19,3 +19,4 @@ docker-compose.yml
 flatpak-cargo-generator.py
 .vscode/
 webapp/config.json
+.claude/

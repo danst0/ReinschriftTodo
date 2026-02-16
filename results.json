@@ -1,0 +1,4154 @@
+{
+  "timestamp": "2026-01-27T09:23:56.495533",
+  "models_tested": [
+    "mistral:7b-instruct"
+  ],
+  "prompts_tested": [
+    "verbose",
+    "minimal"
+  ],
+  "results": [
+    {
+      "model": "mistral:7b-instruct",
+      "prompt": "verbose",
+      "total_score": 124,
+      "max_score": 140,
+      "consistency_pct": 92.0,
+      "avg_response_time": 0.9134105682373047,
+      "test_results": [
+        {
+          "input": "Milch kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Kaufe Milch",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Kaufe Milch",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 5,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 8,
+            "total": 13
+          }
+        },
+        {
+          "input": "Morgen Zahnarzt um 14 Uhr",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Zahnarztbesuch um 14 Uhr",
+            "note": null,
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Zahnarztbesuch um 14 Uhr",
+            "note": null,
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Für die Arbeit Präsentation vorbereiten",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Präsentation vorbereiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Präsentation vorbereiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Im Supermarkt Brot kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Kaufe Brot",
+            "note": null,
+            "due": null,
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Kaufe Brot",
+            "note": null,
+            "due": null,
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Ich muss noch die Steuererklärung machen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Steuererklärung bearbeiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Steuererklärung bearbeiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "note": null,
+            "due": null,
+            "context": "termin",
+            "project": "privat"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Nächstes Treffen mit Lisa",
+            "note": "Über das Projekt",
+            "due": null,
+            "context": "termin",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 6,
+          "consistency_score": 4,
+          "total_score": 10,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 0,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 6,
+            "total": 10
+          }
+        },
+        {
+          "input": "Ruf Mama an wegen Geburtstag",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Ruf Mama an",
+            "note": "Geburtstag",
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Ruf Mama an (Geburtstag)",
+            "note": null,
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Das Wetter ist heute schön",
+          "run1": {
+            "rejected": true,
+            "confidence": 0.9,
+            "title": null,
+            "note": "The weather is nice today",
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run2": {
+            "rejected": true,
+            "confidence": 0.8,
+            "title": null,
+            "note": "The weather is nice today",
+            "due": null,
+            "context": "observation",
+            "project": null
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 4,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 9,
+            "total": 13
+          }
+        },
+        {
+          "input": "Ich glaube vielleicht gehe ich schwimmen",
+          "run1": {
+            "rejected": true,
+            "confidence": 0.9,
+            "title": null,
+            "note": null,
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run2": {
+            "rejected": true,
+            "confidence": 0.9,
+            "title": null,
+            "note": null,
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Wann hat der Laden auf?",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Laden aufschauen",
+            "note": null,
+            "due": null,
+            "context": "termin",
+            "project": "privat"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Laden-Öffnungszeiten abfragen",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "termin",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 3,
+          "total_score": 4,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 3,
+            "accuracy_total": 1,
+            "total": 4
+          }
+        }
+      ]
+    },
+    {
+      "model": "mistral:7b-instruct",
+      "prompt": "minimal",
+      "total_score": 96,
+      "max_score": 140,
+      "consistency_pct": 80.0,
+      "avg_response_time": 0.7303125023841858,
+      "test_results": [
+        {
+          "input": "Milch kaufen",
+          "run1": {
+            "title": "Milch kaufen",
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "title": "Milch kaufen",
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 7,
+          "consistency_score": 5,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 7,
+            "total": 12
+          }
+        },
+        {
+          "input": "Morgen Zahnarzt um 14 Uhr",
+          "run1": {
+            "title": "Zahnarzt Termin um 14 Uhr",
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run2": {
+            "title": "Zahnarzt Termin am Morgen um 14 Uhr",
+            "due": "2026-01-27T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 3,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 3,
+            "accuracy_total": 9,
+            "total": 12
+          }
+        },
+        {
+          "input": "Für die Arbeit Präsentation vorbereiten",
+          "run1": {
+            "title": "Präsentation vorbereiten",
+            "due": "2026-01-27T00:00",
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run2": {
+            "title": "Präsentation vorbereiten",
+            "due": "2026-01-27T00:00",
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 5,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 8,
+            "total": 13
+          }
+        },
+        {
+          "input": "Im Supermarkt Brot kaufen",
+          "run1": {
+            "title": "Im Supermarkt Brot kaufen",
+            "due": null,
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "title": "Kaufen Brot",
+            "due": null,
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 4,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 8,
+            "total": 12
+          }
+        },
+        {
+          "input": "Ich muss noch die Steuererklärung machen",
+          "run1": {
+            "title": "Stuererklarung machen",
+            "due": "2026-01-27T00:00",
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run2": {
+            "title": "Make tax declaration",
+            "due": "2026-01-27T00:00",
+            "context": "arbeit",
+            "project": "gesundheit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 5,
+          "consistency_score": 3,
+          "total_score": 8,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 0,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 3,
+            "accuracy_total": 5,
+            "total": 8
+          }
+        },
+        {
+          "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+          "run1": {
+            "title": "Sprechen mit Lisa über das Projekt",
+            "due": "2026-02-01T00:00",
+            "context": "telefon",
+            "project": "arbeit"
+          },
+          "run2": {
+            "title": "Nächsten Montag mit Lisa über das Projekt",
+            "due": "2026-02-01T00:00",
+            "context": "termin",
+            "project": "arbeit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 3,
+          "total_score": 11,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 3,
+            "accuracy_total": 8,
+            "total": 11
+          }
+        },
+        {
+          "input": "Ruf Mama an wegen Geburtstag",
+          "run1": {
+            "title": "Ruf Mama an wegen Geburtstag",
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run2": {
+            "title": "Ruf Mama an (Geburtstag)",
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 4,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 8,
+            "total": 12
+          }
+        },
+        {
+          "input": "Das Wetter ist heute schön",
+          "run1": {
+            "title": "Check the weather",
+            "due": "2026-01-27T00:00",
+            "context": "zuhause",
+            "project": "privat"
+          },
+          "run2": {
+            "title": "Check weather today",
+            "due": "2026-01-27T00:00",
+            "context": "zuhause",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 4,
+          "total_score": 5,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 4,
+            "accuracy_total": 1,
+            "total": 5
+          }
+        },
+        {
+          "input": "Ich glaube vielleicht gehe ich schwimmen",
+          "run1": {
+            "title": "Schwimmen",
+            "due": null,
+            "context": "sport",
+            "project": null
+          },
+          "run2": {
+            "title": "Schwimmen",
+            "due": null,
+            "context": "sport",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 4,
+          "total_score": 5,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 4,
+            "accuracy_total": 1,
+            "total": 5
+          }
+        },
+        {
+          "input": "Wann hat der Laden auf?",
+          "run1": {
+            "title": "Check store opening hours",
+            "due": null,
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "title": "Check store opening hours",
+            "due": null,
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 5,
+          "total_score": 6,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 5,
+            "accuracy_total": 1,
+            "total": 6
+          }
+        }
+      ]
+    },
+    {
+      "model": "mistral:7b-instruct",
+      "prompt": "verbose_refined_v1",
+      "total_score": 110,
+      "max_score": 140,
+      "consistency_pct": 82.0,
+      "avg_response_time": 0.9690317392349244,
+      "test_results": [
+        {
+          "input": "Milch kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Milch kaufen",
+            "note": null,
+            "due": "2026-01-28T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Kaufe Milch",
+            "note": null,
+            "due": "2026-01-28T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 7,
+          "consistency_score": 4,
+          "total_score": 11,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 7,
+            "total": 11
+          }
+        },
+        {
+          "input": "Morgen Zahnarzt um 14 Uhr",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Zahnarztbesuch um 14 Uhr",
+            "note": null,
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Zahnarztbesuch",
+            "note": "um 14 Uhr",
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Für die Arbeit Präsentation vorbereiten",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Präsentation vorbereiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Präsentation vorbereiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Im Supermarkt Brot kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Brotkauf im Supermarkt",
+            "note": null,
+            "due": null,
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Kaufe Brot",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 3,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 3,
+            "accuracy_total": 9,
+            "total": 12
+          }
+        },
+        {
+          "input": "Ich muss noch die Steuererklärung machen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Steuererklärung bearbeiten",
+            "note": null,
+            "due": "2026-04-18T00:00",
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Steuererklärung bearbeiten",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 4,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 8,
+            "total": 12
+          }
+        },
+        {
+          "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "note": null,
+            "due": "2026-02-01T00:00",
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "note": null,
+            "due": "2026-02-01T00:00",
+            "context": "arbeit",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 7,
+          "consistency_score": 4,
+          "total_score": 11,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 7,
+            "total": 11
+          }
+        },
+        {
+          "input": "Ruf Mama an wegen Geburtstag",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ruf Mama an (Geburtstag)",
+            "note": null,
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ruf Mama an",
+            "note": "Geburtstag",
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Das Wetter ist heute schön",
+          "run1": {
+            "rejected": true,
+            "confidence": 0.7,
+            "title": null,
+            "note": null,
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run2": {
+            "rejected": true,
+            "confidence": 0.85,
+            "title": null,
+            "note": "The weather is nice today",
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Ich glaube vielleicht gehe ich schwimmen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.7,
+            "title": "Schwimmen",
+            "note": "vielleicht",
+            "due": null,
+            "context": "privat",
+            "project": "gesundheit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.75,
+            "title": "gehen schwimmen",
+            "note": "vielleicht",
+            "due": null,
+            "context": "privat",
+            "project": "gesundheit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 5,
+          "total_score": 6,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 5,
+            "accuracy_total": 1,
+            "total": 6
+          }
+        },
+        {
+          "input": "Wann hat der Laden auf?",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Laden aufschauen",
+            "note": "Unbekanntes Ereignis",
+            "due": "2026-01-27T00:00",
+            "context": "privat",
+            "project": "sonstiges"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ladenaufschau",
+            "note": "Tageszeit unbekannt",
+            "due": null,
+            "context": "sonstiges",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 1,
+          "total_score": 2,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 1,
+            "accuracy_total": 1,
+            "total": 2
+          }
+        }
+      ]
+    },
+    {
+      "model": "mistral:7b-instruct",
+      "prompt": "verbose_refined_v2",
+      "total_score": 104,
+      "max_score": 140,
+      "consistency_pct": 70.0,
+      "avg_response_time": 0.9756384372711182,
+      "test_results": [
+        {
+          "input": "Milch kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Milch kaufen",
+            "note": null,
+            "due": "2026-01-28T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Milch kaufen",
+            "note": null,
+            "due": "2026-01-28T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 7,
+          "consistency_score": 5,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 7,
+            "total": 12
+          }
+        },
+        {
+          "input": "Morgen Zahnarzt um 14 Uhr",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Zahnarztbesuch morgen um 14 Uhr",
+            "note": null,
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Zahnarztbesuch um 14 Uhr",
+            "note": null,
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 4,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 9,
+            "total": 13
+          }
+        },
+        {
+          "input": "Für die Arbeit Präsentation vorbereiten",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Präsentation für Arbeit vorbereiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Präsentation vorbereiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 4,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 9,
+            "total": 13
+          }
+        },
+        {
+          "input": "Im Supermarkt Brot kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Brotkauf im Supermarkt",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Brotkauf im Supermarkt",
+            "note": null,
+            "due": "2026-01-27TXX:XX",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 5,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 8,
+            "total": 13
+          }
+        },
+        {
+          "input": "Ich muss noch die Steuererklärung machen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Steuererklärung machen",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Steuererklärung bearbeiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 3,
+          "total_score": 11,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 3,
+            "accuracy_total": 8,
+            "total": 11
+          }
+        },
+        {
+          "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Nächstes Treffen mit Lisa",
+            "note": "Über das Projekt sprechen",
+            "due": "2026-02-01T00:00",
+            "context": "termin",
+            "project": "arbeit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "note": null,
+            "due": "2026-03-14T00:00",
+            "context": "arbeit",
+            "project": "projekt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 1,
+          "total_score": 9,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 1,
+            "accuracy_total": 8,
+            "total": 9
+          }
+        },
+        {
+          "input": "Ruf Mama an wegen Geburtstag",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ruf Mama an (Geburtstag)",
+            "note": null,
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ruf Mama an (Geburtstag)",
+            "note": null,
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Das Wetter ist heute schön",
+          "run1": {
+            "rejected": true,
+            "confidence": 0.8,
+            "title": null,
+            "note": "The weather is nice today",
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.75,
+            "title": null,
+            "note": "The weather is nice today",
+            "due": null,
+            "context": "observation",
+            "project": null
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 4,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 9,
+            "total": 13
+          }
+        },
+        {
+          "input": "Ich glaube vielleicht gehe ich schwimmen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.8,
+            "title": "Schwimmen vielleicht gehen",
+            "note": null,
+            "due": null,
+            "context": "privat",
+            "project": "gesundheit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.7,
+            "title": "gehe Schwimmen",
+            "note": "vielleicht",
+            "due": null,
+            "context": "sport",
+            "project": null
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 2,
+          "total_score": 3,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 2,
+            "accuracy_total": 1,
+            "total": 3
+          }
+        },
+        {
+          "input": "Wann hat der Laden auf?",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Laden-Öffnungszeiten",
+            "note": "Wann öffnet der Laden?",
+            "due": null,
+            "context": "computer",
+            "project": null
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ladenauf-Information",
+            "note": "Wann ist der Laden geöffnet?",
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 2,
+          "total_score": 3,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 2,
+            "accuracy_total": 1,
+            "total": 3
+          }
+        }
+      ]
+    },
+    {
+      "model": "mistral:7b-instruct",
+      "prompt": "verbose_refined_v3",
+      "total_score": 119,
+      "max_score": 140,
+      "consistency_pct": 88.0,
+      "avg_response_time": 1.0156694650650024,
+      "test_results": [
+        {
+          "input": "Milch kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Milch kaufen",
+            "note": null,
+            "due": "2026-01-28T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Milch kaufen",
+            "note": null,
+            "due": "2026-01-28T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 7,
+          "consistency_score": 5,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 7,
+            "total": 12
+          }
+        },
+        {
+          "input": "Morgen Zahnarzt um 14 Uhr",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Zahnarztbesuch am Morgen um 14 Uhr",
+            "note": null,
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Zahnarztbesuch",
+            "note": null,
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Für die Arbeit Präsentation vorbereiten",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Präsentation vorbereiten",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Präsentation vorbereiten",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 5,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 8,
+            "total": 13
+          }
+        },
+        {
+          "input": "Im Supermarkt Brot kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Brotkauf im Supermarkt",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Brotkauf im Supermarkt",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 5,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 8,
+            "total": 13
+          }
+        },
+        {
+          "input": "Ich muss noch die Steuererklärung machen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Steuererklärung machen",
+            "note": null,
+            "due": "2026-01-31T00:00",
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Steuererklärung machen",
+            "note": null,
+            "due": "2026-04-30T00:00",
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 4,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 8,
+            "total": 12
+          }
+        },
+        {
+          "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Sprechen am Nächsten Montag mit Lisa über das Projekt",
+            "note": null,
+            "due": "2026-02-01T00:00",
+            "context": "arbeit",
+            "project": "projekt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Sprechen mit Lisa über das Projekt am Montag",
+            "note": null,
+            "due": "2026-02-01T00:00",
+            "context": "termin",
+            "project": "arbeit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 2,
+          "total_score": 10,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 2,
+            "accuracy_total": 8,
+            "total": 10
+          }
+        },
+        {
+          "input": "Ruf Mama an wegen Geburtstag",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Ruf Mama an",
+            "note": "Geburtstag",
+            "due": "2026-01-27T00:00",
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ruf Mama an",
+            "note": "Geburtstag",
+            "due": "2026-01-27T00:00",
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 5,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 8,
+            "total": 13
+          }
+        },
+        {
+          "input": "Das Wetter ist heute schön",
+          "run1": {
+            "rejected": true,
+            "confidence": 0.85,
+            "title": null,
+            "note": "The weather is nice today",
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run2": {
+            "rejected": true,
+            "confidence": 0.85,
+            "title": null,
+            "note": "The weather is nice today",
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Ich glaube vielleicht gehe ich schwimmen",
+          "run1": {
+            "rejected": true,
+            "confidence": 0.9,
+            "title": null,
+            "note": null,
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run2": {
+            "rejected": true,
+            "confidence": 0.9,
+            "title": null,
+            "note": null,
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Wann hat der Laden auf?",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.8,
+            "title": "Laden-Öffnungszeit",
+            "note": "Wann öffnet der Laden?",
+            "due": null,
+            "context": "arbeit",
+            "project": "privat"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Laden-Öffnungszeiten abfragen",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 3,
+          "total_score": 4,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 3,
+            "accuracy_total": 1,
+            "total": 4
+          }
+        }
+      ]
+    },
+    {
+      "model": "mistral:7b-instruct",
+      "prompt": "verbose_refined_v4",
+      "total_score": 107,
+      "max_score": 140,
+      "consistency_pct": 82.0,
+      "avg_response_time": 1.0149101257324218,
+      "test_results": [
+        {
+          "input": "Milch kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Kaufe Milch",
+            "note": null,
+            "due": "2026-01-28T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Milch kaufen",
+            "note": null,
+            "due": "2026-01-28T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 4,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 8,
+            "total": 12
+          }
+        },
+        {
+          "input": "Morgen Zahnarzt um 14 Uhr",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Zahnarztbesuch um 14 Uhr",
+            "note": null,
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Zahnarztbesuch morgen um 14 Uhr",
+            "note": null,
+            "due": "2026-01-28T14:00",
+            "context": "termin",
+            "project": "gesundheit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 4,
+          "total_score": 13,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 9,
+            "total": 13
+          }
+        },
+        {
+          "input": "Für die Arbeit Präsentation vorbereiten",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Präsentation vorbereiten",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.95,
+            "title": "Für die Arbeit Präsentation vorbereiten",
+            "note": null,
+            "due": null,
+            "context": "arbeit",
+            "project": "arbeit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 4,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 8,
+            "total": 12
+          }
+        },
+        {
+          "input": "Im Supermarkt Brot kaufen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Im Supermarkt Brot kaufen",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Im Supermarkt Brot kaufen",
+            "note": null,
+            "due": "2026-01-27T00:00",
+            "context": "einkaufen",
+            "project": "haushalt"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 7,
+          "consistency_score": 5,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 7,
+            "total": 12
+          }
+        },
+        {
+          "input": "Ich muss noch die Steuererklärung machen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Steuererklärung machen",
+            "note": null,
+            "due": "2026-01-31T00:00",
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.9,
+            "title": "Steuererklärung machen",
+            "note": null,
+            "due": "2026-04-30T00:00",
+            "context": "arbeit",
+            "project": "finanzen"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 4,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 8,
+            "total": 12
+          }
+        },
+        {
+          "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "note": null,
+            "due": "2026-02-07T00:00",
+            "context": "arbeit",
+            "project": "projekte"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "note": null,
+            "due": "2026-02-07T00:00",
+            "context": "arbeit",
+            "project": "projekte"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 7,
+          "consistency_score": 5,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 2,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 7,
+            "total": 12
+          }
+        },
+        {
+          "input": "Ruf Mama an wegen Geburtstag",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ruf Mama an",
+            "note": "Geburtstag",
+            "due": "2026-01-27T00:00",
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ruf Mama an",
+            "note": "wegen Geburtstag",
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 8,
+          "consistency_score": 4,
+          "total_score": 12,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 1,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 4,
+            "accuracy_total": 8,
+            "total": 12
+          }
+        },
+        {
+          "input": "Das Wetter ist heute schön",
+          "run1": {
+            "rejected": true,
+            "confidence": 0.85,
+            "title": null,
+            "note": null,
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run2": {
+            "rejected": true,
+            "confidence": 0.8,
+            "title": null,
+            "note": "The weather is nice today",
+            "due": null,
+            "context": null,
+            "project": null
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 9,
+          "consistency_score": 5,
+          "total_score": 14,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 1,
+            "title_match": 3,
+            "due_match": 2,
+            "context_reasonable": 1,
+            "project_assigned": 1,
+            "consistency": 5,
+            "accuracy_total": 9,
+            "total": 14
+          }
+        },
+        {
+          "input": "Ich glaube vielleicht gehe ich schwimmen",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Gehen Schwimmen",
+            "note": "vielleicht",
+            "due": null,
+            "context": "gesundheit",
+            "project": null
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.7,
+            "title": "Schwimmen möglicherweise gehen",
+            "note": null,
+            "due": null,
+            "context": "privat",
+            "project": "gesundheit"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 2,
+          "total_score": 3,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 2,
+            "accuracy_total": 1,
+            "total": 3
+          }
+        },
+        {
+          "input": "Wann hat der Laden auf?",
+          "run1": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Laden-Öffnungszeiten erfragen",
+            "note": "Wann öffnet der Laden?",
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run2": {
+            "rejected": false,
+            "confidence": 0.85,
+            "title": "Ladenöffnungszeit fragen",
+            "note": "Ladeneffnungszeiten abfragen",
+            "due": null,
+            "context": "telefon",
+            "project": "privat"
+          },
+          "run1_error": null,
+          "run2_error": null,
+          "accuracy_score": 1,
+          "consistency_score": 4,
+          "total_score": 5,
+          "scores_breakdown": {
+            "json_valid": 1,
+            "rejection_correct": 0,
+            "title_match": 0,
+            "due_match": 0,
+            "context_reasonable": 0,
+            "project_assigned": 0,
+            "consistency": 4,
+            "accuracy_total": 1,
+            "total": 5
+          }
+        }
+      ]
+    }
+  ],
+  "refinement": {
+    "enabled": true,
+    "gemini_model": "gemini-2.0-flash",
+    "iterations": 5,
+    "refined_prompts": {
+      "verbose_refined_v1": "Parse todo items. Today: Tuesday, 2026-01-27.\n\nTASK: Extract structured data from input OR reject if non-actionable.\n\nVALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\nINVALID: questions, speculative thoughts ('ich glaube vielleicht...'), observations, chat.\n\nOUTPUT JSON (all keys required):\n{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\nRULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use the existing case. Calculate dates relative to today.\n\nPrefer these tags: Existing projects: haushalt, arbeit, privat, gesundheit, finanzen. Existing contexts: einkaufen, telefon, computer, termin, arbeit, zuhause.\n\nExample: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-28T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\nExample: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}",
+      "verbose_refined_v2": "Parse todo items. Today: Tuesday, 2026-01-27.\n\nTASK: Extract structured data from input, OR reject if non-actionable.\n\nVALID: Tasks, intentions ('ich muss...'), dated plans, reminders.\nINVALID: Speculative thoughts, observations, questions, chat.\n\nOUTPUT JSON (all keys required):\n{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\nRULES: JSON only. Retain input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use the EXACT existing case.  Prioritize rejection if unsure. Dates are relative to today.\n\nPrefer these tags: Existing projects: haushalt, arbeit, privat, gesundheit, finanzen. Existing contexts: einkaufen, telefon, computer, termin, arbeit, zuhause.\n\nExample: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-28T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\nExample: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}",
+      "verbose_refined_v3": "Parse todo items. Today: Tuesday, 2026-01-27.\n\nTASK: Extract structured data from input OR reject if not actionable.\n\nVALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\nINVALID: questions, speculative thoughts ('ich glaube vielleicht...'), observations, chat.\n\nOUTPUT JSON (all keys required):\n{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\nRULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use exact existing case. Questions MUST be rejected. Calculate dates relative to today. Default time to 00:00 if unspecified.\n\nPrefer these tags: Existing projects: haushalt, arbeit, privat, gesundheit, finanzen. Existing contexts: einkaufen, telefon, computer, termin, arbeit, zuhause.\n\nExample: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Milch kaufen\", \"note\": null, \"due\": \"2026-01-28T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\nExample: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}",
+      "verbose_refined_v4": "Parse todo items. Today: Tuesday, 2026-01-27.\n\nTASK: Extract structured data from input, OR reject non-actionable requests.\n\nVALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\nINVALID: questions, speculative thoughts ('ich glaube...'), observations, general chat.\n\nOUTPUT JSON (all keys required):\n{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\nRULES: JSON output only. Retain the input language (German). ALWAYS assign context and project using preferred tags if applicable. If an existing tag matches (case-insensitive), use the EXACT existing case.\n\nPrioritize these tags: Projects: haushalt, arbeit, privat, gesundheit, finanzen. Contexts: einkaufen, telefon, computer, termin, arbeit, zuhause.\n\nDates are always relative to today. If no time is given, use 00:00.\n\nExample: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-28T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\nExample: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}",
+      "verbose_refined_v5": "Parse todo items. Today: Tuesday, 2026-01-27.\n\nTASK: Extract structured data from input OR reject if not actionable.\n\nVALID: tasks, intentions ('ich muss...'), plans with dates, reminders.\nINVALID: speculative thoughts ('ich glaube vielleicht...'), questions, observations, chat.\n\nOUTPUT JSON (all keys required):\n{\"rejected\": bool, \"confidence\": 0.0-1.0, \"title\": str|null, \"note\": str|null, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\n\nRULES: JSON only. Keep input language. German tags. ALWAYS assign context and project ONLY IF the input is NOT rejected. Use exact existing case for tags. Calculate 'due' dates relative to today. If no due date is mentioned, set 'due' to null.\n\nPrefer these tags: Existing projects: haushalt, arbeit, privat, gesundheit, finanzen. Existing contexts: einkaufen, telefon, computer, termin, arbeit, zuhause.\n\nExample: 'Kaufe morgen Milch' -> {\"rejected\": false, \"confidence\": 0.95, \"title\": \"Kaufe Milch\", \"note\": null, \"due\": \"2026-01-28T00:00\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}\nExample: 'ich glaube ich gehe schwimmen' -> {\"rejected\": true, \"confidence\": 0.9, \"title\": null, \"note\": null, \"due\": null, \"context\": null, \"project\": null}"
+    },
+    "refined_results": [
+      {
+        "model": "mistral:7b-instruct",
+        "prompt": "verbose_refined_v1",
+        "total_score": 110,
+        "max_score": 140,
+        "consistency_pct": 82.0,
+        "avg_response_time": 0.9690317392349244,
+        "test_results": [
+          {
+            "input": "Milch kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Milch kaufen",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Kaufe Milch",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 7,
+            "consistency_score": 4,
+            "total_score": 11,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 2,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 7,
+              "total": 11
+            }
+          },
+          {
+            "input": "Morgen Zahnarzt um 14 Uhr",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Zahnarztbesuch um 14 Uhr",
+              "note": null,
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Zahnarztbesuch",
+              "note": "um 14 Uhr",
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Für die Arbeit Präsentation vorbereiten",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Präsentation vorbereiten",
+              "note": null,
+              "due": null,
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Präsentation vorbereiten",
+              "note": null,
+              "due": null,
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Im Supermarkt Brot kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Brotkauf im Supermarkt",
+              "note": null,
+              "due": null,
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.9,
+              "title": "Kaufe Brot",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 3,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 3,
+              "accuracy_total": 9,
+              "total": 12
+            }
+          },
+          {
+            "input": "Ich muss noch die Steuererklärung machen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Steuererklärung bearbeiten",
+              "note": null,
+              "due": "2026-04-18T00:00",
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.9,
+              "title": "Steuererklärung bearbeiten",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 4,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 8,
+              "total": 12
+            }
+          },
+          {
+            "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+              "note": null,
+              "due": "2026-02-01T00:00",
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+              "note": null,
+              "due": "2026-02-01T00:00",
+              "context": "arbeit",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 7,
+            "consistency_score": 4,
+            "total_score": 11,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 2,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 7,
+              "total": 11
+            }
+          },
+          {
+            "input": "Ruf Mama an wegen Geburtstag",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ruf Mama an (Geburtstag)",
+              "note": null,
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ruf Mama an",
+              "note": "Geburtstag",
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Das Wetter ist heute schön",
+            "run1": {
+              "rejected": true,
+              "confidence": 0.7,
+              "title": null,
+              "note": null,
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run2": {
+              "rejected": true,
+              "confidence": 0.85,
+              "title": null,
+              "note": "The weather is nice today",
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Ich glaube vielleicht gehe ich schwimmen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.7,
+              "title": "Schwimmen",
+              "note": "vielleicht",
+              "due": null,
+              "context": "privat",
+              "project": "gesundheit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.75,
+              "title": "gehen schwimmen",
+              "note": "vielleicht",
+              "due": null,
+              "context": "privat",
+              "project": "gesundheit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 1,
+            "consistency_score": 5,
+            "total_score": 6,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 0,
+              "title_match": 0,
+              "due_match": 0,
+              "context_reasonable": 0,
+              "project_assigned": 0,
+              "consistency": 5,
+              "accuracy_total": 1,
+              "total": 6
+            }
+          },
+          {
+            "input": "Wann hat der Laden auf?",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Laden aufschauen",
+              "note": "Unbekanntes Ereignis",
+              "due": "2026-01-27T00:00",
+              "context": "privat",
+              "project": "sonstiges"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ladenaufschau",
+              "note": "Tageszeit unbekannt",
+              "due": null,
+              "context": "sonstiges",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 1,
+            "consistency_score": 1,
+            "total_score": 2,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 0,
+              "title_match": 0,
+              "due_match": 0,
+              "context_reasonable": 0,
+              "project_assigned": 0,
+              "consistency": 1,
+              "accuracy_total": 1,
+              "total": 2
+            }
+          }
+        ]
+      },
+      {
+        "model": "mistral:7b-instruct",
+        "prompt": "verbose_refined_v2",
+        "total_score": 104,
+        "max_score": 140,
+        "consistency_pct": 70.0,
+        "avg_response_time": 0.9756384372711182,
+        "test_results": [
+          {
+            "input": "Milch kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Milch kaufen",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Milch kaufen",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 7,
+            "consistency_score": 5,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 2,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 7,
+              "total": 12
+            }
+          },
+          {
+            "input": "Morgen Zahnarzt um 14 Uhr",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Zahnarztbesuch morgen um 14 Uhr",
+              "note": null,
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Zahnarztbesuch um 14 Uhr",
+              "note": null,
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 4,
+            "total_score": 13,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 9,
+              "total": 13
+            }
+          },
+          {
+            "input": "Für die Arbeit Präsentation vorbereiten",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Präsentation für Arbeit vorbereiten",
+              "note": null,
+              "due": null,
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Präsentation vorbereiten",
+              "note": null,
+              "due": null,
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 4,
+            "total_score": 13,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 9,
+              "total": 13
+            }
+          },
+          {
+            "input": "Im Supermarkt Brot kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Brotkauf im Supermarkt",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Brotkauf im Supermarkt",
+              "note": null,
+              "due": "2026-01-27TXX:XX",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 5,
+            "total_score": 13,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 8,
+              "total": 13
+            }
+          },
+          {
+            "input": "Ich muss noch die Steuererklärung machen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Steuererklärung machen",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Steuererklärung bearbeiten",
+              "note": null,
+              "due": null,
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 3,
+            "total_score": 11,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 3,
+              "accuracy_total": 8,
+              "total": 11
+            }
+          },
+          {
+            "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Nächstes Treffen mit Lisa",
+              "note": "Über das Projekt sprechen",
+              "due": "2026-02-01T00:00",
+              "context": "termin",
+              "project": "arbeit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+              "note": null,
+              "due": "2026-03-14T00:00",
+              "context": "arbeit",
+              "project": "projekt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 1,
+            "total_score": 9,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 1,
+              "accuracy_total": 8,
+              "total": 9
+            }
+          },
+          {
+            "input": "Ruf Mama an wegen Geburtstag",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ruf Mama an (Geburtstag)",
+              "note": null,
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ruf Mama an (Geburtstag)",
+              "note": null,
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Das Wetter ist heute schön",
+            "run1": {
+              "rejected": true,
+              "confidence": 0.8,
+              "title": null,
+              "note": "The weather is nice today",
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.75,
+              "title": null,
+              "note": "The weather is nice today",
+              "due": null,
+              "context": "observation",
+              "project": null
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 4,
+            "total_score": 13,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 9,
+              "total": 13
+            }
+          },
+          {
+            "input": "Ich glaube vielleicht gehe ich schwimmen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.8,
+              "title": "Schwimmen vielleicht gehen",
+              "note": null,
+              "due": null,
+              "context": "privat",
+              "project": "gesundheit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.7,
+              "title": "gehe Schwimmen",
+              "note": "vielleicht",
+              "due": null,
+              "context": "sport",
+              "project": null
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 1,
+            "consistency_score": 2,
+            "total_score": 3,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 0,
+              "title_match": 0,
+              "due_match": 0,
+              "context_reasonable": 0,
+              "project_assigned": 0,
+              "consistency": 2,
+              "accuracy_total": 1,
+              "total": 3
+            }
+          },
+          {
+            "input": "Wann hat der Laden auf?",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Laden-Öffnungszeiten",
+              "note": "Wann öffnet der Laden?",
+              "due": null,
+              "context": "computer",
+              "project": null
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ladenauf-Information",
+              "note": "Wann ist der Laden geöffnet?",
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 1,
+            "consistency_score": 2,
+            "total_score": 3,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 0,
+              "title_match": 0,
+              "due_match": 0,
+              "context_reasonable": 0,
+              "project_assigned": 0,
+              "consistency": 2,
+              "accuracy_total": 1,
+              "total": 3
+            }
+          }
+        ]
+      },
+      {
+        "model": "mistral:7b-instruct",
+        "prompt": "verbose_refined_v3",
+        "total_score": 119,
+        "max_score": 140,
+        "consistency_pct": 88.0,
+        "avg_response_time": 1.0156694650650024,
+        "test_results": [
+          {
+            "input": "Milch kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Milch kaufen",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Milch kaufen",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 7,
+            "consistency_score": 5,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 2,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 7,
+              "total": 12
+            }
+          },
+          {
+            "input": "Morgen Zahnarzt um 14 Uhr",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Zahnarztbesuch am Morgen um 14 Uhr",
+              "note": null,
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Zahnarztbesuch",
+              "note": null,
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Für die Arbeit Präsentation vorbereiten",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Präsentation vorbereiten",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Präsentation vorbereiten",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 5,
+            "total_score": 13,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 8,
+              "total": 13
+            }
+          },
+          {
+            "input": "Im Supermarkt Brot kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Brotkauf im Supermarkt",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Brotkauf im Supermarkt",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 5,
+            "total_score": 13,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 8,
+              "total": 13
+            }
+          },
+          {
+            "input": "Ich muss noch die Steuererklärung machen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Steuererklärung machen",
+              "note": null,
+              "due": "2026-01-31T00:00",
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.9,
+              "title": "Steuererklärung machen",
+              "note": null,
+              "due": "2026-04-30T00:00",
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 4,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 8,
+              "total": 12
+            }
+          },
+          {
+            "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Sprechen am Nächsten Montag mit Lisa über das Projekt",
+              "note": null,
+              "due": "2026-02-01T00:00",
+              "context": "arbeit",
+              "project": "projekt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Sprechen mit Lisa über das Projekt am Montag",
+              "note": null,
+              "due": "2026-02-01T00:00",
+              "context": "termin",
+              "project": "arbeit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 2,
+            "total_score": 10,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 2,
+              "accuracy_total": 8,
+              "total": 10
+            }
+          },
+          {
+            "input": "Ruf Mama an wegen Geburtstag",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Ruf Mama an",
+              "note": "Geburtstag",
+              "due": "2026-01-27T00:00",
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ruf Mama an",
+              "note": "Geburtstag",
+              "due": "2026-01-27T00:00",
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 5,
+            "total_score": 13,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 8,
+              "total": 13
+            }
+          },
+          {
+            "input": "Das Wetter ist heute schön",
+            "run1": {
+              "rejected": true,
+              "confidence": 0.85,
+              "title": null,
+              "note": "The weather is nice today",
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run2": {
+              "rejected": true,
+              "confidence": 0.85,
+              "title": null,
+              "note": "The weather is nice today",
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Ich glaube vielleicht gehe ich schwimmen",
+            "run1": {
+              "rejected": true,
+              "confidence": 0.9,
+              "title": null,
+              "note": null,
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run2": {
+              "rejected": true,
+              "confidence": 0.9,
+              "title": null,
+              "note": null,
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Wann hat der Laden auf?",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.8,
+              "title": "Laden-Öffnungszeit",
+              "note": "Wann öffnet der Laden?",
+              "due": null,
+              "context": "arbeit",
+              "project": "privat"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Laden-Öffnungszeiten abfragen",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 1,
+            "consistency_score": 3,
+            "total_score": 4,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 0,
+              "title_match": 0,
+              "due_match": 0,
+              "context_reasonable": 0,
+              "project_assigned": 0,
+              "consistency": 3,
+              "accuracy_total": 1,
+              "total": 4
+            }
+          }
+        ]
+      },
+      {
+        "model": "mistral:7b-instruct",
+        "prompt": "verbose_refined_v4",
+        "total_score": 107,
+        "max_score": 140,
+        "consistency_pct": 82.0,
+        "avg_response_time": 1.0149101257324218,
+        "test_results": [
+          {
+            "input": "Milch kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Kaufe Milch",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Milch kaufen",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 4,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 8,
+              "total": 12
+            }
+          },
+          {
+            "input": "Morgen Zahnarzt um 14 Uhr",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Zahnarztbesuch um 14 Uhr",
+              "note": null,
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.9,
+              "title": "Zahnarztbesuch morgen um 14 Uhr",
+              "note": null,
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 4,
+            "total_score": 13,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 9,
+              "total": 13
+            }
+          },
+          {
+            "input": "Für die Arbeit Präsentation vorbereiten",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Präsentation vorbereiten",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Für die Arbeit Präsentation vorbereiten",
+              "note": null,
+              "due": null,
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 4,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 8,
+              "total": 12
+            }
+          },
+          {
+            "input": "Im Supermarkt Brot kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Im Supermarkt Brot kaufen",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Im Supermarkt Brot kaufen",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 7,
+            "consistency_score": 5,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 2,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 7,
+              "total": 12
+            }
+          },
+          {
+            "input": "Ich muss noch die Steuererklärung machen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Steuererklärung machen",
+              "note": null,
+              "due": "2026-01-31T00:00",
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.9,
+              "title": "Steuererklärung machen",
+              "note": null,
+              "due": "2026-04-30T00:00",
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 4,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 8,
+              "total": 12
+            }
+          },
+          {
+            "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+              "note": null,
+              "due": "2026-02-07T00:00",
+              "context": "arbeit",
+              "project": "projekte"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+              "note": null,
+              "due": "2026-02-07T00:00",
+              "context": "arbeit",
+              "project": "projekte"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 7,
+            "consistency_score": 5,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 2,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 7,
+              "total": 12
+            }
+          },
+          {
+            "input": "Ruf Mama an wegen Geburtstag",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ruf Mama an",
+              "note": "Geburtstag",
+              "due": "2026-01-27T00:00",
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ruf Mama an",
+              "note": "wegen Geburtstag",
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 4,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 8,
+              "total": 12
+            }
+          },
+          {
+            "input": "Das Wetter ist heute schön",
+            "run1": {
+              "rejected": true,
+              "confidence": 0.85,
+              "title": null,
+              "note": null,
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run2": {
+              "rejected": true,
+              "confidence": 0.8,
+              "title": null,
+              "note": "The weather is nice today",
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Ich glaube vielleicht gehe ich schwimmen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Gehen Schwimmen",
+              "note": "vielleicht",
+              "due": null,
+              "context": "gesundheit",
+              "project": null
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.7,
+              "title": "Schwimmen möglicherweise gehen",
+              "note": null,
+              "due": null,
+              "context": "privat",
+              "project": "gesundheit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 1,
+            "consistency_score": 2,
+            "total_score": 3,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 0,
+              "title_match": 0,
+              "due_match": 0,
+              "context_reasonable": 0,
+              "project_assigned": 0,
+              "consistency": 2,
+              "accuracy_total": 1,
+              "total": 3
+            }
+          },
+          {
+            "input": "Wann hat der Laden auf?",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Laden-Öffnungszeiten erfragen",
+              "note": "Wann öffnet der Laden?",
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ladenöffnungszeit fragen",
+              "note": "Ladeneffnungszeiten abfragen",
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 1,
+            "consistency_score": 4,
+            "total_score": 5,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 0,
+              "title_match": 0,
+              "due_match": 0,
+              "context_reasonable": 0,
+              "project_assigned": 0,
+              "consistency": 4,
+              "accuracy_total": 1,
+              "total": 5
+            }
+          }
+        ]
+      },
+      {
+        "model": "mistral:7b-instruct",
+        "prompt": "verbose_refined_v5",
+        "total_score": 107,
+        "max_score": 140,
+        "consistency_pct": 80.0,
+        "avg_response_time": 1.0090636610984802,
+        "test_results": [
+          {
+            "input": "Milch kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Milch kaufen",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Milch kaufen",
+              "note": null,
+              "due": "2026-01-28T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 7,
+            "consistency_score": 5,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 2,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 7,
+              "total": 12
+            }
+          },
+          {
+            "input": "Morgen Zahnarzt um 14 Uhr",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Zahnarztbesuch um 14 Uhr",
+              "note": null,
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Zahnarztbesuch um 14 Uhr",
+              "note": null,
+              "due": "2026-01-28T14:00",
+              "context": "termin",
+              "project": "gesundheit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Für die Arbeit Präsentation vorbereiten",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Präsentation vorbereiten",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Präsentation vorbereiten",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 5,
+            "total_score": 13,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 8,
+              "total": 13
+            }
+          },
+          {
+            "input": "Im Supermarkt Brot kaufen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Brotkauf im Supermarkt",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Im Supermarkt Brot kaufen",
+              "note": null,
+              "due": "2026-01-27T00:00",
+              "context": "einkaufen",
+              "project": "haushalt"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 4,
+            "total_score": 12,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 4,
+              "accuracy_total": 8,
+              "total": 12
+            }
+          },
+          {
+            "input": "Ich muss noch die Steuererklärung machen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.95,
+              "title": "Steuererklärung bearbeiten",
+              "note": null,
+              "due": "2026-04-30T00:00",
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Steuererklärung machen",
+              "note": null,
+              "due": "2026-03-31T00:00",
+              "context": "arbeit",
+              "project": "finanzen"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 8,
+            "consistency_score": 3,
+            "total_score": 11,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 3,
+              "accuracy_total": 8,
+              "total": 11
+            }
+          },
+          {
+            "input": "Nächsten Montag mit Lisa über das Projekt sprechen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Nächsten Montag mit Lisa über das Projekt sprechen",
+              "note": null,
+              "due": "2026-02-01T00:00",
+              "context": "arbeit",
+              "project": "arbeit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Nächstes Treffen mit Lisa",
+              "note": "Über das Projekt",
+              "due": "2026-02-07T00:00",
+              "context": "telefon",
+              "project": "arbeit"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 7,
+            "consistency_score": 2,
+            "total_score": 9,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 2,
+              "due_match": 1,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 2,
+              "accuracy_total": 7,
+              "total": 9
+            }
+          },
+          {
+            "input": "Ruf Mama an wegen Geburtstag",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ruf Mama an",
+              "note": "Geburtstag",
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Ruf Mama an (Geburtstag)",
+              "note": null,
+              "due": null,
+              "context": "telefon",
+              "project": "privat"
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Das Wetter ist heute schön",
+            "run1": {
+              "rejected": true,
+              "confidence": 0.8,
+              "title": null,
+              "note": "The weather is nice today",
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run2": {
+              "rejected": true,
+              "confidence": 0.85,
+              "title": null,
+              "note": "The weather is nice today",
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 9,
+            "consistency_score": 5,
+            "total_score": 14,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 1,
+              "title_match": 3,
+              "due_match": 2,
+              "context_reasonable": 1,
+              "project_assigned": 1,
+              "consistency": 5,
+              "accuracy_total": 9,
+              "total": 14
+            }
+          },
+          {
+            "input": "Ich glaube vielleicht gehe ich schwimmen",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.5,
+              "title": "gehe schwimmen",
+              "note": "ich glaube vielleicht",
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.8,
+              "title": "gehe schwimmen",
+              "note": "vielleicht",
+              "due": null,
+              "context": null,
+              "project": null
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 1,
+            "consistency_score": 5,
+            "total_score": 6,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 0,
+              "title_match": 0,
+              "due_match": 0,
+              "context_reasonable": 0,
+              "project_assigned": 0,
+              "consistency": 5,
+              "accuracy_total": 1,
+              "total": 6
+            }
+          },
+          {
+            "input": "Wann hat der Laden auf?",
+            "run1": {
+              "rejected": false,
+              "confidence": 0.9,
+              "title": "Laden aufschauen",
+              "note": "Tageszeitpunkt unbekannt",
+              "due": null,
+              "context": "privat",
+              "project": "arbeit"
+            },
+            "run2": {
+              "rejected": false,
+              "confidence": 0.85,
+              "title": "Laden-Öffnungszeiten abfragen",
+              "note": "Telefonisch oder online erfahren",
+              "due": "2026-01-27T00:00",
+              "context": "telefon",
+              "project": null
+            },
+            "run1_error": null,
+            "run2_error": null,
+            "accuracy_score": 1,
+            "consistency_score": 1,
+            "total_score": 2,
+            "scores_breakdown": {
+              "json_valid": 1,
+              "rejection_correct": 0,
+              "title_match": 0,
+              "due_match": 0,
+              "context_reasonable": 0,
+              "project_assigned": 0,
+              "consistency": 1,
+              "accuracy_total": 1,
+              "total": 2
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "best_combination": {
+      "model": "mistral:7b-instruct",
+      "prompt": "verbose",
+      "score": 124,
+      "consistency": 92.0
+    }
+  }
+}

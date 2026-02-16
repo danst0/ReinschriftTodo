@@ -1,0 +1,6 @@
+{
+  "prompts": {
+    "concise_v1": "Parse todo. Today: {weekday}, {today}.\nOutput JSON: {\"title\": str, \"due\": \"YYYY-MM-DDTHH:MM\"|null, \"context\": str, \"project\": str}\nIf not actionable: {\"title\": null}\nContexts: {contexts}\nProjects: {projects}",
+    "structured_v1": "You are a German todo parser. Today is {weekday}, {today}.\n\nExtract from user input:\n- title: the task (required)\n- due: date/time as ISO format or null\n- context: location/method (einkaufen, telefon, computer, termin, arbeit, zuhause)\n- project: topic (haushalt, arbeit, privat, gesundheit, finanzen)\n\nReject non-actionable input (observations, questions, vague intentions) by returning {\"title\": null}.\n\nRespond with JSON only."
+  }
+}
