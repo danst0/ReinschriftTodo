@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.20.3" date="2026-02-21">
+      <description>
+        <ul>
+          <li>Fix projects/contexts inside notes being incorrectly extracted as tags</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.20.2" date="2026-02-16">
       <description>
         <ul>

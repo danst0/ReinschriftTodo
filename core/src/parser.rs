@@ -48,8 +48,9 @@ pub fn parse_line(line: &str, line_index: usize) -> Option<TodoItem> {
     };
 
     let title = extract_title(rest);
-    let projects = capture_all_tokens(&PROJECT_RE, rest);
-    let contexts = capture_all_tokens(&CONTEXT_RE, rest);
+    let rest_without_note = NOTE_RE.replace(rest, "");
+    let projects = capture_all_tokens(&PROJECT_RE, &rest_without_note);
+    let contexts = capture_all_tokens(&CONTEXT_RE, &rest_without_note);
     let due = parse_due(rest);
     let recurrence = capture_token(&RECUR_RE, rest);
     let reference = capture_token(&LINK_RE, rest);

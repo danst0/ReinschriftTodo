@@ -165,9 +165,10 @@ def parse_line(line: str, line_index: int) -> Optional[TodoItem]:
         return None
 
     title = extract_title(rest)
-    projects = [normalize_prefix(p, '+') for p in capture_all_tokens(PROJECT_RE, rest)]
+    rest_without_note = NOTE_RE.sub('', rest)
+    projects = [normalize_prefix(p, '+') for p in capture_all_tokens(PROJECT_RE, rest_without_note)]
     projects = [p for p in projects if p]  # Filter out None/empty
-    contexts = [normalize_prefix(c, '@') for c in capture_all_tokens(CONTEXT_RE, rest)]
+    contexts = [normalize_prefix(c, '@') for c in capture_all_tokens(CONTEXT_RE, rest_without_note)]
     contexts = [c for c in contexts if c]  # Filter out None/empty
     due_dt = parse_due_token(rest)
     recurrence = capture_token(RECUR_RE, rest)

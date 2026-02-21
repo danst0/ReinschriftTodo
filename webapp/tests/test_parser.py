@@ -90,6 +90,13 @@ class TestParseLine:
         assert result.projects == ["proj1", "proj2"]
         assert result.contexts == ["ctx1", "ctx2"]
 
+    def test_parse_note_with_project_inside(self):
+        """Test that projects inside notes are not extracted."""
+        line = '- [ ] Bäume zuschneiden +Haushalt ~note:"Bäume zuschneiden +Haushalt" ^abc'
+        result = parse_line(line, 0)
+        assert result.projects == ["Haushalt"]
+        assert result.note == "Bäume zuschneiden +Haushalt"
+
 
 class TestParseDue:
     """Tests for due date parsing."""
