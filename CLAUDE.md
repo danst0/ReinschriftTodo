@@ -277,6 +277,7 @@ Before every commit, update the version and all Flatpak manifests:
 1. **Increment version**: Increase patch by 1. If patch reaches 9, reset to 0 and increment minor. If minor reaches 9, reset to 0 and increment major. (e.g. 0.18.8 → 0.18.9 → 0.19.0 → 0.19.1)
 2. **Update files**:
    - `Cargo.toml` — `version` field in `[workspace.package]`
+   - `webapp/pyproject.toml` — `version` field in `[project]`
    - `me.dumke.Reinschrift.yml` — `tag:` value
    - `me.dumke.Reinschrift.metainfo.xml` — add new `<release>` entry at top of `<releases>` with today's date
 3. **Commit message**: Prefix with `v<version>:` (e.g. `v0.18.12: Add feature X`)

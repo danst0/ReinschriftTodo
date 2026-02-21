@@ -152,18 +152,43 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(api_bp, url_prefix='/api')
 
 
+def _get_version() -> str:
+    """Read version from Cargo.toml (dev) or pyproject.toml (Docker fallback)."""
+    import re
+    from pathlib import Path
+
+    # Try Cargo.toml (available in development, one level up from webapp/)
+    cargo_path = Path(__file__).resolve().parent.parent.parent / 'Cargo.toml'
+    if cargo_path.is_file():
+        match = re.search(r'^version\s*=\s*"([^"]+)"', cargo_path.read_text(), re.MULTILINE)
+        if match:
+            return match.group(1)
+
+    # Fallback: pyproject.toml (available in Docker)
+    pyproject_path = Path(__file__).resolve().parent.parent / 'pyproject.toml'
+    if pyproject_path.is_file():
+        match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject_path.read_text(), re.MULTILINE)
+        if match:
+            return match.group(1)
+
+    return 'unknown'
+
+
 def register_context_processors(app: Flask) -> None:
     """Register Jinja2 context processors."""
     from flask import session, request
     from translations import TRANSLATIONS
 
+    app_version = _get_version()
+
     @app.context_processor
     def inject_translations():
-        """Inject translation dictionary into templates."""
+        """Inject translation dictionary and version into templates."""
         lang = get_locale()
         return {
             't': TRANSLATIONS.get(lang, TRANSLATIONS['de']),
-            'current_lang': lang
+            'current_lang': lang,
+            'app_version': app_version,
         }
 
     def get_locale() -> str:
