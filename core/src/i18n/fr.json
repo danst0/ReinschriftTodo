@@ -40,6 +40,7 @@
   "use_webdav": "Utiliser WebDAV",
   "database_file": "Fichier de base de données",
   "select_file": "Sélectionner un fichier…",
+  "create_new_file": "Créer un nouveau fichier",
   "webdav_url": "URL WebDAV",
   "path_relative": "Chemin (relatif)",
   "username": "Nom d'utilisateur",

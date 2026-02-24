@@ -40,6 +40,7 @@
   "use_this_method": "Diese Methode verwenden",
   "database_file": "Datenbankdatei",
   "select_file": "Datei auswählen…",
+  "create_new_file": "Neue Datei erstellen",
   "webdav_url": "WebDAV URL",
   "path_relative": "Pfad (relativ)",
   "username": "Benutzername",

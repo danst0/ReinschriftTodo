@@ -40,6 +40,7 @@
   "use_webdav": "WebDAV を使用する",
   "database_file": "データベースファイル",
   "select_file": "ファイルを選択…",
+  "create_new_file": "新しいファイルを作成",
   "webdav_url": "WebDAV URL",
   "path_relative": "パス (相対)",
   "username": "ユーザー名",

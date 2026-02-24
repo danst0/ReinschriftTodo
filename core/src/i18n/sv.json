@@ -40,6 +40,7 @@
   "use_webdav": "Använd WebDAV",
   "database_file": "Databasfil",
   "select_file": "Välj fil…",
+  "create_new_file": "Skapa ny fil",
   "webdav_url": "WebDAV URL",
   "path_relative": "Sökväg (relativ)",
   "username": "Användarnamn",

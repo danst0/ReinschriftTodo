@@ -1377,9 +1377,6 @@ impl AppState {
             return;
         };
 
-        // Enforce WebDAV mode
-        self.set_use_webdav(true);
-
         let dialog = adw::PreferencesWindow::builder()
             .title(&t("settings"))
             .transient_for(&parent)
@@ -1393,6 +1390,136 @@ impl AppState {
             .icon_name("preferences-system-symbolic")
             .build();
         dialog.add(&general_page);
+
+        // --- Storage Group ---
+        let storage_group = adw::PreferencesGroup::builder()
+            .title(&t("storage"))
+            .build();
+        general_page.add(&storage_group);
+
+        // WebDAV switch
+        let use_webdav_now = self.preferences.borrow().use_webdav;
+        let webdav_switch_row = adw::SwitchRow::builder()
+            .title(&t("use_webdav"))
+            .active(use_webdav_now)
+            .build();
+        webdav_switch_row.add_prefix(&gtk::Image::from_icon_name("network-server-symbolic"));
+        storage_group.add(&webdav_switch_row);
+
+        // Local file row (visible when not in WebDAV mode)
+        let current_db_path = self.preferences.borrow().db_path.clone().unwrap_or_default();
+        let db_subtitle = if current_db_path.is_empty() { t("select_file") } else { current_db_path.clone() };
+        let db_row = adw::ActionRow::builder()
+            .title(&t("database_file"))
+            .subtitle(&db_subtitle)
+            .build();
+        db_row.set_visible(!use_webdav_now);
+
+        // "Select existing file" button
+        let select_btn = gtk::Button::builder()
+            .label(&t("select_file"))
+            .valign(gtk::Align::Center)
+            .build();
+        select_btn.add_css_class("flat");
+        db_row.add_suffix(&select_btn);
+
+        // "Create new file" button
+        let new_btn = gtk::Button::builder()
+            .label(&t("create_new_file"))
+            .valign(gtk::Align::Center)
+            .build();
+        new_btn.add_css_class("flat");
+        db_row.add_suffix(&new_btn);
+
+        storage_group.add(&db_row);
+
+        // Connect WebDAV switch – toggles db_row visibility and calls set_use_webdav()
+        let db_row_for_switch = db_row.clone();
+        let state_for_switch = Rc::clone(self);
+        webdav_switch_row.connect_active_notify(move |row| {
+            let use_webdav = row.is_active();
+            db_row_for_switch.set_visible(!use_webdav);
+            state_for_switch.set_use_webdav(use_webdav);
+        });
+
+        // Connect "Select file" button – opens a file chooser dialog
+        let fd_parent = dialog.clone();
+        let state_select = Rc::clone(self);
+        let db_row_select = db_row.clone();
+        select_btn.connect_clicked(move |_| {
+            let fd = gtk::FileDialog::builder()
+                .title(&t("database_file"))
+                .build();
+            let state = Rc::clone(&state_select);
+            let row = db_row_select.clone();
+            fd.open(Some(&fd_parent), gio::Cancellable::NONE, move |result| {
+                if let Ok(file) = result {
+                    if let Some(path) = file.path() {
+                        if !path.exists() {
+                            state.show_error(&t("file_not_exists"));
+                            return;
+                        }
+                        if data::todo_path() == path {
+                            state.show_info(&t("file_already_active"));
+                            return;
+                        }
+                        data::set_todo_path(path.clone());
+                        data::set_backend_config(data::BackendConfig::Local(path.clone()));
+                        {
+                            let mut p = state.preferences.borrow_mut();
+                            p.db_path = Some(path.to_string_lossy().into_owned());
+                            p.use_webdav = false;
+                        }
+                        state.persist_preferences();
+                        row.set_subtitle(&path.to_string_lossy());
+                        if let Err(e) = state.reload() {
+                            state.show_error(&t("load_data_error").replace("{}", &e.to_string()));
+                        } else {
+                            state.show_info(&t("using_file").replace("{}", &path.to_string_lossy()));
+                        }
+                    }
+                }
+            });
+        });
+
+        // Connect "New file" button – opens a save dialog
+        let fd_parent2 = dialog.clone();
+        let state_new = Rc::clone(self);
+        let db_row_new = db_row.clone();
+        new_btn.connect_clicked(move |_| {
+            let fd = gtk::FileDialog::builder()
+                .title(&t("create_new_file"))
+                .initial_name("todos.md")
+                .build();
+            let state = Rc::clone(&state_new);
+            let row = db_row_new.clone();
+            fd.save(Some(&fd_parent2), gio::Cancellable::NONE, move |result| {
+                if let Ok(file) = result {
+                    if let Some(path) = file.path() {
+                        if !path.exists() {
+                            if std::fs::write(&path, "").is_err() {
+                                state.show_error(&t("write_error").replace("{}", &path.display().to_string()));
+                                return;
+                            }
+                        }
+                        data::set_todo_path(path.clone());
+                        data::set_backend_config(data::BackendConfig::Local(path.clone()));
+                        {
+                            let mut p = state.preferences.borrow_mut();
+                            p.db_path = Some(path.to_string_lossy().into_owned());
+                            p.use_webdav = false;
+                        }
+                        state.persist_preferences();
+                        row.set_subtitle(&path.to_string_lossy());
+                        if let Err(e) = state.reload() {
+                            state.show_error(&t("load_data_error").replace("{}", &e.to_string()));
+                        } else {
+                            state.show_info(&t("using_file").replace("{}", &path.to_string_lossy()));
+                        }
+                    }
+                }
+            });
+        });
 
         let general_group = adw::PreferencesGroup::builder()
             .title(&t("general"))
