@@ -268,7 +268,7 @@ pub fn undone(ctx: &OutputContext, ids: &[String]) -> Result<()> {
 pub fn today(ctx: &OutputContext, id: &str) -> Result<()> {
     let items = load_todos()?;
     let item = find_item_by_id(&items, id)?;
-    match set_due_today(&item.key) {
+    match set_due_today(&item.key, item.due) {
         Ok(new_due) => {
             ctx.success(&format!("Set due date to {}: {}", new_due.date(), item.title));
             ctx.info("(undo with: reinschrift undo)");

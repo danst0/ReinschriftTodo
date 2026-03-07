@@ -74,18 +74,22 @@ pub fn toggle_todo(key: &TodoKey, done: bool) -> Result<()> {
 }
 
 /// Set a todo's due date to today (smart time selection).
-pub fn set_due_today(key: &TodoKey) -> Result<NaiveDateTime> {
+pub fn set_due_today(key: &TodoKey, current_due: Option<NaiveDateTime>) -> Result<NaiveDateTime> {
     let now = Local::now();
     let today = now.date_naive();
-    let current_hour = now.hour();
 
-    // Smart "Today" logic: at least 4 hours from now
-    let time = if current_hour < 8 {
-        NaiveTime::from_hms_opt(12, 0, 0).unwrap()
-    } else if current_hour < 14 {
-        NaiveTime::from_hms_opt(18, 0, 0).unwrap()
-    } else {
-        NaiveTime::from_hms_opt(18, 0, 0).unwrap()
+    let time = match current_due {
+        Some(dt) if dt.date() > today => NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+        _ => {
+            let current_hour = now.hour();
+            if current_hour < 8 {
+                NaiveTime::from_hms_opt(12, 0, 0).unwrap()
+            } else if current_hour < 14 {
+                NaiveTime::from_hms_opt(18, 0, 0).unwrap()
+            } else {
+                NaiveTime::from_hms_opt(18, 0, 0).unwrap()
+            }
+        }
     };
 
     let due_dt = NaiveDateTime::new(today, time);

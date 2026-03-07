@@ -1221,7 +1221,7 @@ impl AppState {
     }
 
     fn set_due_today(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
-        match data::set_due_today(&todo.key) {
+        match data::set_due_today(&todo.key, todo.due) {
             Ok(today) => {
                 self.reload()?;
                 self.show_undo_toast(&format!("Fällig heute ({})", today.format("%Y-%m-%dT%H:%M")));

@@ -332,7 +332,7 @@ def postpone_todo(line_index: int, target: str) -> bool:
     if not item:
         return False
 
-    new_datetime, new_time = calculate_postpone_date(target)
+    new_datetime, new_time = calculate_postpone_date(target, item.due)
 
     # Reconstruct line
     original_line = lines[line_index]
@@ -390,7 +390,6 @@ def postpone_todos_batch(line_indexes: list[int], target: str) -> dict:
     content = read_content()
     lines = content.splitlines()
 
-    new_datetime, _ = calculate_postpone_date(target)
     updated = 0
     failed = []
 
@@ -405,6 +404,7 @@ def postpone_todos_batch(line_indexes: list[int], target: str) -> dict:
             failed.append(line_index)
             continue
 
+        new_datetime, _ = calculate_postpone_date(target, item.due)
         original_line = lines[line_index]
         marker = ensure_marker(item.marker)
 

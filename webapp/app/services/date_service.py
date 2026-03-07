@@ -54,11 +54,12 @@ def next_due_date(current_due: Optional[datetime], rule: str) -> Optional[dateti
     return datetime.combine(next_date, base_time)
 
 
-def calculate_postpone_date(target: str) -> tuple[datetime, dtime]:
+def calculate_postpone_date(target: str, current_due: datetime | None = None) -> tuple[datetime, dtime]:
     """Calculate the new date/time for a postpone operation.
 
     Args:
         target: Postpone target ('today', 'tomorrow', 'weekend', 'sometime').
+        current_due: The current due datetime of the todo, if any.
 
     Returns:
         Tuple of (date, time) for the new due date.
@@ -68,9 +69,10 @@ def calculate_postpone_date(target: str) -> tuple[datetime, dtime]:
     current_hour = now.hour
 
     if target == 'today':
-        # Smart "Today" logic: at least 4 hours from now
         new_date = today
-        if current_hour < 8:
+        if current_due is not None and current_due.date() > today:
+            new_time = dtime(hour=0, minute=0)
+        elif current_hour < 8:
             new_time = dtime(hour=12, minute=0)
         elif current_hour < 14:
             new_time = dtime(hour=18, minute=0)
