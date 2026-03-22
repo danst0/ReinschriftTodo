@@ -1369,6 +1369,32 @@ button, a, .checkbox, .filter-link, .todo-item {
     outline-offset: -2px;
 }
 
+/* Add confirmation toast */
+.add-toast {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--color-text, #333);
+    color: var(--color-bg, #fff);
+    padding: 10px 20px;
+    border-radius: var(--radius-md, 8px);
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    max-width: 90vw;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+.add-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
 /* Undo toast */
 .undo-toast {
     position: fixed;

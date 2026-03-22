@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.20.7" date="2026-03-22">
+      <description>
+        <ul>
+          <li>Keep focus on text input after adding todo on mobile, show toast confirmation instead of scrolling</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.20.6" date="2026-03-07">
       <description>
         <ul>

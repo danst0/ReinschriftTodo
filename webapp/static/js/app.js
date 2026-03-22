@@ -140,13 +140,31 @@ function highlightMarker(marker) {
     if (el) {
         el.classList.add('pulse');
         el.style.outline = '2px solid #6c5ce7';
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(() => {
             el.classList.remove('pulse');
             el.style.outline = '';
         }, 1800);
         lastImprovedMarker = null;
+
+        const rect = el.getBoundingClientRect();
+        const inViewport = rect.top >= 0 && rect.bottom <= window.innerHeight;
+        if (!inViewport) {
+            showAddConfirmation(el.querySelector('.todo-title')?.textContent || 'Todo hinzugefügt');
+        }
     }
+}
+
+function showAddConfirmation(text) {
+    let toast = document.getElementById('add-confirmation-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'add-confirmation-toast';
+        toast.className = 'add-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = '✓ ' + text;
+    toast.classList.add('visible');
+    setTimeout(() => toast.classList.remove('visible'), 2000);
 }
 
 /**
@@ -176,10 +194,10 @@ function setupAddForm() {
 
             const data = await res.json();
             this.reset();
-            if (input) input.focus();
 
             await autoReload();
             highlightMarker(data.marker);
+            if (input) input.focus();
 
             if (appConfig.autoAiOnAdd && data.marker) {
                 lastImprovedMarker = data.marker;
