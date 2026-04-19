@@ -19,7 +19,8 @@
     --color-primary-hover: #1c71d8;
     --color-primary-light: #eef5ff;
     --color-accent: #6c5ce7;
-    
+    --color-accent-rgb: 108, 92, 231;
+
     /* Semantic Colors */
     --color-project: #e66100;
     --color-project-bg: #fff1e5;
@@ -31,7 +32,24 @@
     --color-note-bg: #f2edff;
     --color-due: #c01c28;
     --color-danger: #e01b24;
-    
+
+    /* Status Colors */
+    --color-success: #2ec27e;
+    --color-success-bg: #e8f5e9;
+    --color-success-text: #2e7d32;
+    --color-warning-bg: #fff3e0;
+    --color-warning-text: #e65100;
+    --color-error-bg: #ffe5e5;
+    --color-recording-bg: #fdeef0;
+
+    /* Typography Scale */
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.85rem;
+    --font-size-md: 0.9rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.2rem;
+    --font-size-xl: 1.5rem;
+
     /* Spacing */
     --spacing-xs: 0.25rem;
     --spacing-sm: 0.5rem;
@@ -97,6 +115,15 @@
         --color-note: #bfa9ff;
         --color-note-bg: #2f2940;
         --color-due: #ff7b72;
+
+        --color-accent-rgb: 140, 125, 240;
+        --color-success: #7dd3a0;
+        --color-success-bg: #1b3d1f;
+        --color-success-text: #81c784;
+        --color-warning-bg: #3d2a1a;
+        --color-warning-text: #ffb74d;
+        --color-error-bg: #3d2020;
+        --color-recording-bg: #3d2020;
     }
 }
 
@@ -174,7 +201,7 @@ button, a, .checkbox, .filter-link, .todo-item {
 .icon-btn {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: var(--font-size-xl);
     cursor: pointer;
     padding: var(--spacing-sm);
     border-radius: var(--radius-full);
@@ -264,7 +291,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     padding: var(--spacing-xs) var(--spacing-sm);
     cursor: pointer;
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: var(--font-size-md);
     color: var(--color-text);
     min-height: var(--touch-target-min);
     display: inline-flex;
@@ -301,7 +328,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     border: 1px solid var(--color-border-strong);
     border-right: none;
     border-radius: var(--radius-md) 0 0 var(--radius-md);
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     outline: none;
     background: var(--color-bg-card);
     color: var(--color-text);
@@ -319,7 +346,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     border: none;
     border-radius: 0 var(--radius-md) var(--radius-md) 0;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     font-weight: bold;
     min-height: var(--touch-target-comfortable);
 }
@@ -380,7 +407,7 @@ button, a, .checkbox, .filter-link, .todo-item {
 .voice-btn.recording {
     color: var(--color-due);
     animation: pulse 1.5s infinite;
-    background: #fdeef0;
+    background: var(--color-recording-bg);
 }
 
 @keyframes pulse {
@@ -401,7 +428,7 @@ button, a, .checkbox, .filter-link, .todo-item {
 .section-header {
     margin-top: var(--spacing-xl);
     margin-bottom: var(--spacing-md);
-    font-size: 1.2rem;
+    font-size: var(--font-size-lg);
     font-weight: 600;
     color: var(--color-text);
     padding-bottom: var(--spacing-sm);
@@ -463,7 +490,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: var(--font-size-xl);
     opacity: 0;
     transition: opacity var(--transition-fast);
     pointer-events: none;
@@ -471,7 +498,7 @@ button, a, .checkbox, .filter-link, .todo-item {
 
 .todo-item::before {
     left: 0;
-    background: linear-gradient(90deg, #2ecc71 0%, #2ecc71 60%, transparent 100%);
+    background: linear-gradient(90deg, var(--color-success) 0%, var(--color-success) 60%, transparent 100%);
 }
 
 .todo-item::after {
@@ -489,7 +516,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 1.5rem;
+    font-size: var(--font-size-xl);
     color: white;
     opacity: 0;
     transition: opacity var(--transition-fast);
@@ -514,7 +541,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     margin-right: var(--spacing-md);
     cursor: pointer;
     text-decoration: none;
-    font-size: 1.5rem;
+    font-size: var(--font-size-xl);
     line-height: 1;
     color: var(--color-primary);
     min-width: var(--touch-target-min);
@@ -542,13 +569,13 @@ button, a, .checkbox, .filter-link, .todo-item {
 }
 
 .title {
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     line-height: 1.4;
     word-break: break-word;
 }
 
 .meta {
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     color: var(--color-text-secondary);
     margin-top: 0.3rem;
     display: flex;
@@ -676,7 +703,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     text-align: left;
     cursor: pointer;
     color: var(--color-text);
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     min-height: var(--touch-target-comfortable);
 }
 
@@ -856,7 +883,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     font-weight: bold;
     min-height: var(--touch-target-comfortable);
 }
@@ -872,7 +899,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     font-weight: bold;
     text-decoration: none;
     text-align: center;
@@ -915,7 +942,7 @@ button, a, .checkbox, .filter-link, .todo-item {
         background: none;
         border: none;
         color: var(--color-text-secondary);
-        font-size: 0.75rem;
+        font-size: var(--font-size-xs);
         padding: var(--spacing-sm);
         cursor: pointer;
         min-width: 64px;
@@ -934,7 +961,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     }
     
     .bottom-nav-btn .icon {
-        font-size: 1.5rem;
+        font-size: var(--font-size-xl);
         margin-bottom: 2px;
     }
     
@@ -972,14 +999,14 @@ button, a, .checkbox, .filter-link, .todo-item {
 }
 
 .pull-to-refresh .spinner-icon {
-    font-size: 1.5rem;
+    font-size: var(--font-size-xl);
     color: var(--color-primary);
 }
 
 .pull-to-refresh .pull-text {
     margin-left: var(--spacing-sm);
     color: var(--color-text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--font-size-md);
 }
 
 /* ==========================================================================
@@ -988,7 +1015,7 @@ button, a, .checkbox, .filter-link, .todo-item {
 
 .lang-link {
     text-decoration: none;
-    font-size: 1.5rem;
+    font-size: var(--font-size-xl);
     padding-bottom: 2px;
     border-bottom: 2px solid transparent;
     min-width: var(--touch-target-min);
@@ -1025,13 +1052,13 @@ button, a, .checkbox, .filter-link, .todo-item {
 
 @keyframes highlight-pulse {
     0% {
-        box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.4);
+        box-shadow: 0 0 0 0 rgba(var(--color-accent-rgb), 0.4);
     }
     70% {
-        box-shadow: 0 0 0 10px rgba(108, 92, 231, 0);
+        box-shadow: 0 0 0 10px rgba(var(--color-accent-rgb), 0);
     }
     100% {
-        box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+        box-shadow: 0 0 0 0 rgba(var(--color-accent-rgb), 0);
     }
 }
 
@@ -1105,7 +1132,7 @@ button, a, .checkbox, .filter-link, .todo-item {
 .footer .app-info {
     margin-top: var(--spacing-xl);
     color: var(--color-text-muted);
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     border-top: 1px solid var(--color-border);
     padding-top: var(--spacing-md);
 }
@@ -1158,17 +1185,10 @@ button, a, .checkbox, .filter-link, .todo-item {
     display: none;
     margin-bottom: var(--spacing-md);
     padding: 0.75rem;
-    background: #ffe5e5;
+    background: var(--color-error-bg);
     border-radius: var(--radius-md);
     border: 1px solid var(--color-danger);
     color: var(--color-danger);
-}
-
-@media (prefers-color-scheme: dark) {
-    .ai-debug-error {
-        background: #3d2020;
-        color: #ff7b72;
-    }
 }
 
 .ai-debug-details {
@@ -1188,20 +1208,20 @@ button, a, .checkbox, .filter-link, .todo-item {
     padding: 0.75rem;
     border-radius: var(--radius-sm);
     overflow-x: auto;
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
 }
 
 .ai-debug-pre.ai-debug-success {
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: var(--color-success-bg);
+    color: var(--color-success-text);
 }
 
 .ai-debug-pre.ai-debug-rejected {
-    background: #fff3e0;
-    color: #e65100;
+    background: var(--color-warning-bg);
+    color: var(--color-warning-text);
 }
 
 .ai-debug-pre.ai-debug-empty {
@@ -1209,34 +1229,12 @@ button, a, .checkbox, .filter-link, .todo-item {
     color: var(--color-text-muted);
 }
 
-@media (prefers-color-scheme: dark) {
-    .ai-debug-pre.ai-debug-success {
-        background: #1b3d1f;
-        color: #81c784;
-    }
-
-    .ai-debug-pre.ai-debug-rejected {
-        background: #3d2a1a;
-        color: #ffb74d;
-    }
-}
-
 .ai-debug-status-ok {
-    color: #2ec27e;
+    color: var(--color-success);
 }
 
 .ai-debug-status-rejected {
     color: var(--color-danger);
-}
-
-@media (prefers-color-scheme: dark) {
-    .ai-debug-status-ok {
-        color: #81c784;
-    }
-
-    .ai-debug-status-rejected {
-        color: #ff7b72;
-    }
 }
 
 /* ==========================================================================
@@ -1384,7 +1382,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     transition: opacity 0.3s, transform 0.3s;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     max-width: 90vw;
-    font-size: 0.9rem;
+    font-size: var(--font-size-md);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1424,7 +1422,7 @@ button, a, .checkbox, .filter-link, .todo-item {
 }
 .undo-toast-btn {
     background: transparent;
-    color: var(--color-primary, #6c5ce7);
+    color: var(--color-accent);
     border: none;
     font-weight: 600;
     cursor: pointer;
