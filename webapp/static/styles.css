@@ -750,8 +750,8 @@ button, a, .checkbox, .filter-link, .todo-item {
 .modal-content {
     background-color: var(--color-bg-card);
     margin: 5% auto;
-    padding: 20px;
-    padding-bottom: 40px;
+    padding: var(--spacing-lg);
+    padding-bottom: var(--spacing-xl);
     border: 1px solid var(--color-border);
     width: 90%;
     max-width: 500px;
@@ -1401,14 +1401,14 @@ button, a, .checkbox, .filter-link, .todo-item {
     top: 60px;
     left: 50%;
     transform: translateX(-50%) translateY(-20px);
-    background: var(--color-text, #333);
-    color: var(--color-bg, #fff);
-    padding: 10px 20px;
-    border-radius: var(--radius-md, 8px);
+    background: var(--color-text);
+    color: var(--color-bg);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
     z-index: 10000;
     opacity: 0;
     transition: opacity 0.3s, transform 0.3s;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-lg);
     max-width: 90vw;
     font-size: var(--font-size-md);
     white-space: nowrap;
@@ -1427,17 +1427,17 @@ button, a, .checkbox, .filter-link, .todo-item {
     bottom: 80px;
     left: 50%;
     transform: translateX(-50%) translateY(20px);
-    background: var(--color-text, #333);
-    color: var(--color-bg, #fff);
-    padding: 12px 20px;
-    border-radius: var(--radius-md, 8px);
+    background: var(--color-text);
+    color: var(--color-bg);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: var(--spacing-md);
     z-index: 10000;
     opacity: 0;
     transition: opacity 0.3s, transform 0.3s;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-lg);
     max-width: 90vw;
 }
 .undo-toast.visible {
@@ -1446,7 +1446,7 @@ button, a, .checkbox, .filter-link, .todo-item {
 }
 .undo-toast-message {
     flex: 1;
-    font-size: 0.95rem;
+    font-size: var(--font-size-md);
 }
 .undo-toast-btn {
     background: transparent;
@@ -1454,7 +1454,7 @@ button, a, .checkbox, .filter-link, .todo-item {
     border: none;
     font-weight: 600;
     cursor: pointer;
-    padding: 4px 8px;
-    font-size: 0.95rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-md);
     text-transform: uppercase;
 }
