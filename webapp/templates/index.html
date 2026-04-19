@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% from '_icons.html' import icon %}<!DOCTYPE html>
 <html lang="{{ current_lang or 'en' }}">
 <head>
     <title>{{ t.todos }}</title>
@@ -45,10 +45,10 @@
                     <label for="edit-due">{{ t.due_date }}</label>
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="datetime-local" id="edit-due" name="due">
-                        <button type="button" class="btn-action" onclick="setModalDate(0)" title="{{ t.today }}">📅</button>
-                        <button type="button" class="btn-action" onclick="setModalDate(1)" title="{{ t.tomorrow }}">➡️</button>
-                        <button type="button" class="btn-action" onclick="setModalNextWeekend()" title="{{ t.next_weekend }}">🏖️</button>
-                        <button type="button" class="btn-action" onclick="setModalSometime()" title="{{ t.sometime }}">🕒</button>
+                        <button type="button" class="btn-action" onclick="setModalDate(0)" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar') }}</button>
+                        <button type="button" class="btn-action" onclick="setModalDate(1)" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right') }}</button>
+                        <button type="button" class="btn-action" onclick="setModalNextWeekend()" title="{{ t.next_weekend }}" aria-label="{{ t.next_weekend }}">{{ icon('umbrella') }}</button>
+                        <button type="button" class="btn-action" onclick="setModalSometime()" title="{{ t.sometime }}" aria-label="{{ t.sometime }}">{{ icon('clock') }}</button>
                     </div>
                 </div>
                 <div class="form-group">
@@ -82,7 +82,7 @@
                 <div class="buttons">
                     <button type="submit" id="btn-save-main" class="btn-primary">{{ t.save }}</button>
                     <button type="button" id="btn-close-comment" class="btn-secondary" onclick="showCommentField()">{{ t.close_with_comment }}</button>
-                    <button type="button" id="btn-delete" class="btn-secondary" style="color: #e01b24;" onclick="deleteTodoFromModal()" title="{{ t.delete }}">🗑️</button>
+                    <button type="button" id="btn-delete" class="btn-secondary" style="color: var(--color-danger);" onclick="deleteTodoFromModal()" title="{{ t.delete }}" aria-label="{{ t.delete }}">{{ icon('trash') }}</button>
                     <button type="button" class="btn-secondary" onclick="closeModal()">{{ t.cancel }}</button>
                 </div>
             </form>
@@ -92,9 +92,9 @@
     <div class="header-container">
         <h1>{{ t.todos }}</h1>
         <div class="header-icons">
-            <button type="button" id="toggle-settings" class="icon-btn" onclick="openSettings()" title="{{ t.settings }}">⚙️</button>
-            <button type="button" id="toggle-search" class="icon-btn {% if q %}active{% endif %}" onclick="toggleSearch()" title="{{ t.search_placeholder }}">🔍</button>
-            <button type="button" id="toggle-add" class="icon-btn" onclick="toggleAdd()" title="{{ t.add }}">➕</button>
+            <button type="button" id="toggle-settings" class="icon-btn" onclick="openSettings()" title="{{ t.settings }}" aria-label="{{ t.settings }}">{{ icon('settings', size=22) }}</button>
+            <button type="button" id="toggle-search" class="icon-btn {% if q %}active{% endif %}" onclick="toggleSearch()" title="{{ t.search_placeholder }}" aria-label="{{ t.search_placeholder }}">{{ icon('search', size=22) }}</button>
+            <button type="button" id="toggle-add" class="icon-btn" onclick="toggleAdd()" title="{{ t.add }}" aria-label="{{ t.add }}">{{ icon('plus', size=22) }}</button>
         </div>
     </div>
     
@@ -124,7 +124,7 @@
            {{ t.date }}
         </a>
 
-          <button type="button" class="refresh-button" onclick="manualReload()">↻ {{ t.reload }}</button>
+          <button type="button" class="refresh-button" onclick="manualReload()" aria-label="{{ t.reload }}">{{ icon('refresh', size=16) }} <span>{{ t.reload }}</span></button>
     </div>
     
     <form id="search-form" action="{{ url_for('main.index') }}" method="get" class="collapsible-form {% if q %}visible{% endif %}" style="gap: 0.5rem;">
@@ -136,8 +136,9 @@
         <input type="hidden" name="auto_ai_on_add" value="{{ '1' if auto_ai_on_add else '0' }}">
         <button type="submit" style="padding: 0.5rem 1rem; background: #3584e4; color: white; border: none; border-radius: 6px; cursor: pointer;">{{ t.search_placeholder.strip('…') }}</button>
         {% if q %}
-            <a href="{{ url_for('main.index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}" 
-               style="padding: 0.5rem 1rem; background: #e0e0e0; color: #333; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: flex; align-items: center;">✕</a>
+            <a href="{{ url_for('main.index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}"
+               class="search-clear"
+               aria-label="{{ t.cancel }}">{{ icon('x', size=18) }}</a>
         {% endif %}
     </form>
 
@@ -145,12 +146,12 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" id="add-input" name="title" placeholder="{{ t.new_task }}" required>
         {% if not auto_ai_on_add %}
-        <button type="button" id="smart-btn" class="smart-btn" onclick="handleSmartAdd(this)" title="Smart Add (AI)" style="background: #6c5ce7; color: white; border: none; padding: 0.5rem; cursor: pointer;">
-            <span class="smart-icon" aria-hidden="true">✨</span>
+        <button type="button" id="smart-btn" class="smart-btn" onclick="handleSmartAdd(this)" title="Smart Add (AI)" aria-label="Smart Add (AI)" style="background: var(--color-accent); color: white; border: none; padding: 0.5rem; cursor: pointer;">
+            <span class="smart-icon" aria-hidden="true">{{ icon('sparkles') }}</span>
             <span class="spinner" aria-hidden="true"></span>
         </button>
         {% endif %}
-        <button type="button" id="voice-btn" class="voice-btn" title="{{ t.voice_input }}" style="display: none;">🎤</button>
+        <button type="button" id="voice-btn" class="voice-btn" title="{{ t.voice_input }}" aria-label="{{ t.voice_input }}" style="display: none;">{{ icon('mic') }}</button>
         <button type="submit">{{ t.add }}</button>
     </form>
 
@@ -164,22 +165,22 @@
 
     <!-- Pull to Refresh Indicator -->
     <div id="pull-to-refresh" class="pull-to-refresh">
-        <span class="spinner-icon">↻</span>
+        <span class="spinner-icon" aria-hidden="true">{{ icon('refresh', size=22) }}</span>
         <span class="pull-text">{{ t.reload }}</span>
     </div>
 
     <!-- Bottom Navigation (Mobile) -->
     <nav class="bottom-nav" id="bottom-nav">
-        <button type="button" class="bottom-nav-btn" onclick="toggleAdd()" id="bottom-nav-add">
-            <span class="icon">➕</span>
+        <button type="button" class="bottom-nav-btn" onclick="toggleAdd()" id="bottom-nav-add" aria-label="{{ t.add }}">
+            <span class="nav-icon">{{ icon('plus', size=24) }}</span>
             <span class="label">{{ t.add }}</span>
         </button>
-        <button type="button" class="bottom-nav-btn" onclick="toggleSearch()" id="bottom-nav-search">
-            <span class="icon">🔍</span>
+        <button type="button" class="bottom-nav-btn" onclick="toggleSearch()" id="bottom-nav-search" aria-label="{{ t.search_placeholder }}">
+            <span class="nav-icon">{{ icon('search', size=24) }}</span>
             <span class="label">{{ t.search_placeholder.split('…')[0] }}</span>
         </button>
-        <button type="button" class="bottom-nav-btn" onclick="openSettings()" id="bottom-nav-settings">
-            <span class="icon">⚙️</span>
+        <button type="button" class="bottom-nav-btn" onclick="openSettings()" id="bottom-nav-settings" aria-label="{{ t.settings }}">
+            <span class="nav-icon">{{ icon('settings', size=24) }}</span>
             <span class="label">{{ t.settings }}</span>
         </button>
     </nav>

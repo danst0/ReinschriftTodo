@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% from '_icons.html' import icon %}<!DOCTYPE html>
 <html lang="{{ current_lang or 'en' }}">
 <head>
     <title>{{ t.edit_todo }}</title>
@@ -135,10 +135,10 @@
             <label for="due">{{ t.due_date }}</label>
             <div style="display: flex; gap: 0.5rem;">
                 <input type="datetime-local" id="due" name="due" value="{{ todo.due_input or '' }}">
-                <button type="button" class="btn-action" onclick="setDate(0)" title="{{ t.today }}">📅</button>
-                <button type="button" class="btn-action" onclick="setDate(1)" title="{{ t.tomorrow }}">➡️</button>
-                <button type="button" class="btn-action" onclick="setNextWeekend()" title="{{ t.next_weekend }}">🏖️</button>
-                <button type="button" class="btn-action" onclick="setSometime()" title="{{ t.sometime }}">🕒</button>
+                <button type="button" class="btn-action" onclick="setDate(0)" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar') }}</button>
+                <button type="button" class="btn-action" onclick="setDate(1)" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right') }}</button>
+                <button type="button" class="btn-action" onclick="setNextWeekend()" title="{{ t.next_weekend }}" aria-label="{{ t.next_weekend }}">{{ icon('umbrella') }}</button>
+                <button type="button" class="btn-action" onclick="setSometime()" title="{{ t.sometime }}" aria-label="{{ t.sometime }}">{{ icon('clock') }}</button>
             </div>
         </div>
         <div class="form-group">
@@ -159,7 +159,7 @@
         <div class="buttons">
             <button type="submit" class="btn-primary">{{ t.save }}</button>
             <button type="button" class="btn-action" id="close-with-comment-btn" onclick="showCommentField()" {% if todo.done %}style="display: none;"{% endif %}>{{ t.close_with_comment }}</button>
-            <button type="button" class="btn-action" style="color: #e01b24;" onclick="if(confirm('{{ t.delete }}?')) document.getElementById('delete-form').submit();" title="{{ t.delete }}">🗑️</button>
+            <button type="button" class="btn-action" style="color: var(--color-danger);" onclick="if(confirm('{{ t.delete }}?')) document.getElementById('delete-form').submit();" title="{{ t.delete }}" aria-label="{{ t.delete }}">{{ icon('trash') }}</button>
             <a href="{{ url_for('main.index') }}" class="btn-secondary" style="text-decoration: none; display: inline-block; text-align: center;">{{ t.cancel }}</a>
         </div>
     </form>
