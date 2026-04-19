@@ -64,6 +64,25 @@ struct AiChatResponse {
 
 const DEFAULT_DUE_TIME: NaiveTime = NaiveTime::from_hms_opt(0, 0, 0).expect("midnight available");
 
+/// Create (if missing) and return the fallback todos file inside XDG data home.
+/// Returns None if the directory cannot be prepared or the file cannot be created.
+fn ensure_default_database() -> Option<PathBuf> {
+    let mut path = glib::user_data_dir();
+    path.push("reinschrift_todo");
+    if let Err(err) = fs::create_dir_all(&path) {
+        eprintln!("failed to create data dir {}: {}", path.display(), err);
+        return None;
+    }
+    path.push("todos.md");
+    if !path.exists() {
+        if let Err(err) = fs::write(&path, "") {
+            eprintln!("failed to create default todos file {}: {}", path.display(), err);
+            return None;
+        }
+    }
+    Some(path)
+}
+
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
     glib::timeout_add_seconds_local(interval, clone!(#[weak] state, #[upgrade_or] glib::ControlFlow::Break, move || {
         let next_interval = match state.check_for_updates() {
@@ -539,13 +558,31 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
 
     if let Err(err) = state.reload() {
         let err_msg = err.to_string();
-        let msg = if err_msg == t("no_database_configured") {
-            err_msg
-        } else {
-            format!("{}\n{}", t("load_error").replace("{}", &err_msg), t("select_valid_file"))
-        };
-        state.show_error(&msg);
-        state.show_settings_dialog(None);
+        let mut recovered = false;
+
+        if err_msg == t("no_database_configured") {
+            if let Some(fallback) = ensure_default_database() {
+                data::set_todo_path(fallback.clone());
+                {
+                    let mut prefs = state.preferences.borrow_mut();
+                    prefs.db_path = Some(fallback.to_string_lossy().into_owned());
+                    let _ = write_preferences(&prefs);
+                }
+                if state.reload().is_ok() {
+                    recovered = true;
+                }
+            }
+        }
+
+        if !recovered {
+            let msg = if err_msg == t("no_database_configured") {
+                err_msg
+            } else {
+                format!("{}\n{}", t("load_error").replace("{}", &err_msg), t("select_valid_file"))
+            };
+            state.show_error(&msg);
+            state.show_settings_dialog(None);
+        }
     }
 
     sort_selector.connect_selected_notify(clone!(#[weak] state, move |dropdown| {
