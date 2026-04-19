@@ -87,6 +87,10 @@ def capture_token(regex: re.Pattern, text: str) -> Optional[str]:
 def capture_all_tokens(regex: re.Pattern, text: str) -> list[str]:
     """Capture all matches of a regex pattern.
 
+    For regexes with two alternation groups (quoted / plain) like PROJECT_RE and
+    CONTEXT_RE, group 1 holds the backslash-escaped quoted content, group 2 the
+    plain token.
+
     Args:
         regex: Compiled regex pattern.
         text: Text to search.
@@ -94,11 +98,27 @@ def capture_all_tokens(regex: re.Pattern, text: str) -> list[str]:
     Returns:
         List of matched tokens (without prefix characters).
     """
-    return [m.group(1).strip() for m in regex.finditer(text) if m.group(1).strip()]
+    results: list[str] = []
+    for m in regex.finditer(text):
+        if m.lastindex and m.lastindex >= 2 and m.group(2):
+            value = m.group(2)
+        else:
+            from app.utils.escaping import unescape_note
+            value = unescape_note(m.group(1) or "")
+        value = value.strip()
+        if value:
+            results.append(value)
+    return results
+
+
+_LEADING_QUOTED_TOKEN = re.compile(r'^([+@])"((?:\\.|[^"])*)"(\s+|$)')
+_LEADING_PLAIN_TOKEN = re.compile(r'^([+@])[^\s]+(\s+|$)')
 
 
 def strip_leading_markers(text: str) -> str:
     """Remove leading project/context markers from text.
+
+    Quote-aware: `+"name with spaces"` is stripped as a single token.
 
     Args:
         text: Input text possibly starting with +project or @context.
@@ -108,10 +128,13 @@ def strip_leading_markers(text: str) -> str:
     """
     cleaned = text.lstrip()
     while True:
-        match = re.match(r'^([+@][^\s]+)\s+(.*)$', cleaned)
+        match = _LEADING_QUOTED_TOKEN.match(cleaned) or _LEADING_PLAIN_TOKEN.match(cleaned)
         if not match:
             break
-        cleaned = match.group(2).lstrip()
+        remainder = cleaned[match.end():].lstrip()
+        if not remainder:
+            break
+        cleaned = remainder
     return cleaned
 
 

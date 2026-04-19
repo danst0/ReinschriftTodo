@@ -9,8 +9,13 @@ use crate::util::{normalize_note, unescape_note, FIELD_MARKERS};
 
 // Regex patterns for parsing todo fields
 pub static LINK_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[\[([^\]]+)\]\]").unwrap());
-pub static PROJECT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\+([^\s]+)").unwrap());
-pub static CONTEXT_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"@([^\s]+)").unwrap());
+// Projects and contexts accept either a quoted form (group 1, with backslash
+// escapes — useful for multi-word names like +"Steuererklärung 2024") or a
+// whitespace-delimited plain form (group 2).
+pub static PROJECT_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"\+(?:"((?:\\.|[^"])*)"|([^\s]+))"#).unwrap());
+pub static CONTEXT_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"@(?:"((?:\\.|[^"])*)"|([^\s]+))"#).unwrap());
 pub static DUE_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"due:(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?").unwrap());
 pub static ID_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\^([A-Za-z0-9]+)").unwrap());
@@ -73,14 +78,21 @@ pub fn parse_line(line: &str, line_index: usize) -> Option<TodoItem> {
 }
 
 /// Capture all matches of a regex (for projects/contexts).
+///
+/// Supports both the quoted form (capture group 1, backslash-escaped) and the
+/// plain whitespace-delimited form (capture group 2) produced by PROJECT_RE /
+/// CONTEXT_RE.
 pub fn capture_all_tokens(regex: &Regex, text: &str) -> Vec<String> {
     regex
-        .find_iter(text)
-        .filter_map(|m| {
-            let s = m.as_str();
-            // Strip the prefix (+ or @)
-            s.get(1..).map(|t| t.trim().to_string())
+        .captures_iter(text)
+        .filter_map(|caps| {
+            if let Some(quoted) = caps.get(1) {
+                Some(unescape_note(quoted.as_str()))
+            } else {
+                caps.get(2).map(|m| m.as_str().to_string())
+            }
         })
+        .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect()
 }
@@ -93,23 +105,32 @@ pub fn capture_token(regex: &Regex, text: &str) -> Option<String> {
 }
 
 /// Strip leading `+project` / `@context` tokens so the title begins with real text.
+/// Quote-aware: `+"name with spaces"` is treated as a single leading token.
 fn strip_leading_markers(text: &str) -> &str {
     let mut cleaned = text.trim_start();
     loop {
         let Some(first) = cleaned.chars().next() else { break };
-        if first != '+' && first != '@' {
+        let re = match first {
+            '+' => &*PROJECT_RE,
+            '@' => &*CONTEXT_RE,
+            _ => break,
+        };
+        let Some(m) = re.find(cleaned) else { break };
+        if m.start() != 0 {
             break;
         }
-        let Some(space_idx) = cleaned.find(char::is_whitespace) else { break };
-        // Require at least one char of token body between the prefix and whitespace.
-        if space_idx <= 1 {
+        let after = &cleaned[m.end()..];
+        // Require whitespace separator between the token and whatever follows,
+        // otherwise the remainder belongs to the title.
+        let Some(first_after) = after.chars().next() else { break };
+        if !first_after.is_whitespace() {
             break;
         }
-        let after = cleaned[space_idx..].trim_start();
-        if after.is_empty() {
+        let after_trimmed = after.trim_start();
+        if after_trimmed.is_empty() {
             break;
         }
-        cleaned = after;
+        cleaned = after_trimmed;
     }
     cleaned
 }
@@ -190,5 +211,91 @@ mod tests {
         assert_eq!(item.title, "erledigen");
         assert_eq!(item.projects, vec!["Steuererklärung".to_string()]);
         assert_eq!(item.key.marker.as_deref(), Some("85rlhbg3"));
+    }
+
+    #[test]
+    fn parse_line_quoted_project_keeps_spaces() {
+        let item = parse_line(
+            r#"- [ ] +"Steuererklärung 2024" erledigen due:2026-01-01 ^abc12345"#,
+            0,
+        )
+        .expect("valid line");
+        assert_eq!(item.title, "erledigen");
+        assert_eq!(item.projects, vec!["Steuererklärung 2024".to_string()]);
+    }
+
+    #[test]
+    fn parse_line_quoted_context_keeps_spaces() {
+        let item = parse_line(
+            r#"- [ ] Task @"Home Office" something ^abc12345"#,
+            0,
+        )
+        .expect("valid line");
+        assert_eq!(item.contexts, vec!["Home Office".to_string()]);
+    }
+
+    #[test]
+    fn parse_line_mixes_quoted_and_plain_projects() {
+        let item = parse_line(
+            r#"- [ ] Task +plain +"Name With Spaces" more ^abc12345"#,
+            0,
+        )
+        .expect("valid line");
+        assert_eq!(
+            item.projects,
+            vec!["plain".to_string(), "Name With Spaces".to_string()]
+        );
+    }
+
+    #[test]
+    fn parse_line_quoted_project_with_escaped_quote() {
+        let item = parse_line(
+            r#"- [ ] Task +"Name with \"quote\"" ^abc12345"#,
+            0,
+        )
+        .expect("valid line");
+        assert_eq!(item.projects, vec![r#"Name with "quote""#.to_string()]);
+    }
+
+    #[test]
+    fn render_line_quotes_multi_word_project() {
+        use crate::types::{TodoItem, TodoKey};
+        let item = TodoItem {
+            key: TodoKey { line_index: 0, marker: Some("abc12345".to_string()) },
+            title: "erledigen".to_string(),
+            projects: vec!["Steuererklärung 2024".to_string()],
+            contexts: vec![],
+            due: None,
+            reference: None,
+            recurrence: None,
+            note: None,
+            done: false,
+        };
+        let line = crate::renderer::render_line(&item).expect("render ok");
+        assert!(
+            line.contains(r#"+"Steuererklärung 2024""#),
+            "expected quoted form in {line}"
+        );
+    }
+
+    #[test]
+    fn roundtrip_quoted_project() {
+        use crate::types::{TodoItem, TodoKey};
+        let original = TodoItem {
+            key: TodoKey { line_index: 0, marker: Some("abc12345".to_string()) },
+            title: "erledigen".to_string(),
+            projects: vec!["Steuererklärung 2024".to_string()],
+            contexts: vec!["Home Office".to_string()],
+            due: None,
+            reference: None,
+            recurrence: None,
+            note: None,
+            done: false,
+        };
+        let line = crate::renderer::render_line(&original).expect("render ok");
+        let parsed = parse_line(&line, 0).expect("parse ok");
+        assert_eq!(parsed.title, original.title);
+        assert_eq!(parsed.projects, original.projects);
+        assert_eq!(parsed.contexts, original.contexts);
     }
 }

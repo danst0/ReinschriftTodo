@@ -8,6 +8,17 @@ use crate::parser::{COMPLETION_RE, DUE_RE, ID_RE};
 use crate::types::TodoItem;
 use crate::util::{escape_note, generate_marker, normalize_note, normalize_reference, normalize_token, FIELD_MARKERS};
 
+/// Render a `+project` / `@context` token, quoting it when the name contains
+/// whitespace or characters that would otherwise break the plain form.
+fn render_tagged(prefix: char, name: &str) -> String {
+    let needs_quote = name.chars().any(|c| c.is_whitespace() || c == '"' || c == '\\');
+    if needs_quote {
+        format!(r#"{prefix}"{}""#, escape_note(name))
+    } else {
+        format!("{prefix}{name}")
+    }
+}
+
 /// Render a TodoItem to a markdown line.
 pub fn render_line(item: &TodoItem) -> Result<String> {
     let title = item.title.trim();
@@ -20,12 +31,12 @@ pub fn render_line(item: &TodoItem) -> Result<String> {
 
     for project in &item.projects {
         if let Some(normalized) = normalize_token(Some(project)) {
-            parts.push(format!("+{normalized}"));
+            parts.push(render_tagged('+', &normalized));
         }
     }
     for context in &item.contexts {
         if let Some(normalized) = normalize_token(Some(context)) {
-            parts.push(format!("@{normalized}"));
+            parts.push(render_tagged('@', &normalized));
         }
     }
     if let Some(due) = item.due {

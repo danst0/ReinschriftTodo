@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.21.3" date="2026-04-19">
+      <description>
+        <ul>
+          <li>Support multi-word projects and contexts via quoted form, e.g. +"Steuererklärung 2024" (issue #5)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.21.2" date="2026-04-19">
       <description>
         <ul>

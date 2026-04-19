@@ -48,22 +48,22 @@ pub fn encode_base36(mut value: u128) -> String {
 }
 
 /// Normalize a token (project/context) by trimming and removing leading +/@.
+/// Internal whitespace is preserved so multi-word tokens (e.g. `Steuererklärung 2024`)
+/// round-trip through parse+render via the quoted form.
 pub fn normalize_token(value: Option<&str>) -> Option<String> {
     value
         .map(|s| {
-            let trimmed = s.trim().replace(' ', "");
-            // Remove all leading + or @
-            let chars = trimmed.chars();
+            let trimmed = s.trim();
             let mut out = String::new();
             let mut found = false;
-            for c in chars {
+            for c in trimmed.chars() {
                 if !found && (c == '+' || c == '@') {
                     continue;
                 }
                 found = true;
                 out.push(c);
             }
-            out
+            out.trim().to_string()
         })
         .filter(|s| !s.is_empty())
 }

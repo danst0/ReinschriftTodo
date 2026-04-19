@@ -2,6 +2,7 @@
 
 import logging
 import re
+import shlex
 from datetime import datetime
 from typing import Optional, Any
 
@@ -14,6 +15,25 @@ from app.services.date_service import next_due_date
 from app.utils.markers import generate_marker, ensure_marker
 from app.utils.escaping import escape_note
 from app.utils.helpers import format_due, normalize_prefix
+
+
+def _split_tag_input(raw: str, prefix_char: str) -> list[str]:
+    """Tokenize free-form project/context input, honoring shell-like quoting."""
+    try:
+        tokens = shlex.split(raw)
+    except ValueError:
+        # Unmatched quotes — fall back to whitespace split so the user still
+        # sees their input saved.
+        tokens = raw.split()
+    return [t for t in (tok.strip().lstrip(prefix_char).strip() for tok in tokens) if t]
+
+
+def _render_tagged(prefix: str, name: str) -> str:
+    """Render a +project / @context token, quoting when the name needs it."""
+    needs_quote = any(ch.isspace() or ch in '"\\' for ch in name)
+    if needs_quote:
+        return f'{prefix}"{escape_note(name)}"'
+    return f'{prefix}{name}'
 
 logger = logging.getLogger(__name__)
 
@@ -185,25 +205,25 @@ def update_todo_by_marker(marker: str, updates: dict[str, Any]) -> bool:
     if not title:
         title = existing.title or ''
 
-    # Handle projects - can be a string (space-separated) or list
+    # Handle projects - can be a string (shell-quoted) or list
     if 'projects' in updates:
         projects_input = updates.get('projects')
         if isinstance(projects_input, str):
-            projects = [p.strip().lstrip('+') for p in projects_input.split() if p.strip().lstrip('+')]
+            projects = _split_tag_input(projects_input, '+')
         elif isinstance(projects_input, list):
-            projects = [p.strip().lstrip('+') for p in projects_input if p and p.strip().lstrip('+')]
+            projects = [p.strip().lstrip('+').strip() for p in projects_input if p and p.strip().lstrip('+').strip()]
         else:
             projects = existing.projects
     else:
         projects = existing.projects
 
-    # Handle contexts - can be a string (space-separated) or list
+    # Handle contexts - can be a string (shell-quoted) or list
     if 'contexts' in updates:
         contexts_input = updates.get('contexts')
         if isinstance(contexts_input, str):
-            contexts = [c.strip().lstrip('@') for c in contexts_input.split() if c.strip().lstrip('@')]
+            contexts = _split_tag_input(contexts_input, '@')
         elif isinstance(contexts_input, list):
-            contexts = [c.strip().lstrip('@') for c in contexts_input if c and c.strip().lstrip('@')]
+            contexts = [c.strip().lstrip('@').strip() for c in contexts_input if c and c.strip().lstrip('@').strip()]
         else:
             contexts = existing.contexts
     else:
@@ -230,9 +250,9 @@ def update_todo_by_marker(marker: str, updates: dict[str, Any]) -> bool:
     new_line += f" {title}"
 
     for project in projects:
-        new_line += f" +{project}"
+        new_line += f" {_render_tagged('+', project)}"
     for context in contexts:
-        new_line += f" @{context}"
+        new_line += f" {_render_tagged('@', context)}"
     if due_dt:
         new_line += f" due:{format_due(due_dt)}"
     if recurrence:

@@ -8,8 +8,11 @@ from typing import Optional
 
 # Regex patterns for parsing todo fields (matching Rust core/src/parser.rs)
 LINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
-PROJECT_RE = re.compile(r"\+([^\s]+)")
-CONTEXT_RE = re.compile(r"@([^\s]+)")
+# Projects and contexts accept either a quoted form (group 1, with backslash
+# escapes — useful for multi-word names like +"Steuererklärung 2024") or a
+# whitespace-delimited plain form (group 2).
+PROJECT_RE = re.compile(r'\+(?:"((?:\\.|[^"])*)"|([^\s]+))')
+CONTEXT_RE = re.compile(r'@(?:"((?:\\.|[^"])*)"|([^\s]+))')
 DUE_RE = re.compile(r"due:(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?")
 ID_RE = re.compile(r"\^([A-Za-z0-9]+)")
 COMPLETION_RE = re.compile(r"\s✅\s\d{4}-\d{2}-\d{2}")

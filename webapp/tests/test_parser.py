@@ -183,6 +183,51 @@ class TestExtractTitle:
         result = extract_title("+Steuererklärung erledigen due:2026-03-03T00:00 ^85rlhbg3")
         assert result == "erledigen"
 
+    def test_extract_title_quoted_leading_project(self):
+        """Issue #5: quoted multi-word projects must also be stripped."""
+        result = extract_title('+"Steuererklärung 2024" erledigen due:2026-01-01')
+        assert result == "erledigen"
+
+
+class TestQuotedProjects:
+    """Tests for issue #5: quoted multi-word projects/contexts."""
+
+    def test_parse_quoted_project_keeps_spaces(self):
+        item = parse_line(
+            '- [ ] +"Steuererklärung 2024" erledigen due:2026-01-01 ^abc12345',
+            0,
+        )
+        assert item is not None
+        assert item.projects == ["Steuererklärung 2024"]
+        assert item.title == "erledigen"
+
+    def test_parse_quoted_context_keeps_spaces(self):
+        item = parse_line(
+            '- [ ] Task @"Home Office" something ^abc12345',
+            0,
+        )
+        assert item is not None
+        assert item.contexts == ["Home Office"]
+
+    def test_parse_mixes_quoted_and_plain_projects(self):
+        item = parse_line(
+            '- [ ] Task +plain +"Name With Spaces" more ^abc12345',
+            0,
+        )
+        assert item is not None
+        assert item.projects == ["plain", "Name With Spaces"]
+
+    def test_parse_quoted_project_with_escaped_quote(self):
+        item = parse_line(
+            '- [ ] Task +"Name with \\"quote\\"" ^abc12345',
+            0,
+        )
+        assert item is not None
+        assert item.projects == ['Name with "quote"']
+
+    def test_capture_all_tokens_plain_backwards_compat(self):
+        assert capture_all_tokens(PROJECT_RE, "+groceries +food") == ["groceries", "food"]
+
 
 class TestCaptureTokens:
     """Tests for token capture functions."""
