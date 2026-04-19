@@ -3,14 +3,10 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Markers that delimit fields in a todo line.
-/// Used by both extract_title and insert_due_segment.
+/// Used by extract_title and insert_due_segment. Only space-prefixed variants:
+/// an unspaced `+` or `^` at the very start of the title would otherwise eat the
+/// title (e.g. when a user types `+Projekt erledigen`).
 pub const FIELD_MARKERS: [&str; 8] = [" +", " @", " due:", " rec:", " [[", " ~note:", " ^", " ✅"];
-
-/// Title extraction markers include both spaced and non-spaced variants.
-pub const TITLE_MARKERS: [&str; 16] = [
-    " +", " @", " due:", " rec:", " [[", " ✅", " ^", " ~note:",
-    "+", "@", "due:", "rec:", "[[", "✅", "^", "~note:",
-];
 
 /// Generate a unique marker ID using timestamp and process ID.
 pub fn generate_marker() -> String {

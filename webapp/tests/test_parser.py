@@ -178,6 +178,11 @@ class TestExtractTitle:
         result = extract_title("+proj @ctx Real title")
         assert result == "Real title"
 
+    def test_extract_title_leading_project_with_due_and_marker(self):
+        """Regression for issue #7: metadata must not leak into the title."""
+        result = extract_title("+Steuererklärung erledigen due:2026-03-03T00:00 ^85rlhbg3")
+        assert result == "erledigen"
+
 
 class TestCaptureTokens:
     """Tests for token capture functions."""

@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::types::{TodoItem, TodoKey, DEFAULT_DUE_TIME};
-use crate::util::{normalize_note, unescape_note, TITLE_MARKERS};
+use crate::util::{normalize_note, unescape_note, FIELD_MARKERS};
 
 // Regex patterns for parsing todo fields
 pub static LINK_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[\[([^\]]+)\]\]").unwrap());
@@ -92,22 +92,46 @@ pub fn capture_token(regex: &Regex, text: &str) -> Option<String> {
         .and_then(|caps| caps.get(1).map(|m| m.as_str().trim().to_string()))
 }
 
+/// Strip leading `+project` / `@context` tokens so the title begins with real text.
+fn strip_leading_markers(text: &str) -> &str {
+    let mut cleaned = text.trim_start();
+    loop {
+        let Some(first) = cleaned.chars().next() else { break };
+        if first != '+' && first != '@' {
+            break;
+        }
+        let Some(space_idx) = cleaned.find(char::is_whitespace) else { break };
+        // Require at least one char of token body between the prefix and whitespace.
+        if space_idx <= 1 {
+            break;
+        }
+        let after = cleaned[space_idx..].trim_start();
+        if after.is_empty() {
+            break;
+        }
+        cleaned = after;
+    }
+    cleaned
+}
+
 /// Extract the title from a todo line (everything before field markers).
 pub fn extract_title(rest: &str) -> String {
-    let mut cut = rest.len();
-    for marker in TITLE_MARKERS {
-        if let Some(idx) = rest.find(marker) {
+    let cleaned_rest = strip_leading_markers(rest);
+
+    let mut cut = cleaned_rest.len();
+    for marker in FIELD_MARKERS {
+        if let Some(idx) = cleaned_rest.find(marker) {
             if idx < cut {
                 cut = idx;
             }
         }
     }
 
-    let raw = if cut == rest.len() { rest } else { &rest[..cut] };
+    let raw = &cleaned_rest[..cut];
     let cleaned = raw.trim();
 
     if cleaned.is_empty() {
-        rest.trim().to_string()
+        cleaned_rest.trim().to_string()
     } else {
         cleaned.to_string()
     }
@@ -119,4 +143,52 @@ pub fn find_line_by_marker(lines: &[String], marker: &str) -> Option<usize> {
     lines
         .iter()
         .position(|line| line.split_whitespace().any(|token| token == needle))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_title_strips_leading_project() {
+        assert_eq!(
+            extract_title("+Steuererklärung erledigen due:2026-03-03T00:00 ^85rlhbg3"),
+            "erledigen"
+        );
+    }
+
+    #[test]
+    fn extract_title_strips_multiple_leading_tags() {
+        assert_eq!(extract_title("+a +b @c buy milk due:2026-01-01"), "buy milk");
+    }
+
+    #[test]
+    fn extract_title_keeps_tags_inside_title() {
+        assert_eq!(extract_title("buy milk +groceries @shop"), "buy milk");
+    }
+
+    #[test]
+    fn extract_title_plain() {
+        assert_eq!(extract_title("Just a title"), "Just a title");
+    }
+
+    #[test]
+    fn extract_title_with_due_only() {
+        assert_eq!(extract_title("Buy groceries due:2026-01-20"), "Buy groceries");
+    }
+
+    #[test]
+    fn extract_title_with_marker_only() {
+        assert_eq!(extract_title("Buy groceries ^abc123"), "Buy groceries");
+    }
+
+    #[test]
+    fn parse_line_clean_title_when_starting_with_project() {
+        let item =
+            parse_line("- [ ] +Steuererklärung erledigen due:2026-03-03T00:00 ^85rlhbg3", 0)
+                .expect("valid line");
+        assert_eq!(item.title, "erledigen");
+        assert_eq!(item.projects, vec!["Steuererklärung".to_string()]);
+        assert_eq!(item.key.marker.as_deref(), Some("85rlhbg3"));
+    }
 }
