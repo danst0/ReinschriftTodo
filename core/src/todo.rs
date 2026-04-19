@@ -145,6 +145,24 @@ pub fn delete_todo(item: &TodoItem) -> Result<()> {
     delete_line(&item.key)
 }
 
+/// Return all unique non-empty titles, sorted by descending occurrence count
+/// (ties broken alphabetically). Loads from disk; callers with cached items
+/// should use a local helper instead to avoid IO per keystroke.
+pub fn unique_titles_by_frequency() -> Result<Vec<String>> {
+    use std::collections::HashMap;
+    let items = load_todos()?;
+    let mut counts: HashMap<String, usize> = HashMap::new();
+    for item in &items {
+        let t = item.title.trim();
+        if !t.is_empty() {
+            *counts.entry(t.to_string()).or_insert(0) += 1;
+        }
+    }
+    let mut titles: Vec<(String, usize)> = counts.into_iter().collect();
+    titles.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    Ok(titles.into_iter().map(|(t, _)| t).collect())
+}
+
 /// Add a new todo with just a title.
 pub fn add_todo(title: &str) -> Result<TodoKey> {
     let title = title.trim();

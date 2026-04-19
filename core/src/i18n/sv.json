@@ -37,6 +37,8 @@
   "show_due_only_mode": "Visa endast förfallna (t.o.m. idag)",
   "delete_without_confirmation": "Ta bort utan bekräftelse",
   "delete_without_confirmation_desc": "Hoppa över dialogen och ta bort direkt.",
+  "title_autocomplete": "Titel-autoifyllning",
+  "title_autocomplete_desc": "Föreslå befintliga uppgiftstitlar medan du skriver.",
   "use_webdav": "Använd WebDAV",
   "database_file": "Databasfil",
   "select_file": "Välj fil…",

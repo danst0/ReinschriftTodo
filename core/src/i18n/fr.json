@@ -37,6 +37,8 @@
   "show_due_only_mode": "Afficher uniquement les échéances (jusqu'à aujourd'hui)",
   "delete_without_confirmation": "Supprimer sans confirmation",
   "delete_without_confirmation_desc": "Ignorer la boîte de dialogue et supprimer immédiatement.",
+  "title_autocomplete": "Auto-complétion des titres",
+  "title_autocomplete_desc": "Suggérer les titres de tâches existantes pendant la saisie.",
   "use_webdav": "Utiliser WebDAV",
   "database_file": "Fichier de base de données",
   "select_file": "Sélectionner un fichier…",

@@ -28,6 +28,7 @@ import { applyFilter, updateFilterUI } from './modules/filters.js';
 import { initDragDrop, setDragReloadCallback } from './modules/drag-drop.js';
 import { showUndoToast, setUndoReloadCallback } from './modules/undo-toast.js';
 import { startNotificationCheck } from './modules/notifications.js';
+import { initTitleAutocomplete, invalidateTitleCache } from './modules/autocomplete.js';
 
 // Configuration - will be set by template
 let appConfig = {
@@ -36,6 +37,7 @@ let appConfig = {
     aiTimeoutMs: 30000,
     autoAiOnAdd: false,
     skipDeleteConfirm: true,
+    titleAutocomplete: true,
     language: 'en',
     translations: {}
 };
@@ -105,6 +107,12 @@ function initApp(config = {}) {
 
     // Set up add form
     setupAddForm();
+
+    // Bind title autocomplete to Add and Edit inputs
+    initTitleAutocomplete({
+        inputSelectors: ['#add-input', '#edit-title'],
+        enabled: appConfig.titleAutocomplete !== false
+    });
 
     // Set up scroll position persistence
     setupScrollPersistence();
@@ -194,6 +202,7 @@ function setupAddForm() {
 
             const data = await res.json();
             this.reset();
+            invalidateTitleCache();
 
             await autoReload();
             highlightMarker(data.marker);

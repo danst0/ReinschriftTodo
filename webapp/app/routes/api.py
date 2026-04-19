@@ -255,3 +255,18 @@ def get_suggestions():
         'projects': projects,
         'contexts': contexts
     })
+
+
+@api_bp.route('/title-suggestions')
+@require_login_json
+def get_title_suggestions():
+    """Return all unique non-empty titles, sorted by descending occurrence
+    count (ties broken alphabetically). Includes completed tasks."""
+    todos = load_todos()
+    counts: dict[str, int] = {}
+    for item in todos:
+        title = (item.title or '').strip()
+        if title:
+            counts[title] = counts.get(title, 0) + 1
+    titles = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    return jsonify({'titles': [t for t, _ in titles]})

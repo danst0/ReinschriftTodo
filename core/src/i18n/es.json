@@ -32,6 +32,8 @@
   "show_due_only_mode": "Mostrar solo pendientes (hasta hoy)",
   "delete_without_confirmation": "Eliminar sin confirmación",
   "delete_without_confirmation_desc": "Omitir el diálogo y eliminar de inmediato.",
+  "title_autocomplete": "Autocompletar título",
+  "title_autocomplete_desc": "Sugerir títulos de tareas existentes mientras escribes.",
   "use_webdav": "Usar WebDAV",
   "database_file": "Archivo de base de datos",
   "select_file": "Seleccionar archivo…",

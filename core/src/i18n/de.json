@@ -36,6 +36,8 @@
   "show_due_only_mode": "Nur fällige (bis heute) anzeigen",
   "delete_without_confirmation": "Ohne Rückfrage löschen",
   "delete_without_confirmation_desc": "Löschdialog überspringen und Einträge sofort entfernen.",
+  "title_autocomplete": "Titel-Autovervollständigung",
+  "title_autocomplete_desc": "Beim Tippen Vorschläge aus bestehenden Aufgaben anzeigen.",
   "use_webdav": "WebDAV verwenden",
   "use_this_method": "Diese Methode verwenden",
   "database_file": "Datenbankdatei",

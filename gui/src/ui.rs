@@ -174,6 +174,179 @@ fn create_suggestion_entry(
     (entry, hbox)
 }
 
+/// Attach a live title-autocomplete popover to an existing entry.
+///
+/// The popover opens once the trimmed entry text reaches 2 characters and
+/// shows up to 8 case-insensitive matches from `title_provider`. Down/Up
+/// navigate, Enter selects, Escape closes (without consuming the
+/// surrounding container's Escape handler when the popover is hidden).
+fn attach_title_autocomplete(
+    entry: &gtk::Entry,
+    title_provider: Rc<dyn Fn() -> Vec<String>>,
+) {
+    let popover = gtk::Popover::new();
+    popover.set_parent(entry);
+    popover.set_autohide(false);
+    popover.set_position(gtk::PositionType::Bottom);
+    popover.set_has_arrow(false);
+
+    let listbox = gtk::ListBox::new();
+    listbox.set_selection_mode(gtk::SelectionMode::Single);
+
+    let scroller = gtk::ScrolledWindow::builder()
+        .child(&listbox)
+        .min_content_height(40)
+        .max_content_height(280)
+        .propagate_natural_height(true)
+        .hscrollbar_policy(gtk::PolicyType::Never)
+        .build();
+    popover.set_child(Some(&scroller));
+
+    let popover = Rc::new(popover);
+    let listbox = Rc::new(listbox);
+
+    let rebuild: Rc<dyn Fn()> = {
+        let listbox = Rc::clone(&listbox);
+        let popover = Rc::clone(&popover);
+        let provider = Rc::clone(&title_provider);
+        let entry_weak = entry.downgrade();
+        Rc::new(move || {
+            let Some(entry) = entry_weak.upgrade() else { return; };
+            let text = entry.text().to_string();
+            let trimmed = text.trim();
+
+            while let Some(child) = listbox.first_child() {
+                listbox.remove(&child);
+            }
+
+            if trimmed.chars().count() < 2 {
+                popover.popdown();
+                return;
+            }
+
+            let needle = trimmed.to_lowercase();
+            let titles = provider();
+            let mut count = 0;
+            for title in &titles {
+                if title == trimmed {
+                    continue;
+                }
+                if !title.to_lowercase().contains(&needle) {
+                    continue;
+                }
+                let label = gtk::Label::builder()
+                    .label(title)
+                    .xalign(0.0)
+                    .ellipsize(pango::EllipsizeMode::End)
+                    .build();
+                label.set_margin_start(8);
+                label.set_margin_end(8);
+                label.set_margin_top(4);
+                label.set_margin_bottom(4);
+                let row = gtk::ListBoxRow::new();
+                row.set_child(Some(&label));
+                listbox.append(&row);
+                count += 1;
+                if count >= 8 {
+                    break;
+                }
+            }
+
+            if count == 0 {
+                popover.popdown();
+            } else {
+                popover.popup();
+            }
+        })
+    };
+
+    let rebuild_for_change = Rc::clone(&rebuild);
+    entry.connect_changed(move |_| {
+        rebuild_for_change();
+    });
+
+    let popover_for_row = Rc::clone(&popover);
+    let entry_for_row = entry.clone();
+    listbox.connect_row_activated(move |_, row| {
+        if let Some(child) = row.child() {
+            if let Ok(label) = child.downcast::<gtk::Label>() {
+                entry_for_row.set_text(&label.text());
+                entry_for_row.set_position(-1);
+            }
+        }
+        popover_for_row.popdown();
+    });
+
+    let key_ctl = gtk::EventControllerKey::new();
+    key_ctl.set_propagation_phase(gtk::PropagationPhase::Capture);
+    let listbox_for_key = Rc::clone(&listbox);
+    let popover_for_key = Rc::clone(&popover);
+    let entry_for_key = entry.clone();
+    key_ctl.connect_key_pressed(move |_, key, _, _| {
+        if !popover_for_key.is_visible() {
+            return glib::Propagation::Proceed;
+        }
+        match key {
+            gdk::Key::Down => {
+                let next = match listbox_for_key.selected_row() {
+                    Some(row) => listbox_for_key
+                        .row_at_index(row.index() + 1)
+                        .or_else(|| listbox_for_key.row_at_index(0)),
+                    None => listbox_for_key.row_at_index(0),
+                };
+                if let Some(row) = next {
+                    listbox_for_key.select_row(Some(&row));
+                }
+                glib::Propagation::Stop
+            }
+            gdk::Key::Up => {
+                let prev = match listbox_for_key.selected_row() {
+                    Some(row) => {
+                        let idx = row.index();
+                        if idx > 0 {
+                            listbox_for_key.row_at_index(idx - 1)
+                        } else {
+                            None
+                        }
+                    }
+                    None => None,
+                };
+                if let Some(row) = prev {
+                    listbox_for_key.select_row(Some(&row));
+                }
+                glib::Propagation::Stop
+            }
+            gdk::Key::Return | gdk::Key::KP_Enter => {
+                if let Some(row) = listbox_for_key.selected_row() {
+                    if let Some(child) = row.child() {
+                        if let Ok(label) = child.downcast::<gtk::Label>() {
+                            entry_for_key.set_text(&label.text());
+                            entry_for_key.set_position(-1);
+                        }
+                    }
+                    popover_for_key.popdown();
+                    glib::Propagation::Stop
+                } else {
+                    glib::Propagation::Proceed
+                }
+            }
+            gdk::Key::Escape => {
+                popover_for_key.popdown();
+                glib::Propagation::Stop
+            }
+            _ => glib::Propagation::Proceed,
+        }
+    });
+    entry.add_controller(key_ctl);
+
+    // Pop down when the entry is hidden so the popover doesn't linger above
+    // a closed dialog.
+    let popover_for_unmap = Rc::clone(&popover);
+    entry.connect_unmap(move |_| {
+        popover_for_unmap.popdown();
+    });
+}
+
 pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     let provider = gtk::CssProvider::new();
     provider.load_from_string(
@@ -306,6 +479,13 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         }
     });
     new_entry.add_controller(new_entry_key_controller);
+
+    if state.title_autocomplete_enabled() {
+        let provider_state = Rc::clone(&state);
+        let title_provider: Rc<dyn Fn() -> Vec<String>> =
+            Rc::new(move || provider_state.collect_existing_titles());
+        attach_title_autocomplete(&new_entry, title_provider);
+    }
 
     let voice_btn = gtk::Button::builder()
         .icon_name("audio-input-microphone-symbolic")
@@ -1073,6 +1253,25 @@ impl AppState {
         }
     }
 
+    fn collect_existing_titles(&self) -> Vec<String> {
+        use std::collections::HashMap;
+        let items = self.cached_items.borrow();
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for item in items.iter() {
+            let t = item.title.trim();
+            if !t.is_empty() {
+                *counts.entry(t.to_string()).or_insert(0) += 1;
+            }
+        }
+        let mut titles: Vec<(String, usize)> = counts.into_iter().collect();
+        titles.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        titles.into_iter().map(|(t, _)| t).collect()
+    }
+
+    fn title_autocomplete_enabled(&self) -> bool {
+        self.preferences.borrow().title_autocomplete_enabled
+    }
+
     fn collect_existing_tags(&self) -> (Vec<String>, Vec<String>) {
         use std::collections::HashMap;
 
@@ -1596,6 +1795,18 @@ impl AppState {
             state_delete_pref.set_skip_delete_confirmation(row.is_active());
         });
         general_group.add(&delete_confirm_row);
+
+        let title_autocomplete_row = adw::SwitchRow::builder()
+            .title(&t("title_autocomplete"))
+            .subtitle(&t("title_autocomplete_desc"))
+            .active(self.title_autocomplete_enabled())
+            .build();
+        title_autocomplete_row.add_prefix(&gtk::Image::from_icon_name("edit-find-symbolic"));
+        let state_title_ac = Rc::clone(self);
+        title_autocomplete_row.connect_active_notify(move |row| {
+            state_title_ac.set_title_autocomplete_enabled(row.is_active());
+        });
+        general_group.add(&title_autocomplete_row);
 
         // Reminders
         let enable_reminders_row = adw::SwitchRow::builder()
@@ -2134,6 +2345,17 @@ impl AppState {
             prefs.skip_delete_confirmation = skip;
         }
 
+        self.persist_preferences();
+    }
+
+    fn set_title_autocomplete_enabled(&self, enabled: bool) {
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.title_autocomplete_enabled == enabled {
+                return;
+            }
+            prefs.title_autocomplete_enabled = enabled;
+        }
         self.persist_preferences();
     }
 
@@ -2994,6 +3216,12 @@ impl AppState {
 
         let title_entry = gtk::Entry::builder().text(&todo.title).hexpand(true).build();
         title_entry.set_activates_default(true);
+        if self.title_autocomplete_enabled() {
+            let provider_state = Rc::clone(self);
+            let title_provider: Rc<dyn Fn() -> Vec<String>> =
+                Rc::new(move || provider_state.collect_existing_titles());
+            attach_title_autocomplete(&title_entry, title_provider);
+        }
         let title_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         title_row.append(&gtk::Label::builder().label(&t("title")).xalign(0.0).build());
         title_row.append(&title_entry);

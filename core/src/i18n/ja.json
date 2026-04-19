@@ -37,6 +37,8 @@
   "show_due_only_mode": "期限内 (今日まで) のみ表示",
   "delete_without_confirmation": "確認なしで削除",
   "delete_without_confirmation_desc": "確認ダイアログを表示せずすぐ削除します。",
+  "title_autocomplete": "タイトル自動補完",
+  "title_autocomplete_desc": "入力中に既存のタスクタイトルを提案します。",
   "use_webdav": "WebDAV を使用する",
   "database_file": "データベースファイル",
   "select_file": "ファイルを選択…",

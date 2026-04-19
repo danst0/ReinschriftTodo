@@ -36,6 +36,8 @@
   "show_due_only_mode": "Show only due (until today)",
   "delete_without_confirmation": "Delete without confirmation",
   "delete_without_confirmation_desc": "Skip the delete dialog and remove entries immediately.",
+  "title_autocomplete": "Title autocomplete",
+  "title_autocomplete_desc": "Suggest existing task titles while typing.",
   "use_webdav": "Use WebDAV",
   "use_this_method": "Use this method",
   "database_file": "Database file",

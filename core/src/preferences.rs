@@ -18,6 +18,10 @@ fn default_remind_before_minutes() -> i64 {
     30
 }
 
+fn default_title_autocomplete_enabled() -> bool {
+    true
+}
+
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
 pub struct Preferences {
     #[serde(default)]
@@ -56,6 +60,8 @@ pub struct Preferences {
     pub ollama_url: Option<String>,
     #[serde(default)]
     pub ollama_model: Option<String>,
+    #[serde(default = "default_title_autocomplete_enabled")]
+    pub title_autocomplete_enabled: bool,
 }
 
 /// Returns the path to the shared preferences file.
