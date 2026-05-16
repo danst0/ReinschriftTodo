@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import tempfile
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -11,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app
 from app.services import share_service
+from app.services.storage import load_settings, save_settings
 
 
 TODOS_CONTENT = """- [ ] Eier kaufen +einkauf due:2026-05-16T12:00 ^aaaaaa11
@@ -209,3 +211,70 @@ class TestOwnerShareApi:
         # GET now returns null again
         resp = client.get('/api/shares/einkauf')
         assert resp.get_json()['token'] is None
+
+
+class TestShareTtlApi:
+    def test_create_with_ttl_30_sets_expires_at(self, share_app, client):
+        _login(client)
+        resp = client.post('/api/shares/einkauf', json={'ttl_days': 30})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['expires_at'] is not None
+        expires = datetime.fromisoformat(data['expires_at'])
+        now = datetime.now(timezone.utc)
+        assert timedelta(days=29) < expires - now < timedelta(days=31)
+
+    def test_create_with_ttl_none_has_no_expiration(self, share_app, client):
+        _login(client)
+        resp = client.post('/api/shares/einkauf', json={'ttl_days': None})
+        assert resp.status_code == 200
+        assert resp.get_json()['expires_at'] is None
+
+    def test_create_without_body_defaults_to_30_days(self, share_app, client):
+        _login(client)
+        resp = client.post('/api/shares/einkauf')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['expires_at'] is not None
+        expires = datetime.fromisoformat(data['expires_at'])
+        now = datetime.now(timezone.utc)
+        assert timedelta(days=29) < expires - now < timedelta(days=31)
+
+    @pytest.mark.parametrize('bad_ttl', [5, 1, 365, 0, -7, 'thirty', True])
+    def test_create_with_invalid_ttl_returns_400(self, share_app, client, bad_ttl):
+        _login(client)
+        resp = client.post('/api/shares/einkauf', json={'ttl_days': bad_ttl})
+        assert resp.status_code == 400
+        assert resp.get_json()['error'] == 'invalid_ttl'
+
+    def test_expired_share_view_returns_404(self, share_app, client):
+        with share_app.app_context():
+            share = share_service.create_share('einkauf', ttl_days=7)
+            settings = load_settings()
+            past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+            for s in settings['shares']:
+                if s['token'] == share['token']:
+                    s['expires_at'] = past
+            save_settings(settings)
+
+        resp = client.get(f"/s/{share['token']}")
+        assert resp.status_code == 404
+
+    def test_owner_get_after_expiration_purges_and_returns_null(self, share_app, client):
+        _login(client)
+        with share_app.app_context():
+            share = share_service.create_share('einkauf', ttl_days=7)
+            settings = load_settings()
+            past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+            for s in settings['shares']:
+                if s['token'] == share['token']:
+                    s['expires_at'] = past
+            save_settings(settings)
+
+        resp = client.get('/api/shares/einkauf')
+        assert resp.status_code == 200
+        assert resp.get_json()['token'] is None
+
+        with share_app.app_context():
+            shares = load_settings().get('shares', [])
+            assert shares == []

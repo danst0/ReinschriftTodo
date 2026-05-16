@@ -3,6 +3,7 @@
 import os
 import sys
 import tempfile
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -10,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app
 from app.services import share_service
+from app.services.storage import load_settings, save_settings
 
 
 @pytest.fixture
@@ -85,3 +87,80 @@ class TestShareService:
         assert a['token'] != b['token']
         assert share_service.get_share_by_token(a['token'])['project'] == 'a'
         assert share_service.get_share_by_token(b['token'])['project'] == 'b'
+
+
+def _set_share_expires_at(token: str, expires_at_iso: str | None) -> None:
+    """Test helper: patch the stored ``expires_at`` for a share."""
+    settings = load_settings()
+    for s in settings.get('shares', []):
+        if s['token'] == token:
+            if expires_at_iso is None:
+                s.pop('expires_at', None)
+            else:
+                s['expires_at'] = expires_at_iso
+            break
+    save_settings(settings)
+
+
+class TestShareExpiration:
+    def test_ttl_30_sets_expires_at_around_30_days(self, isolated_app):
+        before = datetime.now(timezone.utc)
+        share = share_service.create_share('foo', ttl_days=30)
+        after = datetime.now(timezone.utc)
+
+        assert 'expires_at' in share
+        expires = datetime.fromisoformat(share['expires_at'])
+        assert before + timedelta(days=30) - timedelta(seconds=2) <= expires
+        assert expires <= after + timedelta(days=30) + timedelta(seconds=2)
+
+    def test_ttl_none_omits_expires_at(self, isolated_app):
+        share = share_service.create_share('foo', ttl_days=None)
+        assert 'expires_at' not in share
+
+    def test_ttl_default_is_no_expiration(self, isolated_app):
+        # create_share() without ttl_days argument keeps backward-compatible
+        # behavior (no expiration). The default-30 policy lives in the route.
+        share = share_service.create_share('foo')
+        assert 'expires_at' not in share
+
+    @pytest.mark.parametrize('bad_ttl', [5, 1, 365, 0, -7])
+    def test_invalid_ttl_raises(self, isolated_app, bad_ttl):
+        with pytest.raises(ValueError):
+            share_service.create_share('foo', ttl_days=bad_ttl)
+
+    def test_expired_share_lookup_returns_none(self, isolated_app):
+        share = share_service.create_share('foo', ttl_days=7)
+        past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        _set_share_expires_at(share['token'], past)
+        assert share_service.get_share_by_token(share['token']) is None
+
+    def test_legacy_share_without_expires_at_still_works(self, isolated_app):
+        # Simulates a v0.21.5 entry written before the TTL feature shipped.
+        share = share_service.create_share('legacy', ttl_days=7)
+        _set_share_expires_at(share['token'], None)
+        found = share_service.get_share_by_token(share['token'])
+        assert found is not None
+        assert found['project'] == 'legacy'
+
+    def test_malformed_expires_at_is_treated_as_unbounded(self, isolated_app):
+        share = share_service.create_share('weird', ttl_days=7)
+        _set_share_expires_at(share['token'], 'not-a-real-iso-string')
+        assert share_service.get_share_by_token(share['token']) is not None
+
+    def test_purge_removes_expired_keeps_active(self, isolated_app):
+        a = share_service.create_share('alpha', ttl_days=7)
+        b = share_service.create_share('beta', ttl_days=30)
+        c = share_service.create_share('gamma', ttl_days=None)  # forever
+
+        past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+        _set_share_expires_at(a['token'], past)
+
+        removed = share_service.purge_expired_shares()
+        assert removed == 1
+        assert share_service.get_share_by_token(a['token']) is None
+        assert share_service.get_share_by_token(b['token']) is not None
+        assert share_service.get_share_by_token(c['token']) is not None
+
+    def test_purge_when_nothing_expired_is_noop(self, isolated_app):
+        share_service.create_share('foo', ttl_days=30)
+        assert share_service.purge_expired_shares() == 0

@@ -19,9 +19,11 @@ from app.services import (
 from app.services.ai_service import parse_nlp_with_debug, get_top_tags
 from app.services.storage import write_content
 from app.services.share_service import (
+    ALLOWED_TTL_DAYS,
     create_share,
     delete_share_by_project,
     get_share_by_project,
+    purge_expired_shares,
 )
 from app.services.undo_service import push_undo, pop_undo, can_undo
 from app.utils.helpers import format_due
@@ -264,14 +266,18 @@ def get_suggestions():
     })
 
 
+DEFAULT_SHARE_TTL_DAYS = 30
+
+
 def _share_response(share: dict | None, project: str) -> dict:
     if not share:
-        return {'token': None, 'url': None, 'project': project}
+        return {'token': None, 'url': None, 'project': project, 'expires_at': None}
     return {
         'token': share['token'],
         'url': url_for('share.view', token=share['token'], _external=True),
         'project': project,
         'created': share.get('created'),
+        'expires_at': share.get('expires_at'),
     }
 
 
@@ -279,6 +285,7 @@ def _share_response(share: dict | None, project: str) -> dict:
 @require_login_json
 def api_get_share(project: str):
     """Return the existing share for a project, if any."""
+    purge_expired_shares()
     project = unquote(project).strip()
     if not project:
         return jsonify({'error': 'project_required'}), 400
@@ -290,11 +297,31 @@ def api_get_share(project: str):
 @csrf.exempt
 @require_login_json
 def api_create_share(project: str):
-    """Create (or return existing) share token for a project."""
+    """Create (or return existing) share token for a project.
+
+    Accepts an optional JSON body ``{"ttl_days": 7|30|90|null}``. When
+    omitted, defaults to 30 days. ``null`` creates a share that never
+    expires.
+    """
+    purge_expired_shares()
     project = unquote(project).strip()
     if not project:
         return jsonify({'error': 'project_required'}), 400
-    share = create_share(project)
+
+    payload = request.get_json(silent=True) or {}
+    ttl_days: int | None
+    if 'ttl_days' in payload:
+        raw = payload.get('ttl_days')
+        if raw is None:
+            ttl_days = None
+        elif isinstance(raw, int) and not isinstance(raw, bool) and raw in ALLOWED_TTL_DAYS:
+            ttl_days = raw
+        else:
+            return jsonify({'error': 'invalid_ttl'}), 400
+    else:
+        ttl_days = DEFAULT_SHARE_TTL_DAYS
+
+    share = create_share(project, ttl_days=ttl_days)
     return jsonify(_share_response(share, project))
 
 
@@ -303,6 +330,7 @@ def api_create_share(project: str):
 @require_login_json
 def api_delete_share(project: str):
     """Revoke the share for a project."""
+    purge_expired_shares()
     project = unquote(project).strip()
     if not project:
         return jsonify({'error': 'project_required'}), 400

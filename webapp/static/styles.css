@@ -1550,6 +1550,31 @@ button, a, .checkbox, .filter-link, .todo-item {
     font-size: 0.85rem;
     background: #f7f7f7;
 }
+.share-dialog-ttl-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+.share-dialog-ttl-row.hidden { display: none; }
+.share-dialog-ttl-label {
+    font-size: 0.9rem;
+    color: #555;
+}
+.share-dialog-ttl {
+    flex: 1;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    font-size: 0.9rem;
+}
+.share-dialog-expiry {
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    color: #555;
+}
+.share-dialog-expiry.hidden { display: none; }
 .share-dialog-actions {
     display: flex;
     justify-content: flex-end;
