@@ -1,6 +1,8 @@
 """API routes blueprint - JSON endpoints."""
 
-from flask import Blueprint, request, session, jsonify, current_app
+from urllib.parse import unquote
+
+from flask import Blueprint, request, session, jsonify, current_app, url_for
 
 from app.exceptions import ConflictError
 from app.extensions import csrf
@@ -16,6 +18,11 @@ from app.services import (
 )
 from app.services.ai_service import parse_nlp_with_debug, get_top_tags
 from app.services.storage import write_content
+from app.services.share_service import (
+    create_share,
+    delete_share_by_project,
+    get_share_by_project,
+)
 from app.services.undo_service import push_undo, pop_undo, can_undo
 from app.utils.helpers import format_due
 
@@ -255,6 +262,52 @@ def get_suggestions():
         'projects': projects,
         'contexts': contexts
     })
+
+
+def _share_response(share: dict | None, project: str) -> dict:
+    if not share:
+        return {'token': None, 'url': None, 'project': project}
+    return {
+        'token': share['token'],
+        'url': url_for('share.view', token=share['token'], _external=True),
+        'project': project,
+        'created': share.get('created'),
+    }
+
+
+@api_bp.route('/shares/<path:project>', methods=['GET'])
+@require_login_json
+def api_get_share(project: str):
+    """Return the existing share for a project, if any."""
+    project = unquote(project).strip()
+    if not project:
+        return jsonify({'error': 'project_required'}), 400
+    share = get_share_by_project(project)
+    return jsonify(_share_response(share, project))
+
+
+@api_bp.route('/shares/<path:project>', methods=['POST'])
+@csrf.exempt
+@require_login_json
+def api_create_share(project: str):
+    """Create (or return existing) share token for a project."""
+    project = unquote(project).strip()
+    if not project:
+        return jsonify({'error': 'project_required'}), 400
+    share = create_share(project)
+    return jsonify(_share_response(share, project))
+
+
+@api_bp.route('/shares/<path:project>', methods=['DELETE'])
+@csrf.exempt
+@require_login_json
+def api_delete_share(project: str):
+    """Revoke the share for a project."""
+    project = unquote(project).strip()
+    if not project:
+        return jsonify({'error': 'project_required'}), 400
+    ok = delete_share_by_project(project)
+    return jsonify({'ok': ok})
 
 
 @api_bp.route('/title-suggestions')

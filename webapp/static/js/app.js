@@ -29,6 +29,7 @@ import { initDragDrop, setDragReloadCallback } from './modules/drag-drop.js';
 import { showUndoToast, setUndoReloadCallback } from './modules/undo-toast.js';
 import { startNotificationCheck } from './modules/notifications.js';
 import { initTitleAutocomplete, invalidateTitleCache } from './modules/autocomplete.js';
+import { openShareDialog, configureShare } from './modules/share.js';
 
 // Configuration - will be set by template
 let appConfig = {
@@ -113,6 +114,9 @@ function initApp(config = {}) {
         inputSelectors: ['#add-input', '#edit-title'],
         enabled: appConfig.titleAutocomplete !== false
     });
+
+    // Configure share dialog translations
+    configureShare(appConfig.translations || {});
 
     // Set up scroll position persistence
     setupScrollPersistence();
@@ -391,3 +395,5 @@ window.closeCheatsheet = window.ReinschriftApp.closeCheatsheet;
 window.applyFilter = window.ReinschriftApp.applyFilter;
 window.autoReload = window.ReinschriftApp.autoReload;
 window.manualReload = window.ReinschriftApp.manualReload;
+window.openShareDialog = openShareDialog;
+window.ReinschriftApp.openShareDialog = openShareDialog;

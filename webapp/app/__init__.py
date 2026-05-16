@@ -141,15 +141,22 @@ def register_token_refresh(app: Flask) -> None:
 
 def register_blueprints(app: Flask) -> None:
     """Register all application blueprints."""
+    from app.extensions import csrf
     from app.routes.main import main_bp
     from app.routes.auth import auth_bp
     from app.routes.todo import todo_bp
     from app.routes.api import api_bp
+    from app.routes.share import share_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(todo_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(share_bp)
+
+    # Share routes use the URL token as bearer auth; CSRF would only protect
+    # against attackers who already have the token.
+    csrf.exempt(share_bp)
 
 
 def _get_version() -> str:

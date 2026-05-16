@@ -1500,3 +1500,59 @@ button, a, .checkbox, .filter-link, .todo-item {
     font-size: var(--font-size-md);
     text-transform: uppercase;
 }
+
+/* Share dialog */
+.share-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal-backdrop, 200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.share-dialog.hidden { display: none; }
+.share-dialog-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+}
+.share-dialog-box {
+    position: relative;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    padding: 1.5rem;
+    width: min(90vw, 480px);
+    z-index: 1;
+}
+.share-dialog-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+}
+.share-dialog-hint {
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    color: #555;
+    line-height: 1.4;
+}
+.share-dialog-link-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+.share-dialog-link-row.hidden { display: none; }
+.share-dialog-link {
+    flex: 1;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    background: #f7f7f7;
+}
+.share-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+.share-dialog-actions button.hidden { display: none; }

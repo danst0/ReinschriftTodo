@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+
+{% block title %}{{ project }} — {{ t.todos }}{% endblock %}
+
+{% block head %}
+<meta name="robots" content="noindex,nofollow">
+<style>
+    .share-container {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    .share-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin: 0.5rem 0 1.25rem;
+    }
+    .share-header h1 {
+        font-size: 1.4rem;
+        margin: 0;
+    }
+    .share-project-tag {
+        color: #3584e4;
+        font-weight: 600;
+    }
+    .share-empty {
+        text-align: center;
+        color: #666;
+        padding: 2rem 1rem;
+        font-style: italic;
+    }
+    .share-add-form {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+    }
+    .share-add-form input[type="text"] {
+        flex: 1;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+    .share-add-form button {
+        padding: 0.6rem 1rem;
+        background: #3584e4;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+    .share-add-form button:hover { background: #1c71d8; }
+    .share-add-form button:disabled { background: #aaa; cursor: not-allowed; }
+    .share-footer {
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.8rem;
+        color: #999;
+    }
+    .share-todo {
+        display: flex;
+        align-items: center;
+        padding: 0.6rem 0.5rem;
+        border-bottom: 1px solid #eee;
+        gap: 0.6rem;
+    }
+    .share-todo.completing { opacity: 0.4; transition: opacity 0.3s; }
+    .share-todo .title { flex: 1; }
+    .share-todo .due {
+        font-size: 0.85rem;
+        color: #666;
+        margin-left: 0.5rem;
+    }
+    .share-todo .checkbox {
+        font-size: 1.4rem;
+        cursor: pointer;
+        user-select: none;
+        background: none;
+        border: none;
+        padding: 0 0.25rem;
+    }
+    .share-error {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+        padding: 0.5rem 0.75rem;
+        border-radius: 4px;
+        margin: 0.5rem 0;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="share-container" data-token="{{ token }}" data-project="{{ project }}">
+    <div class="share-header">
+        <h1>{{ t.shared_list }}: <span class="share-project-tag">+{{ project }}</span></h1>
+    </div>
+
+    <div id="share-error" class="share-error" role="alert"></div>
+
+    <div id="share-todo-list">
+        {% if todos %}
+            {% for todo in todos %}
+                <div class="share-todo" data-marker="{{ todo.marker or '' }}">
+                    <button type="button" class="checkbox" aria-label="{{ t.done }}">☐</button>
+                    <span class="title">{{ todo.title }}</span>
+                    {% if todo.due and not todo.due_is_sometime %}
+                        <span class="due">{{ t.due }} {{ todo.due_display or todo.due }}</span>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="share-empty">{{ t.shared_empty }}</div>
+        {% endif %}
+    </div>
+
+    <form id="share-add-form" class="share-add-form" autocomplete="off">
+        <input type="text" name="title" placeholder="{{ t.new_task }}" required>
+        <button type="submit">{{ t.add }}</button>
+    </form>
+
+    <div class="share-footer">Reinschrift{% if app_version %} · v{{ app_version }}{% endif %}</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/modules/shared-view.js') }}" defer></script>
+{% endblock %}
