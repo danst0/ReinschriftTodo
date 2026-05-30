@@ -1,6 +1,7 @@
 """Configuration classes for the Flask application."""
 
 import os
+import tempfile
 from datetime import timedelta
 
 
@@ -18,6 +19,18 @@ class Config:
     # File paths
     TODO_PATH = os.environ.get('TODOS_DB_PATH', 'TodosDatenbank.md')
     CONFIG_PATH = os.environ.get('CONFIG_PATH', '/config/settings.json')
+
+    # Server-side sessions: the undo stack stores full file snapshots, which
+    # overflow the ~4 KB client cookie limit. Store session data on disk and
+    # keep only the session id in the cookie. SESSION_DIR defaults next to
+    # CONFIG_PATH so it lives on the persistent /config volume in Docker; the
+    # cachelib backend is wired up in init_extensions().
+    SESSION_TYPE = 'cachelib'
+    SESSION_DIR = os.environ.get(
+        'SESSION_FILE_DIR',
+        os.path.join(os.path.dirname(CONFIG_PATH) or '.', 'flask_session'),
+    )
+    SESSION_PERMANENT = True
 
     # AI settings
     DEFAULT_AI_TIMEOUT_SECS = int(os.environ.get('AI_TIMEOUT_SECS', '30'))
@@ -73,6 +86,7 @@ class TestingConfig(Config):
     TESTING = True
     WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False
+    SESSION_DIR = os.path.join(tempfile.gettempdir(), 'reinschrift_test_sessions')
 
 
 config = {

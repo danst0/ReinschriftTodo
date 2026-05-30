@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.21.8" date="2026-05-30">
+      <description>
+        <ul>
+          <li>Web: store sessions server-side (filesystem) so the session cookie no longer overflows the 4 KB browser limit when the undo stack holds large file snapshots</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.21.7" date="2026-05-30">
       <description>
         <ul>
