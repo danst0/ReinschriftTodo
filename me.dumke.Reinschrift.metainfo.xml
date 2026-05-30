@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.21.7" date="2026-05-30">
+      <description>
+        <ul>
+          <li>Web: filter toggles update instantly on tap (checkbox glyph and highlight) instead of waiting for a server roundtrip; larger touch targets on mobile</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.21.6" date="2026-05-16">
       <description>
         <ul>

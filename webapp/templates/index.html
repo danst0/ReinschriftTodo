@@ -98,7 +98,7 @@
         </div>
     </div>
     
-    <div class="filters" style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: center;">
+    <div class="filters">
           <a href="{{ url_for('main.index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}"
               class="filter-link {% if show_done %}active{% endif %}" data-filter="show_done" onclick="applyFilter(event, this.href)">
               {% if show_done %}☑ {{ t.show_done }}{% else %}☐ {{ t.show_done }}{% endif %}

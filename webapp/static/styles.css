@@ -261,13 +261,24 @@ button, a, .checkbox, .filter-link, .todo-item {
         scroll-snap-align: start;
         flex-shrink: 0;
     }
+
+    /* Larger, easier-to-tap targets on mobile */
+    .filter-link {
+        min-height: var(--touch-target-comfortable);
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-base);
+    }
+
+    .refresh-button {
+        min-height: var(--touch-target-comfortable);
+    }
 }
 
 .filter-link {
     text-decoration: none;
     color: var(--color-text-muted);
     font-weight: normal;
-    padding: var(--spacing-xs) var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-sm);
     white-space: nowrap;
     min-height: var(--touch-target-min);
