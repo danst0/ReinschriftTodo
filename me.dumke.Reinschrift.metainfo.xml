@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.22.4" date="2026-06-04">
+      <description>
+        <ul>
+          <li>Repository: add GitHub Actions CI (cargo check/test/clippy, pytest/mypy) and rewritten README (English and German)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.22.3" date="2026-06-04">
       <description>
         <ul>
