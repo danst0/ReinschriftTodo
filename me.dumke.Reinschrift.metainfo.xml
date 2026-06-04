@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.22.6" date="2026-06-04">
+      <description>
+        <ul>
+          <li>Repository: release workflow publishes the webapp Docker image to ghcr.io and attaches the Flatpak bundle to each GitHub release</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.22.5" date="2026-06-04">
       <description>
         <ul>
