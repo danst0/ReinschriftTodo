@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>me.dumke.Reinschrift</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>CC-BY-SA-4.0</project_license>
+  <project_license>GPL-3.0-or-later</project_license>
   <name>Reinschrift</name>
   <developer_name>Dr. Daniel Dumke</developer_name>
   <summary>Manage your todos in Markdown</summary>
@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.22.9" date="2026-06-04">
+      <description>
+        <ul>
+          <li>Legal: relicense from CC-BY-SA-4.0 to GPL-3.0-or-later — a proper software license with source-code copyleft and patent grant</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.22.8" date="2026-06-04">
       <description>
         <ul>

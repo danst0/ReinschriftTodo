@@ -145,4 +145,4 @@ mypy app/
 
 ## License
 
-[CC BY-SA 4.0](LICENSE)
+[GPL-3.0-or-later](LICENSE)

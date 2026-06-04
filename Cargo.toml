@@ -3,9 +3,9 @@ members = ["core", "gui", "cli"]
 resolver = "3"
 
 [workspace.package]
-version = "0.22.8"
+version = "0.22.9"
 edition = "2024"
-license = "CC-BY-SA-4.0"
+license = "GPL-3.0-or-later"
 
 [workspace.dependencies]
 anyhow = "1"
