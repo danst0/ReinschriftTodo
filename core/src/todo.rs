@@ -5,7 +5,7 @@ use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
 
 use crate::i18n::t;
 use crate::parser::{find_line_by_marker, parse_line};
-use crate::renderer::{render_line, rewrite_due, rewrite_line};
+use crate::renderer::{render_line, rewrite_due, rewrite_line, rewrite_myday};
 use crate::storage::{read_content, read_content_with_fingerprint, write_content, write_content_checked};
 use crate::types::{TodoItem, TodoKey, DEFAULT_DUE_TIME};
 use crate::undo::push_undo;
@@ -132,6 +132,16 @@ pub fn set_due_sometime(key: &TodoKey) -> Result<NaiveDateTime> {
     let due_dt = NaiveDateTime::new(sometime, DEFAULT_DUE_TIME);
     update_line(key, "set due sometime", |line| rewrite_due(line, due_dt))?;
     Ok(due_dt)
+}
+
+/// Add a todo to "my day" (today's plan).
+pub fn set_myday_today(key: &TodoKey) -> Result<()> {
+    update_line(key, "add to my day", |line| rewrite_myday(line, true))
+}
+
+/// Remove a todo from "my day".
+pub fn unset_myday(key: &TodoKey) -> Result<()> {
+    update_line(key, "remove from my day", |line| rewrite_myday(line, false))
 }
 
 /// Update a todo's details (full re-render).

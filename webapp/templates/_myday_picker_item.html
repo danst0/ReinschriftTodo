@@ -1,0 +1,18 @@
+{% from '_icons.html' import icon %}
+<div class="myday-picker-item" data-marker="{{ todo.marker or '' }}">
+    <button type="button" class="myday-add-btn" onclick="addToMyDay(event, '{{ todo.marker or '' }}')"
+            title="{{ t.add_to_my_day }}" aria-label="{{ t.add_to_my_day }}">{{ icon('plus', size=18) }}</button>
+    <div class="content" onclick="openEditModal({{ todo.line_index }})">
+        <div class="title">{{ todo.title }}</div>
+        <div class="meta">
+            {% if todo.projects %}{% for project in todo.projects %}<span class="tag project">+{{ project }}</span> {% endfor %}{% endif %}
+            {% if todo.contexts %}{% for context in todo.contexts %}<span class="tag context">@{{ context }}</span> {% endfor %}{% endif %}
+            {% if todo.due %}
+                <span class="due">
+                    {{ t.due }}
+                    {% if todo.due_is_sometime %}{{ t.sometime }}{% else %}{{ todo.due_display or todo.due }}{% endif %}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+</div>

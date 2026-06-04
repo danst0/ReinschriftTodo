@@ -3,11 +3,11 @@
 import logging
 import re
 import shlex
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional, Any
 
 from app.models.todo import (
-    TodoItem, ID_RE, COMPLETION_RE, DUE_RE, DEFAULT_DUE_TIME
+    TodoItem, ID_RE, COMPLETION_RE, DUE_RE, MYDAY_STRIP_RE, DEFAULT_DUE_TIME
 )
 from app.services.storage import read_content, write_content
 from app.services.parser import parse_line, find_line_by_marker, parse_due_input
@@ -34,6 +34,17 @@ def _render_tagged(prefix: str, name: str) -> str:
     if needs_quote:
         return f'{prefix}"{escape_note(name)}"'
     return f'{prefix}{name}'
+
+def _myday_segment(item: TodoItem) -> str:
+    """Render the myday token for line reconstruction.
+
+    Stale dates (before today) are dropped so old planning tokens clean
+    themselves up over time — mirrors the Rust renderer.
+    """
+    if item.myday and item.myday >= date.today():
+        return f" myday:{item.myday.strftime('%Y-%m-%d')}"
+    return ""
+
 
 logger = logging.getLogger(__name__)
 
@@ -255,6 +266,7 @@ def update_todo_by_marker(marker: str, updates: dict[str, Any]) -> bool:
         new_line += f" {_render_tagged('@', context)}"
     if due_dt:
         new_line += f" due:{format_due(due_dt)}"
+    new_line += _myday_segment(existing)
     if recurrence:
         new_line += f" rec:{recurrence}"
     if reference:
@@ -329,6 +341,44 @@ def handle_toggle_with_recurrence(line_index: int) -> None:
             insert_line(new_line)
 
 
+def set_myday(marker: str, on: bool) -> bool:
+    """Add or remove a todo's "my day" token (today's plan).
+
+    Args:
+        marker: Marker ID of the todo.
+        on: True to plan for today, False to remove from today's plan.
+
+    Returns:
+        True if updated, False if the marker was not found.
+    """
+    content = read_content()
+    lines = content.splitlines()
+
+    target_index = find_line_by_marker(lines, marker)
+    if target_index is None:
+        return False
+
+    line = MYDAY_STRIP_RE.sub("", lines[target_index])
+    if on:
+        segment = f" myday:{date.today().strftime('%Y-%m-%d')}"
+        due_match = DUE_RE.search(line)
+        if due_match:
+            # Insert directly after the due token (canonical position).
+            pos = due_match.end()
+            line = line[:pos] + segment + line[pos:]
+        else:
+            marker_match = ID_RE.search(line)
+            if marker_match:
+                pos = marker_match.start()
+                line = line[:pos].rstrip() + segment + " " + line[pos:]
+            else:
+                line = line.rstrip() + segment
+
+    lines[target_index] = line
+    write_content('\n'.join(lines) + '\n')
+    return True
+
+
 def postpone_todo(line_index: int, target: str) -> bool:
     """Postpone a todo to a new date.
 
@@ -373,6 +423,7 @@ def postpone_todo(line_index: int, target: str) -> bool:
 
     # Always set the new due date/time
     new_line += f" due:{format_due(new_datetime)}"
+    new_line += _myday_segment(item)
 
     if item.reference and item.reference.strip():
         new_line += f" [[{item.reference.strip()}]]"
@@ -442,6 +493,7 @@ def postpone_todos_batch(line_indexes: list[int], target: str) -> dict:
                 new_line += f" @{context_clean}"
 
         new_line += f" due:{format_due(new_datetime)}"
+        new_line += _myday_segment(item)
 
         if item.reference and item.reference.strip():
             new_line += f" [[{item.reference.strip()}]]"

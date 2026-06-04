@@ -6,7 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// Used by extract_title and insert_due_segment. Only space-prefixed variants:
 /// an unspaced `+` or `^` at the very start of the title would otherwise eat the
 /// title (e.g. when a user types `+Projekt erledigen`).
-pub const FIELD_MARKERS: [&str; 8] = [" +", " @", " due:", " rec:", " [[", " ~note:", " ^", " ✅"];
+pub const FIELD_MARKERS: [&str; 9] =
+    [" +", " @", " due:", " myday:", " rec:", " [[", " ~note:", " ^", " ✅"];
 
 /// Generate a unique marker ID using timestamp and process ID.
 pub fn generate_marker() -> String {

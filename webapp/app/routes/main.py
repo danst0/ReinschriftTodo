@@ -60,6 +60,7 @@ def index():
     show_done_val = request.args.get('show_done')
     show_due_only_val = request.args.get('show_due_only')
     sort_mode_val = request.args.get('sort_mode')
+    view_val = request.args.get('view')
     auto_ai_on_add_vals = request.args.getlist('auto_ai_on_add')
     auto_ai_on_add_val = auto_ai_on_add_vals[-1] if auto_ai_on_add_vals else None
     skip_delete_confirm_vals = request.args.getlist('skip_delete_confirm')
@@ -86,6 +87,18 @@ def index():
         changed = True
     else:
         sort_mode_val = settings.get('sort_mode', 'topic')
+
+    # "Mein Tag" view toggle — the last active view is persisted so the app
+    # reopens in whichever view was used last.
+    if view_val is not None:
+        if view_val not in ('all', 'myday'):
+            view_val = 'all'
+        new_settings['view'] = view_val
+        changed = True
+    else:
+        view_val = settings.get('view', 'all')
+        if view_val not in ('all', 'myday'):
+            view_val = 'all'
 
     if auto_ai_on_add_val is not None:
         new_settings['auto_ai_on_add'] = auto_ai_on_add_val
@@ -118,6 +131,7 @@ def index():
     show_done = show_done_val == '1'
     show_due_only = show_due_only_val == '1'
     sort_mode = sort_mode_val
+    view = view_val
     auto_ai_on_add = auto_ai_on_add_val == '1'
     ai_timeout_secs = parsed_ai_timeout
     ai_timeout_ms = ai_timeout_secs * 1000
@@ -185,7 +199,17 @@ def index():
                               skip_delete_confirm=skip_delete_confirm,
                               ai_timeout_secs=ai_timeout_secs,
                               ai_timeout_ms=ai_timeout_ms,
+                              view=view,
                               ai_debug_enabled=current_app.config.get('AI_DEBUG_ENABLED', False))
+
+    if view == 'myday':
+        return _render_myday_view(todos, show_done=show_done,
+                                  show_due_only=show_due_only,
+                                  sort_mode=sort_mode,
+                                  auto_ai_on_add=auto_ai_on_add,
+                                  skip_delete_confirm=skip_delete_confirm,
+                                  ai_timeout_secs=ai_timeout_secs,
+                                  ai_timeout_ms=ai_timeout_ms)
 
     # Sorting
     sorted_todos = sort_todos(todos_as_dicts, sort_mode)
@@ -219,7 +243,8 @@ def index():
                               todos=display_todos,
                               show_done=show_done,
                               show_due_only=show_due_only,
-                              sort_mode=sort_mode)
+                              sort_mode=sort_mode,
+                              view=view)
 
     return render_template('index.html',
                           todos=display_todos,
@@ -231,7 +256,48 @@ def index():
                           skip_delete_confirm=skip_delete_confirm,
                           ai_timeout_secs=ai_timeout_secs,
                           ai_timeout_ms=ai_timeout_ms,
+                          view=view,
                           ai_debug_enabled=current_app.config.get('AI_DEBUG_ENABLED', False))
+
+
+def _render_myday_view(todos, **template_args):
+    """Render the "Mein Tag" planning view.
+
+    The day's list shows every todo planned for today (myday == today),
+    including completed ones (struck through). Below it, a picker offers all
+    other open todos: due/overdue suggestions first, then the rest.
+    """
+    myday_dicts = sort_todos(
+        [_todo_to_dict(t) for t in todos if t.in_myday], 'date')
+    for d in myday_dicts:
+        d['section'] = ""
+        d['group_key'] = ''
+
+    now = datetime.now()
+    candidates = [t for t in todos if not t.done and not t.in_myday]
+    suggestions = sort_todos(
+        [_todo_to_dict(t) for t in candidates
+         if t.due and t.due <= now and not t.due_is_sometime], 'date')
+    other_open = sort_todos(
+        [_todo_to_dict(t) for t in candidates
+         if not (t.due and t.due <= now and not t.due_is_sometime)], 'date')
+
+    if request.args.get('partial'):
+        return render_template('_myday_view.html',
+                              myday_todos=myday_dicts,
+                              suggestions=suggestions,
+                              other_open=other_open,
+                              sort_mode='date',
+                              view='myday')
+
+    return render_template('index.html',
+                          myday_todos=myday_dicts,
+                          suggestions=suggestions,
+                          other_open=other_open,
+                          q='',
+                          view='myday',
+                          ai_debug_enabled=current_app.config.get('AI_DEBUG_ENABLED', False),
+                          **template_args)
 
 
 @main_bp.route('/set_language/<lang>')

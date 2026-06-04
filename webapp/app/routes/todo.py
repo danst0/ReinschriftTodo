@@ -141,6 +141,10 @@ def _handle_edit_post(lines, line_index):
     if due_dt:
         new_line += f" due:{format_due(due_dt)}"
 
+    # Preserve an active "my day" token across edits (stale dates are dropped).
+    if original_item and original_item.myday and original_item.myday >= datetime.now().date():
+        new_line += f" myday:{original_item.myday.strftime('%Y-%m-%d')}"
+
     if recurrence and recurrence.strip():
         rec_clean = recurrence.strip()
         new_line += f" rec:{rec_clean}"

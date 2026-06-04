@@ -533,6 +533,15 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     due_filter.set_active(state.show_due_only());
     controls.append(&due_filter);
 
+    let myday_filter = gtk::ToggleButton::builder()
+        .label(&t("my_day"))
+        .tooltip_text(&t("my_day"))
+        .build();
+    myday_filter.set_margin_start(18);
+    myday_filter.set_valign(gtk::Align::Center);
+    myday_filter.set_active(state.myday_view());
+    controls.append(&myday_filter);
+
     let add_revealer = gtk::Revealer::builder()
         .child(&new_row)
         .transition_type(gtk::RevealerTransitionType::SlideDown)
@@ -774,6 +783,10 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         state.set_show_due_only(btn.is_active());
     }));
 
+    myday_filter.connect_toggled(clone!(#[weak] state, move |btn| {
+        state.set_myday_view(btn.is_active());
+    }));
+
     if let Err(err) = state.install_monitor() {
         state.show_error(&t("monitor_error").replace("{}", &err.to_string()));
     }
@@ -848,6 +861,14 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         let spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         spacer.set_hexpand(true);
         container.append(&spacer);
+
+        let myday_btn = gtk::Button::builder()
+            .icon_name("starred-symbolic")
+            .tooltip_text(&t("my_day"))
+            .build();
+        myday_btn.set_valign(gtk::Align::Center);
+        myday_btn.add_css_class("flat");
+        container.append(&myday_btn);
 
         let today_btn = gtk::Button::builder()
             .icon_name("x-office-calendar-symbolic")
@@ -964,6 +985,31 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
             if let Some(state) = state_for_handler.upgrade() {
                 if let Err(err) = state.toggle_item(&todo, btn.is_active()) {
+                    state.show_error(&t("update_error").replace("{}", &err.to_string()));
+                }
+            }
+        });
+
+        let myday_list = list_item.downgrade();
+        let myday_state = factory_state.clone();
+        myday_btn.connect_clicked(move |_| {
+            let Some(list_item) = myday_list.upgrade() else {
+                return;
+            };
+            let Some(obj) = list_item.item() else {
+                return;
+            };
+            let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else {
+                return;
+            };
+            let entry = todo_obj.borrow::<ListEntry>();
+            let todo = match &*entry {
+                ListEntry::Item(todo) => todo.clone(),
+                ListEntry::Header(_) => return,
+            };
+
+            if let Some(state) = myday_state.upgrade() {
+                if let Err(err) = state.toggle_myday(&todo) {
                     state.show_error(&t("update_error").replace("{}", &err.to_string()));
                 }
             }
@@ -1321,6 +1367,10 @@ impl AppState {
         self.preferences.borrow().show_due_only
     }
 
+    fn myday_view(&self) -> bool {
+        self.preferences.borrow().myday_view
+    }
+
     fn skip_delete_confirmation(&self) -> bool {
         self.preferences.borrow().skip_delete_confirmation
     }
@@ -1454,6 +1504,32 @@ impl AppState {
         };
         self.show_undo_toast(&message);
         Ok(())
+    }
+
+    fn toggle_myday(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
+        let today = Local::now().date_naive();
+        let currently_in = todo.myday == Some(today);
+        let result = if currently_in {
+            data::unset_myday(&todo.key)
+        } else {
+            data::set_myday_today(&todo.key)
+        };
+        match result {
+            Ok(()) => {
+                self.reload()?;
+                let message = if currently_in {
+                    t("remove_from_my_day")
+                } else {
+                    t("add_to_my_day")
+                };
+                self.show_undo_toast(&format!("{message}: {}", todo.title));
+                Ok(())
+            }
+            Err(err) => {
+                if self.handle_conflict(&err) { return Ok(()); }
+                Err(err)
+            }
+        }
     }
 
     fn set_due_today(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
@@ -2336,6 +2412,19 @@ impl AppState {
         self.repopulate_store();
     }
 
+    fn set_myday_view(&self, show: bool) {
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.myday_view == show {
+                return;
+            }
+            prefs.myday_view = show;
+        }
+
+        self.persist_preferences();
+        self.repopulate_store();
+    }
+
     fn set_skip_delete_confirmation(&self, skip: bool) {
         {
             let mut prefs = self.preferences.borrow_mut();
@@ -2834,12 +2923,19 @@ impl AppState {
         
         let include_done = self.show_completed();
         let due_only = self.show_due_only();
+        let myday_only = self.myday_view();
         let now = Local::now().naive_local();
+        let today = now.date();
 
         if search_term.is_empty() {
             let mode = *self.sort_mode.borrow();
             let mut last_group: Option<String> = None;
             for item in items.into_iter().filter(|todo| {
+                if myday_only {
+                    // "Mein Tag": only today's planned items, completed ones
+                    // stay visible (struck through) for the rest of the day.
+                    return todo.myday == Some(today);
+                }
                 let status_ok = include_done || !todo.done;
                 let due_ok = if !due_only {
                     true
@@ -3840,6 +3936,7 @@ fn build_todo_from_ai(parsed: &AiParseResult, original_text: &str) -> data::Todo
         projects,
         contexts,
         due: Some(due),
+        myday: None,
         reference: None,
         recurrence: None,
         note,

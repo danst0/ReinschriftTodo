@@ -1,0 +1,41 @@
+{% from '_icons.html' import icon %}
+{# "Mein Tag" view: today's planned todos on top (a blank slate each morning),
+   followed by a picker of open todos to pull into the day. Rendered as one
+   fragment so the partial-reload swap refreshes list and picker together. #}
+
+{% if myday_todos %}
+    {% with todos = myday_todos, sort_mode = 'date', view = 'myday' %}
+        {% include '_todo_list.html' %}
+    {% endwith %}
+{% else %}
+    <div class="myday-empty">
+        <span class="myday-empty-icon" aria-hidden="true">{{ icon('sun', size=36) }}</span>
+        <p>{{ t.my_day_empty }}</p>
+    </div>
+{% endif %}
+
+<div class="myday-picker">
+    <h3 class="myday-picker-title">{{ t.plan_my_day }}</h3>
+
+    {% if suggestions %}
+    <div class="myday-picker-section">
+        <h4>{{ t.myday_suggestions }}</h4>
+        {% for todo in suggestions %}
+            {% include '_myday_picker_item.html' %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if other_open %}
+    <div class="myday-picker-section">
+        <h4>{{ t.myday_other_open }}</h4>
+        {% for todo in other_open %}
+            {% include '_myday_picker_item.html' %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not suggestions and not other_open %}
+        <p class="myday-picker-empty">{{ t.myday_nothing_to_plan }}</p>
+    {% endif %}
+</div>

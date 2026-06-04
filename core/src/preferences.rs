@@ -39,6 +39,8 @@ pub struct Preferences {
     #[serde(default)]
     pub show_due_only: bool,
     #[serde(default)]
+    pub myday_view: bool,
+    #[serde(default)]
     pub use_webdav: bool,
     #[serde(default)]
     pub webdav_url: Option<String>,

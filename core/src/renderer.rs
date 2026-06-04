@@ -3,8 +3,11 @@
 use anyhow::{bail, Result};
 use chrono::{Local, NaiveDateTime};
 
+use once_cell::sync::Lazy;
+use regex::Regex;
+
 use crate::i18n::t;
-use crate::parser::{COMPLETION_RE, DUE_RE, ID_RE};
+use crate::parser::{COMPLETION_RE, DUE_RE, ID_RE, MYDAY_RE};
 use crate::types::TodoItem;
 use crate::util::{escape_note, generate_marker, normalize_note, normalize_reference, normalize_token, FIELD_MARKERS};
 
@@ -41,6 +44,13 @@ pub fn render_line(item: &TodoItem) -> Result<String> {
     }
     if let Some(due) = item.due {
         parts.push(format!("due:{}", due.format("%Y-%m-%dT%H:%M")));
+    }
+    // Stale "my day" dates (before today) are dropped on re-render so old
+    // planning tokens clean themselves up over time.
+    if let Some(myday) = item.myday {
+        if myday >= Local::now().date_naive() {
+            parts.push(format!("myday:{}", myday.format("%Y-%m-%d")));
+        }
     }
     if let Some(recur) = normalize_token(item.recurrence.as_deref()) {
         parts.push(format!("rec:{recur}"));
@@ -110,6 +120,32 @@ pub fn rewrite_due(line: &str, new_due: NaiveDateTime) -> Result<String> {
     }
 }
 
+/// Matches a myday token including its leading whitespace, for clean removal.
+static MYDAY_STRIP_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\s*myday:\d{4}-\d{2}-\d{2}").unwrap());
+
+/// Add (with today's date) or remove the `myday:` token in a line.
+pub fn rewrite_myday(line: &str, add: bool) -> Result<String> {
+    if !add {
+        return Ok(MYDAY_STRIP_RE.replace_all(line, "").to_string());
+    }
+
+    let today = Local::now().date_naive();
+    let segment = format!("myday:{}", today.format("%Y-%m-%d"));
+    if MYDAY_RE.is_match(line) {
+        return Ok(MYDAY_RE.replace(line, segment).to_string());
+    }
+
+    // Insert directly after the due token when present, otherwise before the
+    // first field marker (same placement rule as due dates).
+    if let Some(due_m) = DUE_RE.find(line) {
+        let (head, tail) = line.split_at(due_m.end());
+        Ok(format!("{head} {segment}{tail}"))
+    } else {
+        Ok(insert_due_segment(line, &segment))
+    }
+}
+
 /// Apply or remove completion marker (✅ date).
 pub fn apply_completion_marker(line: &str, done: bool) -> String {
     if done {
@@ -141,6 +177,61 @@ pub fn apply_completion_marker(line: &str, done: bool) -> String {
         }
     } else {
         COMPLETION_RE.replace(line, "").to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rewrite_myday_inserts_after_due() {
+        let line = "- [ ] Task due:2026-06-10T12:00 rec:weekly ^abc12345";
+        let updated = rewrite_myday(line, true).expect("rewrite ok");
+        let today = Local::now().date_naive().format("%Y-%m-%d");
+        assert_eq!(
+            updated,
+            format!("- [ ] Task due:2026-06-10T12:00 myday:{today} rec:weekly ^abc12345")
+        );
+    }
+
+    #[test]
+    fn rewrite_myday_without_due_inserts_before_fields() {
+        let line = "- [ ] Task +proj ^abc12345";
+        let updated = rewrite_myday(line, true).expect("rewrite ok");
+        let today = Local::now().date_naive().format("%Y-%m-%d");
+        assert_eq!(updated, format!("- [ ] Task myday:{today} +proj ^abc12345"));
+    }
+
+    #[test]
+    fn rewrite_myday_is_idempotent() {
+        let line = "- [ ] Task due:2026-06-10T12:00 ^abc12345";
+        let once = rewrite_myday(line, true).expect("rewrite ok");
+        let twice = rewrite_myday(&once, true).expect("rewrite ok");
+        assert_eq!(once, twice);
+    }
+
+    #[test]
+    fn rewrite_myday_replaces_stale_date() {
+        let line = "- [ ] Task myday:2020-01-01 ^abc12345";
+        let updated = rewrite_myday(line, true).expect("rewrite ok");
+        let today = Local::now().date_naive().format("%Y-%m-%d");
+        assert_eq!(updated, format!("- [ ] Task myday:{today} ^abc12345"));
+    }
+
+    #[test]
+    fn rewrite_myday_removes_cleanly() {
+        let line = "- [ ] Task due:2026-06-10T12:00 myday:2026-06-04 rec:weekly ^abc12345";
+        let updated = rewrite_myday(line, false).expect("rewrite ok");
+        assert_eq!(updated, "- [ ] Task due:2026-06-10T12:00 rec:weekly ^abc12345");
+        assert!(!updated.contains("  "), "no double spaces in {updated}");
+    }
+
+    #[test]
+    fn rewrite_myday_remove_without_token_is_noop() {
+        let line = "- [ ] Task ^abc12345";
+        let updated = rewrite_myday(line, false).expect("rewrite ok");
+        assert_eq!(updated, line);
     }
 }
 

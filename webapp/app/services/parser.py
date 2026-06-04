@@ -1,12 +1,12 @@
 """Parsing service for todo lines."""
 
 import re
-from datetime import datetime, time as dtime
+from datetime import date, datetime, time as dtime
 from typing import Optional
 
 from app.models.todo import (
     TodoItem, LINK_RE, PROJECT_RE, CONTEXT_RE, DUE_RE, ID_RE,
-    COMPLETION_RE, COMPLETION_DATE_RE, RECUR_RE, NOTE_RE,
+    COMPLETION_RE, COMPLETION_DATE_RE, RECUR_RE, NOTE_RE, MYDAY_RE,
     DEFAULT_DUE_TIME, TITLE_MARKERS
 )
 from app.utils.escaping import unescape_note, normalize_note
@@ -43,6 +43,24 @@ def parse_due_token(text: str) -> Optional[datetime]:
         time_obj = DEFAULT_DUE_TIME
 
     return datetime.combine(date_obj, time_obj)
+
+
+def parse_myday_token(text: str) -> Optional[date]:
+    """Parse a "my day" date from a line of text.
+
+    Args:
+        text: Line text containing a myday: token.
+
+    Returns:
+        Parsed date or None if not found/invalid.
+    """
+    match = MYDAY_RE.search(text)
+    if not match:
+        return None
+    try:
+        return datetime.strptime(match.group(1), "%Y-%m-%d").date()
+    except ValueError:
+        return None
 
 
 def parse_due_input(raw_value: str | None) -> Optional[datetime]:
@@ -194,6 +212,7 @@ def parse_line(line: str, line_index: int) -> Optional[TodoItem]:
     contexts = [normalize_prefix(c, '@') for c in capture_all_tokens(CONTEXT_RE, rest_without_note)]
     contexts = [c for c in contexts if c]  # Filter out None/empty
     due_dt = parse_due_token(rest)
+    myday = parse_myday_token(rest)
     recurrence = capture_token(RECUR_RE, rest)
     due_display = format_due_display(due_dt) if due_dt else None
     due_is_sometime = is_sometime(due_dt)
@@ -220,6 +239,8 @@ def parse_line(line: str, line_index: int) -> Optional[TodoItem]:
         due=due_dt,
         due_display=due_display,
         due_is_sometime=due_is_sometime,
+        myday=myday,
+        in_myday=(myday == date.today()),
         reference=reference,
         recurrence=recurrence,
         note=note,

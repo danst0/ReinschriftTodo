@@ -68,6 +68,7 @@ mod tests {
             projects: vec![],
             contexts: vec![],
             due,
+            myday: None,
             reference: None,
             recurrence: None,
             note: None,

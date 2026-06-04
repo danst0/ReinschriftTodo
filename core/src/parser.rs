@@ -22,6 +22,8 @@ pub static ID_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\^([A-Za-z0-9]+)").unw
 pub static COMPLETION_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\s✅\s\d{4}-\d{2}-\d{2}").unwrap());
 pub static RECUR_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"rec:([^\s]+)").unwrap());
+pub static MYDAY_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"myday:(\d{4}-\d{2}-\d{2})").unwrap());
 pub static NOTE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"~note:"((?:\\.|[^"])*)""#).unwrap());
 
 /// Parse a due date/time from a string.
@@ -37,6 +39,12 @@ pub fn parse_due(text: &str) -> Option<NaiveDateTime> {
     };
 
     Some(NaiveDateTime::new(date, time))
+}
+
+/// Parse a "my day" date from a string.
+pub fn parse_myday(text: &str) -> Option<NaiveDate> {
+    let caps = MYDAY_RE.captures(text)?;
+    NaiveDate::parse_from_str(caps.get(1)?.as_str(), "%Y-%m-%d").ok()
 }
 
 /// Parse a markdown line into a TodoItem.
@@ -57,6 +65,7 @@ pub fn parse_line(line: &str, line_index: usize) -> Option<TodoItem> {
     let projects = capture_all_tokens(&PROJECT_RE, &rest_without_note);
     let contexts = capture_all_tokens(&CONTEXT_RE, &rest_without_note);
     let due = parse_due(rest);
+    let myday = parse_myday(rest);
     let recurrence = capture_token(&RECUR_RE, rest);
     let reference = capture_token(&LINK_RE, rest);
     let marker = capture_token(&ID_RE, rest);
@@ -70,6 +79,7 @@ pub fn parse_line(line: &str, line_index: usize) -> Option<TodoItem> {
         projects,
         contexts,
         due,
+        myday,
         reference,
         recurrence,
         note,
@@ -266,6 +276,7 @@ mod tests {
             projects: vec!["Steuererklärung 2024".to_string()],
             contexts: vec![],
             due: None,
+            myday: None,
             reference: None,
             recurrence: None,
             note: None,
@@ -279,6 +290,63 @@ mod tests {
     }
 
     #[test]
+    fn parse_line_extracts_myday() {
+        let item = parse_line(
+            "- [ ] Task due:2026-06-10T12:00 myday:2026-06-04 ^abc12345",
+            0,
+        )
+        .expect("valid line");
+        assert_eq!(item.myday, NaiveDate::from_ymd_opt(2026, 6, 4));
+        assert_eq!(item.title, "Task");
+    }
+
+    #[test]
+    fn extract_title_stops_at_myday() {
+        assert_eq!(extract_title("Buy groceries myday:2026-06-04"), "Buy groceries");
+    }
+
+    #[test]
+    fn roundtrip_myday_today() {
+        use crate::types::{TodoItem, TodoKey};
+        let today = chrono::Local::now().date_naive();
+        let original = TodoItem {
+            key: TodoKey { line_index: 0, marker: Some("abc12345".to_string()) },
+            title: "erledigen".to_string(),
+            projects: vec![],
+            contexts: vec![],
+            due: None,
+            myday: Some(today),
+            reference: None,
+            recurrence: None,
+            note: None,
+            done: false,
+        };
+        let line = crate::renderer::render_line(&original).expect("render ok");
+        let parsed = parse_line(&line, 0).expect("parse ok");
+        assert_eq!(parsed.myday, Some(today));
+    }
+
+    #[test]
+    fn render_drops_stale_myday() {
+        use crate::types::{TodoItem, TodoKey};
+        let yesterday = chrono::Local::now().date_naive() - chrono::Duration::days(1);
+        let original = TodoItem {
+            key: TodoKey { line_index: 0, marker: Some("abc12345".to_string()) },
+            title: "erledigen".to_string(),
+            projects: vec![],
+            contexts: vec![],
+            due: None,
+            myday: Some(yesterday),
+            reference: None,
+            recurrence: None,
+            note: None,
+            done: false,
+        };
+        let line = crate::renderer::render_line(&original).expect("render ok");
+        assert!(!line.contains("myday:"), "stale myday should be dropped in {line}");
+    }
+
+    #[test]
     fn roundtrip_quoted_project() {
         use crate::types::{TodoItem, TodoKey};
         let original = TodoItem {
@@ -287,6 +355,7 @@ mod tests {
             projects: vec!["Steuererklärung 2024".to_string()],
             contexts: vec!["Home Office".to_string()],
             due: None,
+            myday: None,
             reference: None,
             recurrence: None,
             note: None,

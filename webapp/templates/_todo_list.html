@@ -77,6 +77,9 @@
             </div>
         </div>
         <div class="actions">
+            {% if view == 'myday' %}
+            <a href="javascript:void(0)" class="btn-action myday-remove-btn" onclick="removeFromMyDay(event, '{{ todo.marker or '' }}')" title="{{ t.remove_from_my_day }}" aria-label="{{ t.remove_from_my_day }}">{{ icon('x') }}</a>
+            {% endif %}
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'today')" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar') }}</a>
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow')" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right') }}</a>
             <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'weekend')" title="{{ t.next_weekend }}" aria-label="{{ t.next_weekend }}">{{ icon('umbrella') }}</a>

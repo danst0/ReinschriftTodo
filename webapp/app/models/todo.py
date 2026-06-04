@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, time as dtime
+from datetime import date, datetime, time as dtime
 from typing import Optional
 
 
@@ -18,6 +18,8 @@ ID_RE = re.compile(r"\^([A-Za-z0-9]+)")
 COMPLETION_RE = re.compile(r"\s✅\s\d{4}-\d{2}-\d{2}")
 COMPLETION_DATE_RE = re.compile(r"✅\s(\d{4}-\d{2}-\d{2})")
 RECUR_RE = re.compile(r"rec:([^\s]+)")
+MYDAY_RE = re.compile(r"myday:(\d{4}-\d{2}-\d{2})")
+MYDAY_STRIP_RE = re.compile(r"\s*myday:\d{4}-\d{2}-\d{2}")
 NOTE_RE = re.compile(r'~note:"((?:\\.|[^"])*)"')
 
 # Constants
@@ -26,8 +28,8 @@ SOMETIME_SENTINEL = datetime(year=9999, month=12, day=31, hour=0, minute=0)
 
 # Markers that indicate end of title
 TITLE_MARKERS = [
-    " +", " @", " due:", " rec:", " [[", " ✅", " ^", " ~note:",
-    "+", "@", "due:", "rec:", "[[", "✅", "^", "~note:"
+    " +", " @", " due:", " myday:", " rec:", " [[", " ✅", " ^", " ~note:",
+    "+", "@", "due:", "myday:", "rec:", "[[", "✅", "^", "~note:"
 ]
 
 
@@ -43,6 +45,8 @@ class TodoItem:
     due: Optional[datetime] = None
     due_display: Optional[str] = None
     due_is_sometime: bool = False
+    myday: Optional[date] = None
+    in_myday: bool = False
     reference: Optional[str] = None
     recurrence: Optional[str] = None
     note: Optional[str] = None
@@ -65,6 +69,8 @@ class TodoItem:
             'due': self.due.strftime("%Y-%m-%dT%H:%M") if self.due else None,
             'due_display': self.due_display,
             'due_is_sometime': self.due_is_sometime,
+            'myday': self.myday.strftime("%Y-%m-%d") if self.myday else None,
+            'in_myday': self.in_myday,
             'reference': self.reference,
             'recurrence': self.recurrence,
             'note': self.note,

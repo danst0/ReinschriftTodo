@@ -39,6 +39,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.21.9" date="2026-06-04">
+      <description>
+        <ul>
+          <li>New "My Day" view: plan your day from a blank slate — pick open tasks (due/overdue suggested first) via a new myday: token that syncs across web, desktop and CLI and resets automatically each morning</li>
+          <li>Web: My Day toggle in filter bar and mobile bottom nav, planning picker, last active view is remembered</li>
+          <li>Desktop: My Day filter toggle and per-item star button</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.21.8" date="2026-05-30">
       <description>
         <ul>

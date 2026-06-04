@@ -99,6 +99,14 @@
     </div>
     
     <div class="filters">
+          <a href="{{ url_for('main.index', view='all' if view == 'myday' else 'myday') }}"
+              class="filter-link myday-link {% if view == 'myday' %}active{% endif %}" data-filter="view">
+              {{ icon('sun', size=14) }} {{ t.my_day }}
+          </a>
+
+          {% if view != 'myday' %}
+          <span style="color: #ccc;">|</span>
+
           <a href="{{ url_for('main.index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}"
               class="filter-link {% if show_done %}active{% endif %}" data-filter="show_done" onclick="applyFilter(event, this.href)">
               {% if show_done %}☑ {{ t.show_done }}{% else %}☐ {{ t.show_done }}{% endif %}
@@ -123,6 +131,7 @@
            class="filter-link {% if sort_mode == 'date' %}active{% endif %}" data-filter="sort" onclick="applyFilter(event, this.href)">
            {{ t.date }}
         </a>
+        {% endif %}
 
           <button type="button" class="refresh-button" onclick="manualReload()" aria-label="{{ t.reload }}">{{ icon('refresh', size=16) }} <span>{{ t.reload }}</span></button>
     </div>
@@ -158,6 +167,8 @@
     <div class="todo-list">
         {% if q %}
             {% include '_search_results.html' %}
+        {% elif view == 'myday' %}
+            {% include '_myday_view.html' %}
         {% else %}
             {% include '_todo_list.html' %}
         {% endif %}
@@ -171,6 +182,10 @@
 
     <!-- Bottom Navigation (Mobile) -->
     <nav class="bottom-nav" id="bottom-nav">
+        <a href="{{ url_for('main.index', view='all' if view == 'myday' else 'myday') }}" class="bottom-nav-btn {% if view == 'myday' %}active{% endif %}" id="bottom-nav-myday" aria-label="{{ t.my_day }}">
+            <span class="nav-icon">{{ icon('sun', size=24) }}</span>
+            <span class="label">{{ t.my_day }}</span>
+        </a>
         <button type="button" class="bottom-nav-btn" onclick="toggleAdd()" id="bottom-nav-add" aria-label="{{ t.add }}">
             <span class="nav-icon">{{ icon('plus', size=24) }}</span>
             <span class="label">{{ t.add }}</span>

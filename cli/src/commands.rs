@@ -133,6 +133,7 @@ pub fn add(
         projects: project.map(|s| parse_space_separated_tags(s, '+')).unwrap_or_default(),
         contexts: context.map(|s| parse_space_separated_tags(s, '@')).unwrap_or_default(),
         due: due_dt,
+        myday: None,
         reference: None,
         recurrence: recurrence.map(|s| s.to_string()),
         note: note.map(|s| s.to_string()),

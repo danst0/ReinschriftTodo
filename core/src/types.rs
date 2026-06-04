@@ -1,6 +1,6 @@
 //! Core data types for todo items.
 
-use chrono::{NaiveDateTime, NaiveTime};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use serde::Serialize;
 
 /// Default time component for due dates (midnight).
@@ -24,6 +24,7 @@ pub struct TodoItem {
     pub projects: Vec<String>,
     pub contexts: Vec<String>,
     pub due: Option<NaiveDateTime>,
+    pub myday: Option<NaiveDate>,
     pub reference: Option<String>,
     pub recurrence: Option<String>,
     pub note: Option<String>,

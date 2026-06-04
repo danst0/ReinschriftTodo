@@ -30,6 +30,7 @@ import { showUndoToast, setUndoReloadCallback } from './modules/undo-toast.js';
 import { startNotificationCheck } from './modules/notifications.js';
 import { initTitleAutocomplete, invalidateTitleCache } from './modules/autocomplete.js';
 import { openShareDialog, configureShare } from './modules/share.js';
+import { addToMyDay, removeFromMyDay, setMydayReloadCallback } from './modules/myday.js';
 
 // Configuration - will be set by template
 let appConfig = {
@@ -99,6 +100,9 @@ function initApp(config = {}) {
 
     // Set up undo toast
     setUndoReloadCallback(handleReload);
+
+    // Set up "My Day" actions
+    setMydayReloadCallback(handleReload);
 
     // Start browser notifications for due reminders
     startNotificationCheck();
@@ -397,3 +401,7 @@ window.autoReload = window.ReinschriftApp.autoReload;
 window.manualReload = window.ReinschriftApp.manualReload;
 window.openShareDialog = openShareDialog;
 window.ReinschriftApp.openShareDialog = openShareDialog;
+window.addToMyDay = addToMyDay;
+window.removeFromMyDay = removeFromMyDay;
+window.ReinschriftApp.addToMyDay = addToMyDay;
+window.ReinschriftApp.removeFromMyDay = removeFromMyDay;

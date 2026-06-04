@@ -14,6 +14,7 @@ from app.services import (
     update_todo_by_marker,
     parse_nlp,
     postpone_todos_batch,
+    set_myday,
     load_todos,
 )
 from app.services.ai_service import parse_nlp_with_debug, get_top_tags
@@ -178,6 +179,32 @@ def api_postpone_batch():
 
     result = postpone_todos_batch(line_indexes, target)
     return jsonify({'ok': True, **result})
+
+
+@api_bp.route('/myday/toggle', methods=['POST'])
+@csrf.exempt
+@require_login_json
+def api_myday_toggle():
+    """Add or remove a todo from "My Day" (today's plan).
+
+    Expects JSON: {"marker": "ABC123", "on": true}
+    Returns: {"ok": true}
+    """
+    data = request.get_json(silent=True) or {}
+    marker = data.get('marker')
+    on = data.get('on')
+
+    if not marker:
+        return jsonify({'error': 'Marker required'}), 400
+
+    if not isinstance(on, bool):
+        return jsonify({'error': 'Field "on" must be a boolean'}), 400
+
+    push_undo(read_content(), 'myday')
+    if not set_myday(marker, on):
+        return jsonify({'error': 'Todo not found'}), 404
+
+    return jsonify({'ok': True})
 
 
 @api_bp.route('/move-to-section', methods=['POST'])

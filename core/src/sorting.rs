@@ -103,6 +103,7 @@ mod tests {
             projects: project.map(|p| vec![p.to_string()]).unwrap_or_default(),
             contexts: context.map(|c| vec![c.to_string()]).unwrap_or_default(),
             due,
+            myday: None,
             reference: None,
             recurrence: None,
             note: None,
