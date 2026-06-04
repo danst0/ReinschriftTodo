@@ -20,7 +20,7 @@ DEFAULT_AI_TIMEOUT_SECS = 30
 def get_locale() -> str:
     """Get current locale from session or request."""
     if 'lang' in session:
-        return session['lang']
+        return str(session['lang'])
     accept_languages = request.accept_languages.best_match(TRANSLATIONS.keys())
     return accept_languages or 'de'
 
@@ -311,7 +311,7 @@ def set_language(lang):
 def _todo_to_dict(todo) -> dict:
     """Convert a TodoItem to a dict for template compatibility."""
     if hasattr(todo, 'to_dict'):
-        return todo.to_dict()
+        return dict(todo.to_dict())
 
     # Already a dict
     return dict(todo)

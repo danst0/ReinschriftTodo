@@ -26,7 +26,7 @@ def pop_undo() -> dict | None:
     Returns:
         Dict with 'content' and 'description', or None if empty.
     """
-    stack = session.get(UNDO_SESSION_KEY, [])
+    stack: list[dict] = session.get(UNDO_SESSION_KEY, [])
     if not stack:
         return None
     entry = stack.pop()

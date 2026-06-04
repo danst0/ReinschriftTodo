@@ -53,8 +53,8 @@ def collect_recent_context(todos: list, window_days: int = RECENT_CONTEXT_WINDOW
     all_relevant = open_todos + recent_closed
 
     # Extract topics (projects) and locations (contexts)
-    topics = set()
-    locations = set()
+    topics: set[str] = set()
+    locations: set[str] = set()
     for t in all_relevant:
         if hasattr(t, 'projects'):
             topics.update(p for p in t.projects if p)
@@ -332,6 +332,9 @@ def parse_nlp(text: str) -> Optional[dict[str, Any]]:
 
         parsed = json.loads(raw_response)
         logger.info("Parsed JSON: %s", parsed)
+        if not isinstance(parsed, dict):
+            logger.info("Rejected non-object JSON response: %s", type(parsed).__name__)
+            return None
 
         # Check if input was rejected as non-actionable
         # For verbose mode: check 'rejected' field
@@ -472,7 +475,7 @@ def parse_nlp_with_debug(text: str) -> dict[str, Any]:
         - confidence: The confidence score (if available)
         - error: Error message if something failed
     """
-    debug_info = {
+    debug_info: dict[str, Any] = {
         'system_prompt': None,
         'user_input': text,
         'raw_response': None,

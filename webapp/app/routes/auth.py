@@ -12,7 +12,7 @@ auth_bp = Blueprint('auth', __name__)
 def get_locale() -> str:
     """Get current locale from session or request."""
     if 'lang' in session:
-        return session['lang']
+        return str(session['lang'])
     accept_languages = request.accept_languages.best_match(TRANSLATIONS.keys())
     return accept_languages or 'de'
 

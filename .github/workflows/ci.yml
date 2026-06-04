@@ -10,7 +10,7 @@ jobs:
     name: Rust (check, test, clippy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install system dependencies
         run: |
@@ -40,9 +40,9 @@ jobs:
       run:
         working-directory: webapp
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -57,6 +57,4 @@ jobs:
         run: pytest tests/ -v
 
       - name: mypy
-        # Not yet clean (13 known findings) — report only, don't fail the build
-        continue-on-error: true
         run: mypy app/

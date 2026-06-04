@@ -206,7 +206,8 @@ def load_settings() -> dict[str, Any]:
         return {}
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            settings = json.load(f)
+        return settings if isinstance(settings, dict) else {}
     except (IOError, json.JSONDecodeError) as e:
         logger.warning("Error loading settings: %s", e)
         return {}

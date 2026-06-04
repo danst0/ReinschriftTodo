@@ -40,7 +40,7 @@ def create_app(config_name: str | None = None) -> Flask:
     )
 
     # Honor reverse proxy headers (e.g., X-Forwarded-Proto)
-    app.wsgi_app = ProxyFix(
+    app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
         app.wsgi_app,
         x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1
     )
@@ -201,7 +201,7 @@ def register_context_processors(app: Flask) -> None:
     def get_locale() -> str:
         """Determine the current locale from session or request."""
         if 'lang' in session:
-            return session['lang']
+            return str(session['lang'])
 
         accept_languages = request.accept_languages.best_match(TRANSLATIONS.keys())
         if accept_languages:
