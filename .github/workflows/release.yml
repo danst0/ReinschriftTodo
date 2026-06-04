@@ -46,7 +46,8 @@ jobs:
       - name: Install flatpak-builder
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+          # elfutils provides eu-strip, which flatpak-builder needs for debuginfo
+          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder elfutils
 
       - name: Install GNOME runtime and SDK extensions
         run: |
