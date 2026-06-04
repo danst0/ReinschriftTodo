@@ -16,7 +16,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libgtk-4-dev libadwaita-1-dev cmake clang
+            libgtk-4-dev libadwaita-1-dev libasound2-dev cmake clang
 
       - uses: dtolnay/rust-toolchain@stable
         with:

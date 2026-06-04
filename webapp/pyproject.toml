@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reinschrift-webapp"
-version = "0.22.4"
+version = "0.22.5"
 description = "Reinschrift Todo Web Application"
 readme = "README.md"
 requires-python = ">=3.11"
