@@ -425,6 +425,9 @@ def postpone_todo(line_index: int, target: str) -> bool:
     new_line += f" due:{format_due(new_datetime)}"
     new_line += _myday_segment(item)
 
+    if item.recurrence:
+        new_line += f" rec:{item.recurrence}"
+
     if item.reference and item.reference.strip():
         new_line += f" [[{item.reference.strip()}]]"
 
@@ -494,6 +497,9 @@ def postpone_todos_batch(line_indexes: list[int], target: str) -> dict:
 
         new_line += f" due:{format_due(new_datetime)}"
         new_line += _myday_segment(item)
+
+        if item.recurrence:
+            new_line += f" rec:{item.recurrence}"
 
         if item.reference and item.reference.strip():
             new_line += f" [[{item.reference.strip()}]]"
