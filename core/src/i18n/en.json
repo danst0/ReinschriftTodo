@@ -111,6 +111,8 @@
   "downloading_model": "Downloading voice model…",
   "model_download_finished": "Voice model downloaded successfully",
   "model_download_error": "Error downloading model",
+  "model_not_found": "Speech model not found. Please enable it in the settings.",
+  "close_with_comment": "Close with comment",
   "comment": "Comment",
   "note": "Note",
   "search_placeholder": "Search…",
