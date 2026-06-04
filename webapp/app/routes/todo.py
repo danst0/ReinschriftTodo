@@ -217,7 +217,8 @@ def add():
     if title:
         content = read_content()
         push_undo(content, 'add')
-        add_todo(title)
+        # In the "Mein Tag" view, new todos land directly in today's plan.
+        add_todo(title, myday=request.form.get('myday') == '1')
     return redirect(url_for('main.index'))
 
 

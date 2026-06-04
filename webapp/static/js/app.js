@@ -40,6 +40,7 @@ let appConfig = {
     autoAiOnAdd: false,
     skipDeleteConfirm: true,
     titleAutocomplete: true,
+    currentView: 'all',
     language: 'en',
     translations: {}
 };
@@ -198,10 +199,14 @@ function setupAddForm() {
         if (!original) return;
 
         try {
+            // In the "Mein Tag" view, new todos land directly in today's plan.
             const res = await fetchWithCsrf('/api/add', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: original })
+                body: JSON.stringify({
+                    title: original,
+                    myday: appConfig.currentView === 'myday'
+                })
             });
 
             if (!res.ok) {

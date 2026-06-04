@@ -99,7 +99,7 @@ def api_add():
     if not title or not str(title).strip():
         return jsonify({'error': 'Title required'}), 400
 
-    result = add_todo(title)
+    result = add_todo(title, myday=bool(payload.get('myday')))
     return jsonify({'ok': True, 'marker': result['marker'], 'line_index': result['line_index']})
 
 

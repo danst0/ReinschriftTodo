@@ -2504,6 +2504,8 @@ impl AppState {
         }
 
         let use_ai = self.use_ai_on_new_topic();
+        // In the "Mein Tag" view, new todos land directly in today's plan.
+        let add_to_myday = self.myday_view();
 
         let add_key = match data::add_todo(&title_text) {
             Ok(key) => key,
@@ -2512,6 +2514,12 @@ impl AppState {
                 return;
             }
         };
+
+        if add_to_myday {
+            if let Err(err) = data::set_myday_today(&add_key) {
+                self.show_error(&t("update_error").replace("{}", &err.to_string()));
+            }
+        }
 
         entry.set_text("");
         if let Err(err) = self.reload() {
@@ -2563,6 +2571,11 @@ impl AppState {
                         line_index: 0,
                         marker: Some(marker.clone()),
                     };
+                    // Keep the just-set myday plan; the AI rewrite would
+                    // otherwise drop the token on full re-render.
+                    if add_to_myday {
+                        todo.myday = Some(Local::now().date_naive());
+                    }
 
                     match data::update_todo_details(&todo) {
                         Ok(_) => {
@@ -3222,7 +3235,7 @@ impl AppState {
             let _ = sender.send(VoiceMsg::Transcribing);
 
             let ctx = match WhisperContext::new_with_params(
-                &model_path.to_string_lossy(),
+                &model_path,
                 WhisperContextParameters::default(),
             ) {
                 Ok(c) => c,
@@ -3246,11 +3259,13 @@ impl AppState {
                 return;
             }
 
-            let num_segments = state_whisper.full_n_segments().expect("failed to get segments");
+            let num_segments = state_whisper.full_n_segments();
             let mut result_text = String::new();
             for i in 0..num_segments {
-                if let Ok(segment) = state_whisper.full_get_segment_text(i) {
-                    result_text.push_str(&segment);
+                if let Some(segment) = state_whisper.get_segment(i) {
+                    if let Ok(text) = segment.to_str_lossy() {
+                        result_text.push_str(&text);
+                    }
                 }
             }
 

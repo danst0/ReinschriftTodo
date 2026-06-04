@@ -153,6 +153,67 @@ class TestMydayPreservation:
         assert 'myday:' not in clones[0]
 
 
+class TestAddToMyday:
+    """Adding while in the Mein Tag view plans the new todo for today."""
+
+    def test_add_todo_with_myday_flag(self, storage):
+        result = todo_service.add_todo('Neue Aufgabe', myday=True)
+        line = [l for l in storage.content.splitlines() if f"^{result['marker']}" in l][0]
+        assert f"myday:{TODAY}" in line
+        item = parse_line(line, 0)
+        assert item.in_myday is True
+        assert item.title == 'Neue Aufgabe'
+
+    def test_add_todo_without_flag_has_no_myday(self, storage):
+        result = todo_service.add_todo('Neue Aufgabe')
+        line = [l for l in storage.content.splitlines() if f"^{result['marker']}" in l][0]
+        assert 'myday:' not in line
+
+    def test_add_todo_myday_with_inline_due(self, storage):
+        result = todo_service.add_todo('Aufgabe due:2026-12-24', myday=True)
+        line = [l for l in storage.content.splitlines() if f"^{result['marker']}" in l][0]
+        assert 'due:2026-12-24' in line
+        assert f"myday:{TODAY}" in line
+
+    def test_api_add_with_myday(self, client, monkeypatch):
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        calls = []
+        monkeypatch.setattr(
+            'app.routes.api.add_todo',
+            lambda title, myday=False: calls.append((title, myday)) or {'marker': 'm1', 'line_index': 0},
+        )
+        response = client.post('/api/add', json={'title': 'Task', 'myday': True})
+        assert response.status_code == 200
+        assert calls == [('Task', True)]
+
+    def test_api_add_defaults_to_no_myday(self, client, monkeypatch):
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        calls = []
+        monkeypatch.setattr(
+            'app.routes.api.add_todo',
+            lambda title, myday=False: calls.append((title, myday)) or {'marker': 'm1', 'line_index': 0},
+        )
+        response = client.post('/api/add', json={'title': 'Task'})
+        assert response.status_code == 200
+        assert calls == [('Task', False)]
+
+    def test_form_add_with_myday(self, client, monkeypatch):
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        calls = []
+        monkeypatch.setattr(
+            'app.routes.todo.add_todo',
+            lambda title, myday=False: calls.append((title, myday)) or {'marker': 'm1', 'line_index': 0},
+        )
+        monkeypatch.setattr('app.routes.todo.read_content', lambda: '')
+        monkeypatch.setattr('app.routes.todo.push_undo', lambda *a, **k: None)
+        response = client.post('/add', data={'title': 'Task', 'myday': '1'})
+        assert response.status_code == 302
+        assert calls == [('Task', True)]
+
+
 class TestMydayView:
     """Route-level tests for the ?view=myday index mode."""
 

@@ -153,6 +153,7 @@
 
     <form id="addForm" class="add-form collapsible-form" action="{{ url_for('todo.add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post" style="gap: 0;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if view == 'myday' %}<input type="hidden" name="myday" value="1">{% endif %}
         <input type="text" id="add-input" name="title" placeholder="{{ t.new_task }}" required>
         {% if not auto_ai_on_add %}
         <button type="button" id="smart-btn" class="smart-btn" onclick="handleSmartAdd(this)" title="Smart Add (AI)" aria-label="Smart Add (AI)" style="background: var(--color-accent); color: white; border: none; padding: 0.5rem; cursor: pointer;">
@@ -359,6 +360,7 @@
             aiTimeoutMs: {{ ai_timeout_ms }},
             autoAiOnAdd: {{ 'true' if auto_ai_on_add else 'false' }},
             skipDeleteConfirm: {{ 'true' if skip_delete_confirm else 'false' }},
+            currentView: {{ view | tojson }},
             language: {{ current_lang | tojson }},
             translations: {
                 aiTimeoutNotice: {{ t.ai_timeout_notice | tojson }},

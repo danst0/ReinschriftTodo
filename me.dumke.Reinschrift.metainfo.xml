@@ -39,6 +39,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.22.1" date="2026-06-04">
+      <description>
+        <ul>
+          <li>My Day: new tasks added while the My Day view is active are planned for today automatically (web and desktop, including AI-assisted add)</li>
+          <li>Desktop: update whisper-rs to 0.16 — fixes voice transcription build failure with current libclang</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.22.0" date="2026-06-04">
       <description>
         <ul>

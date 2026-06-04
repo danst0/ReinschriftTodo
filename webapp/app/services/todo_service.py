@@ -117,11 +117,12 @@ def rewrite_line(line: str, done: bool) -> str:
     return updated
 
 
-def add_todo(title: str) -> dict[str, Any]:
+def add_todo(title: str, myday: bool = False) -> dict[str, Any]:
     """Add a new todo.
 
     Args:
         title: Todo title (may include inline metadata).
+        myday: Plan the new todo for today (adds a myday: token).
 
     Returns:
         Dict with 'marker' and 'line_index'.
@@ -143,6 +144,8 @@ def add_todo(title: str) -> dict[str, Any]:
         new_line = f"- [ ] {title}"
     else:
         new_line = f"- [ ] {title} due:{default_due_str}"
+    if myday:
+        new_line += f" myday:{date.today().strftime('%Y-%m-%d')}"
     new_line += f" ^{marker}"
     lines.insert(insert_index, new_line)
 
