@@ -176,5 +176,18 @@
   "enable_reminders": "Erinnerungen aktivieren",
   "remind_before_minutes": "Erinnerungsfenster (Minuten)",
   "key_undo": "Letzte Aktion rückgängig",
-  "overdue_warning": "{} Aufgabe(n) überfällig"
+  "overdue_warning": "{} Aufgabe(n) überfällig",
+  "select_mode": "Auswählen",
+  "selected_count": "{} ausgewählt",
+  "bulk_complete": "Erledigen",
+  "bulk_reopen": "Wieder öffnen",
+  "bulk_set_due": "Fälligkeit…",
+  "bulk_assign": "Zuweisen",
+  "bulk_assign_title": "Projekt/Kontext zuweisen",
+  "bulk_delete_confirm_title": "{} Einträge löschen?",
+  "bulk_completed_count": "{} Einträge erledigt",
+  "bulk_reopened_count": "{} Einträge wieder geöffnet",
+  "bulk_due_set_count": "Fälligkeit für {} Einträge gesetzt",
+  "bulk_assigned_count": "{} Einträge geändert",
+  "bulk_deleted_count": "{} Einträge gelöscht"
 }

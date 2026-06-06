@@ -176,5 +176,18 @@
   "enable_reminders": "Activer les rappels",
   "remind_before_minutes": "Fenêtre de rappel (minutes)",
   "key_undo": "Annuler la dernière action",
-  "overdue_warning": "{} tâche(s) en retard"
+  "overdue_warning": "{} tâche(s) en retard",
+  "select_mode": "Sélectionner",
+  "selected_count": "{} sélectionnées",
+  "bulk_complete": "Terminer",
+  "bulk_reopen": "Rouvrir",
+  "bulk_set_due": "Échéance…",
+  "bulk_assign": "Attribuer",
+  "bulk_assign_title": "Attribuer projet/contexte",
+  "bulk_delete_confirm_title": "Supprimer {} tâches ?",
+  "bulk_completed_count": "{} tâches terminées",
+  "bulk_reopened_count": "{} tâches rouvertes",
+  "bulk_due_set_count": "Échéance définie pour {} tâches",
+  "bulk_assigned_count": "{} tâches mises à jour",
+  "bulk_deleted_count": "{} tâches supprimées"
 }

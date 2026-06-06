@@ -36,9 +36,10 @@ pub(crate) use crate::renderer::{render_line, rewrite_due, rewrite_line};
 
 // Re-export todo business logic
 pub use crate::todo::{
-    add_todo, add_todo_full, delete_todo, load_todos, next_due_date, set_due_sometime,
-    set_due_today, set_due_tomorrow, set_due_weekend, set_myday_today, toggle_todo, undo,
-    unique_titles_by_frequency, unset_myday, update_todo_details,
+    add_todo, add_todo_full, assign_project_context_batch, delete_todo, delete_todos, load_todos,
+    next_due_date, set_due_batch, set_due_sometime, set_due_today, set_due_tomorrow,
+    set_due_weekend, set_myday_today, toggle_todo, toggle_todos, undo,
+    unique_titles_by_frequency, unset_myday, update_todo_details, DueTarget,
 };
 
 // Re-export conflict types

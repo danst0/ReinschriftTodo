@@ -176,5 +176,18 @@
   "enable_reminders": "Aktivera påminnelser",
   "remind_before_minutes": "Påminnelsefönster (minuter)",
   "key_undo": "Ångra senaste åtgärd",
-  "overdue_warning": "{} uppgift(er) försenad(e)"
+  "overdue_warning": "{} uppgift(er) försenad(e)",
+  "select_mode": "Välj",
+  "selected_count": "{} valda",
+  "bulk_complete": "Slutför",
+  "bulk_reopen": "Öppna igen",
+  "bulk_set_due": "Förfaller…",
+  "bulk_assign": "Tilldela",
+  "bulk_assign_title": "Tilldela projekt/kontext",
+  "bulk_delete_confirm_title": "Ta bort {} uppgifter?",
+  "bulk_completed_count": "{} uppgifter slutförda",
+  "bulk_reopened_count": "{} uppgifter öppnade igen",
+  "bulk_due_set_count": "Förfallodatum satt för {} uppgifter",
+  "bulk_assigned_count": "{} uppgifter uppdaterade",
+  "bulk_deleted_count": "{} uppgifter borttagna"
 }

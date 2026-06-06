@@ -44,6 +44,9 @@ from app.services.todo_service import (
     handle_toggle_with_recurrence,
     postpone_todo,
     postpone_todos_batch,
+    toggle_todos_batch,
+    delete_todos_batch,
+    assign_todos_batch,
     set_myday,
 )
 
@@ -89,6 +92,9 @@ __all__ = [
     'handle_toggle_with_recurrence',
     'postpone_todo',
     'postpone_todos_batch',
+    'toggle_todos_batch',
+    'delete_todos_batch',
+    'assign_todos_batch',
     'set_myday',
     # AI
     'parse_nlp',

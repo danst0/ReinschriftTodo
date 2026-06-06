@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
@@ -359,6 +359,10 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         }
         .pulse {
             animation: pulse 1s infinite;
+        }
+        .selected-row {
+            background-color: alpha(@accent_bg_color, 0.15);
+            border-radius: 6px;
         }",
     );
     gtk::style_context_add_provider_for_display(
@@ -419,6 +423,13 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         .build();
     refresh_btn.add_css_class("flat");
     header.pack_end(&refresh_btn);
+
+    let select_btn = gtk::ToggleButton::builder()
+        .icon_name("object-select-symbolic")
+        .tooltip_text(&t("select_mode"))
+        .build();
+    select_btn.add_css_class("flat");
+    header.pack_end(&select_btn);
 
     let overlay = adw::ToastOverlay::new();
     overlay.set_hexpand(true);
@@ -574,11 +585,107 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         state_for_add2.handle_add_submission(&new_entry_for_add2);
     });
 
+    // Aktionsleiste für den Mehrfachauswahl-Modus (Issue #8)
+    let selection_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    selection_row.set_margin_start(12);
+    selection_row.set_margin_end(12);
+    selection_row.set_margin_top(6);
+    selection_row.set_margin_bottom(6);
+
+    let selection_count = gtk::Label::builder()
+        .label(&t("selected_count").replace("{}", "0"))
+        .xalign(0.0)
+        .build();
+    selection_count.add_css_class("dim-label");
+    selection_row.append(&selection_count);
+
+    let selection_spacer = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    selection_spacer.set_hexpand(true);
+    selection_row.append(&selection_spacer);
+
+    let bulk_complete_btn = gtk::Button::with_label(&t("bulk_complete"));
+    selection_row.append(&bulk_complete_btn);
+
+    let bulk_reopen_btn = gtk::Button::with_label(&t("bulk_reopen"));
+    selection_row.append(&bulk_reopen_btn);
+
+    // Fälligkeits-Popover mit den vier bekannten Zielen
+    let due_popover_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    let bulk_due_today_btn = gtk::Button::with_label(&t("set_due_today"));
+    let bulk_due_tomorrow_btn = gtk::Button::with_label(&t("postpone_tomorrow"));
+    let bulk_due_weekend_btn = gtk::Button::with_label(&t("postpone_weekend"));
+    let bulk_due_sometime_btn = gtk::Button::with_label(&t("postpone_sometimes"));
+    for btn in [
+        &bulk_due_today_btn,
+        &bulk_due_tomorrow_btn,
+        &bulk_due_weekend_btn,
+        &bulk_due_sometime_btn,
+    ] {
+        btn.add_css_class("flat");
+        due_popover_box.append(btn);
+    }
+    let due_popover = gtk::Popover::builder().child(&due_popover_box).build();
+    let bulk_due_btn = gtk::MenuButton::builder()
+        .label(&t("bulk_set_due"))
+        .popover(&due_popover)
+        .build();
+    selection_row.append(&bulk_due_btn);
+
+    let bulk_assign_btn = gtk::Button::with_label(&t("bulk_assign"));
+    selection_row.append(&bulk_assign_btn);
+
+    let bulk_delete_btn = gtk::Button::with_label(&t("delete"));
+    bulk_delete_btn.add_css_class("destructive-action");
+    selection_row.append(&bulk_delete_btn);
+
+    let selection_revealer = gtk::Revealer::builder()
+        .child(&selection_row)
+        .transition_type(gtk::RevealerTransitionType::SlideDown)
+        .build();
+
+    *state.selection_bar.borrow_mut() = Some(selection_revealer.clone());
+    *state.selection_count_label.borrow_mut() = Some(selection_count.clone());
+    *state.selection_toggle.borrow_mut() = Some(select_btn.clone());
+
+    select_btn.connect_toggled(clone!(#[weak] state, move |btn| {
+        state.set_selection_mode(btn.is_active());
+    }));
+
+    bulk_complete_btn.connect_clicked(clone!(#[weak] state, move |_| {
+        state.bulk_complete(true);
+    }));
+    bulk_reopen_btn.connect_clicked(clone!(#[weak] state, move |_| {
+        state.bulk_complete(false);
+    }));
+    bulk_delete_btn.connect_clicked(clone!(#[weak] state, move |_| {
+        state.bulk_delete();
+    }));
+    bulk_assign_btn.connect_clicked(clone!(#[weak] state, move |_| {
+        state.bulk_assign();
+    }));
+    bulk_due_today_btn.connect_clicked(clone!(#[weak] state, #[weak] due_popover, move |_| {
+        due_popover.popdown();
+        state.bulk_set_due(data::DueTarget::Today);
+    }));
+    bulk_due_tomorrow_btn.connect_clicked(clone!(#[weak] state, #[weak] due_popover, move |_| {
+        due_popover.popdown();
+        state.bulk_set_due(data::DueTarget::Tomorrow);
+    }));
+    bulk_due_weekend_btn.connect_clicked(clone!(#[weak] state, #[weak] due_popover, move |_| {
+        due_popover.popdown();
+        state.bulk_set_due(data::DueTarget::Weekend);
+    }));
+    bulk_due_sometime_btn.connect_clicked(clone!(#[weak] state, #[weak] due_popover, move |_| {
+        due_popover.popdown();
+        state.bulk_set_due(data::DueTarget::Sometime);
+    }));
+
     // Erzeuge das vertikale Content-Layout noch vor dem Einfügen der neuen Zeile
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content.append(&controls);
     content.append(&search_revealer);
     content.append(&add_revealer);
+    content.append(&selection_revealer);
     content.append(&overlay);
 
     let list_view = create_list_view(&state);
@@ -666,6 +773,10 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         let has_ctrl = modifiers.contains(gdk::ModifierType::CONTROL_MASK);
         
         if key == gdk::Key::Escape {
+            if state_for_keys.selection_mode.get() {
+                state_for_keys.set_selection_mode(false);
+                return glib::Propagation::Stop;
+            }
             search_btn_esc.set_active(false);
             add_task_btn_esc.set_active(false);
             glib::Propagation::Stop
@@ -836,6 +947,13 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         container.set_margin_top(6);
         container.set_margin_bottom(6);
 
+        // Auswahl-Checkbox für den Mehrfachauswahl-Modus (nur dort sichtbar)
+        let select_check = gtk::CheckButton::new();
+        select_check.set_valign(gtk::Align::Center);
+        select_check.set_visible(false);
+        select_check.add_css_class("selection-mode");
+        container.append(&select_check);
+
         let check = gtk::CheckButton::new();
         check.set_valign(gtk::Align::Center);
         container.append(&check);
@@ -958,7 +1076,11 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             };
             
             let Some(state) = state_item_key.upgrade() else { return glib::Propagation::Proceed; };
-            
+            // Im Auswahlmodus keine Schnellaktionen per Tastatur auslösen
+            if state.selection_mode.get() {
+                return glib::Propagation::Proceed;
+            }
+
             let unicode = keyval.to_unicode();
             match keyval {
                 gdk::Key::space => {
@@ -994,12 +1116,65 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             list_item.set_data("stack", stack.downgrade());
             list_item.set_data("header-label", header_label.downgrade());
             list_item.set_data("todo-check", check.downgrade());
+            list_item.set_data("select-check", select_check.downgrade());
             list_item.set_data("todo-title", title.downgrade());
             list_item.set_data("todo-meta", meta.downgrade());
             list_item.set_data("todo-button", tomorrow_btn.downgrade());
+            list_item.set_data("todo-myday-btn", myday_btn.downgrade());
+            list_item.set_data("todo-today-btn", today_btn.downgrade());
+            list_item.set_data("todo-weekend-btn", weekend_btn.downgrade());
+            list_item.set_data("todo-sometimes-btn", sometimes_btn.downgrade());
             list_item.set_data("picker-title", picker_title.downgrade());
             list_item.set_data("picker-meta", picker_meta.downgrade());
         }
+
+        // Auswahl-Checkbox: Marker in die Auswahl aufnehmen/entfernen
+        let select_list = list_item.downgrade();
+        let select_state = factory_state.clone();
+        select_check.connect_toggled(move |btn| {
+            let Some(list_item) = select_list.upgrade() else {
+                return;
+            };
+            let Some(obj) = list_item.item() else {
+                return;
+            };
+            let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else {
+                return;
+            };
+            let entry = todo_obj.borrow::<ListEntry>();
+            let todo = match &*entry {
+                ListEntry::Item(todo) => todo.clone(),
+                _ => return,
+            };
+            drop(entry);
+
+            // Zeilen-Hervorhebung direkt am Stack pflegen
+            if let Some(stack) = btn
+                .ancestor(gtk::Stack::static_type())
+                .and_downcast::<gtk::Stack>()
+            {
+                if btn.is_active() {
+                    stack.add_css_class("selected-row");
+                } else {
+                    stack.remove_css_class("selected-row");
+                }
+            }
+
+            let Some(state) = select_state.upgrade() else {
+                return;
+            };
+            if !state.selection_mode.get() {
+                return;
+            }
+            let Some(marker) = todo.key.marker.as_deref() else {
+                return;
+            };
+            let is_selected = state.selected_markers.borrow().contains(marker);
+            if btn.is_active() == is_selected {
+                return;
+            }
+            state.toggle_selection_marker(marker, btn.is_active());
+        });
 
         let weak_list = list_item.downgrade();
         let state_for_handler = factory_state.clone();
@@ -1023,6 +1198,9 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             }
 
             if let Some(state) = state_for_handler.upgrade() {
+                if state.selection_mode.get() {
+                    return;
+                }
                 if let Err(err) = state.toggle_item(&todo, btn.is_active()) {
                     state.show_error(&t("update_error").replace("{}", &err.to_string()));
                 }
@@ -1207,6 +1385,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         match &*entry {
             ListEntry::Header(label) => {
                 stack.set_visible_child_name("header");
+                stack.remove_css_class("selected-row");
                 if let Some(header_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::Label>>("header-label")
                 } {
@@ -1230,10 +1409,61 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                     stack.remove_css_class("pulse");
                 }
 
+                // Mehrfachauswahl: Sichtbarkeiten in BEIDEN Modi explizit
+                // setzen, da Zeilen recycelt werden.
+                let (selection_mode, is_selected) = highlight_state
+                    .upgrade()
+                    .map(|s| {
+                        let mode = s.selection_mode.get();
+                        let sel = mode
+                            && todo
+                                .key
+                                .marker
+                                .as_deref()
+                                .map(|m| s.selected_markers.borrow().contains(m))
+                                .unwrap_or(false);
+                        (mode, sel)
+                    })
+                    .unwrap_or((false, false));
+
+                if is_selected {
+                    stack.add_css_class("selected-row");
+                } else {
+                    stack.remove_css_class("selected-row");
+                }
+
+                if let Some(select_ref_ptr) = unsafe {
+                    list_item.data::<glib::WeakRef<gtk::CheckButton>>("select-check")
+                } {
+                    if let Some(select_widget) = unsafe { select_ref_ptr.as_ref() }.upgrade() {
+                        select_widget.set_visible(selection_mode);
+                        if select_widget.is_active() != is_selected {
+                            select_widget.set_active(is_selected);
+                        }
+                    }
+                }
+
+                for button_key in [
+                    "todo-myday-btn",
+                    "todo-today-btn",
+                    "todo-button",
+                    "todo-weekend-btn",
+                    "todo-sometimes-btn",
+                ] {
+                    if let Some(btn_ref_ptr) = unsafe {
+                        list_item.data::<glib::WeakRef<gtk::Button>>(button_key)
+                    } {
+                        if let Some(btn) = unsafe { btn_ref_ptr.as_ref() }.upgrade() {
+                            btn.set_visible(!selection_mode);
+                        }
+                    }
+                }
+
                 if let Some(check_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::CheckButton>>("todo-check")
                 } {
                     if let Some(check_widget) = unsafe { check_ref_ptr.as_ref() }.upgrade() {
+                        check_widget.set_visible(!selection_mode);
                         if check_widget.is_active() != todo.done {
                             check_widget.set_active(todo.done);
                         }
@@ -1262,6 +1492,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             ListEntry::PickerItem(todo) => {
                 stack.set_visible_child_name("picker");
                 stack.remove_css_class("pulse");
+                stack.remove_css_class("selected-row");
 
                 if let Some(title_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::Label>>("picker-title")
@@ -1311,6 +1542,13 @@ struct AppState {
     ai_runtime: Arc<Runtime>,
     recently_updated: RefCell<Option<String>>,
     notified_items: RefCell<HashSet<String>>,
+    /// Mehrfachauswahl-Modus (Issue #8): Klicks selektieren statt zu bearbeiten.
+    selection_mode: Cell<bool>,
+    /// Auswahl per Marker — line_index verschiebt sich bei jedem Reload.
+    selected_markers: RefCell<HashSet<String>>,
+    selection_bar: RefCell<Option<gtk::Revealer>>,
+    selection_count_label: RefCell<Option<gtk::Label>>,
+    selection_toggle: RefCell<Option<gtk::ToggleButton>>,
     _debug_mode: bool,
 }
 
@@ -1378,6 +1616,11 @@ impl AppState {
             _debug_mode: debug_mode,
             recently_updated: RefCell::new(None),
             notified_items: RefCell::new(HashSet::new()),
+            selection_mode: Cell::new(false),
+            selected_markers: RefCell::new(HashSet::new()),
+            selection_bar: RefCell::new(None),
+            selection_count_label: RefCell::new(None),
+            selection_toggle: RefCell::new(None),
             last_fingerprint: RefCell::new(None),
         }
     }
@@ -3436,7 +3679,252 @@ impl AppState {
             _ => return,
         };
         drop(entry);
+
+        // Im Auswahlmodus toggelt ein Klick auf die Zeile die Auswahl
+        // statt den Bearbeiten-Dialog zu öffnen.
+        if self.selection_mode.get() {
+            if let Some(marker) = todo.key.marker.as_deref() {
+                let selected = !self.selected_markers.borrow().contains(marker);
+                self.toggle_selection_marker(marker, selected);
+                // Re-Bind der Zeile, damit Checkbox und Hervorhebung folgen.
+                self.store.splice(position, 1, &[todo_obj]);
+            }
+            return;
+        }
+
         self.show_details_dialog(&todo);
+    }
+
+    // ----- Mehrfachauswahl (Issue #8) ------------------------------------
+
+    fn set_selection_mode(self: &Rc<Self>, active: bool) {
+        if self.selection_mode.get() == active {
+            return;
+        }
+        self.selection_mode.set(active);
+        if !active {
+            self.selected_markers.borrow_mut().clear();
+        }
+        if let Some(revealer) = self.selection_bar.borrow().as_ref() {
+            revealer.set_reveal_child(active);
+        }
+        if let Some(toggle) = self.selection_toggle.borrow().as_ref() {
+            if toggle.is_active() != active {
+                toggle.set_active(active);
+            }
+        }
+        self.update_selection_count();
+        self.repopulate_store();
+    }
+
+    fn toggle_selection_marker(self: &Rc<Self>, marker: &str, selected: bool) {
+        {
+            let mut set = self.selected_markers.borrow_mut();
+            if selected {
+                set.insert(marker.to_string());
+            } else {
+                set.remove(marker);
+            }
+        }
+        self.update_selection_count();
+    }
+
+    fn update_selection_count(&self) {
+        if let Some(label) = self.selection_count_label.borrow().as_ref() {
+            let count = self.selected_markers.borrow().len();
+            label.set_text(&t("selected_count").replace("{}", &count.to_string()));
+        }
+    }
+
+    /// Auswahl-Marker auf TodoKeys der aktuell geladenen Einträge abbilden.
+    fn selected_keys(&self) -> Vec<data::TodoKey> {
+        let set = self.selected_markers.borrow();
+        self.cached_items
+            .borrow()
+            .iter()
+            .filter(|item| {
+                item.key
+                    .marker
+                    .as_deref()
+                    .map(|m| set.contains(m))
+                    .unwrap_or(false)
+            })
+            .map(|item| item.key.clone())
+            .collect()
+    }
+
+    /// Gemeinsamer Abschluss aller Massenaktionen: Modus verlassen,
+    /// Liste neu laden, Undo-Toast mit Anzahl zeigen.
+    fn finish_bulk_action(self: &Rc<Self>, result: Result<usize>, message_key: &str) {
+        match result {
+            Ok(count) => {
+                self.set_selection_mode(false);
+                if let Err(err) = self.reload() {
+                    self.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                    return;
+                }
+                self.show_undo_toast(&t(message_key).replace("{}", &count.to_string()));
+            }
+            Err(err) => {
+                if self.handle_conflict(&err) {
+                    return;
+                }
+                self.show_error(&err.to_string());
+            }
+        }
+    }
+
+    fn bulk_complete(self: &Rc<Self>, done: bool) {
+        let keys = self.selected_keys();
+        if keys.is_empty() {
+            return;
+        }
+        let message_key = if done {
+            "bulk_completed_count"
+        } else {
+            "bulk_reopened_count"
+        };
+        self.finish_bulk_action(data::toggle_todos(&keys, done), message_key);
+    }
+
+    fn bulk_set_due(self: &Rc<Self>, target: data::DueTarget) {
+        let keys = self.selected_keys();
+        if keys.is_empty() {
+            return;
+        }
+        self.finish_bulk_action(data::set_due_batch(&keys, target), "bulk_due_set_count");
+    }
+
+    fn bulk_delete(self: &Rc<Self>) {
+        let keys = self.selected_keys();
+        if keys.is_empty() {
+            return;
+        }
+
+        let perform_delete = Rc::new({
+            let state = Rc::clone(self);
+            move || {
+                state.finish_bulk_action(data::delete_todos(&keys), "bulk_deleted_count");
+            }
+        });
+
+        if self.skip_delete_confirmation() {
+            perform_delete();
+            return;
+        }
+
+        let Some(parent) = self.window.upgrade() else {
+            perform_delete();
+            return;
+        };
+
+        let count = self.selected_markers.borrow().len();
+        let confirm_dialog = AlertDialog::builder().modal(true).build();
+        confirm_dialog.set_message(
+            &t("bulk_delete_confirm_title").replace("{}", &count.to_string()),
+        );
+        confirm_dialog.set_detail(&t("delete_confirmation_desc"));
+        confirm_dialog.set_buttons(&[&t("delete"), &t("cancel")]);
+        confirm_dialog.set_default_button(1);
+        confirm_dialog.set_cancel_button(1);
+
+        let perform_delete_cb = perform_delete.clone();
+        confirm_dialog.choose(
+            Some(&parent),
+            Option::<&gio::Cancellable>::None,
+            move |result| {
+                if let Ok(0) = result {
+                    perform_delete_cb();
+                }
+            },
+        );
+    }
+
+    fn bulk_assign(self: &Rc<Self>) {
+        let keys = self.selected_keys();
+        if keys.is_empty() {
+            return;
+        }
+        let Some(parent) = self.window.upgrade() else {
+            self.show_error(&t("no_window"));
+            return;
+        };
+
+        let dialog = adw::Window::builder()
+            .title(&t("bulk_assign_title"))
+            .transient_for(&parent)
+            .modal(true)
+            .default_width(380)
+            .build();
+        dialog.set_destroy_with_parent(true);
+
+        let key_controller = gtk::EventControllerKey::new();
+        let dialog_for_esc = dialog.clone();
+        key_controller.connect_key_pressed(move |_, keyval, _, _| {
+            if keyval == gdk::Key::Escape {
+                dialog_for_esc.close();
+                glib::Propagation::Stop
+            } else {
+                glib::Propagation::Proceed
+            }
+        });
+        dialog.add_controller(key_controller);
+
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        content.set_margin_top(16);
+        content.set_margin_bottom(16);
+        content.set_margin_start(20);
+        content.set_margin_end(20);
+
+        let (known_projects, known_contexts) = self.collect_existing_tags();
+
+        let (project_entry, project_input_box) =
+            create_suggestion_entry("", &known_projects, "+");
+        let project_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        project_row.append(&gtk::Label::builder().label(&t("project_plus")).xalign(0.0).build());
+        project_row.append(&project_input_box);
+        content.append(&project_row);
+
+        let (context_entry, context_input_box) =
+            create_suggestion_entry("", &known_contexts, "@");
+        let context_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        context_row.append(&gtk::Label::builder().label(&t("location_at")).xalign(0.0).build());
+        context_row.append(&context_input_box);
+        content.append(&context_row);
+
+        let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        buttons.set_halign(gtk::Align::End);
+        let cancel_btn = gtk::Button::with_label(&t("cancel"));
+        let assign_btn = gtk::Button::with_label(&t("bulk_assign"));
+        assign_btn.add_css_class("suggested-action");
+        buttons.append(&cancel_btn);
+        buttons.append(&assign_btn);
+        content.append(&buttons);
+        dialog.set_content(Some(&content));
+        dialog.set_default_widget(Some(&assign_btn));
+
+        let dialog_cancel = dialog.clone();
+        cancel_btn.connect_clicked(move |_| {
+            dialog_cancel.close();
+        });
+
+        let state = Rc::clone(self);
+        let dialog_assign = dialog.clone();
+        assign_btn.connect_clicked(move |_| {
+            let project = project_entry.text().trim().trim_start_matches('+').trim().to_string();
+            let context = context_entry.text().trim().trim_start_matches('@').trim().to_string();
+            if project.is_empty() && context.is_empty() {
+                dialog_assign.close();
+                return;
+            }
+            let project_opt = (!project.is_empty()).then_some(project.as_str());
+            let context_opt = (!context.is_empty()).then_some(context.as_str());
+            let result = data::assign_project_context_batch(&keys, project_opt, context_opt);
+            dialog_assign.close();
+            state.finish_bulk_action(result, "bulk_assigned_count");
+        });
+
+        dialog.present();
     }
 
     fn show_details_dialog(self: &Rc<Self>, todo: &TodoItem) {

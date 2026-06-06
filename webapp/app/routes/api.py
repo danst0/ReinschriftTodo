@@ -14,6 +14,9 @@ from app.services import (
     update_todo_by_marker,
     parse_nlp,
     postpone_todos_batch,
+    toggle_todos_batch,
+    delete_todos_batch,
+    assign_todos_batch,
     set_myday,
     load_todos,
 )
@@ -177,7 +180,90 @@ def api_postpone_batch():
     except (TypeError, ValueError):
         return jsonify({'error': 'Invalid line indexes'}), 400
 
+    push_undo(read_content(), 'postpone')
     result = postpone_todos_batch(line_indexes, target)
+    return jsonify({'ok': True, **result})
+
+
+def _parse_line_indexes(data: dict):
+    """Validate the line_indexes field of a batch payload.
+
+    Returns:
+        Tuple of (line_indexes, error_response). Exactly one is None.
+    """
+    line_indexes = data.get('line_indexes', [])
+    if not line_indexes:
+        return None, (jsonify({'error': 'No line indexes provided'}), 400)
+    try:
+        return [int(idx) for idx in line_indexes], None
+    except (TypeError, ValueError):
+        return None, (jsonify({'error': 'Invalid line indexes'}), 400)
+
+
+@api_bp.route('/toggle-batch', methods=['POST'])
+@csrf.exempt
+@require_login_json
+def api_toggle_batch():
+    """Toggle multiple todos in a single operation.
+
+    Expects JSON: {"line_indexes": [0, 1, 2], "done": true}
+    Returns: {"ok": true, "updated": 3, "failed": []}
+    """
+    data = request.get_json(silent=True) or {}
+    line_indexes, error = _parse_line_indexes(data)
+    if error:
+        return error
+
+    done = data.get('done')
+    if not isinstance(done, bool):
+        return jsonify({'error': 'Field "done" must be a boolean'}), 400
+
+    push_undo(read_content(), 'complete' if done else 'reopen')
+    result = toggle_todos_batch(line_indexes, done)
+    return jsonify({'ok': True, **result})
+
+
+@api_bp.route('/delete-batch', methods=['POST'])
+@csrf.exempt
+@require_login_json
+def api_delete_batch():
+    """Delete multiple todos in a single operation.
+
+    Expects JSON: {"line_indexes": [0, 1, 2]}
+    Returns: {"ok": true, "updated": 3, "failed": []}
+    """
+    data = request.get_json(silent=True) or {}
+    line_indexes, error = _parse_line_indexes(data)
+    if error:
+        return error
+
+    push_undo(read_content(), 'delete')
+    result = delete_todos_batch(line_indexes)
+    return jsonify({'ok': True, **result})
+
+
+@api_bp.route('/assign-batch', methods=['POST'])
+@csrf.exempt
+@require_login_json
+def api_assign_batch():
+    """Add a project and/or context to multiple todos in a single operation.
+
+    Expects JSON: {"line_indexes": [0, 1], "project": "tax", "context": "home"}
+    At least one of project/context is required.
+    Returns: {"ok": true, "updated": 2, "failed": []}
+    """
+    data = request.get_json(silent=True) or {}
+    line_indexes, error = _parse_line_indexes(data)
+    if error:
+        return error
+
+    project = (data.get('project') or '').strip() or None
+    context = (data.get('context') or '').strip() or None
+    if not project and not context:
+        return jsonify({'error': 'Project or context required'}), 400
+
+    push_undo(read_content(), 'assign')
+    result = assign_todos_batch(line_indexes, project=project, context=context)
     return jsonify({'ok': True, **result})
 
 

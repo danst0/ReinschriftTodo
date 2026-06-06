@@ -1686,3 +1686,119 @@ a.bottom-nav-btn {
     opacity: 0.4;
     pointer-events: none;
 }
+
+/* ==========================================================================
+   Bulk select mode (multi-select mass actions, issue #8)
+   ========================================================================== */
+
+.bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--color-primary-light);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    position: sticky;
+    top: var(--safe-area-top);
+    z-index: var(--z-sticky);
+    flex-wrap: wrap;
+}
+
+.bulk-count {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-primary);
+    white-space: nowrap;
+    padding: 0 var(--spacing-sm);
+}
+
+.bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+    flex-grow: 1;
+}
+
+.bulk-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    min-height: 36px;
+    cursor: pointer;
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    transition: background var(--transition-fast);
+}
+
+.bulk-actions button:hover:not(:disabled) {
+    background: var(--color-bg-elevated);
+}
+
+.bulk-actions button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.bulk-actions .bulk-danger {
+    color: var(--color-danger);
+}
+
+.bulk-separator {
+    width: 1px;
+    height: 24px;
+    background: var(--color-border-strong);
+    margin: 0 var(--spacing-xs);
+}
+
+.bulk-cancel {
+    margin-left: auto;
+}
+
+/* Selected items */
+.todo-item.selected {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+    background: var(--color-primary-light);
+}
+
+/* While selecting: dim per-item quick actions and hide swipe/drag affordances
+   (clicks are intercepted anyway — this just keeps the visuals honest). */
+body.select-mode .todo-item .actions,
+body.select-mode .todo-item .drag-handle {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+body.select-mode .todo-item .swipe-indicator {
+    display: none;
+}
+
+body.select-mode .todo-item,
+body.select-mode .todo-item .content,
+body.select-mode .todo-item .checkbox {
+    cursor: pointer;
+}
+
+@media screen and (max-width: 480px) {
+    /* Fixed above the bottom navigation on mobile. */
+    .bulk-bar {
+        position: fixed;
+        top: auto;
+        bottom: calc(60px + var(--safe-area-bottom));
+        left: var(--spacing-sm);
+        right: var(--spacing-sm);
+        box-shadow: var(--shadow-lg);
+        z-index: var(--z-bottom-nav);
+    }
+
+    .bulk-actions .bulk-label {
+        display: none;
+    }
+}

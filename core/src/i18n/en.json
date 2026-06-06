@@ -176,5 +176,18 @@
   "enable_reminders": "Enable reminders",
   "remind_before_minutes": "Reminder window (minutes)",
   "key_undo": "Undo last action",
-  "overdue_warning": "{} task(s) overdue"
+  "overdue_warning": "{} task(s) overdue",
+  "select_mode": "Select",
+  "selected_count": "{} selected",
+  "bulk_complete": "Complete",
+  "bulk_reopen": "Reopen",
+  "bulk_set_due": "Due…",
+  "bulk_assign": "Assign",
+  "bulk_assign_title": "Assign project/context",
+  "bulk_delete_confirm_title": "Delete {} items?",
+  "bulk_completed_count": "{} items completed",
+  "bulk_reopened_count": "{} items reopened",
+  "bulk_due_set_count": "Due date set for {} items",
+  "bulk_assigned_count": "{} items updated",
+  "bulk_deleted_count": "{} items deleted"
 }

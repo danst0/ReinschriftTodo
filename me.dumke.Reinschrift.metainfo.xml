@@ -39,6 +39,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.23.1" date="2026-06-06">
+      <description>
+        <ul>
+          <li>Multi-select mode with mass actions (delete, complete/reopen, set due date, assign project/context) in GUI and web app</li>
+          <li>Fixed: completion date no longer glued to the ^ID token, keeping marker lookups working on completed tasks</li>
+          <li>Fixed: recurring tasks now get a fresh marker for the next occurrence in the web app</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.0" date="2026-06-06">
       <description>
         <ul>

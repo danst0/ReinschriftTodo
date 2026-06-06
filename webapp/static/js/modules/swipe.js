@@ -3,6 +3,7 @@
  */
 
 import { toggleTodo, postponeTodo } from './todo-actions.js';
+import { isSelectMode } from './bulk-select.js';
 
 const SWIPE_THRESHOLD = 80;
 const SWIPE_MAX = 120;
@@ -34,6 +35,8 @@ export function initSwipeGestures() {
         }
 
         item.addEventListener('touchstart', (e) => {
+            // In select mode taps toggle selection; never start a swipe.
+            if (isSelectMode()) return;
             if (e.touches.length > 1) return;
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
@@ -43,7 +46,7 @@ export function initSwipeGestures() {
         }, { passive: true });
 
         item.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
+            if (!isDragging || isSelectMode()) return;
 
             currentX = e.touches[0].clientX - startX;
             const currentY = e.touches[0].clientY - startY;

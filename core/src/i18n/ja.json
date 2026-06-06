@@ -176,5 +176,18 @@
   "enable_reminders": "リマインダーを有効にする",
   "remind_before_minutes": "リマインダー時間 (分)",
   "key_undo": "最後の操作を元に戻す",
-  "overdue_warning": "{}件のタスクが期限超過"
+  "overdue_warning": "{}件のタスクが期限超過",
+  "select_mode": "選択",
+  "selected_count": "{}件選択中",
+  "bulk_complete": "完了にする",
+  "bulk_reopen": "再開する",
+  "bulk_set_due": "期限…",
+  "bulk_assign": "割り当て",
+  "bulk_assign_title": "プロジェクト/コンテキストを割り当て",
+  "bulk_delete_confirm_title": "{}件のタスクを削除しますか？",
+  "bulk_completed_count": "{}件のタスクを完了しました",
+  "bulk_reopened_count": "{}件のタスクを再開しました",
+  "bulk_due_set_count": "{}件のタスクに期限を設定しました",
+  "bulk_assigned_count": "{}件のタスクを更新しました",
+  "bulk_deleted_count": "{}件のタスクを削除しました"
 }

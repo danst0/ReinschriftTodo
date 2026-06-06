@@ -153,7 +153,7 @@ pub fn apply_completion_marker(line: &str, done: bool) -> String {
             // Already present. Check if it's after the ID.
             if let Some(id_m) = ID_RE.find(line) {
                 if m.start() > id_m.start() {
-                    let done_str = m.as_str().to_string();
+                    let done_str = format!("{} ", m.as_str().trim_start());
                     let mut s = line.to_string();
                     s.replace_range(m.range(), "");
                     if let Some(new_id_m) = ID_RE.find(&s) {
@@ -164,15 +164,15 @@ pub fn apply_completion_marker(line: &str, done: bool) -> String {
             }
             line.to_string()
         } else {
-            // Add completion marker
+            // Add completion marker, keeping the ^ID a whitespace-separated
+            // token (find_line_by_marker matches tokens).
             let today = Local::now().date_naive().format("%Y-%m-%d");
-            let done_marker = format!(" ✅ {today}");
             if let Some(id_m) = ID_RE.find(line) {
                 let mut s = line.to_string();
-                s.insert_str(id_m.start(), &done_marker);
+                s.insert_str(id_m.start(), &format!("✅ {today} "));
                 s
             } else {
-                format!("{line}{done_marker}")
+                format!("{line} ✅ {today}")
             }
         }
     } else {
@@ -232,6 +232,28 @@ mod tests {
         let line = "- [ ] Task ^abc12345";
         let updated = rewrite_myday(line, false).expect("rewrite ok");
         assert_eq!(updated, line);
+    }
+
+    #[test]
+    fn completion_marker_keeps_id_token_separated() {
+        let line = "- [ ] Task ^abc12345";
+        let done = rewrite_line(line, true).expect("rewrite ok");
+        let today = Local::now().date_naive().format("%Y-%m-%d");
+        assert_eq!(done, format!("- [x] Task ✅ {today} ^abc12345"));
+        assert!(
+            done.split_whitespace().any(|t| t == "^abc12345"),
+            "marker must stay a token: {done}"
+        );
+
+        let reopened = rewrite_line(&done, false).expect("rewrite ok");
+        assert_eq!(reopened, line);
+    }
+
+    #[test]
+    fn completion_marker_without_id_appends() {
+        let done = rewrite_line("- [ ] Task", true).expect("rewrite ok");
+        let today = Local::now().date_naive().format("%Y-%m-%d");
+        assert_eq!(done, format!("- [x] Task ✅ {today}"));
     }
 }
 

@@ -46,6 +46,56 @@ def _myday_segment(item: TodoItem) -> str:
     return ""
 
 
+def _render_todo_line(item: TodoItem, original_line: str,
+                      due: Optional[datetime] = None) -> str:
+    """Reconstruct a markdown line from a parsed item.
+
+    Mirrors the Rust renderer: quoted +project/@context tokens, canonical
+    field order, completion date preserved from the original line.
+
+    Args:
+        item: Parsed todo item to render.
+        original_line: Source line (used to preserve the completion date).
+        due: Override for the due date; defaults to the item's own.
+    """
+    marker = ensure_marker(item.marker)
+
+    new_line = "- [x] " if item.done else "- [ ] "
+    new_line += item.title.strip()
+
+    for project in item.projects:
+        project_clean = normalize_prefix(project, '+')
+        if project_clean:
+            new_line += f" {_render_tagged('+', project_clean)}"
+
+    for context in item.contexts:
+        context_clean = normalize_prefix(context, '@')
+        if context_clean:
+            new_line += f" {_render_tagged('@', context_clean)}"
+
+    due_value = due if due is not None else item.due
+    if due_value:
+        new_line += f" due:{format_due(due_value)}"
+    new_line += _myday_segment(item)
+
+    if item.recurrence:
+        new_line += f" rec:{item.recurrence}"
+
+    if item.reference and item.reference.strip():
+        new_line += f" [[{item.reference.strip()}]]"
+
+    if item.note:
+        new_line += f' ~note:"{escape_note(item.note)}"'
+
+    if item.done:
+        match = COMPLETION_RE.search(original_line)
+        if match:
+            new_line += match.group(0)
+
+    new_line += f" ^{marker}"
+    return new_line
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -340,7 +390,8 @@ def handle_toggle_with_recurrence(line_index: int) -> None:
                 new_line += f" [[{item.reference.strip()}]]"
             if item.note:
                 new_line += f' ~note:"{escape_note(item.note)}"'
-            new_line += f" ^{ensure_marker(item.marker)}"
+            # Fresh marker: the completed occurrence keeps the old one.
+            new_line += f" ^{generate_marker()}"
             insert_line(new_line)
 
 
@@ -407,45 +458,7 @@ def postpone_todo(line_index: int, target: str) -> bool:
 
     new_datetime, new_time = calculate_postpone_date(target, item.due)
 
-    # Reconstruct line
-    original_line = lines[line_index]
-    marker = ensure_marker(item.marker)
-
-    new_line = "- [x] " if item.done else "- [ ] "
-    new_line += item.title.strip()
-
-    for project in item.projects:
-        project_clean = normalize_prefix(project, '+')
-        if project_clean:
-            new_line += f" +{project_clean}"
-
-    for context in item.contexts:
-        context_clean = normalize_prefix(context, '@')
-        if context_clean:
-            new_line += f" @{context_clean}"
-
-    # Always set the new due date/time
-    new_line += f" due:{format_due(new_datetime)}"
-    new_line += _myday_segment(item)
-
-    if item.recurrence:
-        new_line += f" rec:{item.recurrence}"
-
-    if item.reference and item.reference.strip():
-        new_line += f" [[{item.reference.strip()}]]"
-
-    if item.note:
-        new_line += f' ~note:"{escape_note(item.note)}"'
-
-    # Preserve completion date if done
-    if item.done:
-        match = COMPLETION_RE.search(original_line)
-        if match:
-            new_line += match.group(0)
-
-    new_line += f" ^{marker}"
-
-    lines[line_index] = new_line
+    lines[line_index] = _render_todo_line(item, lines[line_index], due=new_datetime)
     write_content('\n'.join(lines) + '\n')
     return True
 
@@ -482,43 +495,162 @@ def postpone_todos_batch(line_indexes: list[int], target: str) -> dict:
             continue
 
         new_datetime, _ = calculate_postpone_date(target, item.due)
-        original_line = lines[line_index]
-        marker = ensure_marker(item.marker)
-
-        new_line = "- [x] " if item.done else "- [ ] "
-        new_line += item.title.strip()
-
-        for project in item.projects:
-            project_clean = normalize_prefix(project, '+')
-            if project_clean:
-                new_line += f" +{project_clean}"
-
-        for context in item.contexts:
-            context_clean = normalize_prefix(context, '@')
-            if context_clean:
-                new_line += f" @{context_clean}"
-
-        new_line += f" due:{format_due(new_datetime)}"
-        new_line += _myday_segment(item)
-
-        if item.recurrence:
-            new_line += f" rec:{item.recurrence}"
-
-        if item.reference and item.reference.strip():
-            new_line += f" [[{item.reference.strip()}]]"
-
-        if item.note:
-            new_line += f' ~note:"{escape_note(item.note)}"'
-
-        if item.done:
-            match = COMPLETION_RE.search(original_line)
-            if match:
-                new_line += match.group(0)
-
-        new_line += f" ^{marker}"
-
-        lines[line_index] = new_line
+        lines[line_index] = _render_todo_line(item, lines[line_index], due=new_datetime)
         updated += 1
+
+    if updated > 0:
+        write_content('\n'.join(lines) + '\n')
+
+    return {'updated': updated, 'failed': failed}
+
+
+def toggle_todos_batch(line_indexes: list[int], done: bool) -> dict:
+    """Toggle multiple todos in a single read-modify-write cycle.
+
+    Completing a recurring task mirrors handle_toggle_with_recurrence: an
+    overdue occurrence is rescheduled to today before completion, and the
+    next occurrence is appended within the same write.
+
+    Args:
+        line_indexes: List of line indexes to toggle.
+        done: New completion status for all items.
+
+    Returns:
+        Dict with 'updated' count and 'failed' list of indexes.
+    """
+    content = read_content()
+    lines = content.splitlines()
+
+    updated = 0
+    failed = []
+    spawned: list[str] = []
+    now = datetime.now()
+
+    for line_index in line_indexes:
+        if not 0 <= line_index < len(lines):
+            failed.append(line_index)
+            continue
+
+        line = lines[line_index]
+        item = parse_line(line, line_index)
+        if not item:
+            failed.append(line_index)
+            continue
+
+        if done and item.recurrence and not item.done:
+            # Reschedule overdue recurring tasks to today before completing.
+            if item.due and item.due < now:
+                due_dt = datetime.combine(now.date(), item.due.time())
+                line = re.sub(
+                    r'due:\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?',
+                    f'due:{format_due(due_dt)}', line,
+                )
+            next_due = next_due_date(item.due, item.recurrence)
+            if next_due:
+                next_item = parse_line(line, line_index)
+                if next_item:
+                    next_item.done = False
+                    next_item.marker = generate_marker()
+                    next_item.myday = None
+                    spawned.append(_render_todo_line(next_item, "", due=next_due))
+
+        lines[line_index] = rewrite_line(line, done)
+        updated += 1
+
+    # Append next occurrences only after all index-based edits, so the
+    # insertions cannot shift lines the indexes still refer to.
+    if spawned:
+        insert_index = len(lines)
+        for i, existing in enumerate(lines):
+            if existing.strip() == "---":
+                insert_index = i
+                break
+        for offset, new_line in enumerate(spawned):
+            lines.insert(insert_index + offset, new_line)
+
+    if updated > 0:
+        write_content('\n'.join(lines) + '\n')
+
+    return {'updated': updated, 'failed': failed}
+
+
+def delete_todos_batch(line_indexes: list[int]) -> dict:
+    """Delete multiple todos in a single read-modify-write cycle.
+
+    Indexes are removed bottom-up so earlier removals cannot shift lines
+    that later removals still refer to.
+
+    Args:
+        line_indexes: List of line indexes to delete.
+
+    Returns:
+        Dict with 'updated' count and 'failed' list of indexes.
+    """
+    content = read_content()
+    lines = content.splitlines()
+
+    valid = sorted({i for i in line_indexes if 0 <= i < len(lines)}, reverse=True)
+    failed = [i for i in line_indexes if not 0 <= i < len(lines)]
+
+    for index in valid:
+        del lines[index]
+
+    if valid:
+        write_content('\n'.join(lines) + '\n')
+
+    return {'updated': len(valid), 'failed': failed}
+
+
+def assign_todos_batch(line_indexes: list[int], project: Optional[str] = None,
+                       context: Optional[str] = None) -> dict:
+    """Add a project and/or context to multiple todos in a single
+    read-modify-write cycle. Items already carrying the token are left
+    untouched and do not count as updated.
+
+    Args:
+        line_indexes: List of line indexes to update.
+        project: Project name to add (without '+' prefix).
+        context: Context name to add (without '@' prefix).
+
+    Returns:
+        Dict with 'updated' count and 'failed' list of indexes.
+    """
+    project_clean = normalize_prefix(project, '+') if project else None
+    context_clean = normalize_prefix(context, '@') if context else None
+    if not project_clean and not context_clean:
+        return {'updated': 0, 'failed': list(line_indexes)}
+
+    content = read_content()
+    lines = content.splitlines()
+
+    updated = 0
+    failed = []
+
+    for line_index in line_indexes:
+        if not 0 <= line_index < len(lines):
+            failed.append(line_index)
+            continue
+
+        item = parse_line(lines[line_index], line_index)
+        if not item:
+            failed.append(line_index)
+            continue
+
+        changed = False
+        if project_clean:
+            existing_projects = {normalize_prefix(p, '+') for p in item.projects}
+            if project_clean not in existing_projects:
+                item.projects.append(project_clean)
+                changed = True
+        if context_clean:
+            existing_contexts = {normalize_prefix(c, '@') for c in item.contexts}
+            if context_clean not in existing_contexts:
+                item.contexts.append(context_clean)
+                changed = True
+
+        if changed:
+            lines[line_index] = _render_todo_line(item, lines[line_index])
+            updated += 1
 
     if updated > 0:
         write_content('\n'.join(lines) + '\n')

@@ -176,5 +176,18 @@
   "enable_reminders": "Activar recordatorios",
   "remind_before_minutes": "Ventana de recordatorio (minutos)",
   "key_undo": "Deshacer última acción",
-  "overdue_warning": "{} tarea(s) vencida(s)"
+  "overdue_warning": "{} tarea(s) vencida(s)",
+  "select_mode": "Seleccionar",
+  "selected_count": "{} seleccionadas",
+  "bulk_complete": "Completar",
+  "bulk_reopen": "Reabrir",
+  "bulk_set_due": "Vence…",
+  "bulk_assign": "Asignar",
+  "bulk_assign_title": "Asignar proyecto/contexto",
+  "bulk_delete_confirm_title": "¿Eliminar {} tareas?",
+  "bulk_completed_count": "{} tareas completadas",
+  "bulk_reopened_count": "{} tareas reabiertas",
+  "bulk_due_set_count": "Fecha límite fijada para {} tareas",
+  "bulk_assigned_count": "{} tareas actualizadas",
+  "bulk_deleted_count": "{} tareas eliminadas"
 }

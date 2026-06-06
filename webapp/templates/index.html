@@ -92,6 +92,7 @@
     <div class="header-container">
         <h1>{{ t.todos }}</h1>
         <div class="header-icons">
+            <button type="button" id="toggle-select" class="icon-btn" onclick="toggleSelectMode()" title="{{ t.select_mode }}" aria-label="{{ t.select_mode }}">{{ icon('check-square', size=22) }}</button>
             <button type="button" id="toggle-settings" class="icon-btn" onclick="openSettings()" title="{{ t.settings }}" aria-label="{{ t.settings }}">{{ icon('settings', size=22) }}</button>
             <button type="button" id="toggle-search" class="icon-btn {% if q %}active{% endif %}" onclick="toggleSearch()" title="{{ t.search_placeholder }}" aria-label="{{ t.search_placeholder }}">{{ icon('search', size=22) }}</button>
             <button type="button" id="toggle-add" class="icon-btn" onclick="toggleAdd()" title="{{ t.add }}" aria-label="{{ t.add }}">{{ icon('plus', size=22) }}</button>
@@ -135,7 +136,45 @@
 
           <button type="button" class="refresh-button" onclick="manualReload()" aria-label="{{ t.reload }}">{{ icon('refresh', size=16) }} <span>{{ t.reload }}</span></button>
     </div>
-    
+
+    <!-- Bulk action bar (multi-select mode) -->
+    <div id="bulk-action-bar" class="bulk-bar" hidden>
+        <span id="bulk-count" class="bulk-count">0</span>
+        <div class="bulk-actions">
+            <button type="button" data-bulk-action="complete" onclick="bulkComplete(true)" title="{{ t.bulk_complete }}" aria-label="{{ t.bulk_complete }}">{{ icon('check', size=18) }}<span class="bulk-label">{{ t.bulk_complete }}</span></button>
+            <button type="button" data-bulk-action="reopen" onclick="bulkComplete(false)" title="{{ t.bulk_reopen }}" aria-label="{{ t.bulk_reopen }}">{{ icon('square', size=18) }}<span class="bulk-label">{{ t.bulk_reopen }}</span></button>
+            <span class="bulk-separator" aria-hidden="true"></span>
+            <button type="button" data-bulk-action="due-today" onclick="bulkSetDue('today')" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar', size=18) }}</button>
+            <button type="button" data-bulk-action="due-tomorrow" onclick="bulkSetDue('tomorrow')" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right', size=18) }}</button>
+            <button type="button" data-bulk-action="due-weekend" onclick="bulkSetDue('weekend')" title="{{ t.next_weekend }}" aria-label="{{ t.next_weekend }}">{{ icon('umbrella', size=18) }}</button>
+            <button type="button" data-bulk-action="due-sometime" onclick="bulkSetDue('sometime')" title="{{ t.sometime }}" aria-label="{{ t.sometime }}">{{ icon('clock', size=18) }}</button>
+            <span class="bulk-separator" aria-hidden="true"></span>
+            <button type="button" data-bulk-action="assign" onclick="openBulkAssign()" title="{{ t.bulk_assign }}" aria-label="{{ t.bulk_assign }}">{{ icon('file-text', size=18) }}<span class="bulk-label">{{ t.bulk_assign }}</span></button>
+            <button type="button" data-bulk-action="delete" class="bulk-danger" onclick="bulkDelete()" title="{{ t.delete }}" aria-label="{{ t.delete }}">{{ icon('trash', size=18) }}</button>
+        </div>
+        <button type="button" class="bulk-cancel icon-btn" onclick="exitSelectMode()" title="{{ t.cancel }}" aria-label="{{ t.cancel }}">{{ icon('x', size=18) }}</button>
+    </div>
+
+    <!-- Bulk assign modal -->
+    <div id="bulkAssignModal" class="modal">
+        <div class="modal-content" style="max-width: 380px;">
+            <span class="close" onclick="closeBulkAssign()">&times;</span>
+            <h2>{{ t.bulk_assign_title }}</h2>
+            <div class="form-group">
+                <label for="bulk-assign-project">{{ t.project }}</label>
+                <input type="text" id="bulk-assign-project" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="bulk-assign-context">{{ t.context }}</label>
+                <input type="text" id="bulk-assign-context" autocomplete="off">
+            </div>
+            <div class="buttons">
+                <button type="button" class="btn-primary" onclick="submitBulkAssign()">{{ t.save }}</button>
+                <button type="button" class="btn-secondary" onclick="closeBulkAssign()">{{ t.cancel }}</button>
+            </div>
+        </div>
+    </div>
+
     <form id="search-form" action="{{ url_for('main.index') }}" method="get" class="collapsible-form {% if q %}visible{% endif %}" style="gap: 0.5rem;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" id="search-input" name="q" value="{{ q or '' }}" placeholder="{{ t.search_placeholder }}" style="flex-grow: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; outline: none;">
@@ -380,7 +419,14 @@
                 shareValidityForever: {{ t.share_validity_forever | tojson }},
                 shareValidUntil: {{ t.share_valid_until | tojson }},
                 shareValidForever: {{ t.share_valid_forever | tojson }},
-                close: {{ t.cancel | tojson }}
+                close: {{ t.cancel | tojson }},
+                selectedCount: {{ t.selected_count | tojson }},
+                bulkComplete: {{ t.bulk_complete | tojson }},
+                bulkReopen: {{ t.bulk_reopen | tojson }},
+                bulkSetDue: {{ t.bulk_set_due | tojson }},
+                bulkAssign: {{ t.bulk_assign | tojson }},
+                bulkDelete: {{ t.delete | tojson }},
+                bulkDeleteConfirm: {{ t.bulk_delete_confirm | tojson }}
             }
         };
 

@@ -31,6 +31,11 @@ import { startNotificationCheck } from './modules/notifications.js';
 import { initTitleAutocomplete, invalidateTitleCache } from './modules/autocomplete.js';
 import { openShareDialog, configureShare } from './modules/share.js';
 import { addToMyDay, removeFromMyDay, setMydayReloadCallback } from './modules/myday.js';
+import {
+    initBulkSelect, toggleSelectMode, exitSelectMode, reattachSelectState,
+    bulkComplete, bulkSetDue, bulkDelete,
+    openBulkAssign, closeBulkAssign, submitBulkAssign
+} from './modules/bulk-select.js';
 
 // Configuration - will be set by template
 let appConfig = {
@@ -123,6 +128,13 @@ function initApp(config = {}) {
     // Configure share dialog translations
     configureShare(appConfig.translations || {});
 
+    // Set up multi-select bulk actions
+    initBulkSelect({
+        translations: appConfig.translations || {},
+        reloadCallback: handleReload,
+        autoReloadRestart: () => startAutoReload(30000, handleReloadComplete)
+    });
+
     // Set up scroll position persistence
     setupScrollPersistence();
 
@@ -142,6 +154,7 @@ async function handleReload() {
 function handleReloadComplete() {
     initSwipeGestures();
     initDragDrop();
+    reattachSelectState();
     if (lastImprovedMarker) {
         highlightMarker(lastImprovedMarker);
     }
@@ -380,7 +393,15 @@ window.ReinschriftApp = {
     applyFilter,
     autoReload: handleReload,
     manualReload,
-    showUndoToast
+    showUndoToast,
+    toggleSelectMode,
+    exitSelectMode,
+    bulkComplete,
+    bulkSetDue,
+    bulkDelete,
+    openBulkAssign,
+    closeBulkAssign,
+    submitBulkAssign
 };
 
 // Also expose as simple globals for backwards compatibility
@@ -410,3 +431,11 @@ window.addToMyDay = addToMyDay;
 window.removeFromMyDay = removeFromMyDay;
 window.ReinschriftApp.addToMyDay = addToMyDay;
 window.ReinschriftApp.removeFromMyDay = removeFromMyDay;
+window.toggleSelectMode = toggleSelectMode;
+window.exitSelectMode = exitSelectMode;
+window.bulkComplete = bulkComplete;
+window.bulkSetDue = bulkSetDue;
+window.bulkDelete = bulkDelete;
+window.openBulkAssign = openBulkAssign;
+window.closeBulkAssign = closeBulkAssign;
+window.submitBulkAssign = submitBulkAssign;
