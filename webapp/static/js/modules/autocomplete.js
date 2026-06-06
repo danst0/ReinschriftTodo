@@ -16,13 +16,20 @@
 import { fetchWithCsrf } from './api.js';
 
 const ENDPOINT = '/api/title-suggestions';
+const SEMANTIC_ENDPOINT = '/api/semantic-suggestions';
 const MIN_CHARS = 2;
 const MAX_RESULTS = 8;
+// Semantic lookups are debounced and need a bit more text to be useful.
+const SEMANTIC_MIN_CHARS = 4;
+const SEMANTIC_DEBOUNCE_MS = 300;
 
 let cachedSuggestions = null; // [{title, marker}]
 let inflight = null;
 let translations = {};
 let onDuplicated = null;
+// Flipped off for the rest of the page load when the backend reports
+// the feature disabled/unavailable — silent substring fallback.
+let semanticEnabled = false;
 
 async function fetchSuggestions(force = false) {
     if (!force && cachedSuggestions) return cachedSuggestions;
@@ -70,6 +77,38 @@ function filterSuggestions(query, suggestions) {
     return out;
 }
 
+async function fetchSemantic(query) {
+    try {
+        const res = await fetch(
+            `${SEMANTIC_ENDPOINT}?q=${encodeURIComponent(query)}&mode=tags`,
+            { credentials: 'same-origin' }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.enabled === false) {
+            semanticEnabled = false;
+            return [];
+        }
+        return Array.isArray(data.items) ? data.items : [];
+    } catch (err) {
+        console.warn('semantic suggestions fetch failed', err);
+        return [];
+    }
+}
+
+/** Quote a tag for inline +project/@context syntax if it contains spaces. */
+function quoteTag(tag) {
+    return /\s/.test(tag) ? `"${tag}"` : tag;
+}
+
+/** The typed text plus the semantic hit's tags (auto-tagging). */
+function composeWithTags(typed, hit) {
+    let value = typed.trim();
+    for (const p of hit.projects || []) value += ` +${quoteTag(p)}`;
+    for (const c of hit.contexts || []) value += ` @${quoteTag(c)}`;
+    return value;
+}
+
 async function duplicateTask(marker) {
     try {
         const res = await fetchWithCsrf('/api/duplicate', {
@@ -86,7 +125,7 @@ async function duplicateTask(marker) {
     }
 }
 
-function attachDropdown(input, { allowDuplicate = false } = {}) {
+function attachDropdown(input, { allowDuplicate = false, allowSemantic = false } = {}) {
     // Position-fixed so we don't interfere with existing flex/grid layouts.
     const dropdown = document.createElement('ul');
     dropdown.className = 'autocomplete-dropdown';
@@ -103,6 +142,8 @@ function attachDropdown(input, { allowDuplicate = false } = {}) {
 
     let activeIndex = -1;
     let currentMatches = [];
+    let semanticMatches = [];
+    let semanticTimer = null;
 
     const close = () => {
         dropdown.hidden = true;
@@ -112,7 +153,7 @@ function attachDropdown(input, { allowDuplicate = false } = {}) {
     };
 
     const setActive = (idx) => {
-        const items = dropdown.querySelectorAll('li');
+        const items = dropdown.querySelectorAll('li.autocomplete-item');
         items.forEach((li, i) => {
             li.classList.toggle('active', i === idx);
             if (i === idx) li.scrollIntoView({ block: 'nearest' });
@@ -122,7 +163,10 @@ function attachDropdown(input, { allowDuplicate = false } = {}) {
 
     const accept = (idx) => {
         if (idx < 0 || idx >= currentMatches.length) return;
-        input.value = currentMatches[idx].title;
+        const match = currentMatches[idx];
+        // Semantic hits auto-tag: keep the typed text, append the hit's
+        // +projects/@contexts. Substring hits replace the text as before.
+        input.value = match.semantic ? composeWithTags(input.value, match) : match.title;
         input.focus();
         // Move caret to end
         const len = input.value.length;
@@ -132,19 +176,30 @@ function attachDropdown(input, { allowDuplicate = false } = {}) {
 
     const render = (matches) => {
         dropdown.innerHTML = '';
-        currentMatches = matches;
-        if (matches.length === 0) {
+        // Dedupe semantic hits against substring matches (marker or title).
+        const seenMarkers = new Set(matches.map(m => m.marker).filter(Boolean));
+        const seenTitles = new Set(matches.map(m => m.title.toLowerCase()));
+        const semantic = semanticMatches.filter(hit =>
+            !(hit.marker && seenMarkers.has(hit.marker)) &&
+            !seenTitles.has(hit.title.toLowerCase())
+        );
+        currentMatches = [
+            ...matches.map(m => ({ ...m, semantic: false })),
+            ...semantic.map(m => ({ ...m, semantic: true }))
+        ];
+        if (currentMatches.length === 0) {
             close();
             return;
         }
-        matches.forEach((match, i) => {
+        let renderIndex = 0;
+        const addRow = (match, i, extraLabel) => {
             const li = document.createElement('li');
             li.className = 'autocomplete-item';
             li.setAttribute('role', 'option');
 
             const titleSpan = document.createElement('span');
             titleSpan.className = 'autocomplete-title';
-            titleSpan.textContent = match.title;
+            titleSpan.textContent = extraLabel ? `${match.title} ${extraLabel}` : match.title;
             li.appendChild(titleSpan);
 
             if (allowDuplicate && match.marker) {
@@ -178,7 +233,24 @@ function attachDropdown(input, { allowDuplicate = false } = {}) {
             });
             li.addEventListener('mouseenter', () => setActive(i));
             dropdown.appendChild(li);
-        });
+        };
+
+        matches.forEach((match, i) => addRow(match, i));
+
+        if (semantic.length > 0) {
+            const header = document.createElement('li');
+            header.className = 'autocomplete-section-header';
+            header.setAttribute('aria-hidden', 'true');
+            header.textContent = translations.semanticSection || 'Similar tasks';
+            dropdown.appendChild(header);
+            semantic.forEach((hit, j) => {
+                const tags = [
+                    ...(hit.projects || []).map(p => `+${quoteTag(p)}`),
+                    ...(hit.contexts || []).map(c => `@${quoteTag(c)}`)
+                ].join(' ');
+                addRow(hit, matches.length + j, tags || null);
+            });
+        }
         positionDropdown();
         dropdown.hidden = false;
         activeIndex = -1;
@@ -191,7 +263,27 @@ function attachDropdown(input, { allowDuplicate = false } = {}) {
         if (!dropdown.hidden) positionDropdown();
     });
 
+    // Debounced semantic lookup; results merge into the next render as a
+    // labeled section below the substring matches.
+    const scheduleSemantic = () => {
+        if (!allowSemantic || !semanticEnabled) return;
+        if (semanticTimer) clearTimeout(semanticTimer);
+        const query = input.value.trim();
+        if (query.length < SEMANTIC_MIN_CHARS) return;
+        semanticTimer = setTimeout(async () => {
+            const items = await fetchSemantic(query);
+            // Ignore stale responses and don't reopen after blur.
+            if (input.value.trim() !== query) return;
+            if (document.activeElement !== input) return;
+            semanticMatches = items;
+            const suggestions = await fetchSuggestions();
+            render(filterSuggestions(input.value, suggestions));
+        }, SEMANTIC_DEBOUNCE_MS);
+    };
+
     input.addEventListener('input', async () => {
+        semanticMatches = []; // typed text changed — old hits are stale
+        scheduleSemantic();
         const suggestions = await fetchSuggestions();
         render(filterSuggestions(input.value, suggestions));
     });
@@ -247,7 +339,11 @@ function attachDropdown(input, { allowDuplicate = false } = {}) {
  * @param {boolean} [opts.enabled=true] - Disable to no-op (e.g. user pref).
  * @param {string[]} [opts.duplicateSelectors=[]] - Subset of inputs whose
  *   suggestions get a copy button that duplicates the matched task.
- * @param {object} [opts.translations={}] - Localized strings (duplicate).
+ * @param {string[]} [opts.semanticSelectors=[]] - Subset of inputs that get
+ *   a debounced "similar tasks" section (Ollama embeddings); selecting a
+ *   hit keeps the typed text and appends the hit's +projects/@contexts.
+ * @param {object} [opts.translations={}] - Localized strings (duplicate,
+ *   semanticSection).
  * @param {function} [opts.onDuplicated] - Called with the new marker after
  *   a successful duplicate (reload + highlight).
  */
@@ -255,16 +351,21 @@ export function initTitleAutocomplete({
     inputSelectors = [],
     enabled = true,
     duplicateSelectors = [],
+    semanticSelectors = [],
     translations: t = {},
     onDuplicated: duplicatedCallback = null
 } = {}) {
     if (!enabled) return;
     translations = t;
     onDuplicated = duplicatedCallback;
+    semanticEnabled = semanticSelectors.length > 0;
     for (const sel of inputSelectors) {
         const el = document.querySelector(sel);
         if (el && el.tagName === 'INPUT') {
-            attachDropdown(el, { allowDuplicate: duplicateSelectors.includes(sel) });
+            attachDropdown(el, {
+                allowDuplicate: duplicateSelectors.includes(sel),
+                allowSemantic: semanticSelectors.includes(sel)
+            });
         }
     }
     // Warm the cache so first keystroke is instant.

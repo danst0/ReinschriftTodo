@@ -18,3 +18,10 @@
         {% include '_todo_list.html' %}
     {% endwith %}
 {% endif %}
+
+{% if semantic_results %}
+    <div class="section-header">{{ t.search_results_semantic }}</div>
+    {% with todos=semantic_results %}
+        {% include '_todo_list.html' %}
+    {% endwith %}
+{% endif %}

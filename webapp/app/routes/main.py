@@ -189,17 +189,41 @@ def index():
         for t in done_results:
             t['section'] = None
 
+        # 4. Semantically similar todos (Ollama embeddings, optional) —
+        #    deduped against the substring sections above. Empty when the
+        #    feature is disabled or the backend is unavailable.
+        from app.services.embedding_service import query_similar
+        semantic_results = []
+        semantic_hits = query_similar(request.args.get('q', ''), mode='search')
+        if semantic_hits:
+            shown = {
+                (t['line_index'], t['marker'])
+                for t in current_results + open_results + done_results
+            }
+            by_marker = {t['marker']: t for t in all_todos_dicts if t['marker']}
+            for hit in semantic_hits:
+                todo_dict = by_marker.get(hit['marker'])
+                if todo_dict is None:
+                    continue
+                if (todo_dict['line_index'], todo_dict['marker']) in shown:
+                    continue
+                copy = todo_dict.copy()
+                copy['section'] = None
+                semantic_results.append(copy)
+
         if request.args.get('partial'):
             return render_template('_search_results.html',
                                   current_results=current_results,
                                   open_results=open_results,
                                   done_results=done_results,
+                                  semantic_results=semantic_results,
                                   q=q)
 
         return render_template('index.html',
                               current_results=current_results,
                               open_results=open_results,
                               done_results=done_results,
+                              semantic_results=semantic_results,
                               q=q,
                               show_done=show_done,
                               show_due_only=show_due_only,

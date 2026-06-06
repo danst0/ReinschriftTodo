@@ -1426,6 +1426,34 @@ button, a, .checkbox, .filter-link, .todo-item {
     background: var(--color-bg-elevated);
 }
 
+/* Labeled section header for semantic "similar tasks" suggestions */
+.autocomplete-section-header {
+    padding: 0.35rem 0.8rem 0.2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border);
+    cursor: default;
+}
+
+/* Inline duplicate warning below the add form (warn-only, never blocks) */
+.duplicate-warning {
+    margin-top: 0.35rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--color-border-strong);
+    border-left: 3px solid #e1b12c;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-elevated);
+    color: var(--color-text);
+    font-size: 0.9rem;
+}
+
+.duplicate-warning[hidden] {
+    display: none;
+}
+
 /* ==========================================================================
    Drag and Drop between Sections
    ========================================================================== */

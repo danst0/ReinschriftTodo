@@ -409,6 +409,7 @@
             autoAiOnAdd: {{ 'true' if auto_ai_on_add else 'false' }},
             skipDeleteConfirm: {{ 'true' if skip_delete_confirm else 'false' }},
             titleAutocomplete: {{ 'true' if title_autocomplete else 'false' }},
+            semanticEnabled: {{ 'true' if config.SEMANTIC_ENABLED else 'false' }},
             currentView: {{ view | tojson }},
             language: {{ current_lang | tojson }},
             translations: {
@@ -437,7 +438,9 @@
                 bulkAssign: {{ t.bulk_assign | tojson }},
                 bulkDelete: {{ t.delete | tojson }},
                 bulkDeleteConfirm: {{ t.bulk_delete_confirm | tojson }},
-                duplicate: {{ t.duplicate | tojson }}
+                duplicate: {{ t.duplicate | tojson }},
+                semanticSection: {{ t.semantic_section | tojson }},
+                duplicateWarning: {{ t.duplicate_warning | tojson }}
             }
         };
 

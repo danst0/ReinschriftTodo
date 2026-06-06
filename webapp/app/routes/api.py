@@ -478,6 +478,45 @@ def get_title_suggestions():
     })
 
 
+@api_bp.route('/semantic-suggestions')
+@require_login_json
+def api_semantic_suggestions():
+    """Semantically similar todos for a query (Ollama embeddings).
+
+    Query params: q (text), mode ('tags' | 'search', default 'tags').
+    Returns {"enabled": bool, "items": [...]} — enabled is false when the
+    feature is off or the embedding backend is unavailable, so the
+    frontend silently falls back to substring behavior. Never 500s.
+    """
+    from app.services.embedding_service import is_semantic_enabled, query_similar
+
+    q = (request.args.get('q') or '').strip()
+    mode = request.args.get('mode', 'tags')
+    if not q:
+        return jsonify({'enabled': is_semantic_enabled(), 'items': []})
+    items = query_similar(q, mode=mode)
+    if items is None:
+        return jsonify({'enabled': False, 'items': []})
+    return jsonify({'enabled': True, 'items': items})
+
+
+@api_bp.route('/check-duplicate')
+@require_login_json
+def api_check_duplicate():
+    """Warn about a very similar OPEN task before adding a new one.
+
+    Query param: title. Returns {"enabled": bool, "match": {...} | null}.
+    Conservative threshold; the frontend only warns, never blocks.
+    """
+    from app.services.embedding_service import find_duplicate
+
+    title = (request.args.get('title') or '').strip()
+    if not title:
+        return jsonify({'enabled': False, 'match': None})
+    available, match = find_duplicate(title)
+    return jsonify({'enabled': available, 'match': match})
+
+
 @api_bp.route('/duplicate', methods=['POST'])
 @csrf.exempt
 @require_login_json

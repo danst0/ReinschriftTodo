@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.23.4" date="2026-06-06">
+      <description>
+        <ul>
+          <li>Web app: semantic suggestions via Ollama embeddings (opt-in) — similar past tasks with their tags while typing, a "similar by meaning" search section, and a duplicate warning before adding</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.3" date="2026-06-06">
       <description>
         <ul>

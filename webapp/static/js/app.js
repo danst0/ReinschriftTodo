@@ -120,16 +120,23 @@ function initApp(config = {}) {
     setupAddForm();
 
     // Bind title autocomplete to Add and Edit inputs; the Add input's
-    // suggestions get a copy button that duplicates the matched task.
+    // suggestions get a copy button that duplicates the matched task and,
+    // if enabled, a semantic "similar tasks" section (auto-tagging).
     initTitleAutocomplete({
         inputSelectors: ['#add-input', '#edit-title'],
         enabled: appConfig.titleAutocomplete !== false,
         duplicateSelectors: ['#add-input'],
+        semanticSelectors: appConfig.semanticEnabled ? ['#add-input'] : [],
         translations: appConfig.translations || {},
         onDuplicated: (marker) => {
             autoReload().then(() => highlightMarker(marker));
         }
     });
+
+    // Warn (never block) when the typed title closely matches an open task.
+    if (appConfig.semanticEnabled) {
+        setupDuplicateWarning();
+    }
 
     // Configure share dialog translations
     configureShare(appConfig.translations || {});
@@ -251,6 +258,71 @@ function setupAddForm() {
             alert('Add failed');
         }
     };
+}
+
+/**
+ * Warn about a very similar open task while typing in the Add input.
+ * Debounced; warn-only — adding is never blocked. Disables itself for the
+ * rest of the page load when the backend reports the feature unavailable.
+ */
+function setupDuplicateWarning() {
+    const input = document.getElementById('add-input');
+    const addForm = document.getElementById('addForm');
+    if (!input || !addForm) return;
+
+    const DEBOUNCE_MS = 600;
+    const MIN_CHARS = 4;
+    let available = true;
+    let timer = null;
+
+    const warning = document.createElement('div');
+    warning.id = 'duplicate-warning';
+    warning.className = 'duplicate-warning';
+    warning.hidden = true;
+    addForm.insertAdjacentElement('afterend', warning);
+
+    const hide = () => {
+        warning.hidden = true;
+        warning.textContent = '';
+    };
+
+    input.addEventListener('input', () => {
+        if (timer) clearTimeout(timer);
+        const title = input.value.trim();
+        if (!available || title.length < MIN_CHARS) {
+            hide();
+            return;
+        }
+        timer = setTimeout(async () => {
+            try {
+                const res = await fetch(
+                    `/api/check-duplicate?title=${encodeURIComponent(title)}`,
+                    { credentials: 'same-origin' }
+                );
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.enabled === false) {
+                    available = false;
+                    hide();
+                    return;
+                }
+                if (input.value.trim() !== title) return; // stale response
+                if (data.match) {
+                    const label = (appConfig.translations || {}).duplicateWarning
+                        || 'Did you mean…?';
+                    warning.textContent = `⚠️ ${label} ${data.match.title}`;
+                    warning.hidden = false;
+                } else {
+                    hide();
+                }
+            } catch (err) {
+                console.warn('duplicate check failed', err);
+                hide();
+            }
+        }, DEBOUNCE_MS);
+    });
+
+    addForm.addEventListener('submit', hide);
 }
 
 /**
