@@ -40,6 +40,8 @@ enum VoiceMsg {
 enum ListEntry {
     Header(String),
     Item(TodoItem),
+    /// Kandidat im "Mein Tag"-Planungs-Picker (noch nicht für heute geplant).
+    PickerItem(TodoItem),
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -903,6 +905,41 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         container.append(&sometimes_btn);
 
         stack.add_named(&container, Some("item"));
+
+        // Picker row: "Mein Tag" planen — [+]-Button plus Titel/Metadaten
+        let picker_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        picker_box.set_margin_start(12);
+        picker_box.set_margin_end(12);
+        picker_box.set_margin_top(6);
+        picker_box.set_margin_bottom(6);
+
+        let picker_add_btn = gtk::Button::builder()
+            .icon_name("list-add-symbolic")
+            .tooltip_text(&t("add_to_my_day"))
+            .build();
+        picker_add_btn.set_valign(gtk::Align::Center);
+        picker_add_btn.add_css_class("flat");
+        picker_box.append(&picker_add_btn);
+
+        let picker_column = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        let picker_title = gtk::Label::builder()
+            .xalign(0.0)
+            .ellipsize(pango::EllipsizeMode::End)
+            .wrap(true)
+            .wrap_mode(pango::WrapMode::WordChar)
+            .build();
+        picker_column.append(&picker_title);
+
+        let picker_meta = gtk::Label::builder()
+            .xalign(0.0)
+            .wrap(true)
+            .wrap_mode(pango::WrapMode::WordChar)
+            .build();
+        picker_meta.add_css_class("dim-label");
+        picker_column.append(&picker_meta);
+        picker_box.append(&picker_column);
+
+        stack.add_named(&picker_box, Some("picker"));
         list_item.set_child(Some(&stack));
 
         // Keyboard shortcuts for list items
@@ -917,7 +954,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             let entry = todo_obj.borrow::<ListEntry>();
             let todo = match &*entry {
                 ListEntry::Item(todo) => todo.clone(),
-                ListEntry::Header(_) => return glib::Propagation::Proceed,
+                _ => return glib::Propagation::Proceed,
             };
             
             let Some(state) = state_item_key.upgrade() else { return glib::Propagation::Proceed; };
@@ -960,6 +997,8 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             list_item.set_data("todo-title", title.downgrade());
             list_item.set_data("todo-meta", meta.downgrade());
             list_item.set_data("todo-button", tomorrow_btn.downgrade());
+            list_item.set_data("picker-title", picker_title.downgrade());
+            list_item.set_data("picker-meta", picker_meta.downgrade());
         }
 
         let weak_list = list_item.downgrade();
@@ -977,7 +1016,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             let entry = todo_obj.borrow::<ListEntry>();
             let todo = match &*entry {
                 ListEntry::Item(todo) => todo.clone(),
-                ListEntry::Header(_) => return,
+                _ => return,
             };
             if btn.is_active() == todo.done {
                 return;
@@ -1005,7 +1044,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             let entry = todo_obj.borrow::<ListEntry>();
             let todo = match &*entry {
                 ListEntry::Item(todo) => todo.clone(),
-                ListEntry::Header(_) => return,
+                _ => return,
             };
 
             if let Some(state) = myday_state.upgrade() {
@@ -1030,7 +1069,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             let entry = todo_obj.borrow::<ListEntry>();
             let todo = match &*entry {
                 ListEntry::Item(todo) => todo.clone(),
-                ListEntry::Header(_) => return,
+                _ => return,
             };
 
             if let Some(state) = tomorrow_state.upgrade() {
@@ -1055,7 +1094,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             let entry = todo_obj.borrow::<ListEntry>();
             let todo = match &*entry {
                 ListEntry::Item(todo) => todo.clone(),
-                ListEntry::Header(_) => return,
+                _ => return,
             };
 
             if let Some(state) = weekend_state.upgrade() {
@@ -1080,7 +1119,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             let entry = todo_obj.borrow::<ListEntry>();
             let todo = match &*entry {
                 ListEntry::Item(todo) => todo.clone(),
-                ListEntry::Header(_) => return,
+                _ => return,
             };
 
             if let Some(state) = today_state.upgrade() {
@@ -1105,12 +1144,37 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             let entry = todo_obj.borrow::<ListEntry>();
             let todo = match &*entry {
                 ListEntry::Item(todo) => todo.clone(),
-                ListEntry::Header(_) => return,
+                _ => return,
             };
 
             if let Some(state) = sometimes_state.upgrade() {
                 if let Err(err) = state.set_due_sometimes(&todo) {
                     state.show_error(&t("set_due_error").replace("{}", &err.to_string()));
+                }
+            }
+        });
+
+        let picker_list = list_item.downgrade();
+        let picker_state = factory_state.clone();
+        picker_add_btn.connect_clicked(move |_| {
+            let Some(list_item) = picker_list.upgrade() else {
+                return;
+            };
+            let Some(obj) = list_item.item() else {
+                return;
+            };
+            let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else {
+                return;
+            };
+            let entry = todo_obj.borrow::<ListEntry>();
+            let todo = match &*entry {
+                ListEntry::PickerItem(todo) => todo.clone(),
+                _ => return,
+            };
+
+            if let Some(state) = picker_state.upgrade() {
+                if let Err(err) = state.toggle_myday(&todo) {
+                    state.show_error(&t("update_error").replace("{}", &err.to_string()));
                 }
             }
         });
@@ -1189,6 +1253,25 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 }
                 if let Some(meta_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::Label>>("todo-meta")
+                } {
+                    if let Some(meta_widget) = unsafe { meta_ref_ptr.as_ref() }.upgrade() {
+                        meta_widget.set_text(&format_metadata(todo));
+                    }
+                }
+            }
+            ListEntry::PickerItem(todo) => {
+                stack.set_visible_child_name("picker");
+                stack.remove_css_class("pulse");
+
+                if let Some(title_ref_ptr) = unsafe {
+                    list_item.data::<glib::WeakRef<gtk::Label>>("picker-title")
+                } {
+                    if let Some(title_widget) = unsafe { title_ref_ptr.as_ref() }.upgrade() {
+                        title_widget.set_text(&todo.title);
+                    }
+                }
+                if let Some(meta_ref_ptr) = unsafe {
+                    list_item.data::<glib::WeakRef<gtk::Label>>("picker-meta")
                 } {
                     if let Some(meta_widget) = unsafe { meta_ref_ptr.as_ref() }.upgrade() {
                         meta_widget.set_text(&format_metadata(todo));
@@ -2902,6 +2985,70 @@ impl AppState {
         self.repopulate_store();
     }
 
+    /// "Mein Tag": oben die heute geplanten Aufgaben (erledigte bleiben
+    /// durchgestrichen sichtbar), darunter der Planungs-Picker mit fälligen
+    /// Vorschlägen zuerst — analog zur Web-Ansicht.
+    fn populate_myday_view(&self, items: Vec<TodoItem>, now: NaiveDateTime, today: NaiveDate) {
+        let (planned, rest): (Vec<TodoItem>, Vec<TodoItem>) =
+            items.into_iter().partition(|todo| todo.myday == Some(today));
+
+        if planned.is_empty() {
+            self.store
+                .append(&BoxedAnyObject::new(ListEntry::Header(t("my_day_empty"))));
+        } else {
+            let mode = *self.sort_mode.borrow();
+            let mut last_group: Option<String> = None;
+            for item in planned {
+                if let Some(label) = self.group_label(mode, &item) {
+                    if last_group.as_ref() != Some(&label) {
+                        self.store
+                            .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
+                        last_group = Some(label);
+                    }
+                }
+                self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+            }
+        }
+
+        // Planungs-Picker: alle anderen offenen Aufgaben, fällige zuerst
+        // (das "Irgendwann"-Sentinel-Jahr 9999 zählt nicht als fällig).
+        let mut candidates: Vec<TodoItem> =
+            rest.into_iter().filter(|todo| !todo.done).collect();
+        candidates.sort_by_key(|todo| todo.due.unwrap_or(NaiveDateTime::MAX));
+        let (suggestions, other_open): (Vec<TodoItem>, Vec<TodoItem>) =
+            candidates.into_iter().partition(|todo| {
+                todo.due
+                    .map(|d| d <= now && d.date().year() != 9999)
+                    .unwrap_or(false)
+            });
+
+        if suggestions.is_empty() && other_open.is_empty() {
+            self.store.append(&BoxedAnyObject::new(ListEntry::Header(
+                t("myday_nothing_to_plan"),
+            )));
+            return;
+        }
+
+        if !suggestions.is_empty() {
+            self.store.append(&BoxedAnyObject::new(ListEntry::Header(
+                t("myday_suggestions"),
+            )));
+            for item in suggestions {
+                self.store
+                    .append(&BoxedAnyObject::new(ListEntry::PickerItem(item)));
+            }
+        }
+        if !other_open.is_empty() {
+            self.store.append(&BoxedAnyObject::new(ListEntry::Header(
+                t("myday_other_open"),
+            )));
+            for item in other_open {
+                self.store
+                    .append(&BoxedAnyObject::new(ListEntry::PickerItem(item)));
+            }
+        }
+    }
+
     fn repopulate_store(&self) {
         let mut selected_key = None;
         let mut scroll_pos = None;
@@ -2941,30 +3088,29 @@ impl AppState {
         let today = now.date();
 
         if search_term.is_empty() {
-            let mode = *self.sort_mode.borrow();
-            let mut last_group: Option<String> = None;
-            for item in items.into_iter().filter(|todo| {
-                if myday_only {
-                    // "Mein Tag": only today's planned items, completed ones
-                    // stay visible (struck through) for the rest of the day.
-                    return todo.myday == Some(today);
-                }
-                let status_ok = include_done || !todo.done;
-                let due_ok = if !due_only {
-                    true
-                } else {
-                    todo.due.map(|d| d <= now).unwrap_or(true)
-                };
-                status_ok && due_ok
-            }) {
-                if let Some(label) = self.group_label(mode, &item) {
-                    if last_group.as_ref() != Some(&label) {
-                        self.store
-                            .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
-                        last_group = Some(label);
+            if myday_only {
+                self.populate_myday_view(items, now, today);
+            } else {
+                let mode = *self.sort_mode.borrow();
+                let mut last_group: Option<String> = None;
+                for item in items.into_iter().filter(|todo| {
+                    let status_ok = include_done || !todo.done;
+                    let due_ok = if !due_only {
+                        true
+                    } else {
+                        todo.due.map(|d| d <= now).unwrap_or(true)
+                    };
+                    status_ok && due_ok
+                }) {
+                    if let Some(label) = self.group_label(mode, &item) {
+                        if last_group.as_ref() != Some(&label) {
+                            self.store
+                                .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
+                            last_group = Some(label);
+                        }
                     }
+                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
                 }
-                self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
             }
         } else {
             // 1. Suchergebnisse in aktueller Liste
@@ -3287,7 +3433,7 @@ impl AppState {
         let entry = todo_obj.borrow::<ListEntry>();
         let todo = match &*entry {
             ListEntry::Item(todo) => todo.clone(),
-            ListEntry::Header(_) => return,
+            _ => return,
         };
         drop(entry);
         self.show_details_dialog(&todo);
