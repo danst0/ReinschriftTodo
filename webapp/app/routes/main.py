@@ -65,6 +65,8 @@ def index():
     auto_ai_on_add_val = auto_ai_on_add_vals[-1] if auto_ai_on_add_vals else None
     skip_delete_confirm_vals = request.args.getlist('skip_delete_confirm')
     skip_delete_confirm_raw = skip_delete_confirm_vals[-1] if skip_delete_confirm_vals else None
+    title_autocomplete_vals = request.args.getlist('title_autocomplete')
+    title_autocomplete_raw = title_autocomplete_vals[-1] if title_autocomplete_vals else None
     ai_timeout_secs_val = request.args.get('ai_timeout_secs')
 
     new_settings = settings.copy()
@@ -116,6 +118,13 @@ def index():
         if isinstance(stored_skip_delete_confirm, bool):
             new_settings['skip_delete_confirm'] = '1' if stored_skip_delete_confirm else '0'
             changed = True
+
+    if title_autocomplete_raw is not None:
+        title_autocomplete = parse_flag(title_autocomplete_raw, default=True)
+        new_settings['title_autocomplete'] = '1' if title_autocomplete else '0'
+        changed = True
+    else:
+        title_autocomplete = parse_flag(settings.get('title_autocomplete'), default=True)
 
     if ai_timeout_secs_val is not None:
         parsed_ai_timeout = clamp_timeout_secs(ai_timeout_secs_val)
@@ -197,6 +206,7 @@ def index():
                               sort_mode=sort_mode,
                               auto_ai_on_add=auto_ai_on_add,
                               skip_delete_confirm=skip_delete_confirm,
+                              title_autocomplete=title_autocomplete,
                               ai_timeout_secs=ai_timeout_secs,
                               ai_timeout_ms=ai_timeout_ms,
                               view=view,
@@ -208,6 +218,7 @@ def index():
                                   sort_mode=sort_mode,
                                   auto_ai_on_add=auto_ai_on_add,
                                   skip_delete_confirm=skip_delete_confirm,
+                                  title_autocomplete=title_autocomplete,
                                   ai_timeout_secs=ai_timeout_secs,
                                   ai_timeout_ms=ai_timeout_ms)
 
@@ -254,6 +265,7 @@ def index():
                           q=q,
                           auto_ai_on_add=auto_ai_on_add,
                           skip_delete_confirm=skip_delete_confirm,
+                          title_autocomplete=title_autocomplete,
                           ai_timeout_secs=ai_timeout_secs,
                           ai_timeout_ms=ai_timeout_ms,
                           view=view,

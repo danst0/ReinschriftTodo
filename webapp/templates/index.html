@@ -269,6 +269,15 @@
                 </div>
 
                 <div class="form-group">
+                    <label style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="hidden" name="title_autocomplete" value="0">
+                        <input type="checkbox" name="title_autocomplete" value="1" {% if title_autocomplete %}checked{% endif %}>
+                        {{ t.title_autocomplete_label }}
+                    </label>
+                    <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.title_autocomplete_help }}</p>
+                </div>
+
+                <div class="form-group">
                     <label for="ai-timeout">{{ t.ai_timeout_label }}</label>
                     <input type="number" id="ai-timeout" name="ai_timeout_secs" min="5" max="120" step="1" value="{{ ai_timeout_secs }}" style="width: 100%; padding: 0.6rem;">
                     <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.ai_timeout_help }}</p>
@@ -399,6 +408,7 @@
             aiTimeoutMs: {{ ai_timeout_ms }},
             autoAiOnAdd: {{ 'true' if auto_ai_on_add else 'false' }},
             skipDeleteConfirm: {{ 'true' if skip_delete_confirm else 'false' }},
+            titleAutocomplete: {{ 'true' if title_autocomplete else 'false' }},
             currentView: {{ view | tojson }},
             language: {{ current_lang | tojson }},
             translations: {
@@ -426,7 +436,8 @@
                 bulkSetDue: {{ t.bulk_set_due | tojson }},
                 bulkAssign: {{ t.bulk_assign | tojson }},
                 bulkDelete: {{ t.delete | tojson }},
-                bulkDeleteConfirm: {{ t.bulk_delete_confirm | tojson }}
+                bulkDeleteConfirm: {{ t.bulk_delete_confirm | tojson }},
+                duplicate: {{ t.duplicate | tojson }}
             }
         };
 

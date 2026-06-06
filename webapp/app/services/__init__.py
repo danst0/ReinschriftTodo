@@ -47,6 +47,7 @@ from app.services.todo_service import (
     toggle_todos_batch,
     delete_todos_batch,
     assign_todos_batch,
+    duplicate_todo,
     set_myday,
 )
 
@@ -95,6 +96,7 @@ __all__ = [
     'toggle_todos_batch',
     'delete_todos_batch',
     'assign_todos_batch',
+    'duplicate_todo',
     'set_myday',
     # AI
     'parse_nlp',

@@ -17,6 +17,7 @@ from app.services import (
     toggle_todos_batch,
     delete_todos_batch,
     assign_todos_batch,
+    duplicate_todo,
     set_myday,
     load_todos,
 )
@@ -455,12 +456,49 @@ def api_delete_share(project: str):
 @require_login_json
 def get_title_suggestions():
     """Return all unique non-empty titles, sorted by descending occurrence
-    count (ties broken alphabetically). Includes completed tasks."""
+    count (ties broken alphabetically). Includes completed tasks.
+
+    `items` carries a representative marker per title (the most recently
+    added occurrence) so the frontend can offer a duplicate action.
+    """
     todos = load_todos()
     counts: dict[str, int] = {}
+    markers: dict[str, str | None] = {}
     for item in todos:
         title = (item.title or '').strip()
         if title:
             counts[title] = counts.get(title, 0) + 1
+            # Later lines win: the most recently added occurrence is the
+            # best template for a copy.
+            markers[title] = item.marker or markers.get(title)
     titles = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-    return jsonify({'titles': [t for t, _ in titles]})
+    return jsonify({
+        'titles': [t for t, _ in titles],
+        'items': [{'title': t, 'marker': markers.get(t)} for t, _ in titles],
+    })
+
+
+@api_bp.route('/duplicate', methods=['POST'])
+@csrf.exempt
+@require_login_json
+def api_duplicate():
+    """Duplicate an existing todo as a new open task.
+
+    Expects JSON: {"marker": "ABC123"}
+    The copy keeps projects, contexts, note, recurrence and reference,
+    gets a fresh marker and the default due date (today), and is not done.
+    Returns: {"ok": true, "marker": "...", "line_index": N}
+    """
+    data = request.get_json(silent=True) or {}
+    marker = data.get('marker')
+
+    if not marker:
+        return jsonify({'error': 'Marker required'}), 400
+
+    snapshot = read_content()
+    result = duplicate_todo(marker)
+    if result is None:
+        return jsonify({'error': 'Todo not found'}), 404
+
+    push_undo(snapshot, 'add')
+    return jsonify({'ok': True, **result})

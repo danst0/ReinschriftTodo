@@ -189,5 +189,7 @@
   "bulk_reopened_count": "{} items reopened",
   "bulk_due_set_count": "Due date set for {} items",
   "bulk_assigned_count": "{} items updated",
-  "bulk_deleted_count": "{} items deleted"
+  "bulk_deleted_count": "{} items deleted",
+  "duplicate": "Duplicate task",
+  "duplicated_title": "Duplicated: {}"
 }

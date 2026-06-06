@@ -189,5 +189,7 @@
   "bulk_reopened_count": "{} tâches rouvertes",
   "bulk_due_set_count": "Échéance définie pour {} tâches",
   "bulk_assigned_count": "{} tâches mises à jour",
-  "bulk_deleted_count": "{} tâches supprimées"
+  "bulk_deleted_count": "{} tâches supprimées",
+  "duplicate": "Dupliquer la tâche",
+  "duplicated_title": "Dupliquée : {}"
 }

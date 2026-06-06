@@ -182,9 +182,34 @@ fn create_suggestion_entry(
 /// shows up to 8 case-insensitive matches from `title_provider`. Down/Up
 /// navigate, Enter selects, Escape closes (without consuming the
 /// surrounding container's Escape handler when the popover is hidden).
+/// Extract the suggestion title from an autocomplete row (the label is
+/// either the row child itself or the first child of its hbox).
+fn autocomplete_row_title(row: &gtk::ListBoxRow) -> Option<String> {
+    let child = row.child()?;
+    if let Ok(label) = child.clone().downcast::<gtk::Label>() {
+        return Some(label.text().to_string());
+    }
+    let hbox = child.downcast::<gtk::Box>().ok()?;
+    hbox.first_child()?
+        .downcast::<gtk::Label>()
+        .ok()
+        .map(|label| label.text().to_string())
+}
+
 fn attach_title_autocomplete(
     entry: &gtk::Entry,
     title_provider: Rc<dyn Fn() -> Vec<String>>,
+) {
+    attach_title_autocomplete_with_duplicate(entry, title_provider, None);
+}
+
+/// Like `attach_title_autocomplete`, but with an optional duplicate action:
+/// when `on_duplicate` is set, each suggestion row gets a copy button that
+/// duplicates the matched task (issue #6).
+fn attach_title_autocomplete_with_duplicate(
+    entry: &gtk::Entry,
+    title_provider: Rc<dyn Fn() -> Vec<String>>,
+    on_duplicate: Option<Rc<dyn Fn(String)>>,
 ) {
     let popover = gtk::Popover::new();
     popover.set_parent(entry);
@@ -212,6 +237,7 @@ fn attach_title_autocomplete(
         let popover = Rc::clone(&popover);
         let provider = Rc::clone(&title_provider);
         let entry_weak = entry.downgrade();
+        let on_duplicate = on_duplicate.clone();
         Rc::new(move || {
             let Some(entry) = entry_weak.upgrade() else { return; };
             let text = entry.text().to_string();
@@ -240,13 +266,37 @@ fn attach_title_autocomplete(
                     .label(title)
                     .xalign(0.0)
                     .ellipsize(pango::EllipsizeMode::End)
+                    .hexpand(true)
                     .build();
                 label.set_margin_start(8);
                 label.set_margin_end(8);
                 label.set_margin_top(4);
                 label.set_margin_bottom(4);
+
+                let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+                hbox.append(&label);
+
+                if let Some(on_duplicate) = on_duplicate.as_ref() {
+                    let copy_btn = gtk::Button::builder()
+                        .icon_name("edit-copy-symbolic")
+                        .tooltip_text(&t("duplicate"))
+                        .build();
+                    copy_btn.add_css_class("flat");
+                    copy_btn.set_valign(gtk::Align::Center);
+                    let on_duplicate = Rc::clone(on_duplicate);
+                    let title_for_copy = title.clone();
+                    let popover_for_copy = Rc::clone(&popover);
+                    let entry_for_copy = entry.clone();
+                    copy_btn.connect_clicked(move |_| {
+                        popover_for_copy.popdown();
+                        entry_for_copy.set_text("");
+                        on_duplicate(title_for_copy.clone());
+                    });
+                    hbox.append(&copy_btn);
+                }
+
                 let row = gtk::ListBoxRow::new();
-                row.set_child(Some(&label));
+                row.set_child(Some(&hbox));
                 listbox.append(&row);
                 count += 1;
                 if count >= 8 {
@@ -270,11 +320,9 @@ fn attach_title_autocomplete(
     let popover_for_row = Rc::clone(&popover);
     let entry_for_row = entry.clone();
     listbox.connect_row_activated(move |_, row| {
-        if let Some(child) = row.child() {
-            if let Ok(label) = child.downcast::<gtk::Label>() {
-                entry_for_row.set_text(&label.text());
-                entry_for_row.set_position(-1);
-            }
+        if let Some(title) = autocomplete_row_title(row) {
+            entry_for_row.set_text(&title);
+            entry_for_row.set_position(-1);
         }
         popover_for_row.popdown();
     });
@@ -320,11 +368,9 @@ fn attach_title_autocomplete(
             }
             gdk::Key::Return | gdk::Key::KP_Enter => {
                 if let Some(row) = listbox_for_key.selected_row() {
-                    if let Some(child) = row.child() {
-                        if let Ok(label) = child.downcast::<gtk::Label>() {
-                            entry_for_key.set_text(&label.text());
-                            entry_for_key.set_position(-1);
-                        }
+                    if let Some(title) = autocomplete_row_title(&row) {
+                        entry_for_key.set_text(&title);
+                        entry_for_key.set_position(-1);
                     }
                     popover_for_key.popdown();
                     glib::Propagation::Stop
@@ -497,7 +543,13 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         let provider_state = Rc::clone(&state);
         let title_provider: Rc<dyn Fn() -> Vec<String>> =
             Rc::new(move || provider_state.collect_existing_titles());
-        attach_title_autocomplete(&new_entry, title_provider);
+        let duplicate_state = Rc::downgrade(&state);
+        let on_duplicate: Rc<dyn Fn(String)> = Rc::new(move |title| {
+            if let Some(state) = duplicate_state.upgrade() {
+                state.duplicate_by_title(&title);
+            }
+        });
+        attach_title_autocomplete_with_duplicate(&new_entry, title_provider, Some(on_duplicate));
     }
 
     let voice_btn = gtk::Button::builder()
@@ -3693,6 +3745,53 @@ impl AppState {
         }
 
         self.show_details_dialog(&todo);
+    }
+
+    /// Die zuletzt angelegte Aufgabe mit diesem Titel als neue offene
+    /// Aufgabe duplizieren (Issue #6): Projekte, Kontexte, Notiz und
+    /// Wiederholung bleiben erhalten; Fälligkeit wird wie bei einer
+    /// Neuanlage auf heute gesetzt.
+    fn duplicate_by_title(self: &Rc<Self>, title: &str) {
+        let source = {
+            let items = self.cached_items.borrow();
+            items
+                .iter()
+                .filter(|item| item.title == title)
+                .max_by_key(|item| item.key.line_index)
+                .cloned()
+        };
+        let Some(source) = source else {
+            return;
+        };
+
+        let mut copy = source;
+        copy.done = false;
+        copy.myday = None;
+        let today = Local::now().date_naive();
+        copy.due = Some(NaiveDateTime::new(today, DEFAULT_DUE_TIME));
+        copy.key = data::TodoKey {
+            line_index: 0,
+            marker: None,
+        };
+
+        match data::add_todo_full(&copy) {
+            Ok(key) => {
+                if let Err(err) = self.reload() {
+                    self.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                    return;
+                }
+                if let Some(marker) = key.marker {
+                    self.mark_recently_updated(marker);
+                }
+                self.show_undo_toast(&t("duplicated_title").replace("{}", title));
+            }
+            Err(err) => {
+                if self.handle_conflict(&err) {
+                    return;
+                }
+                self.show_error(&err.to_string());
+            }
+        }
     }
 
     // ----- Mehrfachauswahl (Issue #8) ------------------------------------

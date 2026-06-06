@@ -3,6 +3,7 @@
 import logging
 import re
 import shlex
+from dataclasses import replace
 from datetime import date, datetime
 from typing import Optional, Any
 
@@ -599,6 +600,47 @@ def delete_todos_batch(line_indexes: list[int]) -> dict:
         write_content('\n'.join(lines) + '\n')
 
     return {'updated': len(valid), 'failed': failed}
+
+
+def duplicate_todo(marker: str) -> Optional[dict]:
+    """Duplicate the todo identified by marker as a new open task.
+
+    The copy keeps projects, contexts, note, recurrence and reference, gets
+    a fresh marker and the default due date (today, like add_todo), is not
+    done and not planned for "my day".
+
+    Args:
+        marker: Marker ID of the todo to copy.
+
+    Returns:
+        Dict with 'marker' and 'line_index' of the copy, or None if the
+        marker was not found or the line is not a todo.
+    """
+    content = read_content()
+    lines = content.splitlines()
+
+    source_index = find_line_by_marker(lines, marker)
+    if source_index is None:
+        return None
+
+    item = parse_line(lines[source_index], source_index)
+    if not item:
+        return None
+
+    new_marker = generate_marker()
+    copy = replace(item, marker=new_marker, done=False, myday=None)
+    default_due = datetime.combine(datetime.now().date(), DEFAULT_DUE_TIME)
+    new_line = _render_todo_line(copy, "", due=default_due)
+
+    insert_index = len(lines)
+    for i, line in enumerate(lines):
+        if line.strip() == "---":
+            insert_index = i
+            break
+    lines.insert(insert_index, new_line)
+
+    write_content('\n'.join(lines) + '\n')
+    return {'marker': new_marker, 'line_index': insert_index}
 
 
 def assign_todos_batch(line_indexes: list[int], project: Optional[str] = None,

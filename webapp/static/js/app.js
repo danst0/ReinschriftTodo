@@ -119,10 +119,16 @@ function initApp(config = {}) {
     // Set up add form
     setupAddForm();
 
-    // Bind title autocomplete to Add and Edit inputs
+    // Bind title autocomplete to Add and Edit inputs; the Add input's
+    // suggestions get a copy button that duplicates the matched task.
     initTitleAutocomplete({
         inputSelectors: ['#add-input', '#edit-title'],
-        enabled: appConfig.titleAutocomplete !== false
+        enabled: appConfig.titleAutocomplete !== false,
+        duplicateSelectors: ['#add-input'],
+        translations: appConfig.translations || {},
+        onDuplicated: (marker) => {
+            autoReload().then(() => highlightMarker(marker));
+        }
     });
 
     // Configure share dialog translations

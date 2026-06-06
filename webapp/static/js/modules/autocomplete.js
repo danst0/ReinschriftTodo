@@ -7,29 +7,43 @@
  * anchored beneath the input. ArrowDown/ArrowUp navigate, Enter selects,
  * Escape closes (without consuming the host form's Enter/Escape when the
  * dropdown is hidden). Selecting a row replaces the input value entirely.
+ *
+ * Inputs bound with `allowDuplicate` additionally show a copy button per
+ * suggestion that duplicates the matched task (with its metadata) as a
+ * new open task via `/api/duplicate` (issue #6).
  */
+
+import { fetchWithCsrf } from './api.js';
 
 const ENDPOINT = '/api/title-suggestions';
 const MIN_CHARS = 2;
 const MAX_RESULTS = 8;
 
-let cachedTitles = null;
+let cachedSuggestions = null; // [{title, marker}]
 let inflight = null;
+let translations = {};
+let onDuplicated = null;
 
-async function fetchTitles(force = false) {
-    if (!force && cachedTitles) return cachedTitles;
+async function fetchSuggestions(force = false) {
+    if (!force && cachedSuggestions) return cachedSuggestions;
     if (inflight) return inflight;
     inflight = (async () => {
         try {
             const res = await fetch(ENDPOINT, { credentials: 'same-origin' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            cachedTitles = Array.isArray(data.titles) ? data.titles : [];
-            return cachedTitles;
+            if (Array.isArray(data.items)) {
+                cachedSuggestions = data.items;
+            } else if (Array.isArray(data.titles)) {
+                cachedSuggestions = data.titles.map(title => ({ title, marker: null }));
+            } else {
+                cachedSuggestions = [];
+            }
+            return cachedSuggestions;
         } catch (err) {
             console.warn('title-suggestions fetch failed', err);
-            cachedTitles = cachedTitles || [];
-            return cachedTitles;
+            cachedSuggestions = cachedSuggestions || [];
+            return cachedSuggestions;
         } finally {
             inflight = null;
         }
@@ -39,23 +53,40 @@ async function fetchTitles(force = false) {
 
 /** Drop the in-memory cache so the next bound input refetches. */
 export function invalidateTitleCache() {
-    cachedTitles = null;
+    cachedSuggestions = null;
 }
 
-function filterTitles(query, titles) {
+function filterSuggestions(query, suggestions) {
     const q = query.trim().toLowerCase();
     if (q.length < MIN_CHARS) return [];
     const out = [];
-    for (const title of titles) {
-        if (title.toLowerCase().includes(q) && title.toLowerCase() !== q) {
-            out.push(title);
+    for (const suggestion of suggestions) {
+        const title = suggestion.title.toLowerCase();
+        if (title.includes(q) && title !== q) {
+            out.push(suggestion);
             if (out.length >= MAX_RESULTS) break;
         }
     }
     return out;
 }
 
-function attachDropdown(input) {
+async function duplicateTask(marker) {
+    try {
+        const res = await fetchWithCsrf('/api/duplicate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ marker })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        invalidateTitleCache();
+        if (onDuplicated) onDuplicated(data.marker);
+    } catch (err) {
+        console.error('Duplicate failed', err);
+    }
+}
+
+function attachDropdown(input, { allowDuplicate = false } = {}) {
     // Position-fixed so we don't interfere with existing flex/grid layouts.
     const dropdown = document.createElement('ul');
     dropdown.className = 'autocomplete-dropdown';
@@ -91,7 +122,7 @@ function attachDropdown(input) {
 
     const accept = (idx) => {
         if (idx < 0 || idx >= currentMatches.length) return;
-        input.value = currentMatches[idx];
+        input.value = currentMatches[idx].title;
         input.focus();
         // Move caret to end
         const len = input.value.length;
@@ -106,11 +137,40 @@ function attachDropdown(input) {
             close();
             return;
         }
-        matches.forEach((title, i) => {
+        matches.forEach((match, i) => {
             const li = document.createElement('li');
             li.className = 'autocomplete-item';
             li.setAttribute('role', 'option');
-            li.textContent = title;
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'autocomplete-title';
+            titleSpan.textContent = match.title;
+            li.appendChild(titleSpan);
+
+            if (allowDuplicate && match.marker) {
+                const copyBtn = document.createElement('button');
+                copyBtn.type = 'button';
+                copyBtn.className = 'autocomplete-copy-btn';
+                copyBtn.title = translations.duplicate || 'Duplicate';
+                copyBtn.setAttribute('aria-label', copyBtn.title);
+                copyBtn.innerHTML =
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" ' +
+                    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+                    'stroke-linejoin="round" aria-hidden="true">' +
+                    '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>' +
+                    '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+                    '</svg>';
+                copyBtn.addEventListener('mousedown', (e) => {
+                    // mousedown so we beat the input's blur
+                    e.preventDefault();
+                    e.stopPropagation();
+                    input.value = '';
+                    close();
+                    duplicateTask(match.marker);
+                });
+                li.appendChild(copyBtn);
+            }
+
             li.addEventListener('mousedown', (e) => {
                 // mousedown so we beat the input's blur
                 e.preventDefault();
@@ -132,14 +192,14 @@ function attachDropdown(input) {
     });
 
     input.addEventListener('input', async () => {
-        const titles = await fetchTitles();
-        render(filterTitles(input.value, titles));
+        const suggestions = await fetchSuggestions();
+        render(filterSuggestions(input.value, suggestions));
     });
 
     input.addEventListener('focus', async () => {
         if (input.value.trim().length >= MIN_CHARS) {
-            const titles = await fetchTitles();
-            render(filterTitles(input.value, titles));
+            const suggestions = await fetchSuggestions();
+            render(filterSuggestions(input.value, suggestions));
         }
     });
 
@@ -185,15 +245,28 @@ function attachDropdown(input) {
  *   codebase live in the DOM from the start, just hidden, so a single bind
  *   is enough).
  * @param {boolean} [opts.enabled=true] - Disable to no-op (e.g. user pref).
+ * @param {string[]} [opts.duplicateSelectors=[]] - Subset of inputs whose
+ *   suggestions get a copy button that duplicates the matched task.
+ * @param {object} [opts.translations={}] - Localized strings (duplicate).
+ * @param {function} [opts.onDuplicated] - Called with the new marker after
+ *   a successful duplicate (reload + highlight).
  */
-export function initTitleAutocomplete({ inputSelectors = [], enabled = true } = {}) {
+export function initTitleAutocomplete({
+    inputSelectors = [],
+    enabled = true,
+    duplicateSelectors = [],
+    translations: t = {},
+    onDuplicated: duplicatedCallback = null
+} = {}) {
     if (!enabled) return;
+    translations = t;
+    onDuplicated = duplicatedCallback;
     for (const sel of inputSelectors) {
         const el = document.querySelector(sel);
         if (el && el.tagName === 'INPUT') {
-            attachDropdown(el);
+            attachDropdown(el, { allowDuplicate: duplicateSelectors.includes(sel) });
         }
     }
     // Warm the cache so first keystroke is instant.
-    fetchTitles().catch(() => {});
+    fetchSuggestions().catch(() => {});
 }

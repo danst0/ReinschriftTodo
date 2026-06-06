@@ -86,16 +86,19 @@ class TestTitleSuggestionsApi:
         monkeypatch.setattr('app.routes.api.load_todos', lambda: [])
         response = client.get('/api/title-suggestions')
         assert response.status_code == 200
-        assert response.get_json() == {'titles': []}
+        assert response.get_json() == {'titles': [], 'items': []}
 
     def test_single_title(self, client, monkeypatch):
         from app.models.todo import TodoItem
         self._login(client)
-        items = [TodoItem(line_index=0, title='Buy milk')]
+        items = [TodoItem(line_index=0, marker='m1', title='Buy milk')]
         monkeypatch.setattr('app.routes.api.load_todos', lambda: items)
         response = client.get('/api/title-suggestions')
         assert response.status_code == 200
-        assert response.get_json() == {'titles': ['Buy milk']}
+        assert response.get_json() == {
+            'titles': ['Buy milk'],
+            'items': [{'title': 'Buy milk', 'marker': 'm1'}],
+        }
 
     def test_frequency_sort_with_duplicates(self, client, monkeypatch):
         from app.models.todo import TodoItem
@@ -112,7 +115,7 @@ class TestTitleSuggestionsApi:
         response = client.get('/api/title-suggestions')
         assert response.status_code == 200
         # Apple (3) > Banana (2) > Cherry (1); ties alphabetical.
-        assert response.get_json() == {'titles': ['Apple', 'Banana', 'Cherry']}
+        assert response.get_json()['titles'] == ['Apple', 'Banana', 'Cherry']
 
     def test_includes_completed_and_skips_empty(self, client, monkeypatch):
         from app.models.todo import TodoItem
@@ -127,4 +130,4 @@ class TestTitleSuggestionsApi:
         response = client.get('/api/title-suggestions')
         assert response.status_code == 200
         # Whitespace-only titles excluded; both open and done included.
-        assert response.get_json() == {'titles': ['Done task', 'Open task']}
+        assert response.get_json()['titles'] == ['Done task', 'Open task']

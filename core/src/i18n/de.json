@@ -189,5 +189,7 @@
   "bulk_reopened_count": "{} Einträge wieder geöffnet",
   "bulk_due_set_count": "Fälligkeit für {} Einträge gesetzt",
   "bulk_assigned_count": "{} Einträge geändert",
-  "bulk_deleted_count": "{} Einträge gelöscht"
+  "bulk_deleted_count": "{} Einträge gelöscht",
+  "duplicate": "Aufgabe duplizieren",
+  "duplicated_title": "Dupliziert: {}"
 }

@@ -1380,14 +1380,41 @@ button, a, .checkbox, .filter-link, .todo-item {
 }
 
 .autocomplete-item {
-    padding: 0.6rem 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.8rem;
     cursor: pointer;
     color: var(--color-text);
     border-bottom: 1px solid var(--color-border);
+    transition: background var(--transition-fast);
+}
+
+.autocomplete-item .autocomplete-title {
+    flex-grow: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: background var(--transition-fast);
+    padding: 0.25rem 0;
+}
+
+.autocomplete-copy-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.4rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.autocomplete-copy-btn:hover {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
 }
 
 .autocomplete-item:last-child {

@@ -189,5 +189,7 @@
   "bulk_reopened_count": "{} tareas reabiertas",
   "bulk_due_set_count": "Fecha límite fijada para {} tareas",
   "bulk_assigned_count": "{} tareas actualizadas",
-  "bulk_deleted_count": "{} tareas eliminadas"
+  "bulk_deleted_count": "{} tareas eliminadas",
+  "duplicate": "Duplicar tarea",
+  "duplicated_title": "Duplicada: {}"
 }

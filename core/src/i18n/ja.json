@@ -189,5 +189,7 @@
   "bulk_reopened_count": "{}件のタスクを再開しました",
   "bulk_due_set_count": "{}件のタスクに期限を設定しました",
   "bulk_assigned_count": "{}件のタスクを更新しました",
-  "bulk_deleted_count": "{}件のタスクを削除しました"
+  "bulk_deleted_count": "{}件のタスクを削除しました",
+  "duplicate": "タスクを複製",
+  "duplicated_title": "複製しました: {}"
 }
