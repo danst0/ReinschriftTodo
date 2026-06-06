@@ -1,6 +1,7 @@
 pub mod config;
 pub mod conflict;
 pub mod data;
+pub mod embeddings;
 pub mod i18n;
 pub mod parser;
 pub mod preferences;

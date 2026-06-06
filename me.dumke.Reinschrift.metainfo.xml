@@ -39,6 +39,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.23.3" date="2026-06-06">
+      <description>
+        <ul>
+          <li>Core: new embeddings module for semantic suggestions via Ollama (/api/embed) — text canonicalization, cosine similarity, incremental sidecar cache; opt-in preference fields (groundwork, no UI yet)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.2" date="2026-06-06">
       <description>
         <ul>

@@ -61,6 +61,15 @@ class Config:
     # AI Debug mode (admin-only)
     AI_DEBUG_ENABLED = os.environ.get('AI_DEBUG_ENABLED', 'false').lower() == 'true'
 
+    # Semantic suggestions via Ollama embeddings (opt-in)
+    SEMANTIC_ENABLED = os.environ.get('SEMANTIC_ENABLED', 'false').lower() == 'true'
+    EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'bge-m3')
+    EMBEDDING_TIMEOUT = int(os.environ.get('EMBEDDING_TIMEOUT', '30'))
+    EMBEDDING_CACHE_PATH = os.environ.get(
+        'EMBEDDING_CACHE_PATH',
+        os.path.join(os.path.dirname(CONFIG_PATH) or '.', 'embeddings.json'),
+    )
+
     # Logging
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
 

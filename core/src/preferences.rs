@@ -64,6 +64,10 @@ pub struct Preferences {
     pub ollama_model: Option<String>,
     #[serde(default = "default_title_autocomplete_enabled")]
     pub title_autocomplete_enabled: bool,
+    #[serde(default)]
+    pub semantic_enabled: bool,
+    #[serde(default)]
+    pub embedding_model: Option<String>,
 }
 
 /// Returns the path to the shared preferences file.
