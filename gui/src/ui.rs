@@ -27,6 +27,7 @@ use tokio::runtime::Runtime;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
 use std::collections::HashSet;
+use reinschrift_core::embeddings;
 use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, Preferences, load_preferences, write_preferences};
 
 enum VoiceMsg {
@@ -200,16 +201,42 @@ fn attach_title_autocomplete(
     entry: &gtk::Entry,
     title_provider: Rc<dyn Fn() -> Vec<String>>,
 ) {
-    attach_title_autocomplete_with_duplicate(entry, title_provider, None);
+    attach_title_autocomplete_with_duplicate(entry, title_provider, None, None);
+}
+
+/// Quote a tag for inline +project/@context syntax if it contains spaces.
+fn quote_tag(tag: &str) -> String {
+    if tag.contains(char::is_whitespace) {
+        format!("\"{}\"", tag)
+    } else {
+        tag.to_string()
+    }
+}
+
+/// The typed text plus the semantic hit's tags (auto-tagging): selecting a
+/// semantically similar task keeps the new title and appends its
+/// +projects/@contexts.
+fn semantic_apply_text(typed: &str, item: &TodoItem) -> String {
+    let mut out = typed.trim().to_string();
+    for project in &item.projects {
+        out.push_str(&format!(" +{}", quote_tag(project)));
+    }
+    for context in &item.contexts {
+        out.push_str(&format!(" @{}", quote_tag(context)));
+    }
+    out
 }
 
 /// Like `attach_title_autocomplete`, but with an optional duplicate action:
 /// when `on_duplicate` is set, each suggestion row gets a copy button that
-/// duplicates the matched task (issue #6).
+/// duplicates the matched task (issue #6). When `semantic_state` is set
+/// (and the preference is enabled), a debounced, labeled "similar tasks"
+/// section with embedding-based hits appears below the substring matches.
 fn attach_title_autocomplete_with_duplicate(
     entry: &gtk::Entry,
     title_provider: Rc<dyn Fn() -> Vec<String>>,
     on_duplicate: Option<Rc<dyn Fn(String)>>,
+    semantic_state: Option<std::rc::Weak<AppState>>,
 ) {
     let popover = gtk::Popover::new();
     popover.set_parent(entry);
@@ -317,6 +344,123 @@ fn attach_title_autocomplete_with_duplicate(
         rebuild_for_change();
     });
 
+    // Debounced semantische Sektion „Ähnliche Aufgaben" unterhalb der
+    // Substring-Treffer. Der Rebuild oben leert die Listbox bei jeder
+    // Eingabe, daher können veraltete Semantik-Zeilen nicht stehenbleiben.
+    if let Some(state_weak) = semantic_state {
+        let semantic_timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
+        let listbox_sem = Rc::clone(&listbox);
+        let popover_sem = Rc::clone(&popover);
+        entry.connect_changed(move |entry_now| {
+            if let Some(id) = semantic_timer.borrow_mut().take() {
+                id.remove();
+            }
+            let Some(state) = state_weak.upgrade() else {
+                return;
+            };
+            if !state.semantic_enabled() {
+                return;
+            }
+            let typed = entry_now.text().trim().to_string();
+            if typed.chars().count() < 4 {
+                return;
+            }
+            let listbox = Rc::clone(&listbox_sem);
+            let popover = Rc::clone(&popover_sem);
+            let entry_weak = entry_now.downgrade();
+            let timer_slot = Rc::clone(&semantic_timer);
+            let timer_done = Rc::clone(&semantic_timer);
+            let id = glib::timeout_add_local_once(StdDuration::from_millis(300), move || {
+                *timer_done.borrow_mut() = None;
+                glib::spawn_future_local(async move {
+                    let hits = state
+                        .semantic_query(
+                            typed.clone(),
+                            embeddings::TAG_SUGGEST_TOP_K,
+                            embeddings::TAG_SUGGEST_THRESHOLD,
+                            false,
+                        )
+                        .await;
+                    if hits.is_empty() {
+                        return;
+                    }
+                    let Some(entry) = entry_weak.upgrade() else {
+                        return;
+                    };
+                    // Veraltet oder Fokus inzwischen weg: nichts anzeigen.
+                    if entry.text().trim() != typed {
+                        return;
+                    }
+                    if !entry.state_flags().contains(gtk::StateFlags::FOCUS_WITHIN) {
+                        return;
+                    }
+                    // Substring-Treffer sind bereits sichtbar — auslassen.
+                    let needle = typed.to_lowercase();
+                    let fresh: Vec<TodoItem> = hits
+                        .into_iter()
+                        .map(|(item, _)| item)
+                        .filter(|item| !item.title.to_lowercase().contains(&needle))
+                        .collect();
+                    if fresh.is_empty() {
+                        return;
+                    }
+
+                    let header_label = gtk::Label::builder()
+                        .label(t("semantic_section"))
+                        .xalign(0.0)
+                        .build();
+                    header_label.add_css_class("dim-label");
+                    header_label.set_margin_start(8);
+                    header_label.set_margin_end(8);
+                    header_label.set_margin_top(6);
+                    header_label.set_margin_bottom(2);
+                    let header_row = gtk::ListBoxRow::new();
+                    header_row.set_child(Some(&header_label));
+                    header_row.set_selectable(false);
+                    header_row.set_activatable(false);
+                    listbox.append(&header_row);
+
+                    for item in fresh {
+                        // Erstes (unsichtbares) Label trägt den Übernahme-
+                        // Text: getippter Titel + Tags des Treffers —
+                        // `autocomplete_row_title` liest das erste Label.
+                        let apply = semantic_apply_text(&typed, &item);
+                        let hidden = gtk::Label::new(Some(&apply));
+                        hidden.set_visible(false);
+
+                        let mut display = item.title.clone();
+                        for project in &item.projects {
+                            display.push_str(&format!(" +{}", quote_tag(project)));
+                        }
+                        for context in &item.contexts {
+                            display.push_str(&format!(" @{}", quote_tag(context)));
+                        }
+                        let label = gtk::Label::builder()
+                            .label(&display)
+                            .xalign(0.0)
+                            .ellipsize(pango::EllipsizeMode::End)
+                            .hexpand(true)
+                            .build();
+                        label.set_margin_start(8);
+                        label.set_margin_end(8);
+                        label.set_margin_top(4);
+                        label.set_margin_bottom(4);
+
+                        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+                        hbox.append(&hidden);
+                        hbox.append(&label);
+
+                        let row = gtk::ListBoxRow::new();
+                        row.set_child(Some(&hbox));
+                        listbox.append(&row);
+                    }
+                    popover.popup();
+                });
+            });
+            *timer_slot.borrow_mut() = Some(id);
+        });
+    }
+
     let popover_for_row = Rc::clone(&popover);
     let entry_for_row = entry.clone();
     listbox.connect_row_activated(move |_, row| {
@@ -338,11 +482,19 @@ fn attach_title_autocomplete_with_duplicate(
         }
         match key {
             gdk::Key::Down => {
-                let next = match listbox_for_key.selected_row() {
-                    Some(row) => listbox_for_key
-                        .row_at_index(row.index() + 1)
-                        .or_else(|| listbox_for_key.row_at_index(0)),
-                    None => listbox_for_key.row_at_index(0),
+                // Nicht-selektierbare Zeilen (Semantik-Header) überspringen.
+                let mut idx = match listbox_for_key.selected_row() {
+                    Some(row) => row.index() + 1,
+                    None => 0,
+                };
+                let next = loop {
+                    match listbox_for_key.row_at_index(idx) {
+                        Some(row) if row.is_selectable() => break Some(row),
+                        Some(_) => idx += 1,
+                        None => break listbox_for_key
+                            .row_at_index(0)
+                            .filter(|row| row.is_selectable()),
+                    }
                 };
                 if let Some(row) = next {
                     listbox_for_key.select_row(Some(&row));
@@ -350,16 +502,18 @@ fn attach_title_autocomplete_with_duplicate(
                 glib::Propagation::Stop
             }
             gdk::Key::Up => {
-                let prev = match listbox_for_key.selected_row() {
-                    Some(row) => {
-                        let idx = row.index();
-                        if idx > 0 {
-                            listbox_for_key.row_at_index(idx - 1)
-                        } else {
-                            None
-                        }
+                let mut idx = match listbox_for_key.selected_row() {
+                    Some(row) => row.index() - 1,
+                    None => -1,
+                };
+                let prev = loop {
+                    if idx < 0 {
+                        break None;
                     }
-                    None => None,
+                    match listbox_for_key.row_at_index(idx) {
+                        Some(row) if row.is_selectable() => break Some(row),
+                        _ => idx -= 1,
+                    }
                 };
                 if let Some(row) = prev {
                     listbox_for_key.select_row(Some(&row));
@@ -510,6 +664,16 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         state_for_search.repopulate_store();
     });
 
+    // Enter in der Suche lädt zusätzlich bedeutungsähnliche Treffer nach
+    // (nicht bei jedem Tastendruck — Embeddings kosten eine HTTP-Runde).
+    let state_for_semantic_search = Rc::clone(&state);
+    search_entry.connect_activate(move |entry| {
+        let query = entry.text().to_string();
+        if !query.trim().is_empty() && state_for_semantic_search.semantic_enabled() {
+            state_for_semantic_search.run_semantic_search(query);
+        }
+    });
+
     let search_revealer_clone = search_revealer.clone();
     let search_entry_focus = search_entry.clone();
     let add_task_btn_clone = add_task_btn.clone();
@@ -549,7 +713,12 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
                 state.duplicate_by_title(&title);
             }
         });
-        attach_title_autocomplete_with_duplicate(&new_entry, title_provider, Some(on_duplicate));
+        attach_title_autocomplete_with_duplicate(
+            &new_entry,
+            title_provider,
+            Some(on_duplicate),
+            Some(Rc::downgrade(&state)),
+        );
     }
 
     let voice_btn = gtk::Button::builder()
@@ -607,8 +776,71 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     myday_filter.set_active(state.myday_view());
     controls.append(&myday_filter);
 
+    // Eingabezeile + Inline-Duplikatwarnung („Meinst du …?") untereinander;
+    // die Warnung blockiert das Hinzufügen nie.
+    let duplicate_warning_label = gtk::Label::builder()
+        .xalign(0.0)
+        .wrap(true)
+        .visible(false)
+        .build();
+    duplicate_warning_label.add_css_class("dim-label");
+    duplicate_warning_label.set_margin_start(12);
+    duplicate_warning_label.set_margin_end(12);
+    duplicate_warning_label.set_margin_bottom(6);
+
+    let add_column = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    add_column.append(&new_row);
+    add_column.append(&duplicate_warning_label);
+
+    // Debounced Duplikat-Check beim Tippen (nur offene Aufgaben,
+    // konservativer Threshold); degradiert still ohne Ollama.
+    {
+        let dup_timer: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
+        let state_weak = Rc::downgrade(&state);
+        let warning = duplicate_warning_label.clone();
+        new_entry.connect_changed(move |entry| {
+            if let Some(id) = dup_timer.borrow_mut().take() {
+                id.remove();
+            }
+            warning.set_visible(false);
+            let Some(state) = state_weak.upgrade() else {
+                return;
+            };
+            if !state.semantic_enabled() {
+                return;
+            }
+            let typed = entry.text().trim().to_string();
+            if typed.chars().count() < 4 {
+                return;
+            }
+            let entry_weak = entry.downgrade();
+            let warning = warning.clone();
+            let timer_slot = Rc::clone(&dup_timer);
+            let timer_done = Rc::clone(&dup_timer);
+            let id = glib::timeout_add_local_once(StdDuration::from_millis(600), move || {
+                *timer_done.borrow_mut() = None;
+                glib::spawn_future_local(async move {
+                    let hits = state
+                        .semantic_query(typed.clone(), 1, embeddings::DUPLICATE_THRESHOLD, true)
+                        .await;
+                    let Some(entry) = entry_weak.upgrade() else {
+                        return;
+                    };
+                    if entry.text().trim() != typed {
+                        return; // veraltete Antwort
+                    }
+                    if let Some((item, _score)) = hits.into_iter().next() {
+                        warning.set_text(&format!("⚠ {} {}", t("duplicate_warning"), item.title));
+                        warning.set_visible(true);
+                    }
+                });
+            });
+            *timer_slot.borrow_mut() = Some(id);
+        });
+    }
+
     let add_revealer = gtk::Revealer::builder()
-        .child(&new_row)
+        .child(&add_column)
         .transition_type(gtk::RevealerTransitionType::SlideDown)
         .build();
 
@@ -1601,6 +1833,9 @@ struct AppState {
     selection_bar: RefCell<Option<gtk::Revealer>>,
     selection_count_label: RefCell<Option<gtk::Label>>,
     selection_toggle: RefCell<Option<gtk::ToggleButton>>,
+    /// Lazy geladener Embedding-Index (semantische Vorschläge); wird bei
+    /// Fingerprint- oder Modellwechsel transparent neu aufgebaut.
+    embedding_cache: RefCell<Option<Rc<embeddings::EmbeddingCache>>>,
     _debug_mode: bool,
 }
 
@@ -1673,6 +1908,7 @@ impl AppState {
             selection_bar: RefCell::new(None),
             selection_count_label: RefCell::new(None),
             selection_toggle: RefCell::new(None),
+            embedding_cache: RefCell::new(None),
             last_fingerprint: RefCell::new(None),
         }
     }
@@ -1779,6 +2015,174 @@ impl AppState {
             .ollama_model
             .clone()
             .unwrap_or_else(|| "llama3.1:8b".to_string())
+    }
+
+    fn semantic_enabled(&self) -> bool {
+        self.preferences.borrow().semantic_enabled
+    }
+
+    fn embedding_model(&self) -> String {
+        self.preferences
+            .borrow()
+            .embedding_model
+            .clone()
+            .unwrap_or_else(|| embeddings::DEFAULT_EMBEDDING_MODEL.to_string())
+    }
+
+    fn embedding_cache_path(&self) -> PathBuf {
+        let mut dir = glib::user_cache_dir();
+        dir.push("reinschrift_todo");
+        dir.push("embeddings.json");
+        dir
+    }
+
+    fn embedding_config(&self) -> embeddings::EmbeddingConfig {
+        embeddings::EmbeddingConfig {
+            ollama_url: self.ollama_url(),
+            model: self.embedding_model(),
+            timeout_secs: self.ai_timeout_secs(),
+        }
+    }
+
+    /// Lazy aufgebauter Embedding-Index. Baut bei Fingerprint- oder
+    /// Modellwechsel inkrementell neu (blocking HTTP/IO im Tokio-Pool);
+    /// liefert `None` bei deaktiviertem Feature oder Backend-Fehler —
+    /// alle semantischen Features degradieren dann still.
+    async fn semantic_index(self: &Rc<Self>) -> Option<Rc<embeddings::EmbeddingCache>> {
+        if !self.semantic_enabled() {
+            return None;
+        }
+        let model = self.embedding_model();
+        let fingerprint = self.last_fingerprint.borrow().clone().unwrap_or_default();
+        if let Some(cache) = self.embedding_cache.borrow().as_ref() {
+            if cache.db_fingerprint == fingerprint && cache.model == model {
+                return Some(Rc::clone(cache));
+            }
+        }
+        let items = self.cached_items.borrow().clone();
+        let cfg = self.embedding_config();
+        let path = self.embedding_cache_path();
+        let fp = fingerprint.clone();
+        let result = self
+            .ai_runtime
+            .spawn_blocking(move || embeddings::ensure_index(&path, &cfg, &items, &fp))
+            .await;
+        match result {
+            Ok(Ok(cache)) => {
+                let cache = Rc::new(cache);
+                *self.embedding_cache.borrow_mut() = Some(Rc::clone(&cache));
+                Some(cache)
+            }
+            Ok(Err(err)) => {
+                eprintln!("semantic index unavailable: {err}");
+                None
+            }
+            Err(_) => None,
+        }
+    }
+
+    /// Bedeutungsähnliche Aufgaben zum Suchtext (absteigend nach Score).
+    /// Identische Titel werden ausgelassen; `open_only` filtert Erledigte.
+    async fn semantic_query(
+        self: &Rc<Self>,
+        query: String,
+        top_k: usize,
+        threshold: f32,
+        open_only: bool,
+    ) -> Vec<(TodoItem, f32)> {
+        let canonical = embeddings::canonical_text(&query);
+        if canonical.is_empty() {
+            return Vec::new();
+        }
+        let Some(cache) = self.semantic_index().await else {
+            return Vec::new();
+        };
+        let cfg = self.embedding_config();
+        let inputs = vec![canonical.clone()];
+        let embed_result = self
+            .ai_runtime
+            .spawn_blocking(move || embeddings::embed_texts(&cfg, &inputs))
+            .await;
+        let query_vec = match embed_result {
+            Ok(Ok(mut vecs)) if !vecs.is_empty() => vecs.remove(0),
+            _ => return Vec::new(),
+        };
+        // Alle Marker über dem Threshold scoren, dann auf Items abbilden
+        // und erst nach dem Filtern auf top_k kürzen.
+        let hits = cache.similar_markers(&query_vec, cache.items.len(), threshold);
+        let items = self.cached_items.borrow();
+        let by_marker: std::collections::HashMap<&str, &TodoItem> = items
+            .iter()
+            .filter_map(|i| i.key.marker.as_deref().map(|m| (m, i)))
+            .collect();
+        let mut results = Vec::new();
+        for (marker, score) in hits {
+            let Some(item) = by_marker.get(marker.as_str()) else {
+                continue;
+            };
+            if open_only && item.done {
+                continue;
+            }
+            if embeddings::canonical_text(&item.title) == canonical {
+                continue;
+            }
+            results.push(((*item).clone(), score));
+            if results.len() >= top_k {
+                break;
+            }
+        }
+        results
+    }
+
+    /// Hängt nach expliziter Suche (Enter) eine vierte Sektion
+    /// „Bedeutungsähnliche To-dos" an die Suchergebnisse an, dedupliziert
+    /// gegen die bereits angezeigten Substring-Treffer. Jede weitere
+    /// Eingabe baut den Store neu auf und entfernt die Sektion wieder.
+    fn run_semantic_search(self: &Rc<Self>, query: String) {
+        let state = Rc::clone(self);
+        glib::spawn_future_local(async move {
+            let hits = state
+                .semantic_query(
+                    query.clone(),
+                    embeddings::SEARCH_TOP_K,
+                    embeddings::SEARCH_THRESHOLD,
+                    false,
+                )
+                .await;
+            if hits.is_empty() {
+                return;
+            }
+            // Veraltete Antwort: Suchbegriff hat sich inzwischen geändert.
+            if *state.search_term.borrow() != query {
+                return;
+            }
+            let mut shown: HashSet<(usize, Option<String>)> = HashSet::new();
+            for i in 0..state.store.n_items() {
+                if let Some(obj) = state.store.item(i) {
+                    if let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
+                        if let ListEntry::Item(todo) = &*boxed.borrow::<ListEntry>() {
+                            shown.insert((todo.key.line_index, todo.key.marker.clone()));
+                        }
+                    }
+                }
+            }
+            let fresh: Vec<TodoItem> = hits
+                .into_iter()
+                .map(|(item, _)| item)
+                .filter(|item| !shown.contains(&(item.key.line_index, item.key.marker.clone())))
+                .collect();
+            if fresh.is_empty() {
+                return;
+            }
+            state
+                .store
+                .append(&BoxedAnyObject::new(ListEntry::Header(t(
+                    "search_results_semantic",
+                ))));
+            for item in fresh {
+                state.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+            }
+        });
     }
 
     fn mark_recently_updated(self: &Rc<Self>, marker: String) {
@@ -2344,6 +2748,29 @@ impl AppState {
         });
         general_group.add(&ollama_model_row);
 
+        let semantic_row = adw::SwitchRow::builder()
+            .title(&t("semantic_enabled"))
+            .subtitle(&t("semantic_enabled_desc"))
+            .active(self.semantic_enabled())
+            .build();
+        semantic_row.add_prefix(&gtk::Image::from_icon_name("edit-find-symbolic"));
+        let state_semantic = Rc::clone(self);
+        semantic_row.connect_active_notify(move |row| {
+            state_semantic.set_semantic_enabled(row.is_active());
+        });
+        general_group.add(&semantic_row);
+
+        let embedding_model_row = adw::EntryRow::builder()
+            .title(&t("embedding_model"))
+            .text(&self.embedding_model())
+            .build();
+        embedding_model_row.set_tooltip_text(Some(&t("embedding_model_desc")));
+        let state_embedding_model = Rc::clone(self);
+        embedding_model_row.connect_changed(move |row| {
+            state_embedding_model.set_embedding_model(row.text().to_string());
+        });
+        general_group.add(&embedding_model_row);
+
         // --- WebDAV Page ---
         let webdav_page = adw::PreferencesPage::builder()
             .title(&t("webdav"))
@@ -2871,6 +3298,32 @@ impl AppState {
             }
             prefs.ollama_model = value;
         }
+        self.persist_preferences();
+    }
+
+    fn set_semantic_enabled(&self, enabled: bool) {
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.semantic_enabled == enabled {
+                return;
+            }
+            prefs.semantic_enabled = enabled;
+        }
+        self.persist_preferences();
+    }
+
+    fn set_embedding_model(&self, model: String) {
+        let value = if model.trim().is_empty() { None } else { Some(model) };
+        {
+            let mut prefs = self.preferences.borrow_mut();
+            if prefs.embedding_model == value {
+                return;
+            }
+            prefs.embedding_model = value;
+        }
+        // Modellwechsel ⇒ anderer Vektorraum: In-Memory-Index verwerfen,
+        // der Sidecar-Cache wird beim nächsten Zugriff neu aufgebaut.
+        *self.embedding_cache.borrow_mut() = None;
         self.persist_preferences();
     }
 
