@@ -597,12 +597,19 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 
+    // Gespeicherte Fenstergröße wiederherstellen. Position und Arbeitsfläche
+    // bestimmt unter Wayland ausschließlich der Compositor — GTK4 bietet
+    // dafür bewusst keine API mehr.
+    let saved_prefs = load_preferences();
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title(t("Reinschrift"))
-        .default_width(560)
-        .default_height(780)
+        .default_width(saved_prefs.window_width.filter(|w| *w > 0).unwrap_or(560))
+        .default_height(saved_prefs.window_height.filter(|h| *h > 0).unwrap_or(780))
         .build();
+    if saved_prefs.window_maximized {
+        window.maximize();
+    }
 
     let header = adw::HeaderBar::builder()
         .title_widget(&gtk::Label::builder().label(t("Reinschrift")).build())
@@ -675,6 +682,19 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     overlay.set_vexpand(true);
     let store = gio::ListStore::new::<BoxedAnyObject>();
     let state = Rc::new(AppState::new(&window, &overlay, &store, debug_mode));
+
+    // Fenstergröße und Maximiert-Zustand beim Schließen speichern.
+    // default-width/-height verfolgen in GTK4 die aktuelle (unmaximierte)
+    // Größe, daher genügt das Auslesen im close_request.
+    let state_for_close = Rc::clone(&state);
+    window.connect_close_request(move |win| {
+        let mut prefs = state_for_close.preferences.borrow_mut();
+        prefs.window_width = Some(win.default_width());
+        prefs.window_height = Some(win.default_height());
+        prefs.window_maximized = win.is_maximized();
+        let _ = write_preferences(&prefs);
+        glib::Propagation::Proceed
+    });
 
     // Neue To-do Eingabezeile unter den Filtereinstellungen
     let new_row = gtk::Box::new(gtk::Orientation::Horizontal, 6);

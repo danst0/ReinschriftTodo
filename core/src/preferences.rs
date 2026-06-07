@@ -68,6 +68,12 @@ pub struct Preferences {
     pub semantic_enabled: bool,
     #[serde(default)]
     pub embedding_model: Option<String>,
+    #[serde(default)]
+    pub window_width: Option<i32>,
+    #[serde(default)]
+    pub window_height: Option<i32>,
+    #[serde(default)]
+    pub window_maximized: bool,
 }
 
 /// Returns the path to the shared preferences file.
