@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.24.4" date="2026-06-07">
+      <description>
+        <ul>
+          <li>Fix release pipeline after gettext migration: regenerate vendored crate list (gettext-rs) and install gettext tools in CI</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.24.3" date="2026-06-07">
       <description>
         <ul>

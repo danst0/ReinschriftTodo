@@ -156,6 +156,15 @@ mod tests {
     // verändert und Tests parallel laufen.
     #[test]
     fn test_language_switch_and_fallback() {
+        // Klare Diagnose statt kryptischem Assert-Fehler, wenn build.rs
+        // mangels msgfmt keine Kataloge erzeugen konnte.
+        assert!(
+            has_catalog(&locale_dir()),
+            "Keine .mo-Kataloge unter {:?} gefunden — gettext-Werkzeuge \
+             (msgfmt) installieren und neu bauen, siehe po/README.md",
+            locale_dir()
+        );
+
         set_language("en".to_string());
         assert_eq!(t("Settings"), "Settings");
 
