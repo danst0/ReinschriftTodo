@@ -24,7 +24,11 @@ export async function autoReload() {
 
         const todoList = document.querySelector('.todo-list');
         if (todoList) {
+            // Preserve the scroll position across the swap so the list does
+            // not jump when items move (e.g. completing a task in My Day).
+            const scrollY = window.scrollY;
             todoList.innerHTML = html;
+            window.scrollTo(0, scrollY);
         }
 
         if (onReloadComplete) {

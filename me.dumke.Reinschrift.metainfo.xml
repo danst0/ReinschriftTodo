@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.24.8" date="2026-06-07">
+      <description>
+        <ul>
+          <li>The list keeps its scroll position when tasks change (desktop app and web app) — no more jumping when completing or rescheduling</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.24.7" date="2026-06-07">
       <description>
         <ul>

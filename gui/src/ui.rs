@@ -4021,8 +4021,9 @@ impl AppState {
             }
         }
 
-        let mut restored = false;
-
+        // Auswahl wiederherstellen, ohne ihr hinterherzuscrollen — sonst
+        // springt die Sicht z. B. der nach „Erledigt" verschobenen Aufgabe
+        // hinterher. Die Scroll-Position bleibt beim Neuaufbau stabil.
         if let Some(key) = selected_key
             && let Some(list_view) = self.list_view.borrow().as_ref()
                 && let Some(model) = list_view.model()
@@ -4034,24 +4035,31 @@ impl AppState {
                                     if let ListEntry::Item(todo) = &*entry
                                         && todo.key == key {
                                             selection.set_selected(i);
-                                            list_view.scroll_to(i, gtk::ListScrollFlags::NONE, None);
-                                            restored = true;
                                             break;
                                         }
                                 }
                         }
                     }
 
-        if !restored
-            && let Some(pos) = scroll_pos
-                && let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
-                    let adj = scrolled.vadjustment();
-                    glib::idle_add_local(move || {
-                        let max = (adj.upper() - adj.page_size()).max(0.0);
-                        adj.set_value(pos.min(max));
+        if let Some(pos) = scroll_pos
+            && let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
+                // Nach remove_all + Neubefüllung kennt die ListView ihre Höhe
+                // zunächst nur geschätzt; ein einzelner Idle-Restore klemmt die
+                // Position dann auf einen zu kleinen Wert. Daher über einige
+                // Frames erneut anwenden, bis die Zeilen vermessen sind.
+                let adj = scrolled.vadjustment();
+                let frames = std::cell::Cell::new(0u8);
+                scrolled.add_tick_callback(move |_, _| {
+                    let max = (adj.upper() - adj.page_size()).max(0.0);
+                    adj.set_value(pos.min(max));
+                    frames.set(frames.get() + 1);
+                    if frames.get() >= 3 {
                         glib::ControlFlow::Break
-                    });
-                }
+                    } else {
+                        glib::ControlFlow::Continue
+                    }
+                });
+            }
     }
 
     fn persist_preferences(&self) {
