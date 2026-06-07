@@ -26,7 +26,7 @@ fn render_tagged(prefix: char, name: &str) -> String {
 pub fn render_line(item: &TodoItem) -> Result<String> {
     let title = item.title.trim();
     if title.is_empty() {
-        bail!(t("title_empty_error"));
+        bail!(t("Title must not be empty"));
     }
 
     let checkbox = if item.done { "- [x]" } else { "- [ ]" };
@@ -47,11 +47,10 @@ pub fn render_line(item: &TodoItem) -> Result<String> {
     }
     // Stale "my day" dates (before today) are dropped on re-render so old
     // planning tokens clean themselves up over time.
-    if let Some(myday) = item.myday {
-        if myday >= Local::now().date_naive() {
+    if let Some(myday) = item.myday
+        && myday >= Local::now().date_naive() {
             parts.push(format!("myday:{}", myday.format("%Y-%m-%d")));
         }
-    }
     if let Some(recur) = normalize_token(item.recurrence.as_deref()) {
         parts.push(format!("rec:{recur}"));
     }
@@ -93,7 +92,7 @@ pub fn rewrite_line(line: &str, done: bool) -> Result<String> {
             if has_unchecked {
                 updated = updated.replacen("- [ ]", "- [x]", 1);
             } else {
-                bail!(t("no_checkbox_error"));
+                bail!(t("Line contains no checkbox"));
             }
         } else if updated.contains("- [X]") {
             updated = updated.replacen("- [X]", "- [x]", 1);
@@ -102,7 +101,7 @@ pub fn rewrite_line(line: &str, done: bool) -> Result<String> {
         updated = updated.replacen("- [x]", "- [ ]", 1);
         updated = updated.replacen("- [X]", "- [ ]", 1);
     } else if !has_unchecked {
-        bail!(t("no_checkbox_error"));
+        bail!(t("Line contains no checkbox"));
     }
 
     updated = apply_completion_marker(&updated, done);
@@ -151,8 +150,8 @@ pub fn apply_completion_marker(line: &str, done: bool) -> String {
     if done {
         if let Some(m) = COMPLETION_RE.find(line) {
             // Already present. Check if it's after the ID.
-            if let Some(id_m) = ID_RE.find(line) {
-                if m.start() > id_m.start() {
+            if let Some(id_m) = ID_RE.find(line)
+                && m.start() > id_m.start() {
                     let done_str = format!("{} ", m.as_str().trim_start());
                     let mut s = line.to_string();
                     s.replace_range(m.range(), "");
@@ -161,7 +160,6 @@ pub fn apply_completion_marker(line: &str, done: bool) -> String {
                         return s;
                     }
                 }
-            }
             line.to_string()
         } else {
             // Add completion marker, keeping the ^ID a whitespace-separated

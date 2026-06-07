@@ -33,10 +33,10 @@ pub fn read_content() -> Result<String> {
     match config {
         BackendConfig::Local(path) => {
             if path.as_os_str().is_empty() {
-                bail!(t("no_database_configured"));
+                bail!(t("No database file configured. Please select or create one in the settings."));
             }
             fs::read_to_string(&path)
-                .with_context(|| t("read_error").replace("{}", &path.display().to_string()))
+                .with_context(|| t("Could not read {}").replace("{}", &path.display().to_string()))
         }
         BackendConfig::WebDav {
             url,
@@ -52,7 +52,7 @@ pub fn write_content(content: String) -> Result<()> {
     let config = get_backend_config();
     match config {
         BackendConfig::Local(path) => fs::write(&path, content)
-            .with_context(|| t("write_error").replace("{}", &path.display().to_string())),
+            .with_context(|| t("Could not write {}").replace("{}", &path.display().to_string())),
         BackendConfig::WebDav {
             url,
             path,
@@ -87,7 +87,7 @@ pub fn write_content_checked(content: String, expected_fingerprint: &str) -> Res
                 .into());
             }
             fs::write(&path, content)
-                .with_context(|| t("write_error").replace("{}", &path.display().to_string()))
+                .with_context(|| t("Could not write {}").replace("{}", &path.display().to_string()))
         }
         BackendConfig::WebDav {
             url,

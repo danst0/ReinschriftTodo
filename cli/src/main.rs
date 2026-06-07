@@ -209,14 +209,13 @@ fn main() -> Result<()> {
     let ctx = output::OutputContext::new(cli.json, !cli.no_color);
 
     // Show overdue warning if reminders are enabled
-    if prefs.enable_reminders {
-        if let Ok(items) = data::load_todos() {
+    if prefs.enable_reminders
+        && let Ok(items) = data::load_todos() {
             let (count, _titles) = data::overdue_summary(&items);
             if count > 0 {
-                eprintln!("{}", i18n::t("overdue_warning").replace("{}", &count.to_string()));
+                eprintln!("{}", i18n::t("{} task(s) overdue").replace("{}", &count.to_string()));
             }
         }
-    }
 
     // Dispatch commands
     match cli.command {

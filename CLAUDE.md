@@ -29,10 +29,10 @@ reinschrift/
 │       ├── renderer.rs     # render_line, rewrite_line, rewrite_due
 │       ├── todo.rs         # Business logic (load, toggle, add, delete)
 │       ├── util.rs         # String helpers, marker generation
-│       ├── i18n.rs         # Internationalization
+│       ├── i18n.rs         # Internationalization (gettext, domain "reinschrift")
 │       ├── sorting.rs      # Sorting functions
-│       ├── preferences.rs  # User preferences
-│       └── i18n/           # Translation JSON files
+│       └── preferences.rs  # User preferences
+├── po/                     # gettext translations (.pot template + .po files)
 ├── gui/                    # GTK application (reinschrift-gui)
 │   ├── Cargo.toml
 │   └── src/
@@ -166,7 +166,9 @@ Modular design with focused responsibilities:
   - `generate_marker`, `encode_base36`
   - Note escaping/unescaping, token normalization
 - **data.rs**: Backward-compatible re-exports from all modules
-- **i18n.rs**: Translations (de, en, es, fr, ja, sv) with German fallback
+- **i18n.rs**: GNU gettext (domain "reinschrift"); source strings in code are English (msgid), translations in po/{de,es,fr,ja,sv}.po, fallback is English
+  - `t(msgid)` = gettext, `tc(context, msgid)` = pgettext; language via `--language`, `LANGUAGE`/`LC_ALL`/`LC_MESSAGES`/`LANG`
+  - Dev builds: core/build.rs compiles po/*.po via msgfmt; installed builds load from `<prefix>/share/locale` (Flatpak: /app/share/locale); see po/README.md
   - Environment-based language detection (LANGUAGE, LC_ALL, LANG)
 - **sorting.rs**: `SortMode` enum and sorting functions
   - Topic (+project), Location (@context), Date (due:)

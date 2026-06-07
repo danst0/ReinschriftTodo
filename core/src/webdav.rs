@@ -45,15 +45,14 @@ fn try_nextcloud_fallback<F, T>(
 where
     F: Fn(&str) -> Result<T>,
 {
-    if let Some(user) = username {
-        if !is_nextcloud_url(base_url) {
+    if let Some(user) = username
+        && !is_nextcloud_url(base_url) {
             let candidate_base = nextcloud_webdav_url(base_url, user);
             let candidate_full = construct_full_url(&candidate_base, path);
             if let Ok(result) = try_request(&candidate_full) {
                 return Ok(Some((result, candidate_base)));
             }
         }
-    }
     Ok(None)
 }
 
@@ -349,19 +348,18 @@ pub fn test_webdav_connection(
         Ok(_) => Ok(()),
         Err(e) => {
             // Try Nextcloud fallback (test only, don't update config)
-            if let Some(user) = username {
-                if !is_nextcloud_url(base_url) {
+            if let Some(user) = username
+                && !is_nextcloud_url(base_url) {
                     let candidate_base = nextcloud_webdav_url(base_url, user);
                     let candidate_full = construct_full_url(&candidate_base, path);
                     if try_connect(&candidate_full).is_ok() {
                         return Ok(());
                     }
                 }
-            }
             // Return original error with context
             bail!(
                 "{}",
-                t("connection_error")
+                t("Connection to '{}' failed: {}")
                     .replace("{}", &full_url)
                     .replace("{}", &e.to_string())
             );

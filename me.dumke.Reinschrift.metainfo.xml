@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.24.3" date="2026-06-07">
+      <description>
+        <ul>
+          <li>Internationalization migrated from the custom JSON system to GNU gettext (Weblate/GNOME l10n ready); untranslated strings now fall back to English instead of German</li>
+          <li>Keyboard shortcuts window reworked using GtkShortcutsWindow with grouped sections</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.24.2" date="2026-06-07">
       <description>
         <ul>

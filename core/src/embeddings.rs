@@ -280,7 +280,7 @@ pub fn ensure_index_with(
     for chunk in to_embed.chunks(EMBED_BATCH_SIZE) {
         let inputs: Vec<String> = chunk.iter().map(|(_, text, _)| text.clone()).collect();
         let vectors = embedder.embed(&inputs)?;
-        for ((marker, _, hash), vector) in chunk.iter().zip(vectors.into_iter()) {
+        for ((marker, _, hash), vector) in chunk.iter().zip(vectors) {
             if cache.dim == 0 {
                 cache.dim = vector.len();
             } else if vector.len() != cache.dim {

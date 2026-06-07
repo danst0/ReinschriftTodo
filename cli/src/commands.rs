@@ -12,7 +12,7 @@ use std::io::{self, Write};
 /// Returns true if it was a conflict.
 fn check_conflict(ctx: &OutputContext, err: &anyhow::Error) -> bool {
     if err.downcast_ref::<data::ConflictError>().is_some() {
-        ctx.error(&t("conflict_title"));
+        ctx.error(&t("File was changed externally"));
         true
     } else {
         false
@@ -153,6 +153,9 @@ pub fn add(
     Ok(())
 }
 
+// Spiegelt die CLI-Optionen des edit-Subkommandos 1:1 — ein Parameterobjekt
+// brächte hier keine Klarheit.
+#[allow(clippy::too_many_arguments)]
 pub fn edit(
     ctx: &OutputContext,
     id: &str,
@@ -314,11 +317,11 @@ pub fn tomorrow(ctx: &OutputContext, id: &str) -> Result<()> {
 pub fn undo(ctx: &OutputContext) -> Result<()> {
     match data::undo()? {
         Some(desc) => {
-            ctx.success(&t("undone_action").replace("{}", &desc));
+            ctx.success(&t("Undone: {}").replace("{}", &desc));
             Ok(())
         }
         None => {
-            ctx.info(&t("nothing_to_undo"));
+            ctx.info(&t("Nothing to undo"));
             Ok(())
         }
     }
@@ -426,20 +429,17 @@ pub fn config_set(ctx: &OutputContext, key: &str, value: &str) -> Result<()> {
 
 fn find_item_by_id(items: &[TodoItem], id: &str) -> Result<TodoItem> {
     // Try marker format (^ID)
-    if let Some(marker) = id.strip_prefix('^') {
-        if let Some(item) = items.iter().find(|i| i.key.marker.as_deref() == Some(marker)) {
+    if let Some(marker) = id.strip_prefix('^')
+        && let Some(item) = items.iter().find(|i| i.key.marker.as_deref() == Some(marker)) {
             return Ok(item.clone());
         }
-    }
 
     // Try line number format (#N)
-    if let Some(line_str) = id.strip_prefix('#') {
-        if let Ok(line_num) = line_str.parse::<usize>() {
-            if let Some(item) = items.iter().find(|i| i.key.line_index == line_num) {
+    if let Some(line_str) = id.strip_prefix('#')
+        && let Ok(line_num) = line_str.parse::<usize>()
+            && let Some(item) = items.iter().find(|i| i.key.line_index == line_num) {
                 return Ok(item.clone());
             }
-        }
-    }
 
     // Try as bare marker
     if let Some(item) = items.iter().find(|i| i.key.marker.as_deref() == Some(id)) {
@@ -447,11 +447,10 @@ fn find_item_by_id(items: &[TodoItem], id: &str) -> Result<TodoItem> {
     }
 
     // Try as bare line number
-    if let Ok(line_num) = id.parse::<usize>() {
-        if let Some(item) = items.iter().find(|i| i.key.line_index == line_num) {
+    if let Ok(line_num) = id.parse::<usize>()
+        && let Some(item) = items.iter().find(|i| i.key.line_index == line_num) {
             return Ok(item.clone());
         }
-    }
 
     bail!("Todo not found: {}", id)
 }

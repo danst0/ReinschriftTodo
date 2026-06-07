@@ -22,14 +22,13 @@ use gtk::glib;
 use gtk::pango;
 use gtk::prelude::*;
 use serde::Deserialize;
-use serde_json;
 use tokio::runtime::Runtime;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
 use std::collections::{HashMap, HashSet};
 use reinschrift_core::embeddings;
 use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
-use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, Preferences, load_preferences, write_preferences};
+use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, tc, Preferences, load_preferences, write_preferences};
 
 enum VoiceMsg {
     Error(String),
@@ -78,13 +77,27 @@ fn ensure_default_database() -> Option<PathBuf> {
         return None;
     }
     path.push("todos.md");
-    if !path.exists() {
-        if let Err(err) = fs::write(&path, "") {
+    if !path.exists()
+        && let Err(err) = fs::write(&path, "") {
             eprintln!("failed to create default todos file {}: {}", path.display(), err);
             return None;
         }
-    }
     Some(path)
+}
+
+/// Accessible-Label setzen, damit Orca Icon-only-Buttons und Checkboxen
+/// vorlesen kann (Tooltips allein sind für Screenreader nicht verlässlich).
+fn set_a11y_label(widget: &impl IsA<gtk::Accessible>, label: &str) {
+    widget.update_property(&[gtk::accessible::Property::Label(label)]);
+}
+
+/// Übersetzte Strings für das Einbetten in Builder-UI-XML escapen.
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
 }
 
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
@@ -97,7 +110,7 @@ fn schedule_poll(state: Rc<AppState>, interval: u32) {
                 10
             }
             Err(e) => {
-                eprintln!("{}", t("auto_reload_error").replace("{}", &e.to_string()));
+                eprintln!("{}", t("Auto-reload failed: {}").replace("{}", &e.to_string()));
                 std::cmp::min(interval * 2, 300)
             }
         };
@@ -146,8 +159,9 @@ fn create_suggestion_entry(
         let menu_button = gtk::MenuButton::new();
         menu_button.set_icon_name("view-more-symbolic");
         menu_button.set_popover(Some(&popover));
-        menu_button.set_tooltip_text(Some(&t("show_suggestions")));
+        menu_button.set_tooltip_text(Some(&t("Show suggestions")));
         menu_button.add_css_class("flat");
+        set_a11y_label(&menu_button, &t("Show suggestions"));
 
         // Connect row activation to append suggestion to entry
         let entry_clone = entry.clone();
@@ -312,10 +326,11 @@ fn attach_title_autocomplete_with_duplicate(
                 if let Some(on_duplicate) = on_duplicate.as_ref() {
                     let copy_btn = gtk::Button::builder()
                         .icon_name("edit-copy-symbolic")
-                        .tooltip_text(&t("duplicate"))
+                        .tooltip_text(t("Duplicate task"))
                         .build();
                     copy_btn.add_css_class("flat");
                     copy_btn.set_valign(gtk::Align::Center);
+                    set_a11y_label(&copy_btn, &t("Duplicate task"));
                     let on_duplicate = Rc::clone(on_duplicate);
                     let title_for_copy = title.clone();
                     let popover_for_copy = Rc::clone(&popover);
@@ -416,7 +431,7 @@ fn attach_title_autocomplete_with_duplicate(
                     }
 
                     let header_label = gtk::Label::builder()
-                        .label(t("semantic_section"))
+                        .label(t("Similar tasks"))
                         .xalign(0.0)
                         .build();
                     header_label.add_css_class("dim-label");
@@ -584,17 +599,17 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
 
     let window = adw::ApplicationWindow::builder()
         .application(app)
-        .title(&t("app_title"))
+        .title(t("Reinschrift"))
         .default_width(560)
         .default_height(780)
         .build();
 
     let header = adw::HeaderBar::builder()
-        .title_widget(&gtk::Label::builder().label(&t("app_title")).build())
+        .title_widget(&gtk::Label::builder().label(t("Reinschrift")).build())
         .build();
 
     let search_entry = gtk::SearchEntry::builder()
-        .placeholder_text(&t("search_placeholder"))
+        .placeholder_text(t("Search…"))
         .hexpand(true)
         .margin_start(12)
         .margin_end(12)
@@ -607,39 +622,52 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         .transition_type(gtk::RevealerTransitionType::SlideDown)
         .build();
 
-    let settings_btn = gtk::Button::builder()
+    // Hauptmenü (Hamburger): Einstellungen und Tastenkürzel-Fenster;
+    // primary=true öffnet es zusätzlich per F10.
+    let menu_model = gio::Menu::new();
+    menu_model.append(Some(&t("Settings")), Some("app.open-settings"));
+    menu_model.append(Some(&t("Keyboard Shortcuts")), Some("app.shortcuts"));
+
+    let menu_btn = gtk::MenuButton::builder()
         .icon_name("open-menu-symbolic")
-        .tooltip_text(&t("settings"))
+        .tooltip_text(t("Main menu"))
+        .menu_model(&menu_model)
+        .primary(true)
         .build();
-    settings_btn.add_css_class("flat");
-    header.pack_start(&settings_btn);
+    menu_btn.add_css_class("flat");
+    set_a11y_label(&menu_btn, &t("Main menu"));
+    header.pack_start(&menu_btn);
 
     let add_task_btn = gtk::ToggleButton::builder()
         .icon_name("list-add-symbolic")
-        .tooltip_text(&t("add"))
+        .tooltip_text(t("Add"))
         .build();
     add_task_btn.add_css_class("flat");
+    set_a11y_label(&add_task_btn, &t("Add"));
     header.pack_end(&add_task_btn);
 
     let search_btn = gtk::ToggleButton::builder()
         .icon_name("system-search-symbolic")
-        .tooltip_text(&t("search_placeholder"))
+        .tooltip_text(t("Search…"))
         .build();
     search_btn.add_css_class("flat");
+    set_a11y_label(&search_btn, &t("Search…"));
     header.pack_end(&search_btn);
 
     let refresh_btn = gtk::Button::builder()
         .icon_name("view-refresh-symbolic")
-        .tooltip_text(&t("reload"))
+        .tooltip_text(t("Reload (Ctrl+R)"))
         .build();
     refresh_btn.add_css_class("flat");
+    set_a11y_label(&refresh_btn, &t("Reload (Ctrl+R)"));
     header.pack_end(&refresh_btn);
 
     let select_btn = gtk::ToggleButton::builder()
         .icon_name("object-select-symbolic")
-        .tooltip_text(&t("select_mode"))
+        .tooltip_text(t("Select"))
         .build();
     select_btn.add_css_class("flat");
+    set_a11y_label(&select_btn, &t("Select"));
     header.pack_end(&select_btn);
 
     let overlay = adw::ToastOverlay::new();
@@ -656,7 +684,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     new_row.set_margin_bottom(6);
 
     let new_entry = gtk::Entry::new();
-    new_entry.set_placeholder_text(Some(&t("new_todo_placeholder")));
+    new_entry.set_placeholder_text(Some(&t("New To-do…")));
     new_entry.set_hexpand(true);
     new_row.append(&new_entry);
 
@@ -734,10 +762,11 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
 
     let voice_btn = gtk::Button::builder()
         .icon_name("audio-input-microphone-symbolic")
-        .tooltip_text(&t("voice"))
+        .tooltip_text(t("Voice"))
         .css_classes(["flat"])
         .build();
     voice_btn.set_visible(state.use_whisper());
+    set_a11y_label(&voice_btn, &t("Voice"));
     new_row.append(&voice_btn);
 
     let state_for_voice = Rc::clone(&state);
@@ -747,15 +776,9 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         state_for_voice.toggle_recording(&voice_btn_clone, &new_entry_for_voice);
     });
 
-    let add_btn = gtk::Button::with_label(&t("add"));
+    let add_btn = gtk::Button::with_label(&t("Add"));
     add_btn.add_css_class("suggested-action");
     new_row.append(&add_btn);
-
-    let state_for_settings_btn = Rc::clone(&state);
-    let voice_btn_for_settings = voice_btn.clone();
-    settings_btn.connect_clicked(move |_| {
-        state_for_settings_btn.show_settings_dialog(Some(voice_btn_for_settings.clone()));
-    });
 
     let controls = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     controls.set_margin_start(12);
@@ -764,23 +787,24 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     controls.set_margin_bottom(6);
 
     let sort_label = gtk::Label::builder()
-        .label(&t("sort_by"))
+        .label(t("Sort by:"))
         .xalign(0.0)
         .build();
     controls.append(&sort_label);
 
-    let sort_selector = gtk::DropDown::from_strings(&[&t("topics"), &t("locations"), &t("date")]);
+    let sort_selector = gtk::DropDown::from_strings(&[&t("+ Topics"), &t("@ Locations"), &t("Date")]);
     sort_selector.set_selected(state.sort_mode().to_index());
+    set_a11y_label(&sort_selector, &t("Sort by:"));
     controls.append(&sort_selector);
 
-    let due_filter = gtk::CheckButton::with_label(&t("show_due_only"));
+    let due_filter = gtk::CheckButton::with_label(&t("Show only due"));
     due_filter.set_margin_start(18);
     due_filter.set_active(state.show_due_only());
     controls.append(&due_filter);
 
     let myday_filter = gtk::ToggleButton::builder()
-        .label(&t("my_day"))
-        .tooltip_text(&t("my_day"))
+        .label(t("My Day"))
+        .tooltip_text(t("My Day"))
         .build();
     myday_filter.set_margin_start(18);
     myday_filter.set_valign(gtk::Align::Center);
@@ -841,7 +865,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
                         return; // veraltete Antwort
                     }
                     if let Some((item, _score)) = hits.into_iter().next() {
-                        warning.set_text(&format!("⚠ {} {}", t("duplicate_warning"), item.title));
+                        warning.set_text(&format!("⚠ {} {}", t("Did you mean …?"), item.title));
                         warning.set_visible(true);
                     }
                 });
@@ -888,7 +912,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     selection_row.set_margin_bottom(6);
 
     let selection_count = gtk::Label::builder()
-        .label(&t("selected_count").replace("{}", "0"))
+        .label(t("{} selected").replace("{}", "0"))
         .xalign(0.0)
         .build();
     selection_count.add_css_class("dim-label");
@@ -898,18 +922,18 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     selection_spacer.set_hexpand(true);
     selection_row.append(&selection_spacer);
 
-    let bulk_complete_btn = gtk::Button::with_label(&t("bulk_complete"));
+    let bulk_complete_btn = gtk::Button::with_label(&t("Complete"));
     selection_row.append(&bulk_complete_btn);
 
-    let bulk_reopen_btn = gtk::Button::with_label(&t("bulk_reopen"));
+    let bulk_reopen_btn = gtk::Button::with_label(&t("Reopen"));
     selection_row.append(&bulk_reopen_btn);
 
     // Fälligkeits-Popover mit den vier bekannten Zielen
     let due_popover_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
-    let bulk_due_today_btn = gtk::Button::with_label(&t("set_due_today"));
-    let bulk_due_tomorrow_btn = gtk::Button::with_label(&t("postpone_tomorrow"));
-    let bulk_due_weekend_btn = gtk::Button::with_label(&t("postpone_weekend"));
-    let bulk_due_sometime_btn = gtk::Button::with_label(&t("postpone_sometimes"));
+    let bulk_due_today_btn = gtk::Button::with_label(&t("Set due date to today"));
+    let bulk_due_tomorrow_btn = gtk::Button::with_label(&t("Postpone to tomorrow"));
+    let bulk_due_weekend_btn = gtk::Button::with_label(&t("Postpone to weekend"));
+    let bulk_due_sometime_btn = gtk::Button::with_label(&t("Postpone to 'sometimes'"));
     for btn in [
         &bulk_due_today_btn,
         &bulk_due_tomorrow_btn,
@@ -921,15 +945,15 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     }
     let due_popover = gtk::Popover::builder().child(&due_popover_box).build();
     let bulk_due_btn = gtk::MenuButton::builder()
-        .label(&t("bulk_set_due"))
+        .label(t("Due…"))
         .popover(&due_popover)
         .build();
     selection_row.append(&bulk_due_btn);
 
-    let bulk_assign_btn = gtk::Button::with_label(&t("bulk_assign"));
+    let bulk_assign_btn = gtk::Button::with_label(&t("Assign"));
     selection_row.append(&bulk_assign_btn);
 
-    let bulk_delete_btn = gtk::Button::with_label(&t("delete"));
+    let bulk_delete_btn = gtk::Button::with_label(&t("Delete"));
     bulk_delete_btn.add_css_class("destructive-action");
     selection_row.append(&bulk_delete_btn);
 
@@ -1027,17 +1051,17 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
                 return glib::Propagation::Stop;
             }
 
-            // Check if this position is an item (not a header)
-            if let Some(obj) = nav_state.store.item(pos as u32) {
-                if let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
+            // Check if this position is an item (not a header);
+            // Picker-Zeilen („Mein Tag" planen) sind ebenfalls anwählbar.
+            if let Some(obj) = nav_state.store.item(pos as u32)
+                && let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
                     let entry = boxed.borrow::<ListEntry>();
-                    if matches!(&*entry, ListEntry::Item(_)) {
+                    if matches!(&*entry, ListEntry::Item(_) | ListEntry::PickerItem(_)) {
                         selection.set_selected(pos as u32);
                         list_view.scroll_to(pos as u32, gtk::ListScrollFlags::NONE, None);
                         return glib::Propagation::Stop;
                     }
                 }
-            }
 
             // Move to next position
             pos += direction;
@@ -1076,7 +1100,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
             add_task_btn_esc.set_active(false);
             glib::Propagation::Stop
         } else if key == gdk::Key::question && !has_ctrl {
-            state_for_keys.show_cheatsheet();
+            state_for_keys.show_shortcuts_window();
             glib::Propagation::Stop
         } else if has_ctrl && (key == gdk::Key::n || key == gdk::Key::N) {
             add_task_btn_esc.set_active(!add_task_btn_esc.is_active());
@@ -1088,13 +1112,13 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
             match data::undo() {
                 Ok(Some(desc)) => {
                     if let Err(e) = state_for_keys.reload() {
-                        state_for_keys.show_error(&t("reload_error").replace("{}", &e.to_string()));
+                        state_for_keys.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
                     } else {
-                        state_for_keys.show_info(&t("undone_action").replace("{}", &desc));
+                        state_for_keys.show_info(&t("Undone: {}").replace("{}", &desc));
                     }
                 }
                 Ok(None) => {
-                    state_for_keys.show_info(&t("nothing_to_undo"));
+                    state_for_keys.show_info(&t("Nothing to undo"));
                 }
                 Err(e) => {
                     state_for_keys.show_error(&e.to_string());
@@ -1121,7 +1145,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     let refresh_action = gio::SimpleAction::new("reload", None);
     refresh_action.connect_activate(clone!(#[weak] state, move |_, _| {
         if let Err(err) = state.reload() {
-            state.show_error(&t("load_error").replace("{}", &err.to_string()));
+            state.show_error(&t("Could not load To-dos: {}").replace("{}", &err.to_string()));
         }
     }));
     app.add_action(&refresh_action);
@@ -1129,10 +1153,20 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
 
     let settings_action = gio::SimpleAction::new("open-settings", None);
     let state_for_settings_action = Rc::clone(&state);
+    let voice_btn_for_settings = voice_btn.clone();
     settings_action.connect_activate(move |_, _| {
-        state_for_settings_action.show_settings_dialog(None);
+        state_for_settings_action.show_settings_dialog(Some(voice_btn_for_settings.clone()));
     });
     app.add_action(&settings_action);
+    app.set_accels_for_action("app.open-settings", &["<Primary>comma"]);
+
+    let shortcuts_action = gio::SimpleAction::new("shortcuts", None);
+    let state_for_shortcuts_action = Rc::clone(&state);
+    shortcuts_action.connect_activate(move |_, _| {
+        state_for_shortcuts_action.show_shortcuts_window();
+    });
+    app.add_action(&shortcuts_action);
+    app.set_accels_for_action("app.shortcuts", &["<Primary>question", "F1"]);
 
     let close_action = gio::SimpleAction::new("close-window", None);
     let window_for_close = window.clone();
@@ -1143,7 +1177,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     app.set_accels_for_action("app.close-window", &["<Primary>w", "<Primary>q", "<Alt>F4"]);
 
     refresh_btn.connect_clicked(clone!(#[weak] app, move |_| {
-        let _ = app.activate_action("app.reload", None);
+        app.activate_action("app.reload", None);
     }));
 
     // Keep state alive for the window lifetime so weak references can upgrade.
@@ -1157,8 +1191,8 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         let err_msg = err.to_string();
         let mut recovered = false;
 
-        if err_msg == t("no_database_configured") {
-            if let Some(fallback) = ensure_default_database() {
+        if err_msg == t("No database file configured. Please select or create one in the settings.")
+            && let Some(fallback) = ensure_default_database() {
                 data::set_todo_path(fallback.clone());
                 {
                     let mut prefs = state.preferences.borrow_mut();
@@ -1169,13 +1203,12 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
                     recovered = true;
                 }
             }
-        }
 
         if !recovered {
-            let msg = if err_msg == t("no_database_configured") {
+            let msg = if err_msg == t("No database file configured. Please select or create one in the settings.") {
                 err_msg
             } else {
-                format!("{}\n{}", t("load_error").replace("{}", &err_msg), t("select_valid_file"))
+                format!("{}\n{}", t("Could not load To-dos: {}").replace("{}", &err_msg), t("Please select a valid file in settings."))
             };
             state.show_error(&msg);
             state.show_settings_dialog(None);
@@ -1200,7 +1233,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     }));
 
     if let Err(err) = state.install_monitor() {
-        state.show_error(&t("monitor_error").replace("{}", &err.to_string()));
+        state.show_error(&t("File monitoring not available: {}").replace("{}", &err.to_string()));
     }
 
     schedule_poll(Rc::clone(&state), 10);
@@ -1251,10 +1284,12 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         select_check.set_valign(gtk::Align::Center);
         select_check.set_visible(false);
         select_check.add_css_class("selection-mode");
+        set_a11y_label(&select_check, &t("Select task"));
         container.append(&select_check);
 
         let check = gtk::CheckButton::new();
         check.set_valign(gtk::Align::Center);
+        set_a11y_label(&check, &t("Mark as done"));
         container.append(&check);
 
         let column = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -1283,42 +1318,47 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
         let myday_btn = gtk::Button::builder()
             .icon_name("starred-symbolic")
-            .tooltip_text(&t("my_day"))
+            .tooltip_text(t("My Day"))
             .build();
         myday_btn.set_valign(gtk::Align::Center);
         myday_btn.add_css_class("flat");
+        set_a11y_label(&myday_btn, &t("My Day"));
         container.append(&myday_btn);
 
         let today_btn = gtk::Button::builder()
             .icon_name("x-office-calendar-symbolic")
-            .tooltip_text(&t("set_due_today"))
+            .tooltip_text(t("Set due date to today"))
             .build();
         today_btn.set_valign(gtk::Align::Center);
         today_btn.add_css_class("flat");
+        set_a11y_label(&today_btn, &t("Set due date to today"));
         container.append(&today_btn);
 
         let tomorrow_btn = gtk::Button::builder()
             .icon_name("go-next-symbolic")
-            .tooltip_text(&t("postpone_tomorrow"))
+            .tooltip_text(t("Postpone to tomorrow"))
             .build();
         tomorrow_btn.set_valign(gtk::Align::Center);
         tomorrow_btn.add_css_class("flat");
+        set_a11y_label(&tomorrow_btn, &t("Postpone to tomorrow"));
         container.append(&tomorrow_btn);
 
         let weekend_btn = gtk::Button::builder()
             .icon_name("weather-clear-symbolic")
-            .tooltip_text(&t("postpone_weekend"))
+            .tooltip_text(t("Postpone to weekend"))
             .build();
         weekend_btn.set_valign(gtk::Align::Center);
         weekend_btn.add_css_class("flat");
+        set_a11y_label(&weekend_btn, &t("Postpone to weekend"));
         container.append(&weekend_btn);
 
         let sometimes_btn = gtk::Button::builder()
             .icon_name("clock-symbolic")
-            .tooltip_text(&t("postpone_sometimes"))
+            .tooltip_text(t("Postpone to 'sometimes'"))
             .build();
         sometimes_btn.set_valign(gtk::Align::Center);
         sometimes_btn.add_css_class("flat");
+        set_a11y_label(&sometimes_btn, &t("Postpone to 'sometimes'"));
         container.append(&sometimes_btn);
 
         stack.add_named(&container, Some("item"));
@@ -1332,10 +1372,11 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
         let picker_add_btn = gtk::Button::builder()
             .icon_name("list-add-symbolic")
-            .tooltip_text(&t("add_to_my_day"))
+            .tooltip_text(t("Add to My Day"))
             .build();
         picker_add_btn.set_valign(gtk::Align::Center);
         picker_add_btn.add_css_class("flat");
+        set_a11y_label(&picker_add_btn, &t("Add to My Day"));
         picker_box.append(&picker_add_btn);
 
         let picker_column = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -1375,8 +1416,13 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             };
             
             let Some(state) = state_item_key.upgrade() else { return glib::Propagation::Proceed; };
-            // Im Auswahlmodus keine Schnellaktionen per Tastatur auslösen
+            // Im Auswahlmodus schaltet die Leertaste die Auswahl um;
+            // andere Schnellaktionen sind dort deaktiviert.
             if state.selection_mode.get() {
+                if keyval == gdk::Key::space {
+                    state.toggle_selection_at(list_item.position());
+                    return glib::Propagation::Stop;
+                }
                 return glib::Propagation::Proceed;
             }
 
@@ -1384,6 +1430,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             match keyval {
                 gdk::Key::space => {
                     let _ = state.toggle_item(&todo, !todo.done);
+                    glib::Propagation::Stop
+                }
+                gdk::Key::Delete | gdk::Key::KP_Delete => {
+                    state.request_delete(&todo);
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('h') || unicode == Some('H') => {
@@ -1501,7 +1551,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                     return;
                 }
                 if let Err(err) = state.toggle_item(&todo, btn.is_active()) {
-                    state.show_error(&t("update_error").replace("{}", &err.to_string()));
+                    state.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
                 }
             }
         });
@@ -1524,11 +1574,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = myday_state.upgrade() {
-                if let Err(err) = state.toggle_myday(&todo) {
-                    state.show_error(&t("update_error").replace("{}", &err.to_string()));
+            if let Some(state) = myday_state.upgrade()
+                && let Err(err) = state.toggle_myday(&todo) {
+                    state.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
                 }
-            }
         });
 
         let tomorrow_list = list_item.downgrade();
@@ -1549,11 +1598,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = tomorrow_state.upgrade() {
-                if let Err(err) = state.set_due_tomorrow(&todo) {
-                    state.show_error(&t("set_due_error").replace("{}", &err.to_string()));
+            if let Some(state) = tomorrow_state.upgrade()
+                && let Err(err) = state.set_due_tomorrow(&todo) {
+                    state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
                 }
-            }
         });
 
         let weekend_list = list_item.downgrade();
@@ -1574,11 +1622,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = weekend_state.upgrade() {
-                if let Err(err) = state.set_due_weekend(&todo) {
-                    state.show_error(&t("set_due_error").replace("{}", &err.to_string()));
+            if let Some(state) = weekend_state.upgrade()
+                && let Err(err) = state.set_due_weekend(&todo) {
+                    state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
                 }
-            }
         });
 
         let today_list = list_item.downgrade();
@@ -1599,11 +1646,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = today_state.upgrade() {
-                if let Err(err) = state.set_due_today(&todo) {
-                    state.show_error(&t("set_due_error").replace("{}", &err.to_string()));
+            if let Some(state) = today_state.upgrade()
+                && let Err(err) = state.set_due_today(&todo) {
+                    state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
                 }
-            }
         });
 
         let sometimes_list = list_item.downgrade();
@@ -1624,11 +1670,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = sometimes_state.upgrade() {
-                if let Err(err) = state.set_due_sometimes(&todo) {
-                    state.show_error(&t("set_due_error").replace("{}", &err.to_string()));
+            if let Some(state) = sometimes_state.upgrade()
+                && let Err(err) = state.set_due_sometimes(&todo) {
+                    state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
                 }
-            }
         });
 
         let picker_list = list_item.downgrade();
@@ -1649,11 +1694,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = picker_state.upgrade() {
-                if let Err(err) = state.toggle_myday(&todo) {
-                    state.show_error(&t("update_error").replace("{}", &err.to_string()));
+            if let Some(state) = picker_state.upgrade()
+                && let Err(err) = state.toggle_myday(&todo) {
+                    state.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
                 }
-            }
         });
 
     });
@@ -1687,11 +1731,10 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 stack.remove_css_class("selected-row");
                 if let Some(header_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::Label>>("header-label")
-                } {
-                    if let Some(header_label) = unsafe { header_ref_ptr.as_ref() }.upgrade() {
+                }
+                    && let Some(header_label) = unsafe { header_ref_ptr.as_ref() }.upgrade() {
                         header_label.set_text(label);
                     }
-                }
             }
             ListEntry::Item(todo) => {
                 stack.set_visible_child_name("item");
@@ -1733,14 +1776,13 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
                 if let Some(select_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::CheckButton>>("select-check")
-                } {
-                    if let Some(select_widget) = unsafe { select_ref_ptr.as_ref() }.upgrade() {
+                }
+                    && let Some(select_widget) = unsafe { select_ref_ptr.as_ref() }.upgrade() {
                         select_widget.set_visible(selection_mode);
                         if select_widget.is_active() != is_selected {
                             select_widget.set_active(is_selected);
                         }
                     }
-                }
 
                 for button_key in [
                     "todo-myday-btn",
@@ -1751,27 +1793,25 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 ] {
                     if let Some(btn_ref_ptr) = unsafe {
                         list_item.data::<glib::WeakRef<gtk::Button>>(button_key)
-                    } {
-                        if let Some(btn) = unsafe { btn_ref_ptr.as_ref() }.upgrade() {
+                    }
+                        && let Some(btn) = unsafe { btn_ref_ptr.as_ref() }.upgrade() {
                             btn.set_visible(!selection_mode);
                         }
-                    }
                 }
 
                 if let Some(check_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::CheckButton>>("todo-check")
-                } {
-                    if let Some(check_widget) = unsafe { check_ref_ptr.as_ref() }.upgrade() {
+                }
+                    && let Some(check_widget) = unsafe { check_ref_ptr.as_ref() }.upgrade() {
                         check_widget.set_visible(!selection_mode);
                         if check_widget.is_active() != todo.done {
                             check_widget.set_active(todo.done);
                         }
                     }
-                }
                 if let Some(title_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::Label>>("todo-title")
-                } {
-                    if let Some(title_widget) = unsafe { title_ref_ptr.as_ref() }.upgrade() {
+                }
+                    && let Some(title_widget) = unsafe { title_ref_ptr.as_ref() }.upgrade() {
                         title_widget.set_text(&todo.title);
                         if todo.done {
                             title_widget.add_css_class("dim-label");
@@ -1779,14 +1819,12 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                             title_widget.remove_css_class("dim-label");
                         }
                     }
-                }
                 if let Some(meta_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::Label>>("todo-meta")
-                } {
-                    if let Some(meta_widget) = unsafe { meta_ref_ptr.as_ref() }.upgrade() {
+                }
+                    && let Some(meta_widget) = unsafe { meta_ref_ptr.as_ref() }.upgrade() {
                         meta_widget.set_text(&format_metadata(todo));
                     }
-                }
             }
             ListEntry::PickerItem(todo) => {
                 stack.set_visible_child_name("picker");
@@ -1795,18 +1833,16 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
 
                 if let Some(title_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::Label>>("picker-title")
-                } {
-                    if let Some(title_widget) = unsafe { title_ref_ptr.as_ref() }.upgrade() {
+                }
+                    && let Some(title_widget) = unsafe { title_ref_ptr.as_ref() }.upgrade() {
                         title_widget.set_text(&todo.title);
                     }
-                }
                 if let Some(meta_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::Label>>("picker-meta")
-                } {
-                    if let Some(meta_widget) = unsafe { meta_ref_ptr.as_ref() }.upgrade() {
+                }
+                    && let Some(meta_widget) = unsafe { meta_ref_ptr.as_ref() }.upgrade() {
                         meta_widget.set_text(&format_metadata(todo));
                     }
-                }
             }
         }
     });
@@ -2086,11 +2122,10 @@ impl AppState {
         }
         let model = self.embedding_model();
         let fingerprint = self.last_fingerprint.borrow().clone().unwrap_or_default();
-        if let Some(cache) = self.embedding_cache.borrow().as_ref() {
-            if cache.db_fingerprint == fingerprint && cache.model == model {
+        if let Some(cache) = self.embedding_cache.borrow().as_ref()
+            && cache.db_fingerprint == fingerprint && cache.model == model {
                 return Some(Rc::clone(cache));
             }
-        }
         // Ein Build läuft bereits (früherer Tastendruck oder Vorwärmen):
         // veralteten Cache nutzen statt einen zweiten parallelen vollen
         // Rebuild gegen Ollama zu starten.
@@ -2229,13 +2264,11 @@ impl AppState {
             }
             let mut shown: HashSet<(usize, Option<String>)> = HashSet::new();
             for i in 0..state.store.n_items() {
-                if let Some(obj) = state.store.item(i) {
-                    if let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
-                        if let ListEntry::Item(todo) = &*boxed.borrow::<ListEntry>() {
+                if let Some(obj) = state.store.item(i)
+                    && let Ok(boxed) = obj.downcast::<BoxedAnyObject>()
+                        && let ListEntry::Item(todo) = &*boxed.borrow::<ListEntry>() {
                             shown.insert((todo.key.line_index, todo.key.marker.clone()));
                         }
-                    }
-                }
             }
             let fresh: Vec<TodoItem> = hits
                 .into_iter()
@@ -2248,7 +2281,7 @@ impl AppState {
             state
                 .store
                 .append(&BoxedAnyObject::new(ListEntry::Header(t(
-                    "search_results_semantic",
+                    "Similar by meaning",
                 ))));
             for item in fresh {
                 state.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
@@ -2338,9 +2371,9 @@ impl AppState {
             return result;
         }
 
-        if done {
-            if let Some(rule) = todo.recurrence.as_deref() {
-                if let Some(next_due) = data::next_due_date(todo.due, rule) {
+        if done
+            && let Some(rule) = todo.recurrence.as_deref()
+                && let Some(next_due) = data::next_due_date(todo.due, rule) {
                     let mut next_item = todo.clone();
                     next_item.key = data::TodoKey { line_index: 0, marker: None };
                     next_item.done = false;
@@ -2349,8 +2382,6 @@ impl AppState {
                         eprintln!("Failed to add recurring task: {err}");
                     }
                 }
-            }
-        }
 
         self.reload()?;
         let message = if done {
@@ -2374,9 +2405,9 @@ impl AppState {
             Ok(()) => {
                 self.reload()?;
                 let message = if currently_in {
-                    t("remove_from_my_day")
+                    t("Remove from My Day")
                 } else {
-                    t("add_to_my_day")
+                    t("Add to My Day")
                 };
                 self.show_undo_toast(&format!("{message}: {}", todo.title));
                 Ok(())
@@ -2454,99 +2485,97 @@ impl AppState {
 
 
 
-    fn show_cheatsheet(self: &Rc<Self>) {
+    /// Tastenkürzel-Fenster (GtkShortcutsWindow), gruppiert nach Bereich.
+    /// Mit gtk4 v4_12 gibt es noch keine programmatische Add-API
+    /// (`add_section` kam erst mit 4.14), daher Aufbau über Builder-XML.
+    fn show_shortcuts_window(self: &Rc<Self>) {
         let Some(parent) = self.window.upgrade() else {
-            self.show_error(&t("no_window"));
+            self.show_error(&t("No window available"));
             return;
         };
 
-        let dialog = adw::Window::builder()
-            .title(&t("cheatsheet"))
-            .transient_for(&parent)
-            .modal(true)
-            .default_width(400)
-            .build();
-        dialog.set_destroy_with_parent(true);
-
-        let key_controller = gtk::EventControllerKey::new();
-        let dialog_clone = dialog.clone();
-        key_controller.connect_key_pressed(move |_, keyval, _, _| {
-            if keyval == gdk::Key::Escape {
-                dialog_clone.close();
-                glib::Propagation::Stop
-            } else {
-                glib::Propagation::Proceed
-            }
-        });
-        dialog.add_controller(key_controller);
-
-        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
-        content.set_margin_top(24);
-        content.set_margin_bottom(24);
-        content.set_margin_start(24);
-        content.set_margin_end(24);
-
-        let grid = gtk::Grid::builder()
-            .column_spacing(24)
-            .row_spacing(8)
-            .build();
-
-        let shortcuts = [
-            ("key_help", "?"),
-            ("key_new", "Ctrl + N"),
-            ("key_search", "Ctrl + F"),
-            ("key_reload", "Ctrl + R"),
-            ("key_undo", "Ctrl + Z"),
-            ("key_quit", "Ctrl + Q"),
-            ("key_nav", "↑ / ↓"),
-            ("key_toggle", "Space"),
-            ("key_edit", "Enter"),
-            ("key_today", "h"),
-            ("key_tomorrow", "m"),
-            ("key_weekend", "w"),
-            ("key_week", "l"),
-            ("key_sometimes", "s"),
-        ];
-
-        for (i, (key, shortcut)) in shortcuts.iter().enumerate() {
-            let key_label = gtk::Label::builder()
-                .label(*shortcut)
-                .xalign(1.0)
-                .build();
-            key_label.add_css_class("dim-label");
-            
-            let desc_label = gtk::Label::builder()
-                .label(&t(key))
-                .xalign(0.0)
-                .build();
-            
-            grid.attach(&key_label, 0, i as i32, 1, 1);
-            grid.attach(&desc_label, 1, i as i32, 1, 1);
+        fn shortcut(title: &str, accel: &str) -> String {
+            format!(
+                concat!(
+                    "<child><object class=\"GtkShortcutsShortcut\">",
+                    "<property name=\"title\">{}</property>",
+                    "<property name=\"accelerator\">{}</property>",
+                    "</object></child>"
+                ),
+                xml_escape(title),
+                xml_escape(accel),
+            )
+        }
+        fn group(title: &str, shortcuts: &[String]) -> String {
+            format!(
+                concat!(
+                    "<child><object class=\"GtkShortcutsGroup\">",
+                    "<property name=\"title\">{}</property>{}",
+                    "</object></child>"
+                ),
+                xml_escape(title),
+                shortcuts.concat(),
+            )
         }
 
-        content.append(&grid);
+        let groups = [
+            group(&t("General"), &[
+                shortcut(&t("Show help"), "question F1"),
+                shortcut(&t("New task"), "<Control>n"),
+                shortcut(&t("Search"), "<Control>f"),
+                shortcut(&t("Open settings"), "<Control>comma"),
+                shortcut(&t("Reload"), "<Control>r"),
+                shortcut(&t("Undo last action"), "<Control>z"),
+                shortcut(&t("Close search/dialog"), "Escape"),
+                shortcut(&t("Quit"), "<Control>q"),
+            ]),
+            group(&t("Task list"), &[
+                shortcut(&t("Navigate"), "Up Down"),
+                shortcut(&t("Toggle done"), "space"),
+                shortcut(&t("Edit"), "Return"),
+                shortcut(&t("Delete selected task"), "Delete"),
+                shortcut(&t("In the planning picker: add to My Day"), "Return"),
+            ]),
+            group(&t("Set due date"), &[
+                shortcut(&t("Due today"), "h"),
+                shortcut(&t("Due tomorrow"), "m"),
+                shortcut(&t("Due this weekend"), "w"),
+                shortcut(&t("Due next week"), "l"),
+                shortcut(&t("Due sometimes"), "s"),
+            ]),
+            group(&t("Multi-selection"), &[
+                shortcut(&t("Toggle selection"), "space"),
+            ]),
+        ];
 
-        let close_btn = gtk::Button::with_label(&t("close"));
-        close_btn.set_halign(gtk::Align::End);
-        close_btn.set_margin_top(12);
-        let dialog_close = dialog.clone();
-        close_btn.connect_clicked(move |_| {
-            dialog_close.close();
-        });
-        content.append(&close_btn);
+        let xml = format!(
+            concat!(
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                "<interface><object class=\"GtkShortcutsWindow\" id=\"shortcuts_window\">",
+                "<property name=\"modal\">true</property>",
+                "<child><object class=\"GtkShortcutsSection\">{}</object></child>",
+                "</object></interface>"
+            ),
+            groups.concat(),
+        );
 
-        dialog.set_content(Some(&content));
-        dialog.present();
+        let builder = gtk::Builder::from_string(&xml);
+        let Some(window) = builder.object::<gtk::ShortcutsWindow>("shortcuts_window") else {
+            self.show_error(&t("No window available"));
+            return;
+        };
+        window.set_transient_for(Some(&parent));
+        window.present();
     }
 
     fn show_settings_dialog(self: &Rc<Self>, voice_btn: Option<gtk::Button>) {
         let Some(parent) = self.window.upgrade() else {
-            self.show_error(&t("no_window"));
+            self.show_error(&t("No window available"));
             return;
         };
 
         let dialog = adw::PreferencesWindow::builder()
-            .title(&t("settings"))
+            .title(t("Settings"))
             .transient_for(&parent)
             .modal(true)
             .default_width(480)
@@ -2554,21 +2583,21 @@ impl AppState {
 
         // --- General Page ---
         let general_page = adw::PreferencesPage::builder()
-            .title(&t("general"))
+            .title(t("General"))
             .icon_name("preferences-system-symbolic")
             .build();
         dialog.add(&general_page);
 
         // --- Storage Group ---
         let storage_group = adw::PreferencesGroup::builder()
-            .title(&t("storage"))
+            .title(t("Storage"))
             .build();
         general_page.add(&storage_group);
 
         // WebDAV switch
         let use_webdav_now = self.preferences.borrow().use_webdav;
         let webdav_switch_row = adw::SwitchRow::builder()
-            .title(&t("use_webdav"))
+            .title(t("Use WebDAV"))
             .active(use_webdav_now)
             .build();
         webdav_switch_row.add_prefix(&gtk::Image::from_icon_name("network-server-symbolic"));
@@ -2576,16 +2605,16 @@ impl AppState {
 
         // Local file row (visible when not in WebDAV mode)
         let current_db_path = self.preferences.borrow().db_path.clone().unwrap_or_default();
-        let db_subtitle = if current_db_path.is_empty() { t("select_file") } else { current_db_path.clone() };
+        let db_subtitle = if current_db_path.is_empty() { t("Select file…") } else { current_db_path.clone() };
         let db_row = adw::ActionRow::builder()
-            .title(&t("database_file"))
+            .title(t("Database file"))
             .subtitle(&db_subtitle)
             .build();
         db_row.set_visible(!use_webdav_now);
 
         // "Select existing file" button
         let select_btn = gtk::Button::builder()
-            .label(&t("select_file"))
+            .label(t("Select file…"))
             .valign(gtk::Align::Center)
             .build();
         select_btn.add_css_class("flat");
@@ -2593,7 +2622,7 @@ impl AppState {
 
         // "Create new file" button
         let new_btn = gtk::Button::builder()
-            .label(&t("create_new_file"))
+            .label(t("Create new file"))
             .valign(gtk::Align::Center)
             .build();
         new_btn.add_css_class("flat");
@@ -2616,19 +2645,19 @@ impl AppState {
         let db_row_select = db_row.clone();
         select_btn.connect_clicked(move |_| {
             let fd = gtk::FileDialog::builder()
-                .title(&t("database_file"))
+                .title(t("Database file"))
                 .build();
             let state = Rc::clone(&state_select);
             let row = db_row_select.clone();
             fd.open(Some(&fd_parent), gio::Cancellable::NONE, move |result| {
-                if let Ok(file) = result {
-                    if let Some(path) = file.path() {
+                if let Ok(file) = result
+                    && let Some(path) = file.path() {
                         if !path.exists() {
-                            state.show_error(&t("file_not_exists"));
+                            state.show_error(&t("File does not exist"));
                             return;
                         }
                         if data::todo_path() == path {
-                            state.show_info(&t("file_already_active"));
+                            state.show_info(&t("This file is already active"));
                             return;
                         }
                         data::set_todo_path(path.clone());
@@ -2641,12 +2670,11 @@ impl AppState {
                         state.persist_preferences();
                         row.set_subtitle(&path.to_string_lossy());
                         if let Err(e) = state.reload() {
-                            state.show_error(&t("load_data_error").replace("{}", &e.to_string()));
+                            state.show_error(&t("Could not load data: {}").replace("{}", &e.to_string()));
                         } else {
-                            state.show_info(&t("using_file").replace("{}", &path.to_string_lossy()));
+                            state.show_info(&t("Using {}").replace("{}", &path.to_string_lossy()));
                         }
                     }
-                }
             });
         });
 
@@ -2656,20 +2684,19 @@ impl AppState {
         let db_row_new = db_row.clone();
         new_btn.connect_clicked(move |_| {
             let fd = gtk::FileDialog::builder()
-                .title(&t("create_new_file"))
+                .title(t("Create new file"))
                 .initial_name("todos.md")
                 .build();
             let state = Rc::clone(&state_new);
             let row = db_row_new.clone();
             fd.save(Some(&fd_parent2), gio::Cancellable::NONE, move |result| {
-                if let Ok(file) = result {
-                    if let Some(path) = file.path() {
-                        if !path.exists() {
-                            if std::fs::write(&path, "").is_err() {
-                                state.show_error(&t("write_error").replace("{}", &path.display().to_string()));
+                if let Ok(file) = result
+                    && let Some(path) = file.path() {
+                        if !path.exists()
+                            && std::fs::write(&path, "").is_err() {
+                                state.show_error(&t("Could not write {}").replace("{}", &path.display().to_string()));
                                 return;
                             }
-                        }
                         data::set_todo_path(path.clone());
                         data::set_backend_config(data::BackendConfig::Local(path.clone()));
                         {
@@ -2680,22 +2707,21 @@ impl AppState {
                         state.persist_preferences();
                         row.set_subtitle(&path.to_string_lossy());
                         if let Err(e) = state.reload() {
-                            state.show_error(&t("load_data_error").replace("{}", &e.to_string()));
+                            state.show_error(&t("Could not load data: {}").replace("{}", &e.to_string()));
                         } else {
-                            state.show_info(&t("using_file").replace("{}", &path.to_string_lossy()));
+                            state.show_info(&t("Using {}").replace("{}", &path.to_string_lossy()));
                         }
                     }
-                }
             });
         });
 
         let general_group = adw::PreferencesGroup::builder()
-            .title(&t("general"))
+            .title(t("General"))
             .build();
         general_page.add(&general_group);
 
         let show_done_row = adw::SwitchRow::builder()
-            .title(&t("show_completed"))
+            .title(t("Show completed tasks"))
             .active(self.show_completed())
             .build();
         show_done_row.add_prefix(&gtk::Image::from_icon_name("view-list-symbolic"));
@@ -2706,7 +2732,7 @@ impl AppState {
         general_group.add(&show_done_row);
 
         let show_due_row = adw::SwitchRow::builder()
-            .title(&t("show_due_only_mode"))
+            .title(t("Show only due (until today)"))
             .active(self.show_due_only())
             .build();
         show_due_row.add_prefix(&gtk::Image::from_icon_name("appointment-soon-symbolic"));
@@ -2717,8 +2743,8 @@ impl AppState {
         general_group.add(&show_due_row);
 
         let delete_confirm_row = adw::SwitchRow::builder()
-            .title(&t("delete_without_confirmation"))
-            .subtitle(&t("delete_without_confirmation_desc"))
+            .title(t("Delete without confirmation"))
+            .subtitle(t("Skip the delete dialog and remove entries immediately."))
             .active(self.skip_delete_confirmation())
             .build();
         delete_confirm_row.add_prefix(&gtk::Image::from_icon_name("user-trash-symbolic"));
@@ -2729,8 +2755,8 @@ impl AppState {
         general_group.add(&delete_confirm_row);
 
         let title_autocomplete_row = adw::SwitchRow::builder()
-            .title(&t("title_autocomplete"))
-            .subtitle(&t("title_autocomplete_desc"))
+            .title(t("Title autocomplete"))
+            .subtitle(t("Suggest existing task titles while typing."))
             .active(self.title_autocomplete_enabled())
             .build();
         title_autocomplete_row.add_prefix(&gtk::Image::from_icon_name("edit-find-symbolic"));
@@ -2742,7 +2768,7 @@ impl AppState {
 
         // Reminders
         let enable_reminders_row = adw::SwitchRow::builder()
-            .title(&t("enable_reminders"))
+            .title(t("Enable reminders"))
             .active(self.preferences.borrow().enable_reminders)
             .build();
         enable_reminders_row.add_prefix(&gtk::Image::from_icon_name("alarm-symbolic"));
@@ -2755,7 +2781,7 @@ impl AppState {
         general_group.add(&enable_reminders_row);
 
         let remind_minutes_row = adw::ActionRow::builder()
-            .title(&t("remind_before_minutes"))
+            .title(t("Reminder window (minutes)"))
             .build();
         let remind_spin = gtk::SpinButton::with_range(5.0, 120.0, 5.0);
         remind_spin.set_value(self.preferences.borrow().remind_before_minutes as f64);
@@ -2772,8 +2798,8 @@ impl AppState {
         general_group.add(&remind_minutes_row);
 
         let ai_row = adw::SwitchRow::builder()
-            .title(&t("use_ai_on_new_topic"))
-            .subtitle(&t("use_ai_on_new_topic_desc"))
+            .title(t("Use AI on add"))
+            .subtitle(t("Run Smart Add automatically; fallback if AI times out."))
             .active(self.use_ai_on_new_topic())
             .build();
         ai_row.add_prefix(&gtk::Image::from_icon_name("starred-symbolic"));
@@ -2784,8 +2810,8 @@ impl AppState {
         general_group.add(&ai_row);
 
         let ai_timeout_row = adw::ActionRow::builder()
-            .title(&t("ai_timeout_label"))
-            .subtitle(&t("ai_timeout_desc"))
+            .title(t("AI timeout (seconds)"))
+            .subtitle(t("Cancel AI parsing after this time."))
             .build();
         let ai_timeout_spin = gtk::SpinButton::with_range(5.0, 120.0, 1.0);
         ai_timeout_spin.set_value(self.ai_timeout_secs() as f64);
@@ -2801,10 +2827,10 @@ impl AppState {
         general_group.add(&ai_timeout_row);
 
         let ollama_url_row = adw::EntryRow::builder()
-            .title(&t("ollama_url"))
-            .text(&self.ollama_url())
+            .title(t("Ollama URL"))
+            .text(self.ollama_url())
             .build();
-        ollama_url_row.set_tooltip_text(Some(&t("ollama_url_desc")));
+        ollama_url_row.set_tooltip_text(Some(&t("Ollama server address (e.g., http://localhost:11434)")));
         let state_ollama_url = Rc::clone(self);
         ollama_url_row.connect_changed(move |row| {
             state_ollama_url.set_ollama_url(row.text().to_string());
@@ -2812,10 +2838,10 @@ impl AppState {
         general_group.add(&ollama_url_row);
 
         let ollama_model_row = adw::EntryRow::builder()
-            .title(&t("ollama_model"))
-            .text(&self.ollama_model())
+            .title(t("AI Model"))
+            .text(self.ollama_model())
             .build();
-        ollama_model_row.set_tooltip_text(Some(&t("ollama_model_desc")));
+        ollama_model_row.set_tooltip_text(Some(&t("Ollama model name (e.g., mistral:7b, llama3.1:8b)")));
         let state_ollama_model = Rc::clone(self);
         ollama_model_row.connect_changed(move |row| {
             state_ollama_model.set_ollama_model(row.text().to_string());
@@ -2823,8 +2849,8 @@ impl AppState {
         general_group.add(&ollama_model_row);
 
         let semantic_row = adw::SwitchRow::builder()
-            .title(&t("semantic_enabled"))
-            .subtitle(&t("semantic_enabled_desc"))
+            .title(t("Semantic suggestions"))
+            .subtitle(t("Suggest similar tasks via an embedding model (requires Ollama)"))
             .active(self.semantic_enabled())
             .build();
         semantic_row.add_prefix(&gtk::Image::from_icon_name("edit-find-symbolic"));
@@ -2835,10 +2861,10 @@ impl AppState {
         general_group.add(&semantic_row);
 
         let embedding_model_row = adw::EntryRow::builder()
-            .title(&t("embedding_model"))
-            .text(&self.embedding_model())
+            .title(t("Embedding model"))
+            .text(self.embedding_model())
             .build();
-        embedding_model_row.set_tooltip_text(Some(&t("embedding_model_desc")));
+        embedding_model_row.set_tooltip_text(Some(&t("Ollama embedding model (e.g. bge-m3) — pull it first with 'ollama pull'")));
         let state_embedding_model = Rc::clone(self);
         embedding_model_row.connect_changed(move |row| {
             state_embedding_model.set_embedding_model(row.text().to_string());
@@ -2847,13 +2873,13 @@ impl AppState {
 
         // --- WebDAV Page ---
         let webdav_page = adw::PreferencesPage::builder()
-            .title(&t("webdav"))
+            .title(t("WebDAV"))
             .icon_name("network-server-symbolic")
             .build();
         dialog.add(&webdav_page);
 
         let webdav_group = adw::PreferencesGroup::builder()
-            .title(&t("webdav"))
+            .title(t("WebDAV"))
             .build();
         webdav_page.add(&webdav_group);
 
@@ -2864,7 +2890,7 @@ impl AppState {
         let (_, wd_url, _, _, _) = self.get_webdav_prefs();
 
         let url_row = adw::EntryRow::builder()
-            .title(&t("webdav_url"))
+            .title(t("WebDAV URL"))
             .text(wd_url.unwrap_or_default())
             .build();
         let state_url = Rc::clone(self);
@@ -2874,7 +2900,7 @@ impl AppState {
         webdav_group.add(&url_row);
 
         let path_row = adw::EntryRow::builder()
-            .title(&t("path_relative"))
+            .title(t("Path (relative)"))
             .text(wd_path.unwrap_or_default())
             .build();
         let state_path = Rc::clone(self);
@@ -2884,7 +2910,7 @@ impl AppState {
         webdav_group.add(&path_row);
 
         let user_row = adw::EntryRow::builder()
-            .title(&t("username"))
+            .title(t("Username"))
             .text(wd_user.unwrap_or_default())
             .build();
         let state_user = Rc::clone(self);
@@ -2894,7 +2920,7 @@ impl AppState {
         webdav_group.add(&user_row);
 
         let pass_row = adw::PasswordEntryRow::builder()
-            .title(&t("password"))
+            .title(t("Password"))
             .text(wd_pass.unwrap_or_default())
             .build();
         let state_pass = Rc::clone(self);
@@ -2905,7 +2931,7 @@ impl AppState {
 
         // --- Nextcloud Login Flow v2 ---
         let nc_login_row = adw::ActionRow::builder()
-            .title(&t("nextcloud_login"))
+            .title(t("Login with Nextcloud"))
             .activatable(true)
             .build();
         nc_login_row.add_suffix(&gtk::Image::from_icon_name("web-browser-symbolic"));
@@ -2942,7 +2968,7 @@ impl AppState {
                 server_url
             };
             if server_url.trim().is_empty() {
-                state_for_nc.show_error(&t("no_url_error"));
+                state_for_nc.show_error(&t("No URL specified."));
                 return;
             }
 
@@ -2951,7 +2977,7 @@ impl AppState {
             }
             *nc_polling_for_handler.borrow_mut() = true;
 
-            row.set_subtitle(&t("nextcloud_login_pending"));
+            row.set_subtitle(&t("Waiting for browser login…"));
 
             let state_bg = state_for_nc.clone();
             let row_clone = row.clone();
@@ -2994,7 +3020,7 @@ impl AppState {
                                     if count > 120 {
                                         row_poll.set_subtitle("");
                                         *nc_polling_poll.borrow_mut() = false;
-                                        state_poll.show_error(&t("nextcloud_login_failed").replace("{}", "timeout"));
+                                        state_poll.show_error(&t("Nextcloud login failed: {}").replace("{}", "timeout"));
                                         return glib::ControlFlow::Break;
                                     }
 
@@ -3031,7 +3057,7 @@ impl AppState {
 
                                                         row_inner.set_subtitle("");
                                                         *nc_polling_inner.borrow_mut() = false;
-                                                        state_inner.show_info(&t("nextcloud_login_success"));
+                                                        state_inner.show_info(&t("Nextcloud login successful!"));
                                                     }
                                                     Ok(None) => {
                                                         // Still pending
@@ -3039,7 +3065,7 @@ impl AppState {
                                                     Err(e) => {
                                                         row_inner.set_subtitle("");
                                                         *nc_polling_inner.borrow_mut() = false;
-                                                        state_inner.show_error(&t("nextcloud_login_failed").replace("{}", &e.to_string()));
+                                                        state_inner.show_error(&t("Nextcloud login failed: {}").replace("{}", &e.to_string()));
                                                     }
                                                 }
                                                 glib::ControlFlow::Break
@@ -3055,7 +3081,7 @@ impl AppState {
                             Err(e) => {
                                 row_clone.set_subtitle("");
                                 *nc_polling_bg.borrow_mut() = false;
-                                state_bg.show_error(&t("nextcloud_login_failed").replace("{}", &e.to_string()));
+                                state_bg.show_error(&t("Nextcloud login failed: {}").replace("{}", &e.to_string()));
                             }
                         }
                         glib::ControlFlow::Break
@@ -3068,10 +3094,10 @@ impl AppState {
         webdav_group.add(&nc_login_row);
 
         let check_row = adw::ActionRow::builder()
-            .title(&t("check_connection"))
+            .title(t("Check connection"))
             .build();
         let check_button = gtk::Button::builder()
-            .label(&t("check_connection"))
+            .label(t("Check connection"))
             .valign(gtk::Align::Center)
             .build();
         check_button.add_css_class("flat");
@@ -3082,11 +3108,11 @@ impl AppState {
             let (_, url, path, user, pass) = state_for_check.get_webdav_prefs();
             
             let Some(u) = url else {
-                state_for_check.show_error(&t("no_url_error"));
+                state_for_check.show_error(&t("No URL specified."));
                 return;
             };
             if u.trim().is_empty() {
-                state_for_check.show_error(&t("no_url_error"));
+                state_for_check.show_error(&t("No URL specified."));
                 return;
             }
 
@@ -3107,10 +3133,10 @@ impl AppState {
                 match receiver.try_recv() {
                     Ok(result) => {
                         match result {
-                            Ok(_) => state_bg.show_info(&t("connection_success")),
+                            Ok(_) => state_bg.show_info(&t("Connection successful!")),
                             Err(e) => {
-                                eprintln!("{}", t("webdav_conn_error").replace("{}", &e.to_string()));
-                                state_bg.show_error(&t("connection_failed").replace("{}", &e.to_string()));
+                                eprintln!("{}", t("WebDAV Connection Error: {}").replace("{}", &e.to_string()));
+                                state_bg.show_error(&t("Connection failed: {}").replace("{}", &e.to_string()));
                             }
                         }
                         glib::ControlFlow::Break
@@ -3124,13 +3150,13 @@ impl AppState {
 
         // --- Voice Page ---
         let voice_page = adw::PreferencesPage::builder()
-            .title(&t("voice"))
+            .title(t("Voice"))
             .icon_name("audio-input-microphone-symbolic")
             .build();
         dialog.add(&voice_page);
 
         let voice_group = adw::PreferencesGroup::builder()
-            .title(&t("voice"))
+            .title(t("Voice"))
             .build();
         voice_page.add(&voice_group);
 
@@ -3142,24 +3168,24 @@ impl AppState {
         voice_group.add(&progress_bar);
 
         let use_whisper_row = adw::SwitchRow::builder()
-            .title(&t("use_whisper"))
-            .subtitle(&t("whisper_desc"))
+            .title(t("Local Speech Recognition (Whisper)"))
+            .subtitle(t("Downloads a ~480MB model for offline recognition"))
             .active(self.use_whisper())
             .build();
         use_whisper_row.add_prefix(&gtk::Image::from_icon_name("audio-input-microphone-symbolic"));
         
         let languages = vec!["auto", "en", "de", "es", "fr", "it", "ja", "zh", "nl", "pl", "pt", "ru", "tr", "sv"];
         let language_names = [
-            t("lang_auto"), t("lang_en"), t("lang_de"), t("lang_es"), t("lang_fr"), 
-            t("lang_it"), t("lang_ja"), t("lang_zh"), t("lang_nl"), t("lang_pl"), 
-            t("lang_pt"), t("lang_ru"), t("lang_tr"), t("lang_sv")
+            t("Automatic"), t("English"), t("German"), t("Spanish"), t("French"), 
+            t("Italian"), t("Japanese"), t("Chinese"), t("Dutch"), t("Polish"), 
+            t("Portuguese"), t("Russian"), t("Turkish"), t("Swedish")
         ];
         let language_names_refs: Vec<&str> = language_names.iter().map(|s| s.as_str()).collect();
         
         let language_model = gtk::StringList::new(&language_names_refs);
         
         let language_row = adw::ComboRow::builder()
-            .title(&t("whisper_language"))
+            .title(t("Recognition Language"))
             .model(&language_model)
             .build();
 
@@ -3200,7 +3226,7 @@ impl AppState {
 
         // --- About Page ---
         let about_page = adw::PreferencesPage::builder()
-            .title(&t("about"))
+            .title(t("About"))
             .icon_name("help-about-symbolic")
             .build();
         dialog.add(&about_page);
@@ -3227,7 +3253,7 @@ impl AppState {
         banner_box.append(&app_name);
 
         let app_version = gtk::Label::builder()
-            .label(&format!("{} {}", t("version"), env!("CARGO_PKG_VERSION")))
+            .label(format!("{} {}", t("Version"), env!("CARGO_PKG_VERSION")))
             .css_classes(["dim-label"])
             .build();
         banner_box.append(&app_version);
@@ -3240,13 +3266,13 @@ impl AppState {
         about_page.add(&info_group);
 
         let dev_row = adw::ActionRow::builder()
-            .title(&t("developer"))
+            .title(t("Developer"))
             .subtitle("Dr. Daniel Dumke")
             .build();
         info_group.add(&dev_row);
 
         let site_row = adw::ActionRow::builder()
-            .title(&t("website"))
+            .title(t("Website"))
             .subtitle("https://github.com/danst0/ReinschriftTodo")
             .activatable(true)
             .build();
@@ -3257,7 +3283,7 @@ impl AppState {
         info_group.add(&site_row);
 
         let license_row = adw::ActionRow::builder()
-            .title(&t("license"))
+            .title(t("License"))
             .subtitle("GPL-3.0-or-later")
             .build();
         info_group.add(&license_row);
@@ -3407,7 +3433,7 @@ impl AppState {
     fn handle_add_submission(self: &Rc<Self>, entry: &gtk::Entry) {
         let title_text = entry.text().trim().to_string();
         if title_text.is_empty() {
-            self.show_error(&t("title_empty_error"));
+            self.show_error(&t("Title must not be empty"));
             return;
         }
 
@@ -3418,22 +3444,21 @@ impl AppState {
         let add_key = match data::add_todo(&title_text) {
             Ok(key) => key,
             Err(err) => {
-                self.show_error(&t("create_error").replace("{}", &err.to_string()));
+                self.show_error(&t("Could not create To-do: {}").replace("{}", &err.to_string()));
                 return;
             }
         };
 
-        if add_to_myday {
-            if let Err(err) = data::set_myday_today(&add_key) {
-                self.show_error(&t("update_error").replace("{}", &err.to_string()));
+        if add_to_myday
+            && let Err(err) = data::set_myday_today(&add_key) {
+                self.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
             }
-        }
 
         entry.set_text("");
         if let Err(err) = self.reload() {
-            self.show_error(&t("reload_error").replace("{}", &err.to_string()));
+            self.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
         } else {
-            self.show_info(&t("task_added"));
+            self.show_info(&t("Task added"));
         }
 
         if !use_ai {
@@ -3467,7 +3492,7 @@ impl AppState {
             let outcome = match outcome {
                 Ok(res) => res,
                 Err(err) => {
-                    state.show_error(&t("ai_parse_failed").replace("{}", &err.to_string()));
+                    state.show_error(&t("AI parsing failed: {}").replace("{}", &err.to_string()));
                     return;
                 }
             };
@@ -3488,22 +3513,22 @@ impl AppState {
                     match data::update_todo_details(&todo) {
                         Ok(_) => {
                             if let Err(err) = state.reload() {
-                                state.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                                state.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
                             } else {
                                 state.mark_recently_updated(marker.clone());
-                                state.show_info(&t("changes_applied"));
+                                state.show_info(&t("Changes from file applied"));
                             }
                         }
                         Err(err) => {
-                            state.show_error(&t("create_error").replace("{}", &err.to_string()));
+                            state.show_error(&t("Could not create To-do: {}").replace("{}", &err.to_string()));
                         }
                     }
                 }
                 Ok(Err(err)) => {
-                    state.show_error(&t("ai_parse_failed").replace("{}", &err.to_string()));
+                    state.show_error(&t("AI parsing failed: {}").replace("{}", &err.to_string()));
                 }
                 Err(_) => {
-                    state.show_error(&t("ai_timeout_fallback"));
+                    state.show_error(&t("AI timed out. Added without AI."));
                 }
             }
         }));
@@ -3537,14 +3562,13 @@ impl AppState {
         let path = self.whisper_model_path();
         if path.exists() {
             // Basic integrity check: size should be around 480MB
-            if let Ok(meta) = fs::metadata(&path) {
-                if meta.len() > 450 * 1024 * 1024 {
+            if let Ok(meta) = fs::metadata(&path)
+                && meta.len() > 450 * 1024 * 1024 {
                     if let Some(row) = &switch_row {
                         row.set_sensitive(true);
                     }
                     return;
                 }
-            }
             let _ = fs::remove_file(&path);
         }
 
@@ -3557,7 +3581,7 @@ impl AppState {
             row.set_sensitive(false);
         }
 
-        self.show_info(&t("downloading_model"));
+        self.show_info(&t("Downloading voice model…"));
 
         let state = Rc::clone(self);
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -3632,7 +3656,7 @@ impl AppState {
                         pb.set_fraction(fraction);
                     }
                     if fraction >= 1.0 {
-                        state.show_info(&t("model_download_finished"));
+                        state.show_info(&t("Voice model downloaded successfully"));
                         if let Some(pb) = &pb_clone {
                             pb.set_visible(false);
                         }
@@ -3644,7 +3668,7 @@ impl AppState {
                     glib::ControlFlow::Continue
                 }
                 Ok(Err(e)) => {
-                    state.show_error(&format!("{}: {}", t("model_download_error"), e));
+                    state.show_error(&format!("{}: {}", t("Error downloading model"), e));
                     if let Some(pb) = &pb_clone {
                         pb.set_visible(false);
                     }
@@ -3692,7 +3716,7 @@ impl AppState {
             if let Some(u) = url {
                 data::set_backend_config(data::BackendConfig::WebDav {
                     url: u,
-                    path: path,
+                    path,
                     username: user,
                     password: pass,
                 });
@@ -3703,7 +3727,7 @@ impl AppState {
         }
 
         if let Err(err) = self.reload() {
-             self.show_error(&t("load_data_error").replace("{}", &err.to_string()));
+             self.show_error(&t("Could not load data: {}").replace("{}", &err.to_string()));
         }
     }
 
@@ -3717,8 +3741,8 @@ impl AppState {
         let (use_webdav, _, path, user, pass) = self.get_webdav_prefs();
         if use_webdav {
              data::set_backend_config(data::BackendConfig::WebDav {
-                url: url,
-                path: path,
+                url,
+                path,
                 username: user,
                 password: pass,
             });
@@ -3733,8 +3757,8 @@ impl AppState {
         self.persist_preferences();
         
         let (use_webdav, url, _, user, pass) = self.get_webdav_prefs();
-        if use_webdav {
-            if let Some(u) = url {
+        if use_webdav
+            && let Some(u) = url {
                 data::set_backend_config(data::BackendConfig::WebDav {
                     url: u,
                     path: Some(path),
@@ -3742,7 +3766,6 @@ impl AppState {
                     password: pass,
                 });
             }
-        }
     }
 
     fn set_webdav_username(&self, username: String) {
@@ -3753,16 +3776,15 @@ impl AppState {
         self.persist_preferences();
 
         let (use_webdav, url, path, _, pass) = self.get_webdav_prefs();
-        if use_webdav {
-            if let Some(u) = url {
+        if use_webdav
+            && let Some(u) = url {
                 data::set_backend_config(data::BackendConfig::WebDav {
                     url: u,
-                    path: path,
+                    path,
                     username: Some(username),
                     password: pass,
                 });
             }
-        }
     }
 
     fn set_webdav_password(&self, password: String) {
@@ -3773,16 +3795,15 @@ impl AppState {
         self.persist_preferences();
 
         let (use_webdav, url, path, user, _) = self.get_webdav_prefs();
-        if use_webdav {
-            if let Some(u) = url {
+        if use_webdav
+            && let Some(u) = url {
                 data::set_backend_config(data::BackendConfig::WebDav {
                     url: u,
-                    path: path,
+                    path,
                     username: user,
                     password: Some(password),
                 });
             }
-        }
     }
 
     fn get_webdav_prefs(&self) -> (bool, Option<String>, Option<String>, Option<String>, Option<String>) {
@@ -3819,7 +3840,7 @@ impl AppState {
 
         if planned.is_empty() {
             self.store
-                .append(&BoxedAnyObject::new(ListEntry::Header(t("my_day_empty"))));
+                .append(&BoxedAnyObject::new(ListEntry::Header(t("Nothing planned yet — add tasks for today."))));
         } else {
             let mode = *self.sort_mode.borrow();
             let (canon_projects, canon_contexts) = self.canonical_tag_maps();
@@ -3827,13 +3848,11 @@ impl AppState {
             for item in planned {
                 if let Some(label) =
                     self.group_label(mode, &item, &canon_projects, &canon_contexts)
-                {
-                    if last_group.as_ref() != Some(&label) {
+                    && last_group.as_ref() != Some(&label) {
                         self.store
                             .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
                         last_group = Some(label);
                     }
-                }
                 self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
             }
         }
@@ -3852,14 +3871,14 @@ impl AppState {
 
         if suggestions.is_empty() && other_open.is_empty() {
             self.store.append(&BoxedAnyObject::new(ListEntry::Header(
-                t("myday_nothing_to_plan"),
+                t("No open tasks left to plan."),
             )));
             return;
         }
 
         if !suggestions.is_empty() {
             self.store.append(&BoxedAnyObject::new(ListEntry::Header(
-                t("myday_suggestions"),
+                t("Suggestions (due)"),
             )));
             for item in suggestions {
                 self.store
@@ -3868,7 +3887,7 @@ impl AppState {
         }
         if !other_open.is_empty() {
             self.store.append(&BoxedAnyObject::new(ListEntry::Header(
-                t("myday_other_open"),
+                t("Other open tasks"),
             )));
             for item in other_open {
                 self.store
@@ -3886,23 +3905,19 @@ impl AppState {
             scroll_pos = Some(adj.value());
         }
 
-        if let Some(list_view) = self.list_view.borrow().as_ref() {
-            if let Some(model) = list_view.model() {
-                if let Ok(selection) = model.downcast::<gtk::SingleSelection>() {
+        if let Some(list_view) = self.list_view.borrow().as_ref()
+            && let Some(model) = list_view.model()
+                && let Ok(selection) = model.downcast::<gtk::SingleSelection>() {
                     let pos = selection.selected();
-                    if pos != gtk::INVALID_LIST_POSITION {
-                        if let Some(obj) = self.store.item(pos) {
-                            if let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
+                    if pos != gtk::INVALID_LIST_POSITION
+                        && let Some(obj) = self.store.item(pos)
+                            && let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
                                 let entry = boxed.borrow::<ListEntry>();
                                 if let ListEntry::Item(todo) = &*entry {
                                     selected_key = Some(todo.key.clone());
                                 }
                             }
-                        }
-                    }
                 }
-            }
-        }
 
         let search_term = self.search_term.borrow().to_lowercase();
         let mut items = self.cached_items.borrow().clone();
@@ -3933,13 +3948,11 @@ impl AppState {
                 }) {
                     if let Some(label) =
                         self.group_label(mode, &item, &canon_projects, &canon_contexts)
-                    {
-                        if last_group.as_ref() != Some(&label) {
+                        && last_group.as_ref() != Some(&label) {
                             self.store
                                 .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
                             last_group = Some(label);
                         }
-                    }
                     self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
                 }
             }
@@ -3956,7 +3969,7 @@ impl AppState {
             }).cloned().collect();
 
             if !current_list_results.is_empty() {
-                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("search_results_current"))));
+                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("Search results in current list"))));
                 for item in current_list_results.clone() {
                     self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
                 }
@@ -3972,7 +3985,7 @@ impl AppState {
             }).collect();
 
             if !open_results_filtered.is_empty() {
-                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("search_results_open"))));
+                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("Search results in all open To-dos"))));
                 for item in open_results_filtered {
                     self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
                 }
@@ -3988,7 +4001,7 @@ impl AppState {
             }).collect();
 
             if !done_results_filtered.is_empty() {
-                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("search_results_done"))));
+                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("Search results in completed To-dos"))));
                 for item in done_results_filtered {
                     self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
                 }
@@ -3997,33 +4010,28 @@ impl AppState {
 
         let mut restored = false;
 
-        if let Some(key) = selected_key {
-            if let Some(list_view) = self.list_view.borrow().as_ref() {
-                if let Some(model) = list_view.model() {
-                    if let Ok(selection) = model.downcast::<gtk::SingleSelection>() {
+        if let Some(key) = selected_key
+            && let Some(list_view) = self.list_view.borrow().as_ref()
+                && let Some(model) = list_view.model()
+                    && let Ok(selection) = model.downcast::<gtk::SingleSelection>() {
                         for i in 0..self.store.n_items() {
-                            if let Some(obj) = self.store.item(i) {
-                                if let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
+                            if let Some(obj) = self.store.item(i)
+                                && let Ok(boxed) = obj.downcast::<BoxedAnyObject>() {
                                     let entry = boxed.borrow::<ListEntry>();
-                                    if let ListEntry::Item(todo) = &*entry {
-                                        if todo.key == key {
+                                    if let ListEntry::Item(todo) = &*entry
+                                        && todo.key == key {
                                             selection.set_selected(i);
                                             list_view.scroll_to(i, gtk::ListScrollFlags::NONE, None);
                                             restored = true;
                                             break;
                                         }
-                                    }
                                 }
-                            }
                         }
                     }
-                }
-            }
-        }
 
-        if !restored {
-            if let Some(pos) = scroll_pos {
-                if let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
+        if !restored
+            && let Some(pos) = scroll_pos
+                && let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
                     let adj = scrolled.vadjustment();
                     glib::idle_add_local(move || {
                         let max = (adj.upper() - adj.page_size()).max(0.0);
@@ -4031,14 +4039,12 @@ impl AppState {
                         glib::ControlFlow::Break
                     });
                 }
-            }
-        }
     }
 
     fn persist_preferences(&self) {
         let prefs = self.preferences.borrow().clone();
         if let Err(err) = write_preferences(&prefs) {
-            eprintln!("{}: {err}", t("save_settings_error"));
+            eprintln!("{}: {err}", t("Could not save settings: {}"));
         }
     }
 
@@ -4046,7 +4052,7 @@ impl AppState {
         match data::update_todo_details(updated) {
             Ok(()) => {
                 self.reload()?;
-                self.show_undo_toast(&t("updated_task").replace("{}", &updated.title));
+                self.show_undo_toast(&t("Updated: {}").replace("{}", &updated.title));
                 Ok(())
             }
             Err(err) => {
@@ -4066,7 +4072,7 @@ impl AppState {
 
         let model_path = self.whisper_model_path();
         if !model_path.exists() {
-            self.show_error(&t("model_not_found"));
+            self.show_error(&t("Speech model not found. Please enable it in the settings."));
             return;
         }
 
@@ -4239,11 +4245,10 @@ impl AppState {
             let num_segments = state_whisper.full_n_segments();
             let mut result_text = String::new();
             for i in 0..num_segments {
-                if let Some(segment) = state_whisper.get_segment(i) {
-                    if let Ok(text) = segment.to_str_lossy() {
+                if let Some(segment) = state_whisper.get_segment(i)
+                    && let Ok(text) = segment.to_str_lossy() {
                         result_text.push_str(&text);
                     }
-                }
             }
 
             let final_text = result_text.trim().to_string();
@@ -4261,26 +4266,106 @@ impl AppState {
         let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else {
             return;
         };
-        let entry = todo_obj.borrow::<ListEntry>();
-        let todo = match &*entry {
-            ListEntry::Item(todo) => todo.clone(),
-            _ => return,
+        let (item, picker) = {
+            let entry = todo_obj.borrow::<ListEntry>();
+            match &*entry {
+                ListEntry::Item(todo) => (Some(todo.clone()), None),
+                ListEntry::PickerItem(todo) => (None, Some(todo.clone())),
+                ListEntry::Header(_) => (None, None),
+            }
         };
-        drop(entry);
 
-        // Im Auswahlmodus toggelt ein Klick auf die Zeile die Auswahl
-        // statt den Bearbeiten-Dialog zu öffnen.
-        if self.selection_mode.get() {
-            if let Some(marker) = todo.key.marker.as_deref() {
-                let selected = !self.selected_markers.borrow().contains(marker);
-                self.toggle_selection_marker(marker, selected);
-                // Re-Bind der Zeile, damit Checkbox und Hervorhebung folgen.
-                self.store.splice(position, 1, &[todo_obj]);
+        // Aktivieren (Enter/Klick) im Planungs-Picker übernimmt die
+        // Aufgabe in „Mein Tag" — so ist der Picker tastaturbedienbar.
+        if let Some(todo) = picker {
+            if let Err(err) = self.toggle_myday(&todo) {
+                self.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
             }
             return;
         }
 
+        let Some(todo) = item else {
+            return;
+        };
+
+        // Im Auswahlmodus toggelt ein Klick auf die Zeile die Auswahl
+        // statt den Bearbeiten-Dialog zu öffnen.
+        if self.selection_mode.get() {
+            self.toggle_selection_at(position);
+            return;
+        }
+
         self.show_details_dialog(&todo);
+    }
+
+    /// Auswahl an einer Listenposition umschalten (Klick auf die Zeile oder
+    /// Leertaste im Auswahlmodus) und die Zeile neu binden, damit Checkbox
+    /// und Hervorhebung folgen.
+    fn toggle_selection_at(self: &Rc<Self>, position: u32) {
+        let Some(obj) = self.store.item(position) else {
+            return;
+        };
+        let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else {
+            return;
+        };
+        let marker = match &*todo_obj.borrow::<ListEntry>() {
+            ListEntry::Item(todo) => todo.key.marker.clone(),
+            _ => None,
+        };
+        let Some(marker) = marker else {
+            return;
+        };
+        let selected = !self.selected_markers.borrow().contains(marker.as_str());
+        self.toggle_selection_marker(&marker, selected);
+        self.store.splice(position, 1, &[todo_obj]);
+    }
+
+    /// Löschen per Entf-Taste: respektiert die „Ohne Rückfrage löschen"-
+    /// Einstellung und zeigt sonst denselben Bestätigungsdialog wie der
+    /// Bearbeiten-Dialog; danach Undo-Toast.
+    fn request_delete(self: &Rc<Self>, todo: &TodoItem) {
+        let perform_delete = Rc::new({
+            let state = Rc::clone(self);
+            let todo = todo.clone();
+            move || match data::delete_todo(&todo) {
+                Ok(_) => {
+                    if let Err(err) = state.reload() {
+                        state.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
+                    } else {
+                        state.show_undo_toast(&t("Deleted: {}").replace("{}", &todo.title));
+                    }
+                }
+                Err(e) => state.show_error(&t("Could not delete task: {}").replace("{}", &e.to_string())),
+            }
+        });
+
+        if self.skip_delete_confirmation() {
+            perform_delete();
+            return;
+        }
+
+        let Some(parent) = self.window.upgrade() else {
+            perform_delete();
+            return;
+        };
+
+        let confirm_dialog = AlertDialog::builder().modal(true).build();
+        confirm_dialog.set_message(&t("Delete this entry?"));
+        confirm_dialog.set_detail(&t("This cannot be undone."));
+        confirm_dialog.set_buttons(&[&t("Delete"), &t("Cancel")]);
+        confirm_dialog.set_default_button(1);
+        confirm_dialog.set_cancel_button(1);
+
+        let perform_delete_cb = perform_delete.clone();
+        confirm_dialog.choose(
+            Some(&parent),
+            Option::<&gio::Cancellable>::None,
+            move |result| {
+                if let Ok(0) = result {
+                    perform_delete_cb();
+                }
+            },
+        );
     }
 
     /// Die zuletzt angelegte Aufgabe mit diesem Titel als neue offene
@@ -4313,13 +4398,13 @@ impl AppState {
         match data::add_todo_full(&copy) {
             Ok(key) => {
                 if let Err(err) = self.reload() {
-                    self.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                    self.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
                     return;
                 }
                 if let Some(marker) = key.marker {
                     self.mark_recently_updated(marker);
                 }
-                self.show_undo_toast(&t("duplicated_title").replace("{}", title));
+                self.show_undo_toast(&t("Duplicated: {}").replace("{}", title));
             }
             Err(err) => {
                 if self.handle_conflict(&err) {
@@ -4343,11 +4428,10 @@ impl AppState {
         if let Some(revealer) = self.selection_bar.borrow().as_ref() {
             revealer.set_reveal_child(active);
         }
-        if let Some(toggle) = self.selection_toggle.borrow().as_ref() {
-            if toggle.is_active() != active {
+        if let Some(toggle) = self.selection_toggle.borrow().as_ref()
+            && toggle.is_active() != active {
                 toggle.set_active(active);
             }
-        }
         self.update_selection_count();
         self.repopulate_store();
     }
@@ -4367,7 +4451,7 @@ impl AppState {
     fn update_selection_count(&self) {
         if let Some(label) = self.selection_count_label.borrow().as_ref() {
             let count = self.selected_markers.borrow().len();
-            label.set_text(&t("selected_count").replace("{}", &count.to_string()));
+            label.set_text(&t("{} selected").replace("{}", &count.to_string()));
         }
     }
 
@@ -4390,15 +4474,15 @@ impl AppState {
 
     /// Gemeinsamer Abschluss aller Massenaktionen: Modus verlassen,
     /// Liste neu laden, Undo-Toast mit Anzahl zeigen.
-    fn finish_bulk_action(self: &Rc<Self>, result: Result<usize>, message_key: &str) {
+    fn finish_bulk_action(self: &Rc<Self>, result: Result<usize>, message: &str) {
         match result {
             Ok(count) => {
                 self.set_selection_mode(false);
                 if let Err(err) = self.reload() {
-                    self.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                    self.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
                     return;
                 }
-                self.show_undo_toast(&t(message_key).replace("{}", &count.to_string()));
+                self.show_undo_toast(&message.replace("{}", &count.to_string()));
             }
             Err(err) => {
                 if self.handle_conflict(&err) {
@@ -4414,12 +4498,12 @@ impl AppState {
         if keys.is_empty() {
             return;
         }
-        let message_key = if done {
-            "bulk_completed_count"
+        let message = if done {
+            t("{} items completed")
         } else {
-            "bulk_reopened_count"
+            t("{} items reopened")
         };
-        self.finish_bulk_action(data::toggle_todos(&keys, done), message_key);
+        self.finish_bulk_action(data::toggle_todos(&keys, done), &message);
     }
 
     fn bulk_set_due(self: &Rc<Self>, target: data::DueTarget) {
@@ -4427,7 +4511,7 @@ impl AppState {
         if keys.is_empty() {
             return;
         }
-        self.finish_bulk_action(data::set_due_batch(&keys, target), "bulk_due_set_count");
+        self.finish_bulk_action(data::set_due_batch(&keys, target), &t("Due date set for {} items"));
     }
 
     fn bulk_delete(self: &Rc<Self>) {
@@ -4439,7 +4523,7 @@ impl AppState {
         let perform_delete = Rc::new({
             let state = Rc::clone(self);
             move || {
-                state.finish_bulk_action(data::delete_todos(&keys), "bulk_deleted_count");
+                state.finish_bulk_action(data::delete_todos(&keys), &t("{} items deleted"));
             }
         });
 
@@ -4456,10 +4540,10 @@ impl AppState {
         let count = self.selected_markers.borrow().len();
         let confirm_dialog = AlertDialog::builder().modal(true).build();
         confirm_dialog.set_message(
-            &t("bulk_delete_confirm_title").replace("{}", &count.to_string()),
+            &t("Delete {} items?").replace("{}", &count.to_string()),
         );
-        confirm_dialog.set_detail(&t("delete_confirmation_desc"));
-        confirm_dialog.set_buttons(&[&t("delete"), &t("cancel")]);
+        confirm_dialog.set_detail(&t("This cannot be undone."));
+        confirm_dialog.set_buttons(&[&t("Delete"), &t("Cancel")]);
         confirm_dialog.set_default_button(1);
         confirm_dialog.set_cancel_button(1);
 
@@ -4481,12 +4565,12 @@ impl AppState {
             return;
         }
         let Some(parent) = self.window.upgrade() else {
-            self.show_error(&t("no_window"));
+            self.show_error(&t("No window available"));
             return;
         };
 
         let dialog = adw::Window::builder()
-            .title(&t("bulk_assign_title"))
+            .title(t("Assign project/context"))
             .transient_for(&parent)
             .modal(true)
             .default_width(380)
@@ -4516,21 +4600,21 @@ impl AppState {
         let (project_entry, project_input_box) =
             create_suggestion_entry("", &known_projects, "+");
         let project_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        project_row.append(&gtk::Label::builder().label(&t("project_plus")).xalign(0.0).build());
+        project_row.append(&gtk::Label::builder().label(t("Project (+)")).xalign(0.0).build());
         project_row.append(&project_input_box);
         content.append(&project_row);
 
         let (context_entry, context_input_box) =
             create_suggestion_entry("", &known_contexts, "@");
         let context_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        context_row.append(&gtk::Label::builder().label(&t("location_at")).xalign(0.0).build());
+        context_row.append(&gtk::Label::builder().label(t("Location (@)")).xalign(0.0).build());
         context_row.append(&context_input_box);
         content.append(&context_row);
 
         let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         buttons.set_halign(gtk::Align::End);
-        let cancel_btn = gtk::Button::with_label(&t("cancel"));
-        let assign_btn = gtk::Button::with_label(&t("bulk_assign"));
+        let cancel_btn = gtk::Button::with_label(&t("Cancel"));
+        let assign_btn = gtk::Button::with_label(&t("Assign"));
         assign_btn.add_css_class("suggested-action");
         buttons.append(&cancel_btn);
         buttons.append(&assign_btn);
@@ -4556,7 +4640,7 @@ impl AppState {
             let context_opt = (!context.is_empty()).then_some(context.as_str());
             let result = data::assign_project_context_batch(&keys, project_opt, context_opt);
             dialog_assign.close();
-            state.finish_bulk_action(result, "bulk_assigned_count");
+            state.finish_bulk_action(result, &t("{} items updated"));
         });
 
         dialog.present();
@@ -4564,12 +4648,12 @@ impl AppState {
 
     fn show_details_dialog(self: &Rc<Self>, todo: &TodoItem) {
         let Some(parent) = self.window.upgrade() else {
-            self.show_error(&t("no_window"));
+            self.show_error(&t("No window available"));
             return;
         };
 
         let dialog = adw::Window::builder()
-            .title(&t("edit_task"))
+            .title(t("Edit task"))
             .transient_for(&parent)
             .modal(true)
             .default_width(420)
@@ -4603,7 +4687,7 @@ impl AppState {
             attach_title_autocomplete(&title_entry, title_provider);
         }
         let title_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        title_row.append(&gtk::Label::builder().label(&t("title")).xalign(0.0).build());
+        title_row.append(&gtk::Label::builder().label(t("Title")).xalign(0.0).build());
         title_row.append(&title_entry);
         content.append(&title_row);
 
@@ -4620,7 +4704,7 @@ impl AppState {
         };
         let (project_entry, project_input_box) = create_suggestion_entry(&projects_display, &known_projects, "+");
         let project_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        project_row.append(&gtk::Label::builder().label(&t("project_plus")).xalign(0.0).build());
+        project_row.append(&gtk::Label::builder().label(t("Project (+)")).xalign(0.0).build());
         project_row.append(&project_input_box);
         content.append(&project_row);
 
@@ -4634,7 +4718,7 @@ impl AppState {
         };
         let (context_entry, context_input_box) = create_suggestion_entry(&contexts_display, &known_contexts, "@");
         let context_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        context_row.append(&gtk::Label::builder().label(&t("location_at")).xalign(0.0).build());
+        context_row.append(&gtk::Label::builder().label(t("Location (@)")).xalign(0.0).build());
         context_row.append(&context_input_box);
         content.append(&context_row);
 
@@ -4657,7 +4741,7 @@ impl AppState {
             .build();
 
         let note_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        note_row.append(&gtk::Label::builder().label(&t("note")).xalign(0.0).build());
+        note_row.append(&gtk::Label::builder().label(t("Note")).xalign(0.0).build());
         note_row.append(&note_scrolled);
         content.append(&note_row);
 
@@ -4668,12 +4752,12 @@ impl AppState {
             due_entry.set_text(&due_string);
         }
         let due_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        due_row.append(&gtk::Label::builder().label(&t("due_date")).xalign(0.0).build());
+        due_row.append(&gtk::Label::builder().label(t("Due date")).xalign(0.0).build());
         let due_inputs = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         due_entry.set_activates_default(true);
         due_entry.set_hexpand(true);
         due_inputs.append(&due_entry);
-        let due_today_btn = gtk::Button::with_label(&t("today"));
+        let due_today_btn = gtk::Button::with_label(&t("Today"));
         due_today_btn.add_css_class("flat");
         due_inputs.append(&due_today_btn);
         due_row.append(&due_inputs);
@@ -4681,12 +4765,12 @@ impl AppState {
 
         let recurrence_values = ["", "daily", "weekly", "monthly"];
         let recurrence_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        recurrence_row.append(&gtk::Label::builder().label(&t("recurrence")).xalign(0.0).build());
+        recurrence_row.append(&gtk::Label::builder().label(t("Recurrence")).xalign(0.0).build());
         let recurrence_list = gtk::StringList::new(&[]);
-        recurrence_list.append(&t("recurrence_none"));
-        recurrence_list.append(&t("recurrence_daily"));
-        recurrence_list.append(&t("recurrence_weekly"));
-        recurrence_list.append(&t("recurrence_monthly"));
+        recurrence_list.append(&t("None"));
+        recurrence_list.append(&t("Daily"));
+        recurrence_list.append(&t("Weekly"));
+        recurrence_list.append(&t("Monthly"));
         let recurrence_dropdown = gtk::DropDown::new(Some(recurrence_list.clone()), None::<&gtk::Expression>);
         let rec_index = todo
             .recurrence
@@ -4697,28 +4781,29 @@ impl AppState {
         recurrence_row.append(&recurrence_dropdown);
         content.append(&recurrence_row);
 
-        let done_check = gtk::CheckButton::with_label(&t("done"));
+        let done_check = gtk::CheckButton::with_label(&t("Done"));
         done_check.set_active(todo.done);
         content.append(&done_check);
 
         let comment_entry = gtk::Entry::new();
         comment_entry.set_activates_default(true);
         let comment_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        comment_row.append(&gtk::Label::builder().label(&t("comment")).xalign(0.0).build());
+        comment_row.append(&gtk::Label::builder().label(t("Comment")).xalign(0.0).build());
         comment_row.append(&comment_entry);
         comment_row.set_visible(false);
         content.append(&comment_row);
 
         let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         buttons.set_halign(gtk::Align::End);
-        let cancel_btn = gtk::Button::with_label(&t("cancel"));
+        let cancel_btn = gtk::Button::with_label(&t("Cancel"));
         let delete_btn = gtk::Button::builder()
             .icon_name("user-trash-symbolic")
-            .tooltip_text(&t("delete"))
+            .tooltip_text(t("Delete"))
             .css_classes(["destructive-action"])
             .build();
-        let close_with_comment_btn = gtk::Button::with_label(&t("close_with_comment"));
-        let save_btn = gtk::Button::with_label(&t("save"));
+        set_a11y_label(&delete_btn, &t("Delete"));
+        let close_with_comment_btn = gtk::Button::with_label(&t("Close with comment"));
+        let save_btn = gtk::Button::with_label(&t("Save"));
         save_btn.add_css_class("suggested-action");
         dialog.set_default_widget(Some(&save_btn));
         buttons.append(&cancel_btn);
@@ -4759,10 +4844,10 @@ impl AppState {
                     match data::delete_todo(&todo_delete) {
                         Ok(_) => {
                             if let Err(err) = state_delete.reload() {
-                                state_delete.show_error(&t("reload_error").replace("{}", &err.to_string()));
+                                state_delete.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
                             }
                         }
-                        Err(e) => state_delete.show_error(&t("delete_error").replace("{}", &e.to_string())),
+                        Err(e) => state_delete.show_error(&t("Could not delete task: {}").replace("{}", &e.to_string())),
                     }
                     dialog_delete.close();
                 }
@@ -4777,9 +4862,9 @@ impl AppState {
                 let confirm_dialog = AlertDialog::builder()
                     .modal(true)
                     .build();
-                confirm_dialog.set_message(&t("delete_confirmation_title"));
-                confirm_dialog.set_detail(&t("delete_confirmation_desc"));
-                confirm_dialog.set_buttons(&[&t("delete"), &t("cancel")]);
+                confirm_dialog.set_message(&t("Delete this entry?"));
+                confirm_dialog.set_detail(&t("This cannot be undone."));
+                confirm_dialog.set_buttons(&[&t("Delete"), &t("Cancel")]);
                 confirm_dialog.set_default_button(1);
                 confirm_dialog.set_cancel_button(1);
 
@@ -4819,7 +4904,7 @@ impl AppState {
         save_btn.connect_clicked(move |_| {
             let mut title_text = title_entry_save.text().trim().to_string();
             if title_text.is_empty() {
-                state_for_save.show_error(&t("title_empty_error"));
+                state_for_save.show_error(&t("Title must not be empty"));
                 return;
             }
 
@@ -4853,7 +4938,7 @@ impl AppState {
                     Err(_) => match NaiveDate::parse_from_str(&due_text, "%Y-%m-%d") {
                         Ok(date) => Some(NaiveDateTime::new(date, DEFAULT_DUE_TIME)),
                         Err(_) => {
-                            state_for_save.show_error(&t("invalid_date_error"));
+                            state_for_save.show_error(&t("Invalid date. Expected YYYY-MM-DD"));
                             return;
                         }
                     },
@@ -4886,7 +4971,7 @@ impl AppState {
             updated.done = done_check_save.is_active();
 
             if let Err(err) = state_for_save.save_item(&updated) {
-                state_for_save.show_error(&t("save_task_error").replace("{}", &err.to_string()));
+                state_for_save.show_error(&t("Could not save task: {}").replace("{}", &err.to_string()));
             } else {
                 dialog_save.close();
             }
@@ -4936,23 +5021,23 @@ impl AppState {
         canon_contexts: &HashMap<String, String>,
     ) -> Option<String> {
         match mode {
-            SortMode::Topic => Some(t("topic_group").replace(
+            SortMode::Topic => Some(t("Topic: {}").replace(
                 "{}",
                 &item
                     .projects
                     .first()
                     .filter(|s| !s.is_empty())
                     .map(|s| canonicalize_token(canon_projects, s))
-                    .unwrap_or_else(|| t("no_project")),
+                    .unwrap_or_else(|| t("No project")),
             )),
-            SortMode::Location => Some(t("location_group").replace(
+            SortMode::Location => Some(t("Location: {}").replace(
                 "{}",
                 &item
                     .contexts
                     .first()
                     .filter(|s| !s.is_empty())
                     .map(|s| canonicalize_token(canon_contexts, s))
-                    .unwrap_or_else(|| t("no_location")),
+                    .unwrap_or_else(|| t("No location")),
             )),
             SortMode::Date => None,
         }
@@ -4988,8 +5073,8 @@ impl AppState {
             return false;
         };
         let dialog = AlertDialog::builder().modal(true).build();
-        dialog.set_message(&t("conflict_title"));
-        dialog.set_buttons(&[&t("conflict_reload"), &t("conflict_overwrite"), &t("cancel")]);
+        dialog.set_message(&t("File was changed externally"));
+        dialog.set_buttons(&[&tc("conflict dialog button", "Reload"), &t("Overwrite"), &t("Cancel")]);
         dialog.set_default_button(0);
         dialog.set_cancel_button(2);
 
@@ -5002,7 +5087,7 @@ impl AppState {
                     Ok(0) => {
                         // Reload
                         if let Err(e) = state.reload() {
-                            state.show_error(&t("reload_error").replace("{}", &e.to_string()));
+                            state.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
                         }
                     }
                     Ok(1) => {
@@ -5010,7 +5095,7 @@ impl AppState {
                         // snapshot and is no longer useful, then let user retry manually.
                         let _ = data::undo();
                         if let Err(e) = state.reload() {
-                            state.show_error(&t("reload_error").replace("{}", &e.to_string()));
+                            state.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
                         }
                     }
                     _ => {}
@@ -5024,7 +5109,7 @@ impl AppState {
     fn show_undo_toast(self: &Rc<Self>, message: &str) {
         let toast = adw::Toast::builder()
             .title(message)
-            .button_label(&t("undo"))
+            .button_label(t("Undo"))
             .timeout(8)
             .build();
         let state = Rc::clone(self);
@@ -5032,13 +5117,13 @@ impl AppState {
             match data::undo() {
                 Ok(Some(desc)) => {
                     if let Err(e) = state.reload() {
-                        state.show_error(&t("reload_error").replace("{}", &e.to_string()));
+                        state.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
                     } else {
-                        state.show_info(&t("undone_action").replace("{}", &desc));
+                        state.show_info(&t("Undone: {}").replace("{}", &desc));
                     }
                 }
                 Ok(None) => {
-                    state.show_info(&t("nothing_to_undo"));
+                    state.show_info(&t("Nothing to undo"));
                 }
                 Err(e) => {
                     state.show_error(&e.to_string());
@@ -5086,7 +5171,7 @@ impl AppState {
             }
             notified.insert(key.clone());
 
-            let notification = gio::Notification::new(&t("reminder_title"));
+            let notification = gio::Notification::new(&t("Task due"));
             notification.set_body(Some(&item.title));
             app.send_notification(Some(&key), &notification);
         }
@@ -5115,11 +5200,11 @@ impl AppState {
             match state.reload() {
                 Ok(_) => {
                     if matches!(event, Event::ChangesDoneHint | Event::Changed | Event::Created) {
-                        state.show_info(&t("changes_applied"));
+                        state.show_info(&t("Changes from file applied"));
                     }
                 }
                 Err(err) => {
-                    state.show_error(&t("update_failed").replace("{}", &err.to_string()));
+                    state.show_error(&t("Update failed: {}").replace("{}", &err.to_string()));
                 }
             }
         }));
@@ -5167,16 +5252,16 @@ fn format_metadata(item: &TodoItem) -> String {
     }
     if let Some(due) = item.due {
         if due.date().year() == 9999 {
-            parts.push(t("sometimes"));
+            parts.push(t("Sometimes"));
         } else {
-            parts.push(t("due_label").replace("{}", &due.format("%Y-%m-%d %H:%M").to_string()));
+            parts.push(t("Due: {}").replace("{}", &due.format("%Y-%m-%d %H:%M").to_string()));
         }
     }
     if let Some(rule) = &item.recurrence {
         let label = match rule.as_str() {
-            "daily" => t("recurrence_daily"),
-            "weekly" => t("recurrence_weekly"),
-            "monthly" => t("recurrence_monthly"),
+            "daily" => t("Daily"),
+            "weekly" => t("Weekly"),
+            "monthly" => t("Monthly"),
             _ => rule.clone(),
         };
         parts.push(format!("↻ {}", label));

@@ -1,0 +1,857 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: reinschrift\n"
+"Report-Msgid-Bugs-To: https://github.com/danst0/ReinschriftTodo/issues\n"
+"POT-Creation-Date: 2026-06-07 12:00+0200\n"
+"Language: sv\n"
+"Language-Team: Swedish\n"
+"PO-Revision-Date: 2026-06-07 12:00+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. ehemaliger JSON-Schlüssel: app_title
+msgid "Reinschrift"
+msgstr "Att göra-databas"
+
+#. ehemaliger JSON-Schlüssel: settings
+msgid "Settings"
+msgstr "Inställningar"
+
+#. ehemaliger JSON-Schlüssel: general
+msgid "General"
+msgstr "Allmänt"
+
+#. ehemaliger JSON-Schlüssel: storage
+msgid "Storage"
+msgstr "Lagring"
+
+#. ehemaliger JSON-Schlüssel: local_file
+msgid "Local File"
+msgstr "Lokal fil"
+
+#. ehemaliger JSON-Schlüssel: webdav
+msgid "WebDAV"
+msgstr "WebDAV"
+
+#. ehemaliger JSON-Schlüssel: reload
+msgid "Reload (Ctrl+R)"
+msgstr "Uppdatera (Ctrl+R)"
+
+#. ehemaliger JSON-Schlüssel: sort_by
+msgid "Sort by:"
+msgstr "Sortera efter:"
+
+#. ehemaliger JSON-Schlüssel: topics
+msgid "+ Topics"
+msgstr "+ Ämnen"
+
+#. ehemaliger JSON-Schlüssel: locations
+msgid "@ Locations"
+msgstr "@ Platser"
+
+#. ehemaliger JSON-Schlüssel: date
+msgid "Date"
+msgstr "Datum"
+
+#. ehemaliger JSON-Schlüssel: show_due_only
+msgid "Show only due"
+msgstr "Visa endast förfallna"
+
+#. ehemaliger JSON-Schlüssel: my_day
+msgid "My Day"
+msgstr "Min dag"
+
+#. ehemaliger JSON-Schlüssel: add_to_my_day
+msgid "Add to My Day"
+msgstr "Lägg till i Min dag"
+
+#. ehemaliger JSON-Schlüssel: remove_from_my_day
+msgid "Remove from My Day"
+msgstr "Ta bort från Min dag"
+
+#. ehemaliger JSON-Schlüssel: my_day_empty
+msgid "Nothing planned yet — add tasks for today."
+msgstr "Inget planerat ännu — lägg till uppgifter för idag."
+
+#. ehemaliger JSON-Schlüssel: myday_suggestions
+msgid "Suggestions (due)"
+msgstr "Förslag (förfallna)"
+
+#. ehemaliger JSON-Schlüssel: myday_other_open
+msgid "Other open tasks"
+msgstr "Övriga öppna uppgifter"
+
+#. ehemaliger JSON-Schlüssel: myday_nothing_to_plan
+msgid "No open tasks left to plan."
+msgstr "Inga öppna uppgifter kvar att planera."
+
+#. ehemaliger JSON-Schlüssel: use_ai_on_new_topic
+msgid "Use AI on add"
+msgstr "Använd AI vid tillägg"
+
+#. ehemaliger JSON-Schlüssel: use_ai_on_new_topic_desc
+msgid "Run Smart Add automatically; fallback if AI times out."
+msgstr "Kör Smart Add automatiskt; avbryter vid AI-timeout."
+
+#. ehemaliger JSON-Schlüssel: ai_timeout_label
+msgid "AI timeout (seconds)"
+msgstr "AI-timeout (sekunder)"
+
+#. ehemaliger JSON-Schlüssel: ai_timeout_desc
+msgid "Cancel AI parsing after this time."
+msgstr "Avbryter AI-analysen efter denna tid."
+
+#. ehemaliger JSON-Schlüssel: new_todo_placeholder
+msgid "New To-do…"
+msgstr "Ny uppgift…"
+
+#. ehemaliger JSON-Schlüssel: add
+msgid "Add"
+msgstr "Lägg till"
+
+#. ehemaliger JSON-Schlüssel: title_empty_error
+msgid "Title must not be empty"
+msgstr "Titeln får inte vara tom"
+
+#. ehemaliger JSON-Schlüssel: reload_error
+msgid "Could not reload To-dos: {}"
+msgstr "Kunde inte uppdatera uppgifter: {}"
+
+#. ehemaliger JSON-Schlüssel: task_added
+msgid "Task added"
+msgstr "Uppgift tillagd"
+
+#. ehemaliger JSON-Schlüssel: create_error
+msgid "Could not create To-do: {}"
+msgstr "Kunde inte skapa uppgift: {}"
+
+#. ehemaliger JSON-Schlüssel: load_error
+msgid "Could not load To-dos: {}"
+msgstr "Kunde inte ladda uppgifter: {}"
+
+#. ehemaliger JSON-Schlüssel: select_valid_file
+msgid "Please select a valid file in settings."
+msgstr "Välj en giltig fil i inställningarna."
+
+#. ehemaliger JSON-Schlüssel: monitor_error
+msgid "File monitoring not available: {}"
+msgstr "Filövervakning inte tillgänglig: {}"
+
+#. ehemaliger JSON-Schlüssel: set_due_today
+msgid "Set due date to today"
+msgstr "Sätt förfallodatum till idag"
+
+#. ehemaliger JSON-Schlüssel: postpone_tomorrow
+msgid "Postpone to tomorrow"
+msgstr "Skjut upp till imorgon"
+
+#. ehemaliger JSON-Schlüssel: postpone_weekend
+msgid "Postpone to weekend"
+msgstr "Skjut upp till helgen"
+
+#. ehemaliger JSON-Schlüssel: postpone_sometimes
+msgid "Postpone to 'sometimes'"
+msgstr "Skjut upp till 'när som helst'"
+
+#. ehemaliger JSON-Schlüssel: sometimes
+msgid "Sometimes"
+msgstr "När som helst"
+
+#. ehemaliger JSON-Schlüssel: update_error
+msgid "Could not update entry: {}"
+msgstr "Kunde inte uppdatera posten: {}"
+
+#. ehemaliger JSON-Schlüssel: set_due_error
+msgid "Could not set due date: {}"
+msgstr "Kunde inte sätta förfallodatum: {}"
+
+#. ehemaliger JSON-Schlüssel: no_window
+msgid "No window available"
+msgstr "Inget fönster tillgängligt"
+
+#. ehemaliger JSON-Schlüssel: show_completed
+msgid "Show completed tasks"
+msgstr "Visa klara uppgifter"
+
+#. ehemaliger JSON-Schlüssel: show_due_only_mode
+msgid "Show only due (until today)"
+msgstr "Visa endast förfallna (t.o.m. idag)"
+
+#. ehemaliger JSON-Schlüssel: delete_without_confirmation
+msgid "Delete without confirmation"
+msgstr "Ta bort utan bekräftelse"
+
+#. ehemaliger JSON-Schlüssel: delete_without_confirmation_desc
+msgid "Skip the delete dialog and remove entries immediately."
+msgstr "Hoppa över dialogen och ta bort direkt."
+
+#. ehemaliger JSON-Schlüssel: title_autocomplete
+msgid "Title autocomplete"
+msgstr "Titel-autoifyllning"
+
+#. ehemaliger JSON-Schlüssel: title_autocomplete_desc
+msgid "Suggest existing task titles while typing."
+msgstr "Föreslå befintliga uppgiftstitlar medan du skriver."
+
+#. ehemaliger JSON-Schlüssel: use_webdav
+msgid "Use WebDAV"
+msgstr "Använd WebDAV"
+
+#. ehemaliger JSON-Schlüssel: use_this_method
+msgid "Use this method"
+msgstr "Använd denna metod"
+
+#. ehemaliger JSON-Schlüssel: database_file
+msgid "Database file"
+msgstr "Databasfil"
+
+#. ehemaliger JSON-Schlüssel: select_file
+msgid "Select file…"
+msgstr "Välj fil…"
+
+#. ehemaliger JSON-Schlüssel: create_new_file
+msgid "Create new file"
+msgstr "Skapa ny fil"
+
+#. ehemaliger JSON-Schlüssel: webdav_url
+msgid "WebDAV URL"
+msgstr "WebDAV URL"
+
+#. ehemaliger JSON-Schlüssel: path_relative
+msgid "Path (relative)"
+msgstr "Sökväg (relativ)"
+
+#. ehemaliger JSON-Schlüssel: username
+msgid "Username"
+msgstr "Användarnamn"
+
+#. ehemaliger JSON-Schlüssel: password
+msgid "Password"
+msgstr "Lösenord"
+
+#. ehemaliger JSON-Schlüssel: check_connection
+msgid "Check connection"
+msgstr "Kontrollera anslutning"
+
+#. ehemaliger JSON-Schlüssel: no_url_error
+msgid "No URL specified."
+msgstr "Ingen URL angiven."
+
+#. ehemaliger JSON-Schlüssel: connection_success
+msgid "Connection successful!"
+msgstr "Anslutning lyckades!"
+
+#. ehemaliger JSON-Schlüssel: connection_failed
+msgid "Connection failed: {}"
+msgstr "Anslutning misslyckades: {}"
+
+#. ehemaliger JSON-Schlüssel: close
+msgid "Close"
+msgstr "Stäng"
+
+#. ehemaliger JSON-Schlüssel: file_not_exists
+msgid "File does not exist"
+msgstr "Filen finns inte"
+
+#. ehemaliger JSON-Schlüssel: open_path_error
+msgid "Could not open path: {}"
+msgstr "Kunde inte öppna sökvägen: {}"
+
+#. ehemaliger JSON-Schlüssel: file_already_active
+msgid "This file is already active"
+msgstr "Denna fil är redan aktiv"
+
+#. ehemaliger JSON-Schlüssel: using_file
+msgid "Using {}"
+msgstr "Använder {}"
+
+#. ehemaliger JSON-Schlüssel: load_data_error
+msgid "Could not load data: {}"
+msgstr "Kunde inte ladda data: {}"
+
+#. ehemaliger JSON-Schlüssel: save_settings_error
+msgid "Could not save settings: {}"
+msgstr "Kunde inte spara inställningar: {}"
+
+#. ehemaliger JSON-Schlüssel: updated_task
+msgid "Updated: {}"
+msgstr "Uppdaterad: {}"
+
+#. ehemaliger JSON-Schlüssel: edit_task
+msgid "Edit task"
+msgstr "Redigera uppgift"
+
+#. ehemaliger JSON-Schlüssel: title
+msgid "Title"
+msgstr "Titel"
+
+#. ehemaliger JSON-Schlüssel: project_plus
+msgid "Project (+)"
+msgstr "Projekt (+)"
+
+#. ehemaliger JSON-Schlüssel: location_at
+msgid "Location (@)"
+msgstr "Plats (@)"
+
+#. ehemaliger JSON-Schlüssel: due_date
+msgid "Due date"
+msgstr "Förfallodatum"
+
+#. ehemaliger JSON-Schlüssel: today
+msgid "Today"
+msgstr "Idag"
+
+#. ehemaliger JSON-Schlüssel: recurrence
+msgid "Recurrence"
+msgstr "Upprepning"
+
+#. ehemaliger JSON-Schlüssel: recurrence_none
+msgid "None"
+msgstr "Ingen"
+
+#. ehemaliger JSON-Schlüssel: recurrence_daily
+msgid "Daily"
+msgstr "Dagligen"
+
+#. ehemaliger JSON-Schlüssel: recurrence_weekly
+msgid "Weekly"
+msgstr "Veckovis"
+
+#. ehemaliger JSON-Schlüssel: recurrence_monthly
+msgid "Monthly"
+msgstr "Månadsvis"
+
+#. ehemaliger JSON-Schlüssel: done
+msgid "Done"
+msgstr "Klar"
+
+#. ehemaliger JSON-Schlüssel: cancel
+msgid "Cancel"
+msgstr "Avbryt"
+
+#. ehemaliger JSON-Schlüssel: delete
+msgid "Delete"
+msgstr "Ta bort"
+
+#. ehemaliger JSON-Schlüssel: delete_confirmation_title
+msgid "Delete this entry?"
+msgstr "Ta bort den här posten?"
+
+#. ehemaliger JSON-Schlüssel: delete_confirmation_desc
+msgid "This cannot be undone."
+msgstr "Detta kan inte ångras."
+
+#. ehemaliger JSON-Schlüssel: save
+msgid "Save"
+msgstr "Spara"
+
+#. ehemaliger JSON-Schlüssel: invalid_date_error
+msgid "Invalid date. Expected YYYY-MM-DD"
+msgstr "Ogiltigt datum. Förväntat ÅÅÅÅ-MM-DD"
+
+#. ehemaliger JSON-Schlüssel: save_task_error
+msgid "Could not save task: {}"
+msgstr "Kunde inte spara uppgift: {}"
+
+#. ehemaliger JSON-Schlüssel: delete_error
+msgid "Could not delete task: {}"
+msgstr "Kunde inte ta bort uppgiften: {}"
+
+#. ehemaliger JSON-Schlüssel: topic_group
+msgid "Topic: {}"
+msgstr "Ämne: {}"
+
+#. ehemaliger JSON-Schlüssel: location_group
+msgid "Location: {}"
+msgstr "Plats: {}"
+
+#. ehemaliger JSON-Schlüssel: no_project
+msgid "No project"
+msgstr "Utan projekt"
+
+#. ehemaliger JSON-Schlüssel: no_location
+msgid "No location"
+msgstr "Utan plats"
+
+#. ehemaliger JSON-Schlüssel: changes_applied
+msgid "Changes from file applied"
+msgstr "Ändringar från filen har tillämpats"
+
+#. ehemaliger JSON-Schlüssel: update_failed
+msgid "Update failed: {}"
+msgstr "Uppdatering misslyckades: {}"
+
+#. ehemaliger JSON-Schlüssel: due_label, task_due
+msgid "Due: {}"
+msgstr "Förfaller: {}"
+
+#. ehemaliger JSON-Schlüssel: init_adw_error
+msgid "Could not initialize libadwaita"
+msgstr "Kunde inte initiera libadwaita"
+
+#. ehemaliger JSON-Schlüssel: build_ui_error
+msgid "Error building UI: {:?}"
+msgstr "Fel vid uppbyggnad av gränssnitt: {:?}"
+
+#. ehemaliger JSON-Schlüssel: app_exit_status
+msgid "Application exited with status {:?}"
+msgstr "Programmet avslutades med status {:?}"
+
+#. ehemaliger JSON-Schlüssel: read_error
+msgid "Could not read {}"
+msgstr "Kunde inte läsa {}"
+
+#. ehemaliger JSON-Schlüssel: no_database_configured
+msgid "No database file configured. Please select or create one in the settings."
+msgstr "Ingen databasfil konfigurerad. Välj eller skapa en i inställningarna."
+
+#. ehemaliger JSON-Schlüssel: write_error
+msgid "Could not write {}"
+msgstr "Kunde inte skriva {}"
+
+#. ehemaliger JSON-Schlüssel: connection_error
+msgid "Connection to '{}' failed: {}"
+msgstr "Anslutning till '{}' misslyckades: {}"
+
+#. ehemaliger JSON-Schlüssel: ai_parse_failed
+msgid "AI parsing failed: {}"
+msgstr "AI-analysen misslyckades: {}"
+
+#. ehemaliger JSON-Schlüssel: ai_timeout_fallback
+msgid "AI timed out. Added without AI."
+msgstr "AI tog för lång tid. Lade till utan AI."
+
+#. ehemaliger JSON-Schlüssel: todo_not_found
+msgid "Could not find To-do in file"
+msgstr "Kunde inte hitta uppgiften i filen"
+
+#. ehemaliger JSON-Schlüssel: line_update_error
+msgid "Could not update line {}"
+msgstr "Kunde inte uppdatera rad {}"
+
+#. ehemaliger JSON-Schlüssel: no_checkbox_error
+msgid "Line contains no checkbox"
+msgstr "Raden innehåller ingen kryssruta"
+
+#. ehemaliger JSON-Schlüssel: auto_reload_error
+msgid "Auto-reload failed: {}"
+msgstr "Automatisk omladdning misslyckades: {}"
+
+#. ehemaliger JSON-Schlüssel: webdav_conn_error
+msgid "WebDAV Connection Error: {}"
+msgstr "WebDAV-anslutningsfel: {}"
+
+#. ehemaliger JSON-Schlüssel: rollback_failed
+msgid "Rollback failed: {}"
+msgstr "Återställning misslyckades: {}"
+
+#. ehemaliger JSON-Schlüssel: voice
+msgid "Voice"
+msgstr "Röst"
+
+#. ehemaliger JSON-Schlüssel: use_whisper
+msgid "Local Speech Recognition (Whisper)"
+msgstr "Lokal röstigenkänning (Whisper)"
+
+#. ehemaliger JSON-Schlüssel: whisper_desc
+msgid "Downloads a ~480MB model for offline recognition"
+msgstr "Laddar ner en ~480MB modell för offline-igenkänning"
+
+#. ehemaliger JSON-Schlüssel: downloading_model
+msgid "Downloading voice model…"
+msgstr "Laddar ner röstmodell…"
+
+#. ehemaliger JSON-Schlüssel: model_download_finished
+msgid "Voice model downloaded successfully"
+msgstr "Röstmodell nedladdad"
+
+#. ehemaliger JSON-Schlüssel: model_download_error
+msgid "Error downloading model"
+msgstr "Fel vid nedladdning av modell"
+
+#. ehemaliger JSON-Schlüssel: model_not_found
+msgid "Speech model not found. Please enable it in the settings."
+msgstr "Röstmodell hittades inte. Aktivera den i inställningarna."
+
+#. ehemaliger JSON-Schlüssel: close_with_comment
+msgid "Close with comment"
+msgstr "Stäng med kommentar"
+
+#. ehemaliger JSON-Schlüssel: comment
+msgid "Comment"
+msgstr "Kommentar"
+
+#. ehemaliger JSON-Schlüssel: note
+msgid "Note"
+msgstr "Anteckning"
+
+#. ehemaliger JSON-Schlüssel: search_placeholder
+msgid "Search…"
+msgstr "Sök…"
+
+#. ehemaliger JSON-Schlüssel: search_results_current
+msgid "Search results in current list"
+msgstr "Sökresultat i aktuell lista"
+
+#. ehemaliger JSON-Schlüssel: search_results_open
+msgid "Search results in all open To-dos"
+msgstr "Sökresultat i alla öppna uppgifter"
+
+#. ehemaliger JSON-Schlüssel: search_results_done
+msgid "Search results in completed To-dos"
+msgstr "Sökresultat i klara uppgifter"
+
+#. ehemaliger JSON-Schlüssel: cheatsheet
+msgid "Keyboard Shortcuts"
+msgstr "Tangentbordsgenvägar"
+
+#. ehemaliger JSON-Schlüssel: key_help
+msgid "Show help"
+msgstr "Visa hjälp"
+
+#. ehemaliger JSON-Schlüssel: key_new
+msgid "New task"
+msgstr "Ny uppgift"
+
+#. ehemaliger JSON-Schlüssel: key_search
+msgid "Search"
+msgstr "Sök"
+
+#. ehemaliger JSON-Schlüssel: key_reload
+msgid "Reload"
+msgstr "Uppdatera"
+
+#. ehemaliger JSON-Schlüssel: key_quit
+msgid "Quit"
+msgstr "Avsluta"
+
+#. ehemaliger JSON-Schlüssel: key_nav
+msgid "Navigate"
+msgstr "Navigera"
+
+#. ehemaliger JSON-Schlüssel: key_toggle
+msgid "Toggle done"
+msgstr "Växla klar"
+
+#. ehemaliger JSON-Schlüssel: key_edit
+msgid "Edit"
+msgstr "Redigera"
+
+#. ehemaliger JSON-Schlüssel: key_today
+msgid "Due today"
+msgstr "Förfaller idag"
+
+#. ehemaliger JSON-Schlüssel: key_tomorrow
+msgid "Due tomorrow"
+msgstr "Förfaller imorgon"
+
+#. ehemaliger JSON-Schlüssel: key_sometimes
+msgid "Due sometimes"
+msgstr "Förfaller när som helst"
+
+#. ehemaliger JSON-Schlüssel: key_weekend
+msgid "Due this weekend"
+msgstr "Förfaller i helgen"
+
+#. ehemaliger JSON-Schlüssel: key_week
+msgid "Due next week"
+msgstr "Förfaller nästa vecka"
+
+#. ehemaliger JSON-Schlüssel: about
+msgid "About"
+msgstr "Om"
+
+#. ehemaliger JSON-Schlüssel: version
+msgid "Version"
+msgstr "Version"
+
+#. ehemaliger JSON-Schlüssel: developer
+msgid "Developer"
+msgstr "Utvecklare"
+
+#. ehemaliger JSON-Schlüssel: website
+msgid "Website"
+msgstr "Webbplats"
+
+#. ehemaliger JSON-Schlüssel: license
+msgid "License"
+msgstr "Licens"
+
+#. ehemaliger JSON-Schlüssel: whisper_language
+msgid "Recognition Language"
+msgstr "Igenkänningsspråk"
+
+#. ehemaliger JSON-Schlüssel: lang_auto
+msgid "Automatic"
+msgstr "Automatiskt"
+
+#. ehemaliger JSON-Schlüssel: lang_en
+msgid "English"
+msgstr "Engelska"
+
+#. ehemaliger JSON-Schlüssel: lang_de
+msgid "German"
+msgstr "Tyska"
+
+#. ehemaliger JSON-Schlüssel: lang_es
+msgid "Spanish"
+msgstr "Spanska"
+
+#. ehemaliger JSON-Schlüssel: lang_fr
+msgid "French"
+msgstr "Franska"
+
+#. ehemaliger JSON-Schlüssel: lang_it
+msgid "Italian"
+msgstr "Italienska"
+
+#. ehemaliger JSON-Schlüssel: lang_ja
+msgid "Japanese"
+msgstr "Japanska"
+
+#. ehemaliger JSON-Schlüssel: lang_zh
+msgid "Chinese"
+msgstr "Kinesiska"
+
+#. ehemaliger JSON-Schlüssel: lang_nl
+msgid "Dutch"
+msgstr "Nederländska"
+
+#. ehemaliger JSON-Schlüssel: lang_pl
+msgid "Polish"
+msgstr "Polska"
+
+#. ehemaliger JSON-Schlüssel: lang_pt
+msgid "Portuguese"
+msgstr "Portugisiska"
+
+#. ehemaliger JSON-Schlüssel: lang_ru
+msgid "Russian"
+msgstr "Ryska"
+
+#. ehemaliger JSON-Schlüssel: lang_tr
+msgid "Turkish"
+msgstr "Turkiska"
+
+#. ehemaliger JSON-Schlüssel: lang_sv
+msgid "Swedish"
+msgstr "Svenska"
+
+#. ehemaliger JSON-Schlüssel: ollama_model
+msgid "AI Model"
+msgstr "AI-modell"
+
+#. ehemaliger JSON-Schlüssel: ollama_model_desc
+msgid "Ollama model name (e.g., mistral:7b, llama3.1:8b)"
+msgstr "Ollama-modellnamn (t.ex. mistral:7b, llama3.1:8b)"
+
+#. ehemaliger JSON-Schlüssel: ollama_url
+msgid "Ollama URL"
+msgstr "Ollama-URL"
+
+#. ehemaliger JSON-Schlüssel: ollama_url_desc
+msgid "Ollama server address (e.g., http://localhost:11434)"
+msgstr "Ollama-serveradress (t.ex. http://localhost:11434)"
+
+#. ehemaliger JSON-Schlüssel: semantic_section
+msgid "Similar tasks"
+msgstr "Liknande uppgifter"
+
+#. ehemaliger JSON-Schlüssel: search_results_semantic
+msgid "Similar by meaning"
+msgstr "Liknande uppgifter (betydelse)"
+
+#. ehemaliger JSON-Schlüssel: duplicate_warning
+msgid "Did you mean …?"
+msgstr "Menar du …?"
+
+#. ehemaliger JSON-Schlüssel: semantic_enabled
+msgid "Semantic suggestions"
+msgstr "Semantiska förslag"
+
+#. ehemaliger JSON-Schlüssel: semantic_enabled_desc
+msgid "Suggest similar tasks via an embedding model (requires Ollama)"
+msgstr "Föreslå liknande uppgifter via en embeddingmodell (kräver Ollama)"
+
+#. ehemaliger JSON-Schlüssel: embedding_model
+msgid "Embedding model"
+msgstr "Embeddingmodell"
+
+#. ehemaliger JSON-Schlüssel: embedding_model_desc
+msgid "Ollama embedding model (e.g. bge-m3) — pull it first with 'ollama pull'"
+msgstr "Ollama-embeddingmodell (t.ex. bge-m3) — hämta först med 'ollama pull'"
+
+#. ehemaliger JSON-Schlüssel: show_suggestions
+msgid "Show suggestions"
+msgstr "Visa förslag"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login
+msgid "Login with Nextcloud"
+msgstr "Logga in med Nextcloud"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login_pending
+msgid "Waiting for browser login…"
+msgstr "Väntar på inloggning i webbläsaren…"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login_success
+msgid "Nextcloud login successful!"
+msgstr "Nextcloud-inloggning lyckades!"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login_failed
+msgid "Nextcloud login failed: {}"
+msgstr "Nextcloud-inloggning misslyckades: {}"
+
+#. ehemaliger JSON-Schlüssel: conflict_title
+msgid "File was changed externally"
+msgstr "Filen har ändrats externt"
+
+#. ehemaliger JSON-Schlüssel: conflict_reload
+msgctxt "conflict dialog button"
+msgid "Reload"
+msgstr "Ladda om"
+
+#. ehemaliger JSON-Schlüssel: conflict_overwrite
+msgid "Overwrite"
+msgstr "Skriv över"
+
+#. ehemaliger JSON-Schlüssel: undo
+msgid "Undo"
+msgstr "Ångra"
+
+#. ehemaliger JSON-Schlüssel: undone_action
+msgid "Undone: {}"
+msgstr "Ångrad: {}"
+
+#. ehemaliger JSON-Schlüssel: nothing_to_undo
+msgid "Nothing to undo"
+msgstr "Inget att ångra"
+
+#. ehemaliger JSON-Schlüssel: reminder_title
+msgid "Task due"
+msgstr "Uppgift förfaller"
+
+#. ehemaliger JSON-Schlüssel: enable_reminders
+msgid "Enable reminders"
+msgstr "Aktivera påminnelser"
+
+#. ehemaliger JSON-Schlüssel: remind_before_minutes
+msgid "Reminder window (minutes)"
+msgstr "Påminnelsefönster (minuter)"
+
+#. ehemaliger JSON-Schlüssel: key_undo
+msgid "Undo last action"
+msgstr "Ångra senaste åtgärd"
+
+#. ehemaliger JSON-Schlüssel: overdue_warning
+msgid "{} task(s) overdue"
+msgstr "{} uppgift(er) försenad(e)"
+
+#. ehemaliger JSON-Schlüssel: select_mode
+msgid "Select"
+msgstr "Välj"
+
+#. ehemaliger JSON-Schlüssel: selected_count
+msgid "{} selected"
+msgstr "{} valda"
+
+#. ehemaliger JSON-Schlüssel: bulk_complete
+msgid "Complete"
+msgstr "Slutför"
+
+#. ehemaliger JSON-Schlüssel: bulk_reopen
+msgid "Reopen"
+msgstr "Öppna igen"
+
+#. ehemaliger JSON-Schlüssel: bulk_set_due
+msgid "Due…"
+msgstr "Förfaller…"
+
+#. ehemaliger JSON-Schlüssel: bulk_assign
+msgid "Assign"
+msgstr "Tilldela"
+
+#. ehemaliger JSON-Schlüssel: bulk_assign_title
+msgid "Assign project/context"
+msgstr "Tilldela projekt/kontext"
+
+#. ehemaliger JSON-Schlüssel: bulk_delete_confirm_title
+msgid "Delete {} items?"
+msgstr "Ta bort {} uppgifter?"
+
+#. ehemaliger JSON-Schlüssel: bulk_completed_count
+msgid "{} items completed"
+msgstr "{} uppgifter slutförda"
+
+#. ehemaliger JSON-Schlüssel: bulk_reopened_count
+msgid "{} items reopened"
+msgstr "{} uppgifter öppnade igen"
+
+#. ehemaliger JSON-Schlüssel: bulk_due_set_count
+msgid "Due date set for {} items"
+msgstr "Förfallodatum satt för {} uppgifter"
+
+#. ehemaliger JSON-Schlüssel: bulk_assigned_count
+msgid "{} items updated"
+msgstr "{} uppgifter uppdaterade"
+
+#. ehemaliger JSON-Schlüssel: bulk_deleted_count
+msgid "{} items deleted"
+msgstr "{} uppgifter borttagna"
+
+#. ehemaliger JSON-Schlüssel: duplicate
+msgid "Duplicate task"
+msgstr "Duplicera uppgift"
+
+#. ehemaliger JSON-Schlüssel: duplicated_title
+msgid "Duplicated: {}"
+msgstr "Duplicerad: {}"
+
+#. ehemaliger JSON-Schlüssel: main_menu
+msgid "Main menu"
+msgstr "Huvudmeny"
+
+#. ehemaliger JSON-Schlüssel: key_settings
+msgid "Open settings"
+msgstr "Öppna inställningar"
+
+#. ehemaliger JSON-Schlüssel: key_delete
+msgid "Delete selected task"
+msgstr "Ta bort markerad uppgift"
+
+#. ehemaliger JSON-Schlüssel: key_close
+msgid "Close search/dialog"
+msgstr "Stäng sökning/dialog"
+
+#. ehemaliger JSON-Schlüssel: key_select
+msgid "Toggle selection"
+msgstr "Växla markering"
+
+#. ehemaliger JSON-Schlüssel: key_myday
+msgid "In the planning picker: add to My Day"
+msgstr "I planeringsväljaren: lägg till i Min dag"
+
+#. ehemaliger JSON-Schlüssel: shortcuts_list
+msgid "Task list"
+msgstr "Uppgiftslista"
+
+#. ehemaliger JSON-Schlüssel: shortcuts_due
+msgid "Set due date"
+msgstr "Sätt förfallodatum"
+
+#. ehemaliger JSON-Schlüssel: shortcuts_selection
+msgid "Multi-selection"
+msgstr "Flerval"
+
+#. ehemaliger JSON-Schlüssel: mark_done
+msgid "Mark as done"
+msgstr "Markera som klar"
+
+#. ehemaliger JSON-Schlüssel: select_task
+msgid "Select task"
+msgstr "Välj uppgift"
+
+#. ehemaliger JSON-Schlüssel: deleted_title
+msgid "Deleted: {}"
+msgstr "Borttagen: {}"

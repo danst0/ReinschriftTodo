@@ -1,0 +1,857 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: reinschrift\n"
+"Report-Msgid-Bugs-To: https://github.com/danst0/ReinschriftTodo/issues\n"
+"POT-Creation-Date: 2026-06-07 12:00+0200\n"
+"Language: ja\n"
+"Language-Team: Japanese\n"
+"PO-Revision-Date: 2026-06-07 12:00+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. ehemaliger JSON-Schlüssel: app_title
+msgid "Reinschrift"
+msgstr "ToDo データベース"
+
+#. ehemaliger JSON-Schlüssel: settings
+msgid "Settings"
+msgstr "設定"
+
+#. ehemaliger JSON-Schlüssel: general
+msgid "General"
+msgstr "一般"
+
+#. ehemaliger JSON-Schlüssel: storage
+msgid "Storage"
+msgstr "ストレージ"
+
+#. ehemaliger JSON-Schlüssel: local_file
+msgid "Local File"
+msgstr "ローカルファイル"
+
+#. ehemaliger JSON-Schlüssel: webdav
+msgid "WebDAV"
+msgstr "WebDAV"
+
+#. ehemaliger JSON-Schlüssel: reload
+msgid "Reload (Ctrl+R)"
+msgstr "再読み込み (Ctrl+R)"
+
+#. ehemaliger JSON-Schlüssel: sort_by
+msgid "Sort by:"
+msgstr "並べ替え:"
+
+#. ehemaliger JSON-Schlüssel: topics
+msgid "+ Topics"
+msgstr "+ トピック"
+
+#. ehemaliger JSON-Schlüssel: locations
+msgid "@ Locations"
+msgstr "@ 場所"
+
+#. ehemaliger JSON-Schlüssel: date
+msgid "Date"
+msgstr "日付"
+
+#. ehemaliger JSON-Schlüssel: show_due_only
+msgid "Show only due"
+msgstr "期限のみ表示"
+
+#. ehemaliger JSON-Schlüssel: my_day
+msgid "My Day"
+msgstr "今日の予定"
+
+#. ehemaliger JSON-Schlüssel: add_to_my_day
+msgid "Add to My Day"
+msgstr "今日の予定に追加"
+
+#. ehemaliger JSON-Schlüssel: remove_from_my_day
+msgid "Remove from My Day"
+msgstr "今日の予定から削除"
+
+#. ehemaliger JSON-Schlüssel: my_day_empty
+msgid "Nothing planned yet — add tasks for today."
+msgstr "まだ何も予定されていません — 今日のタスクを追加しましょう。"
+
+#. ehemaliger JSON-Schlüssel: myday_suggestions
+msgid "Suggestions (due)"
+msgstr "候補（期限到来）"
+
+#. ehemaliger JSON-Schlüssel: myday_other_open
+msgid "Other open tasks"
+msgstr "その他の未完了タスク"
+
+#. ehemaliger JSON-Schlüssel: myday_nothing_to_plan
+msgid "No open tasks left to plan."
+msgstr "計画できる未完了タスクはありません。"
+
+#. ehemaliger JSON-Schlüssel: use_ai_on_new_topic
+msgid "Use AI on add"
+msgstr "追加時にAIを使う"
+
+#. ehemaliger JSON-Schlüssel: use_ai_on_new_topic_desc
+msgid "Run Smart Add automatically; fallback if AI times out."
+msgstr "Smart Addを自動実行し、タイムアウト時に中断します。"
+
+#. ehemaliger JSON-Schlüssel: ai_timeout_label
+msgid "AI timeout (seconds)"
+msgstr "AIのタイムアウト (秒)"
+
+#. ehemaliger JSON-Schlüssel: ai_timeout_desc
+msgid "Cancel AI parsing after this time."
+msgstr "この時間でAI解析を中断します。"
+
+#. ehemaliger JSON-Schlüssel: new_todo_placeholder
+msgid "New To-do…"
+msgstr "新しいタスク…"
+
+#. ehemaliger JSON-Schlüssel: add
+msgid "Add"
+msgstr "追加"
+
+#. ehemaliger JSON-Schlüssel: title_empty_error
+msgid "Title must not be empty"
+msgstr "タイトルを入力してください"
+
+#. ehemaliger JSON-Schlüssel: reload_error
+msgid "Could not reload To-dos: {}"
+msgstr "タスクを再読み込みできませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: task_added
+msgid "Task added"
+msgstr "タスクを追加しました"
+
+#. ehemaliger JSON-Schlüssel: create_error
+msgid "Could not create To-do: {}"
+msgstr "タスクを作成できませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: load_error
+msgid "Could not load To-dos: {}"
+msgstr "タスクを読み込めませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: select_valid_file
+msgid "Please select a valid file in settings."
+msgstr "設定で有効なファイルを選択してください。"
+
+#. ehemaliger JSON-Schlüssel: monitor_error
+msgid "File monitoring not available: {}"
+msgstr "ファイル監視を利用できません: {}"
+
+#. ehemaliger JSON-Schlüssel: set_due_today
+msgid "Set due date to today"
+msgstr "期限を今日に設定"
+
+#. ehemaliger JSON-Schlüssel: postpone_tomorrow
+msgid "Postpone to tomorrow"
+msgstr "明日に延期"
+
+#. ehemaliger JSON-Schlüssel: postpone_weekend
+msgid "Postpone to weekend"
+msgstr "週末に延期"
+
+#. ehemaliger JSON-Schlüssel: postpone_sometimes
+msgid "Postpone to 'sometimes'"
+msgstr "「いつか」に延期"
+
+#. ehemaliger JSON-Schlüssel: sometimes
+msgid "Sometimes"
+msgstr "いつか"
+
+#. ehemaliger JSON-Schlüssel: update_error
+msgid "Could not update entry: {}"
+msgstr "項目を更新できませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: set_due_error
+msgid "Could not set due date: {}"
+msgstr "期限を設定できませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: no_window
+msgid "No window available"
+msgstr "ウィンドウがありません"
+
+#. ehemaliger JSON-Schlüssel: show_completed
+msgid "Show completed tasks"
+msgstr "完了したタスクを表示"
+
+#. ehemaliger JSON-Schlüssel: show_due_only_mode
+msgid "Show only due (until today)"
+msgstr "期限内 (今日まで) のみ表示"
+
+#. ehemaliger JSON-Schlüssel: delete_without_confirmation
+msgid "Delete without confirmation"
+msgstr "確認なしで削除"
+
+#. ehemaliger JSON-Schlüssel: delete_without_confirmation_desc
+msgid "Skip the delete dialog and remove entries immediately."
+msgstr "確認ダイアログを表示せずすぐ削除します。"
+
+#. ehemaliger JSON-Schlüssel: title_autocomplete
+msgid "Title autocomplete"
+msgstr "タイトル自動補完"
+
+#. ehemaliger JSON-Schlüssel: title_autocomplete_desc
+msgid "Suggest existing task titles while typing."
+msgstr "入力中に既存のタスクタイトルを提案します。"
+
+#. ehemaliger JSON-Schlüssel: use_webdav
+msgid "Use WebDAV"
+msgstr "WebDAV を使用する"
+
+#. ehemaliger JSON-Schlüssel: use_this_method
+msgid "Use this method"
+msgstr "この方法を使用する"
+
+#. ehemaliger JSON-Schlüssel: database_file
+msgid "Database file"
+msgstr "データベースファイル"
+
+#. ehemaliger JSON-Schlüssel: select_file
+msgid "Select file…"
+msgstr "ファイルを選択…"
+
+#. ehemaliger JSON-Schlüssel: create_new_file
+msgid "Create new file"
+msgstr "新しいファイルを作成"
+
+#. ehemaliger JSON-Schlüssel: webdav_url
+msgid "WebDAV URL"
+msgstr "WebDAV URL"
+
+#. ehemaliger JSON-Schlüssel: path_relative
+msgid "Path (relative)"
+msgstr "パス (相対)"
+
+#. ehemaliger JSON-Schlüssel: username
+msgid "Username"
+msgstr "ユーザー名"
+
+#. ehemaliger JSON-Schlüssel: password
+msgid "Password"
+msgstr "パスワード"
+
+#. ehemaliger JSON-Schlüssel: check_connection
+msgid "Check connection"
+msgstr "接続を確認"
+
+#. ehemaliger JSON-Schlüssel: no_url_error
+msgid "No URL specified."
+msgstr "URL が指定されていません。"
+
+#. ehemaliger JSON-Schlüssel: connection_success
+msgid "Connection successful!"
+msgstr "接続に成功しました！"
+
+#. ehemaliger JSON-Schlüssel: connection_failed
+msgid "Connection failed: {}"
+msgstr "接続に失敗しました: {}"
+
+#. ehemaliger JSON-Schlüssel: close
+msgid "Close"
+msgstr "閉じる"
+
+#. ehemaliger JSON-Schlüssel: file_not_exists
+msgid "File does not exist"
+msgstr "ファイルが存在しません"
+
+#. ehemaliger JSON-Schlüssel: open_path_error
+msgid "Could not open path: {}"
+msgstr "パスを開けませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: file_already_active
+msgid "This file is already active"
+msgstr "このファイルは既に使用されています"
+
+#. ehemaliger JSON-Schlüssel: using_file
+msgid "Using {}"
+msgstr "{} を使用中"
+
+#. ehemaliger JSON-Schlüssel: load_data_error
+msgid "Could not load data: {}"
+msgstr "データを読み込めませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: save_settings_error
+msgid "Could not save settings: {}"
+msgstr "設定を保存できませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: updated_task
+msgid "Updated: {}"
+msgstr "更新済み: {}"
+
+#. ehemaliger JSON-Schlüssel: edit_task
+msgid "Edit task"
+msgstr "タスクを編集"
+
+#. ehemaliger JSON-Schlüssel: title
+msgid "Title"
+msgstr "タイトル"
+
+#. ehemaliger JSON-Schlüssel: project_plus
+msgid "Project (+)"
+msgstr "プロジェクト (+)"
+
+#. ehemaliger JSON-Schlüssel: location_at
+msgid "Location (@)"
+msgstr "場所 (@)"
+
+#. ehemaliger JSON-Schlüssel: due_date
+msgid "Due date"
+msgstr "期限"
+
+#. ehemaliger JSON-Schlüssel: today
+msgid "Today"
+msgstr "今日"
+
+#. ehemaliger JSON-Schlüssel: recurrence
+msgid "Recurrence"
+msgstr "繰り返し"
+
+#. ehemaliger JSON-Schlüssel: recurrence_none
+msgid "None"
+msgstr "なし"
+
+#. ehemaliger JSON-Schlüssel: recurrence_daily
+msgid "Daily"
+msgstr "毎日"
+
+#. ehemaliger JSON-Schlüssel: recurrence_weekly
+msgid "Weekly"
+msgstr "毎週"
+
+#. ehemaliger JSON-Schlüssel: recurrence_monthly
+msgid "Monthly"
+msgstr "毎月"
+
+#. ehemaliger JSON-Schlüssel: done
+msgid "Done"
+msgstr "完了"
+
+#. ehemaliger JSON-Schlüssel: cancel
+msgid "Cancel"
+msgstr "キャンセル"
+
+#. ehemaliger JSON-Schlüssel: delete
+msgid "Delete"
+msgstr "削除"
+
+#. ehemaliger JSON-Schlüssel: delete_confirmation_title
+msgid "Delete this entry?"
+msgstr "この項目を削除しますか？"
+
+#. ehemaliger JSON-Schlüssel: delete_confirmation_desc
+msgid "This cannot be undone."
+msgstr "元に戻すことはできません。"
+
+#. ehemaliger JSON-Schlüssel: save
+msgid "Save"
+msgstr "保存"
+
+#. ehemaliger JSON-Schlüssel: invalid_date_error
+msgid "Invalid date. Expected YYYY-MM-DD"
+msgstr "日付が無効です。YYYY-MM-DD 形式で入力してください"
+
+#. ehemaliger JSON-Schlüssel: save_task_error
+msgid "Could not save task: {}"
+msgstr "タスクを保存できませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: delete_error
+msgid "Could not delete task: {}"
+msgstr "タスクを削除できませんでした: {}"
+
+#. ehemaliger JSON-Schlüssel: topic_group
+msgid "Topic: {}"
+msgstr "トピック: {}"
+
+#. ehemaliger JSON-Schlüssel: location_group
+msgid "Location: {}"
+msgstr "場所: {}"
+
+#. ehemaliger JSON-Schlüssel: no_project
+msgid "No project"
+msgstr "プロジェクトなし"
+
+#. ehemaliger JSON-Schlüssel: no_location
+msgid "No location"
+msgstr "場所なし"
+
+#. ehemaliger JSON-Schlüssel: changes_applied
+msgid "Changes from file applied"
+msgstr "ファイルからの変更を適用しました"
+
+#. ehemaliger JSON-Schlüssel: update_failed
+msgid "Update failed: {}"
+msgstr "更新に失敗しました: {}"
+
+#. ehemaliger JSON-Schlüssel: due_label, task_due
+msgid "Due: {}"
+msgstr "期限: {}"
+
+#. ehemaliger JSON-Schlüssel: init_adw_error
+msgid "Could not initialize libadwaita"
+msgstr "libadwaita を初期化できませんでした"
+
+#. ehemaliger JSON-Schlüssel: build_ui_error
+msgid "Error building UI: {:?}"
+msgstr "UI の構築中にエラーが発生しました: {:?}"
+
+#. ehemaliger JSON-Schlüssel: app_exit_status
+msgid "Application exited with status {:?}"
+msgstr "アプリケーションがステータス {:?} で終了しました"
+
+#. ehemaliger JSON-Schlüssel: read_error
+msgid "Could not read {}"
+msgstr "{} を読み込めませんでした"
+
+#. ehemaliger JSON-Schlüssel: no_database_configured
+msgid "No database file configured. Please select or create one in the settings."
+msgstr "データベースファイルが設定されていません。設定で選択または作成してください。"
+
+#. ehemaliger JSON-Schlüssel: write_error
+msgid "Could not write {}"
+msgstr "{} を書き込めませんでした"
+
+#. ehemaliger JSON-Schlüssel: connection_error
+msgid "Connection to '{}' failed: {}"
+msgstr "'{}' への接続に失敗しました: {}"
+
+#. ehemaliger JSON-Schlüssel: ai_parse_failed
+msgid "AI parsing failed: {}"
+msgstr "AI解析に失敗しました: {}"
+
+#. ehemaliger JSON-Schlüssel: ai_timeout_fallback
+msgid "AI timed out. Added without AI."
+msgstr "AIがタイムアウトしました。AIなしで追加しました。"
+
+#. ehemaliger JSON-Schlüssel: todo_not_found
+msgid "Could not find To-do in file"
+msgstr "ファイル内にタスクが見つかりませんでした"
+
+#. ehemaliger JSON-Schlüssel: line_update_error
+msgid "Could not update line {}"
+msgstr "行 {} を更新できませんでした"
+
+#. ehemaliger JSON-Schlüssel: no_checkbox_error
+msgid "Line contains no checkbox"
+msgstr "行にチェックボックスが含まれていません"
+
+#. ehemaliger JSON-Schlüssel: auto_reload_error
+msgid "Auto-reload failed: {}"
+msgstr "自動再読み込みに失敗しました: {}"
+
+#. ehemaliger JSON-Schlüssel: webdav_conn_error
+msgid "WebDAV Connection Error: {}"
+msgstr "WebDAV 接続エラー: {}"
+
+#. ehemaliger JSON-Schlüssel: rollback_failed
+msgid "Rollback failed: {}"
+msgstr "ロールバックに失敗しました: {}"
+
+#. ehemaliger JSON-Schlüssel: voice
+msgid "Voice"
+msgstr "音声"
+
+#. ehemaliger JSON-Schlüssel: use_whisper
+msgid "Local Speech Recognition (Whisper)"
+msgstr "ローカル音声認識 (Whisper)"
+
+#. ehemaliger JSON-Schlüssel: whisper_desc
+msgid "Downloads a ~480MB model for offline recognition"
+msgstr "オフライン認識用に約480MBのモデルをダウンロードします"
+
+#. ehemaliger JSON-Schlüssel: downloading_model
+msgid "Downloading voice model…"
+msgstr "音声モデルをダウンロード中…"
+
+#. ehemaliger JSON-Schlüssel: model_download_finished
+msgid "Voice model downloaded successfully"
+msgstr "音声モデルのダウンロードが完了しました"
+
+#. ehemaliger JSON-Schlüssel: model_download_error
+msgid "Error downloading model"
+msgstr "モデルのダウンロード中にエラーが発生しました"
+
+#. ehemaliger JSON-Schlüssel: model_not_found
+msgid "Speech model not found. Please enable it in the settings."
+msgstr "音声モデルが見つかりません。設定で有効にしてください。"
+
+#. ehemaliger JSON-Schlüssel: close_with_comment
+msgid "Close with comment"
+msgstr "コメント付きで終了"
+
+#. ehemaliger JSON-Schlüssel: comment
+msgid "Comment"
+msgstr "コメント"
+
+#. ehemaliger JSON-Schlüssel: note
+msgid "Note"
+msgstr "メモ"
+
+#. ehemaliger JSON-Schlüssel: search_placeholder
+msgid "Search…"
+msgstr "検索…"
+
+#. ehemaliger JSON-Schlüssel: search_results_current
+msgid "Search results in current list"
+msgstr "現在のリスト内の検索結果"
+
+#. ehemaliger JSON-Schlüssel: search_results_open
+msgid "Search results in all open To-dos"
+msgstr "すべての未完了タスク内の検索結果"
+
+#. ehemaliger JSON-Schlüssel: search_results_done
+msgid "Search results in completed To-dos"
+msgstr "完了したタスク内の検索結果"
+
+#. ehemaliger JSON-Schlüssel: cheatsheet
+msgid "Keyboard Shortcuts"
+msgstr "キーボードショートカット"
+
+#. ehemaliger JSON-Schlüssel: key_help
+msgid "Show help"
+msgstr "ヘルプを表示"
+
+#. ehemaliger JSON-Schlüssel: key_new
+msgid "New task"
+msgstr "新しいタスク"
+
+#. ehemaliger JSON-Schlüssel: key_search
+msgid "Search"
+msgstr "検索"
+
+#. ehemaliger JSON-Schlüssel: key_reload
+msgid "Reload"
+msgstr "再読み込み"
+
+#. ehemaliger JSON-Schlüssel: key_quit
+msgid "Quit"
+msgstr "終了"
+
+#. ehemaliger JSON-Schlüssel: key_nav
+msgid "Navigate"
+msgstr "移動"
+
+#. ehemaliger JSON-Schlüssel: key_toggle
+msgid "Toggle done"
+msgstr "完了を切り替え"
+
+#. ehemaliger JSON-Schlüssel: key_edit
+msgid "Edit"
+msgstr "編集"
+
+#. ehemaliger JSON-Schlüssel: key_today
+msgid "Due today"
+msgstr "今日が期限"
+
+#. ehemaliger JSON-Schlüssel: key_tomorrow
+msgid "Due tomorrow"
+msgstr "明日が期限"
+
+#. ehemaliger JSON-Schlüssel: key_sometimes
+msgid "Due sometimes"
+msgstr "いつか期限"
+
+#. ehemaliger JSON-Schlüssel: key_weekend
+msgid "Due this weekend"
+msgstr "週末が期限"
+
+#. ehemaliger JSON-Schlüssel: key_week
+msgid "Due next week"
+msgstr "来週が期限"
+
+#. ehemaliger JSON-Schlüssel: about
+msgid "About"
+msgstr "情報"
+
+#. ehemaliger JSON-Schlüssel: version
+msgid "Version"
+msgstr "バージョン"
+
+#. ehemaliger JSON-Schlüssel: developer
+msgid "Developer"
+msgstr "開発者"
+
+#. ehemaliger JSON-Schlüssel: website
+msgid "Website"
+msgstr "ウェブサイト"
+
+#. ehemaliger JSON-Schlüssel: license
+msgid "License"
+msgstr "ライセンス"
+
+#. ehemaliger JSON-Schlüssel: whisper_language
+msgid "Recognition Language"
+msgstr "認識言語"
+
+#. ehemaliger JSON-Schlüssel: lang_auto
+msgid "Automatic"
+msgstr "自動"
+
+#. ehemaliger JSON-Schlüssel: lang_en
+msgid "English"
+msgstr "英語"
+
+#. ehemaliger JSON-Schlüssel: lang_de
+msgid "German"
+msgstr "ドイツ語"
+
+#. ehemaliger JSON-Schlüssel: lang_es
+msgid "Spanish"
+msgstr "スペイン語"
+
+#. ehemaliger JSON-Schlüssel: lang_fr
+msgid "French"
+msgstr "フランス語"
+
+#. ehemaliger JSON-Schlüssel: lang_it
+msgid "Italian"
+msgstr "イタリア語"
+
+#. ehemaliger JSON-Schlüssel: lang_ja
+msgid "Japanese"
+msgstr "日本語"
+
+#. ehemaliger JSON-Schlüssel: lang_zh
+msgid "Chinese"
+msgstr "中国語"
+
+#. ehemaliger JSON-Schlüssel: lang_nl
+msgid "Dutch"
+msgstr "オランダ語"
+
+#. ehemaliger JSON-Schlüssel: lang_pl
+msgid "Polish"
+msgstr "ポーランド語"
+
+#. ehemaliger JSON-Schlüssel: lang_pt
+msgid "Portuguese"
+msgstr "ポルトガル語"
+
+#. ehemaliger JSON-Schlüssel: lang_ru
+msgid "Russian"
+msgstr "ロシア語"
+
+#. ehemaliger JSON-Schlüssel: lang_tr
+msgid "Turkish"
+msgstr "トルコ語"
+
+#. ehemaliger JSON-Schlüssel: lang_sv
+msgid "Swedish"
+msgstr "スウェーデン語"
+
+#. ehemaliger JSON-Schlüssel: ollama_model
+msgid "AI Model"
+msgstr "AIモデル"
+
+#. ehemaliger JSON-Schlüssel: ollama_model_desc
+msgid "Ollama model name (e.g., mistral:7b, llama3.1:8b)"
+msgstr "Ollamaモデル名 (例: mistral:7b, llama3.1:8b)"
+
+#. ehemaliger JSON-Schlüssel: ollama_url
+msgid "Ollama URL"
+msgstr "Ollama URL"
+
+#. ehemaliger JSON-Schlüssel: ollama_url_desc
+msgid "Ollama server address (e.g., http://localhost:11434)"
+msgstr "Ollamaサーバーアドレス (例: http://localhost:11434)"
+
+#. ehemaliger JSON-Schlüssel: semantic_section
+msgid "Similar tasks"
+msgstr "類似のタスク"
+
+#. ehemaliger JSON-Schlüssel: search_results_semantic
+msgid "Similar by meaning"
+msgstr "意味が似ているToDo"
+
+#. ehemaliger JSON-Schlüssel: duplicate_warning
+msgid "Did you mean …?"
+msgstr "もしかして…?"
+
+#. ehemaliger JSON-Schlüssel: semantic_enabled
+msgid "Semantic suggestions"
+msgstr "セマンティック提案"
+
+#. ehemaliger JSON-Schlüssel: semantic_enabled_desc
+msgid "Suggest similar tasks via an embedding model (requires Ollama)"
+msgstr "埋め込みモデルで類似タスクを提案します (Ollamaが必要)"
+
+#. ehemaliger JSON-Schlüssel: embedding_model
+msgid "Embedding model"
+msgstr "埋め込みモデル"
+
+#. ehemaliger JSON-Schlüssel: embedding_model_desc
+msgid "Ollama embedding model (e.g. bge-m3) — pull it first with 'ollama pull'"
+msgstr "Ollamaの埋め込みモデル (例: bge-m3) — 事前に 'ollama pull' で取得"
+
+#. ehemaliger JSON-Schlüssel: show_suggestions
+msgid "Show suggestions"
+msgstr "候補を表示"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login
+msgid "Login with Nextcloud"
+msgstr "Nextcloudでログイン"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login_pending
+msgid "Waiting for browser login…"
+msgstr "ブラウザでのログインを待っています…"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login_success
+msgid "Nextcloud login successful!"
+msgstr "Nextcloudログインに成功しました！"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login_failed
+msgid "Nextcloud login failed: {}"
+msgstr "Nextcloudログインに失敗しました: {}"
+
+#. ehemaliger JSON-Schlüssel: conflict_title
+msgid "File was changed externally"
+msgstr "ファイルが外部で変更されました"
+
+#. ehemaliger JSON-Schlüssel: conflict_reload
+msgctxt "conflict dialog button"
+msgid "Reload"
+msgstr "再読み込み"
+
+#. ehemaliger JSON-Schlüssel: conflict_overwrite
+msgid "Overwrite"
+msgstr "上書き"
+
+#. ehemaliger JSON-Schlüssel: undo
+msgid "Undo"
+msgstr "元に戻す"
+
+#. ehemaliger JSON-Schlüssel: undone_action
+msgid "Undone: {}"
+msgstr "元に戻しました: {}"
+
+#. ehemaliger JSON-Schlüssel: nothing_to_undo
+msgid "Nothing to undo"
+msgstr "元に戻す操作がありません"
+
+#. ehemaliger JSON-Schlüssel: reminder_title
+msgid "Task due"
+msgstr "タスクの期限"
+
+#. ehemaliger JSON-Schlüssel: enable_reminders
+msgid "Enable reminders"
+msgstr "リマインダーを有効にする"
+
+#. ehemaliger JSON-Schlüssel: remind_before_minutes
+msgid "Reminder window (minutes)"
+msgstr "リマインダー時間 (分)"
+
+#. ehemaliger JSON-Schlüssel: key_undo
+msgid "Undo last action"
+msgstr "最後の操作を元に戻す"
+
+#. ehemaliger JSON-Schlüssel: overdue_warning
+msgid "{} task(s) overdue"
+msgstr "{}件のタスクが期限超過"
+
+#. ehemaliger JSON-Schlüssel: select_mode
+msgid "Select"
+msgstr "選択"
+
+#. ehemaliger JSON-Schlüssel: selected_count
+msgid "{} selected"
+msgstr "{}件選択中"
+
+#. ehemaliger JSON-Schlüssel: bulk_complete
+msgid "Complete"
+msgstr "完了にする"
+
+#. ehemaliger JSON-Schlüssel: bulk_reopen
+msgid "Reopen"
+msgstr "再開する"
+
+#. ehemaliger JSON-Schlüssel: bulk_set_due
+msgid "Due…"
+msgstr "期限…"
+
+#. ehemaliger JSON-Schlüssel: bulk_assign
+msgid "Assign"
+msgstr "割り当て"
+
+#. ehemaliger JSON-Schlüssel: bulk_assign_title
+msgid "Assign project/context"
+msgstr "プロジェクト/コンテキストを割り当て"
+
+#. ehemaliger JSON-Schlüssel: bulk_delete_confirm_title
+msgid "Delete {} items?"
+msgstr "{}件のタスクを削除しますか？"
+
+#. ehemaliger JSON-Schlüssel: bulk_completed_count
+msgid "{} items completed"
+msgstr "{}件のタスクを完了しました"
+
+#. ehemaliger JSON-Schlüssel: bulk_reopened_count
+msgid "{} items reopened"
+msgstr "{}件のタスクを再開しました"
+
+#. ehemaliger JSON-Schlüssel: bulk_due_set_count
+msgid "Due date set for {} items"
+msgstr "{}件のタスクに期限を設定しました"
+
+#. ehemaliger JSON-Schlüssel: bulk_assigned_count
+msgid "{} items updated"
+msgstr "{}件のタスクを更新しました"
+
+#. ehemaliger JSON-Schlüssel: bulk_deleted_count
+msgid "{} items deleted"
+msgstr "{}件のタスクを削除しました"
+
+#. ehemaliger JSON-Schlüssel: duplicate
+msgid "Duplicate task"
+msgstr "タスクを複製"
+
+#. ehemaliger JSON-Schlüssel: duplicated_title
+msgid "Duplicated: {}"
+msgstr "複製しました: {}"
+
+#. ehemaliger JSON-Schlüssel: main_menu
+msgid "Main menu"
+msgstr "メインメニュー"
+
+#. ehemaliger JSON-Schlüssel: key_settings
+msgid "Open settings"
+msgstr "設定を開く"
+
+#. ehemaliger JSON-Schlüssel: key_delete
+msgid "Delete selected task"
+msgstr "選択したタスクを削除"
+
+#. ehemaliger JSON-Schlüssel: key_close
+msgid "Close search/dialog"
+msgstr "検索/ダイアログを閉じる"
+
+#. ehemaliger JSON-Schlüssel: key_select
+msgid "Toggle selection"
+msgstr "選択を切り替え"
+
+#. ehemaliger JSON-Schlüssel: key_myday
+msgid "In the planning picker: add to My Day"
+msgstr "プランナーで: 「今日の予定」に追加"
+
+#. ehemaliger JSON-Schlüssel: shortcuts_list
+msgid "Task list"
+msgstr "タスク一覧"
+
+#. ehemaliger JSON-Schlüssel: shortcuts_due
+msgid "Set due date"
+msgstr "期限を設定"
+
+#. ehemaliger JSON-Schlüssel: shortcuts_selection
+msgid "Multi-selection"
+msgstr "複数選択"
+
+#. ehemaliger JSON-Schlüssel: mark_done
+msgid "Mark as done"
+msgstr "完了としてマーク"
+
+#. ehemaliger JSON-Schlüssel: select_task
+msgid "Select task"
+msgstr "タスクを選択"
+
+#. ehemaliger JSON-Schlüssel: deleted_title
+msgid "Deleted: {}"
+msgstr "削除しました: {}"

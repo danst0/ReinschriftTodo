@@ -118,8 +118,7 @@ pub fn capture_token(regex: &Regex, text: &str) -> Option<String> {
 /// Quote-aware: `+"name with spaces"` is treated as a single leading token.
 fn strip_leading_markers(text: &str) -> &str {
     let mut cleaned = text.trim_start();
-    loop {
-        let Some(first) = cleaned.chars().next() else { break };
+    while let Some(first) = cleaned.chars().next() {
         let re = match first {
             '+' => &*PROJECT_RE,
             '@' => &*CONTEXT_RE,
@@ -151,11 +150,10 @@ pub fn extract_title(rest: &str) -> String {
 
     let mut cut = cleaned_rest.len();
     for marker in FIELD_MARKERS {
-        if let Some(idx) = cleaned_rest.find(marker) {
-            if idx < cut {
+        if let Some(idx) = cleaned_rest.find(marker)
+            && idx < cut {
                 cut = idx;
             }
-        }
     }
 
     let raw = &cleaned_rest[..cut];

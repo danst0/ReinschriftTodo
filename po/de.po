@@ -1,0 +1,857 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: reinschrift\n"
+"Report-Msgid-Bugs-To: https://github.com/danst0/ReinschriftTodo/issues\n"
+"POT-Creation-Date: 2026-06-07 12:00+0200\n"
+"Language: de\n"
+"Language-Team: German\n"
+"PO-Revision-Date: 2026-06-07 12:00+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. ehemaliger JSON-Schlüssel: app_title
+msgid "Reinschrift"
+msgstr "Reinschrift"
+
+#. ehemaliger JSON-Schlüssel: settings
+msgid "Settings"
+msgstr "Einstellungen"
+
+#. ehemaliger JSON-Schlüssel: general
+msgid "General"
+msgstr "Allgemein"
+
+#. ehemaliger JSON-Schlüssel: storage
+msgid "Storage"
+msgstr "Speicher"
+
+#. ehemaliger JSON-Schlüssel: local_file
+msgid "Local File"
+msgstr "Lokale Datei"
+
+#. ehemaliger JSON-Schlüssel: webdav
+msgid "WebDAV"
+msgstr "WebDAV"
+
+#. ehemaliger JSON-Schlüssel: reload
+msgid "Reload (Ctrl+R)"
+msgstr "Neu laden (Ctrl+R)"
+
+#. ehemaliger JSON-Schlüssel: sort_by
+msgid "Sort by:"
+msgstr "Sortieren nach:"
+
+#. ehemaliger JSON-Schlüssel: topics
+msgid "+ Topics"
+msgstr "+ Themen"
+
+#. ehemaliger JSON-Schlüssel: locations
+msgid "@ Locations"
+msgstr "@ Orte"
+
+#. ehemaliger JSON-Schlüssel: date
+msgid "Date"
+msgstr "Datum"
+
+#. ehemaliger JSON-Schlüssel: show_due_only
+msgid "Show only due"
+msgstr "Nur fällige anzeigen"
+
+#. ehemaliger JSON-Schlüssel: my_day
+msgid "My Day"
+msgstr "Mein Tag"
+
+#. ehemaliger JSON-Schlüssel: add_to_my_day
+msgid "Add to My Day"
+msgstr "Zu Mein Tag hinzufügen"
+
+#. ehemaliger JSON-Schlüssel: remove_from_my_day
+msgid "Remove from My Day"
+msgstr "Aus Mein Tag entfernen"
+
+#. ehemaliger JSON-Schlüssel: my_day_empty
+msgid "Nothing planned yet — add tasks for today."
+msgstr "Noch nichts geplant — füge Aufgaben für heute hinzu."
+
+#. ehemaliger JSON-Schlüssel: myday_suggestions
+msgid "Suggestions (due)"
+msgstr "Vorschläge (fällig)"
+
+#. ehemaliger JSON-Schlüssel: myday_other_open
+msgid "Other open tasks"
+msgstr "Weitere offene Aufgaben"
+
+#. ehemaliger JSON-Schlüssel: myday_nothing_to_plan
+msgid "No open tasks left to plan."
+msgstr "Keine offenen Aufgaben zum Planen."
+
+#. ehemaliger JSON-Schlüssel: use_ai_on_new_topic
+msgid "Use AI on add"
+msgstr "KI beim Anlegen nutzen"
+
+#. ehemaliger JSON-Schlüssel: use_ai_on_new_topic_desc
+msgid "Run Smart Add automatically; fallback if AI times out."
+msgstr "Startet Smart Add automatisch; Abbruch bei KI-Timeout."
+
+#. ehemaliger JSON-Schlüssel: ai_timeout_label
+msgid "AI timeout (seconds)"
+msgstr "KI-Timeout (Sekunden)"
+
+#. ehemaliger JSON-Schlüssel: ai_timeout_desc
+msgid "Cancel AI parsing after this time."
+msgstr "Bricht die KI-Analyse nach dieser Zeit ab."
+
+#. ehemaliger JSON-Schlüssel: new_todo_placeholder
+msgid "New To-do…"
+msgstr "Neues To-do…"
+
+#. ehemaliger JSON-Schlüssel: add
+msgid "Add"
+msgstr "Hinzufügen"
+
+#. ehemaliger JSON-Schlüssel: title_empty_error
+msgid "Title must not be empty"
+msgstr "Titel darf nicht leer sein"
+
+#. ehemaliger JSON-Schlüssel: reload_error
+msgid "Could not reload To-dos: {}"
+msgstr "Konnte To-dos nicht neu laden: {}"
+
+#. ehemaliger JSON-Schlüssel: task_added
+msgid "Task added"
+msgstr "Aufgabe hinzugefügt"
+
+#. ehemaliger JSON-Schlüssel: create_error
+msgid "Could not create To-do: {}"
+msgstr "Konnte To-do nicht anlegen: {}"
+
+#. ehemaliger JSON-Schlüssel: load_error
+msgid "Could not load To-dos: {}"
+msgstr "Konnte To-dos nicht laden: {}"
+
+#. ehemaliger JSON-Schlüssel: select_valid_file
+msgid "Please select a valid file in settings."
+msgstr "Bitte wählen Sie eine gültige Datei in den Einstellungen."
+
+#. ehemaliger JSON-Schlüssel: monitor_error
+msgid "File monitoring not available: {}"
+msgstr "Dateiüberwachung nicht verfügbar: {}"
+
+#. ehemaliger JSON-Schlüssel: set_due_today
+msgid "Set due date to today"
+msgstr "Fälligkeit auf heute setzen"
+
+#. ehemaliger JSON-Schlüssel: postpone_tomorrow
+msgid "Postpone to tomorrow"
+msgstr "Auf morgen verschieben"
+
+#. ehemaliger JSON-Schlüssel: postpone_weekend
+msgid "Postpone to weekend"
+msgstr "Aufs Wochenende verschieben"
+
+#. ehemaliger JSON-Schlüssel: postpone_sometimes
+msgid "Postpone to 'sometimes'"
+msgstr "Auf 'Irgendwann' verschieben"
+
+#. ehemaliger JSON-Schlüssel: sometimes
+msgid "Sometimes"
+msgstr "Irgendwann"
+
+#. ehemaliger JSON-Schlüssel: update_error
+msgid "Could not update entry: {}"
+msgstr "Konnte Eintrag nicht aktualisieren: {}"
+
+#. ehemaliger JSON-Schlüssel: set_due_error
+msgid "Could not set due date: {}"
+msgstr "Konnte Fälligkeit setzen: {}"
+
+#. ehemaliger JSON-Schlüssel: no_window
+msgid "No window available"
+msgstr "Kein Fenster verfügbar"
+
+#. ehemaliger JSON-Schlüssel: show_completed
+msgid "Show completed tasks"
+msgstr "Erledigte Aufgaben anzeigen"
+
+#. ehemaliger JSON-Schlüssel: show_due_only_mode
+msgid "Show only due (until today)"
+msgstr "Nur fällige (bis heute) anzeigen"
+
+#. ehemaliger JSON-Schlüssel: delete_without_confirmation
+msgid "Delete without confirmation"
+msgstr "Ohne Rückfrage löschen"
+
+#. ehemaliger JSON-Schlüssel: delete_without_confirmation_desc
+msgid "Skip the delete dialog and remove entries immediately."
+msgstr "Löschdialog überspringen und Einträge sofort entfernen."
+
+#. ehemaliger JSON-Schlüssel: title_autocomplete
+msgid "Title autocomplete"
+msgstr "Titel-Autovervollständigung"
+
+#. ehemaliger JSON-Schlüssel: title_autocomplete_desc
+msgid "Suggest existing task titles while typing."
+msgstr "Beim Tippen Vorschläge aus bestehenden Aufgaben anzeigen."
+
+#. ehemaliger JSON-Schlüssel: use_webdav
+msgid "Use WebDAV"
+msgstr "WebDAV verwenden"
+
+#. ehemaliger JSON-Schlüssel: use_this_method
+msgid "Use this method"
+msgstr "Diese Methode verwenden"
+
+#. ehemaliger JSON-Schlüssel: database_file
+msgid "Database file"
+msgstr "Datenbankdatei"
+
+#. ehemaliger JSON-Schlüssel: select_file
+msgid "Select file…"
+msgstr "Datei auswählen…"
+
+#. ehemaliger JSON-Schlüssel: create_new_file
+msgid "Create new file"
+msgstr "Neue Datei erstellen"
+
+#. ehemaliger JSON-Schlüssel: webdav_url
+msgid "WebDAV URL"
+msgstr "WebDAV URL"
+
+#. ehemaliger JSON-Schlüssel: path_relative
+msgid "Path (relative)"
+msgstr "Pfad (relativ)"
+
+#. ehemaliger JSON-Schlüssel: username
+msgid "Username"
+msgstr "Benutzername"
+
+#. ehemaliger JSON-Schlüssel: password
+msgid "Password"
+msgstr "Passwort"
+
+#. ehemaliger JSON-Schlüssel: check_connection
+msgid "Check connection"
+msgstr "Verbindung prüfen"
+
+#. ehemaliger JSON-Schlüssel: no_url_error
+msgid "No URL specified."
+msgstr "Keine URL angegeben."
+
+#. ehemaliger JSON-Schlüssel: connection_success
+msgid "Connection successful!"
+msgstr "Verbindung erfolgreich!"
+
+#. ehemaliger JSON-Schlüssel: connection_failed
+msgid "Connection failed: {}"
+msgstr "Verbindung fehlgeschlagen: {}"
+
+#. ehemaliger JSON-Schlüssel: close
+msgid "Close"
+msgstr "Schließen"
+
+#. ehemaliger JSON-Schlüssel: file_not_exists
+msgid "File does not exist"
+msgstr "Datei existiert nicht"
+
+#. ehemaliger JSON-Schlüssel: open_path_error
+msgid "Could not open path: {}"
+msgstr "Konnte Pfad nicht öffnen: {}"
+
+#. ehemaliger JSON-Schlüssel: file_already_active
+msgid "This file is already active"
+msgstr "Diese Datei ist bereits aktiv"
+
+#. ehemaliger JSON-Schlüssel: using_file
+msgid "Using {}"
+msgstr "Nutze {}"
+
+#. ehemaliger JSON-Schlüssel: load_data_error
+msgid "Could not load data: {}"
+msgstr "Konnte Daten nicht laden: {}"
+
+#. ehemaliger JSON-Schlüssel: save_settings_error
+msgid "Could not save settings: {}"
+msgstr "Konnte Einstellungen nicht speichern: {}"
+
+#. ehemaliger JSON-Schlüssel: updated_task
+msgid "Updated: {}"
+msgstr "Aktualisiert: {}"
+
+#. ehemaliger JSON-Schlüssel: edit_task
+msgid "Edit task"
+msgstr "Aufgabe bearbeiten"
+
+#. ehemaliger JSON-Schlüssel: title
+msgid "Title"
+msgstr "Titel"
+
+#. ehemaliger JSON-Schlüssel: project_plus
+msgid "Project (+)"
+msgstr "Projekt (+)"
+
+#. ehemaliger JSON-Schlüssel: location_at
+msgid "Location (@)"
+msgstr "Ort (@)"
+
+#. ehemaliger JSON-Schlüssel: due_date
+msgid "Due date"
+msgstr "Fälligkeitsdatum"
+
+#. ehemaliger JSON-Schlüssel: today
+msgid "Today"
+msgstr "Heute"
+
+#. ehemaliger JSON-Schlüssel: recurrence
+msgid "Recurrence"
+msgstr "Wiederholung"
+
+#. ehemaliger JSON-Schlüssel: recurrence_none
+msgid "None"
+msgstr "Keine"
+
+#. ehemaliger JSON-Schlüssel: recurrence_daily
+msgid "Daily"
+msgstr "Täglich"
+
+#. ehemaliger JSON-Schlüssel: recurrence_weekly
+msgid "Weekly"
+msgstr "Wöchentlich"
+
+#. ehemaliger JSON-Schlüssel: recurrence_monthly
+msgid "Monthly"
+msgstr "Monatlich"
+
+#. ehemaliger JSON-Schlüssel: done
+msgid "Done"
+msgstr "Erledigt"
+
+#. ehemaliger JSON-Schlüssel: cancel
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#. ehemaliger JSON-Schlüssel: delete
+msgid "Delete"
+msgstr "Löschen"
+
+#. ehemaliger JSON-Schlüssel: delete_confirmation_title
+msgid "Delete this entry?"
+msgstr "Eintrag löschen?"
+
+#. ehemaliger JSON-Schlüssel: delete_confirmation_desc
+msgid "This cannot be undone."
+msgstr "Dies kann nicht rückgängig gemacht werden."
+
+#. ehemaliger JSON-Schlüssel: save
+msgid "Save"
+msgstr "Speichern"
+
+#. ehemaliger JSON-Schlüssel: invalid_date_error
+msgid "Invalid date. Expected YYYY-MM-DD"
+msgstr "Ungültiges Datum. Erwartet YYYY-MM-DD"
+
+#. ehemaliger JSON-Schlüssel: save_task_error
+msgid "Could not save task: {}"
+msgstr "Konnte Aufgabe nicht speichern: {}"
+
+#. ehemaliger JSON-Schlüssel: delete_error
+msgid "Could not delete task: {}"
+msgstr "Konnte Aufgabe nicht löschen: {}"
+
+#. ehemaliger JSON-Schlüssel: topic_group
+msgid "Topic: {}"
+msgstr "Thema: {}"
+
+#. ehemaliger JSON-Schlüssel: location_group
+msgid "Location: {}"
+msgstr "Ort: {}"
+
+#. ehemaliger JSON-Schlüssel: no_project
+msgid "No project"
+msgstr "Ohne Projekt"
+
+#. ehemaliger JSON-Schlüssel: no_location
+msgid "No location"
+msgstr "Ohne Ort"
+
+#. ehemaliger JSON-Schlüssel: changes_applied
+msgid "Changes from file applied"
+msgstr "Änderungen aus Datei übernommen"
+
+#. ehemaliger JSON-Schlüssel: update_failed
+msgid "Update failed: {}"
+msgstr "Aktualisierung fehlgeschlagen: {}"
+
+#. ehemaliger JSON-Schlüssel: due_label, task_due
+msgid "Due: {}"
+msgstr "Fällig: {}"
+
+#. ehemaliger JSON-Schlüssel: init_adw_error
+msgid "Could not initialize libadwaita"
+msgstr "Konnte libadwaita nicht initialisieren"
+
+#. ehemaliger JSON-Schlüssel: build_ui_error
+msgid "Error building UI: {:?}"
+msgstr "Fehler beim Aufbau der Oberfläche: {:?}"
+
+#. ehemaliger JSON-Schlüssel: app_exit_status
+msgid "Application exited with status {:?}"
+msgstr "Anwendung wurde mit Status {:?} beendet"
+
+#. ehemaliger JSON-Schlüssel: read_error
+msgid "Could not read {}"
+msgstr "Konnte {} nicht lesen"
+
+#. ehemaliger JSON-Schlüssel: no_database_configured
+msgid "No database file configured. Please select or create one in the settings."
+msgstr "Keine Datenbankdatei konfiguriert. Bitte wählen oder erstellen Sie eine in den Einstellungen."
+
+#. ehemaliger JSON-Schlüssel: write_error
+msgid "Could not write {}"
+msgstr "Konnte {} nicht schreiben"
+
+#. ehemaliger JSON-Schlüssel: connection_error
+msgid "Connection to '{}' failed: {}"
+msgstr "Verbindung zu '{}' fehlgeschlagen: {}"
+
+#. ehemaliger JSON-Schlüssel: ai_parse_failed
+msgid "AI parsing failed: {}"
+msgstr "KI-Analyse fehlgeschlagen: {}"
+
+#. ehemaliger JSON-Schlüssel: ai_timeout_fallback
+msgid "AI timed out. Added without AI."
+msgstr "KI hat abgebrochen. Hinzugefügt ohne KI."
+
+#. ehemaliger JSON-Schlüssel: todo_not_found
+msgid "Could not find To-do in file"
+msgstr "Konnte To-do in der Datei nicht finden"
+
+#. ehemaliger JSON-Schlüssel: line_update_error
+msgid "Could not update line {}"
+msgstr "Konnte Zeile {} nicht aktualisieren"
+
+#. ehemaliger JSON-Schlüssel: no_checkbox_error
+msgid "Line contains no checkbox"
+msgstr "Zeile enthält keine Checkbox"
+
+#. ehemaliger JSON-Schlüssel: auto_reload_error
+msgid "Auto-reload failed: {}"
+msgstr "Automatisches Neuladen fehlgeschlagen: {}"
+
+#. ehemaliger JSON-Schlüssel: webdav_conn_error
+msgid "WebDAV Connection Error: {}"
+msgstr "WebDAV-Verbindungsfehler: {}"
+
+#. ehemaliger JSON-Schlüssel: rollback_failed
+msgid "Rollback failed: {}"
+msgstr "Rollback fehlgeschlagen: {}"
+
+#. ehemaliger JSON-Schlüssel: voice
+msgid "Voice"
+msgstr "Sprache"
+
+#. ehemaliger JSON-Schlüssel: use_whisper
+msgid "Local Speech Recognition (Whisper)"
+msgstr "Lokale Spracherkennung (Whisper)"
+
+#. ehemaliger JSON-Schlüssel: whisper_desc
+msgid "Downloads a ~480MB model for offline recognition"
+msgstr "Lädt ein ~480MB Modell für Offline-Erkennung"
+
+#. ehemaliger JSON-Schlüssel: downloading_model
+msgid "Downloading voice model…"
+msgstr "Lade Sprachmodell herunter…"
+
+#. ehemaliger JSON-Schlüssel: model_download_finished
+msgid "Voice model downloaded successfully"
+msgstr "Sprachmodell erfolgreich heruntergeladen"
+
+#. ehemaliger JSON-Schlüssel: model_download_error
+msgid "Error downloading model"
+msgstr "Fehler beim Herunterladen des Modells"
+
+#. ehemaliger JSON-Schlüssel: model_not_found
+msgid "Speech model not found. Please enable it in the settings."
+msgstr "Sprachmodell nicht gefunden. Bitte in den Einstellungen aktivieren."
+
+#. ehemaliger JSON-Schlüssel: close_with_comment
+msgid "Close with comment"
+msgstr "Mit Kommentar abschließen"
+
+#. ehemaliger JSON-Schlüssel: comment
+msgid "Comment"
+msgstr "Kommentar"
+
+#. ehemaliger JSON-Schlüssel: note
+msgid "Note"
+msgstr "Notiz"
+
+#. ehemaliger JSON-Schlüssel: search_placeholder
+msgid "Search…"
+msgstr "Suchen…"
+
+#. ehemaliger JSON-Schlüssel: search_results_current
+msgid "Search results in current list"
+msgstr "Suchergebnisse in aktueller Liste"
+
+#. ehemaliger JSON-Schlüssel: search_results_open
+msgid "Search results in all open To-dos"
+msgstr "Suchergebnisse in allen offenen To-dos"
+
+#. ehemaliger JSON-Schlüssel: search_results_done
+msgid "Search results in completed To-dos"
+msgstr "Suchergebnisse in abgeschlossenen To-dos"
+
+#. ehemaliger JSON-Schlüssel: cheatsheet
+msgid "Keyboard Shortcuts"
+msgstr "Tastenkürzel"
+
+#. ehemaliger JSON-Schlüssel: key_help
+msgid "Show help"
+msgstr "Hilfe anzeigen"
+
+#. ehemaliger JSON-Schlüssel: key_new
+msgid "New task"
+msgstr "Neue Aufgabe"
+
+#. ehemaliger JSON-Schlüssel: key_search
+msgid "Search"
+msgstr "Suchen"
+
+#. ehemaliger JSON-Schlüssel: key_reload
+msgid "Reload"
+msgstr "Neu laden"
+
+#. ehemaliger JSON-Schlüssel: key_quit
+msgid "Quit"
+msgstr "Beenden"
+
+#. ehemaliger JSON-Schlüssel: key_nav
+msgid "Navigate"
+msgstr "Navigieren"
+
+#. ehemaliger JSON-Schlüssel: key_toggle
+msgid "Toggle done"
+msgstr "Erledigt umschalten"
+
+#. ehemaliger JSON-Schlüssel: key_edit
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#. ehemaliger JSON-Schlüssel: key_today
+msgid "Due today"
+msgstr "Fällig heute"
+
+#. ehemaliger JSON-Schlüssel: key_tomorrow
+msgid "Due tomorrow"
+msgstr "Fällig morgen"
+
+#. ehemaliger JSON-Schlüssel: key_sometimes
+msgid "Due sometimes"
+msgstr "Fällig irgendwann"
+
+#. ehemaliger JSON-Schlüssel: key_weekend
+msgid "Due this weekend"
+msgstr "Fällig am Wochenende"
+
+#. ehemaliger JSON-Schlüssel: key_week
+msgid "Due next week"
+msgstr "Fällig in einer Woche"
+
+#. ehemaliger JSON-Schlüssel: about
+msgid "About"
+msgstr "Über"
+
+#. ehemaliger JSON-Schlüssel: version
+msgid "Version"
+msgstr "Version"
+
+#. ehemaliger JSON-Schlüssel: developer
+msgid "Developer"
+msgstr "Entwickler"
+
+#. ehemaliger JSON-Schlüssel: website
+msgid "Website"
+msgstr "Webseite"
+
+#. ehemaliger JSON-Schlüssel: license
+msgid "License"
+msgstr "Lizenz"
+
+#. ehemaliger JSON-Schlüssel: whisper_language
+msgid "Recognition Language"
+msgstr "Sprache für Erkennung"
+
+#. ehemaliger JSON-Schlüssel: lang_auto
+msgid "Automatic"
+msgstr "Automatisch"
+
+#. ehemaliger JSON-Schlüssel: lang_en
+msgid "English"
+msgstr "Englisch"
+
+#. ehemaliger JSON-Schlüssel: lang_de
+msgid "German"
+msgstr "Deutsch"
+
+#. ehemaliger JSON-Schlüssel: lang_es
+msgid "Spanish"
+msgstr "Spanisch"
+
+#. ehemaliger JSON-Schlüssel: lang_fr
+msgid "French"
+msgstr "Französisch"
+
+#. ehemaliger JSON-Schlüssel: lang_it
+msgid "Italian"
+msgstr "Italienisch"
+
+#. ehemaliger JSON-Schlüssel: lang_ja
+msgid "Japanese"
+msgstr "Japanisch"
+
+#. ehemaliger JSON-Schlüssel: lang_zh
+msgid "Chinese"
+msgstr "Chinesisch"
+
+#. ehemaliger JSON-Schlüssel: lang_nl
+msgid "Dutch"
+msgstr "Niederländisch"
+
+#. ehemaliger JSON-Schlüssel: lang_pl
+msgid "Polish"
+msgstr "Polnisch"
+
+#. ehemaliger JSON-Schlüssel: lang_pt
+msgid "Portuguese"
+msgstr "Portugiesisch"
+
+#. ehemaliger JSON-Schlüssel: lang_ru
+msgid "Russian"
+msgstr "Russisch"
+
+#. ehemaliger JSON-Schlüssel: lang_tr
+msgid "Turkish"
+msgstr "Türkisch"
+
+#. ehemaliger JSON-Schlüssel: lang_sv
+msgid "Swedish"
+msgstr "Schwedisch"
+
+#. ehemaliger JSON-Schlüssel: ollama_model
+msgid "AI Model"
+msgstr "KI-Modell"
+
+#. ehemaliger JSON-Schlüssel: ollama_model_desc
+msgid "Ollama model name (e.g., mistral:7b, llama3.1:8b)"
+msgstr "Ollama-Modellname (z.B. mistral:7b, llama3.1:8b)"
+
+#. ehemaliger JSON-Schlüssel: ollama_url
+msgid "Ollama URL"
+msgstr "Ollama-URL"
+
+#. ehemaliger JSON-Schlüssel: ollama_url_desc
+msgid "Ollama server address (e.g., http://localhost:11434)"
+msgstr "Ollama-Serveradresse (z.B. http://localhost:11434)"
+
+#. ehemaliger JSON-Schlüssel: semantic_section
+msgid "Similar tasks"
+msgstr "Ähnliche Aufgaben"
+
+#. ehemaliger JSON-Schlüssel: search_results_semantic
+msgid "Similar by meaning"
+msgstr "Bedeutungsähnliche To-dos"
+
+#. ehemaliger JSON-Schlüssel: duplicate_warning
+msgid "Did you mean …?"
+msgstr "Meinst du …?"
+
+#. ehemaliger JSON-Schlüssel: semantic_enabled
+msgid "Semantic suggestions"
+msgstr "Semantische Vorschläge"
+
+#. ehemaliger JSON-Schlüssel: semantic_enabled_desc
+msgid "Suggest similar tasks via an embedding model (requires Ollama)"
+msgstr "Ähnliche Aufgaben per Embedding-Modell vorschlagen (benötigt Ollama)"
+
+#. ehemaliger JSON-Schlüssel: embedding_model
+msgid "Embedding model"
+msgstr "Embedding-Modell"
+
+#. ehemaliger JSON-Schlüssel: embedding_model_desc
+msgid "Ollama embedding model (e.g. bge-m3) — pull it first with 'ollama pull'"
+msgstr "Ollama-Embedding-Modell (z.B. bge-m3) — vorher mit 'ollama pull' laden"
+
+#. ehemaliger JSON-Schlüssel: show_suggestions
+msgid "Show suggestions"
+msgstr "Vorschläge anzeigen"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login
+msgid "Login with Nextcloud"
+msgstr "Mit Nextcloud anmelden"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login_pending
+msgid "Waiting for browser login…"
+msgstr "Warte auf Browser-Anmeldung…"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login_success
+msgid "Nextcloud login successful!"
+msgstr "Nextcloud-Anmeldung erfolgreich!"
+
+#. ehemaliger JSON-Schlüssel: nextcloud_login_failed
+msgid "Nextcloud login failed: {}"
+msgstr "Nextcloud-Anmeldung fehlgeschlagen: {}"
+
+#. ehemaliger JSON-Schlüssel: conflict_title
+msgid "File was changed externally"
+msgstr "Datei wurde extern geändert"
+
+#. ehemaliger JSON-Schlüssel: conflict_reload
+msgctxt "conflict dialog button"
+msgid "Reload"
+msgstr "Neu laden"
+
+#. ehemaliger JSON-Schlüssel: conflict_overwrite
+msgid "Overwrite"
+msgstr "Überschreiben"
+
+#. ehemaliger JSON-Schlüssel: undo
+msgid "Undo"
+msgstr "Rückgängig"
+
+#. ehemaliger JSON-Schlüssel: undone_action
+msgid "Undone: {}"
+msgstr "Rückgängig: {}"
+
+#. ehemaliger JSON-Schlüssel: nothing_to_undo
+msgid "Nothing to undo"
+msgstr "Nichts zum Rückgängigmachen"
+
+#. ehemaliger JSON-Schlüssel: reminder_title
+msgid "Task due"
+msgstr "Aufgabe fällig"
+
+#. ehemaliger JSON-Schlüssel: enable_reminders
+msgid "Enable reminders"
+msgstr "Erinnerungen aktivieren"
+
+#. ehemaliger JSON-Schlüssel: remind_before_minutes
+msgid "Reminder window (minutes)"
+msgstr "Erinnerungsfenster (Minuten)"
+
+#. ehemaliger JSON-Schlüssel: key_undo
+msgid "Undo last action"
+msgstr "Letzte Aktion rückgängig"
+
+#. ehemaliger JSON-Schlüssel: overdue_warning
+msgid "{} task(s) overdue"
+msgstr "{} Aufgabe(n) überfällig"
+
+#. ehemaliger JSON-Schlüssel: select_mode
+msgid "Select"
+msgstr "Auswählen"
+
+#. ehemaliger JSON-Schlüssel: selected_count
+msgid "{} selected"
+msgstr "{} ausgewählt"
+
+#. ehemaliger JSON-Schlüssel: bulk_complete
+msgid "Complete"
+msgstr "Erledigen"
+
+#. ehemaliger JSON-Schlüssel: bulk_reopen
+msgid "Reopen"
+msgstr "Wieder öffnen"
+
+#. ehemaliger JSON-Schlüssel: bulk_set_due
+msgid "Due…"
+msgstr "Fälligkeit…"
+
+#. ehemaliger JSON-Schlüssel: bulk_assign
+msgid "Assign"
+msgstr "Zuweisen"
+
+#. ehemaliger JSON-Schlüssel: bulk_assign_title
+msgid "Assign project/context"
+msgstr "Projekt/Kontext zuweisen"
+
+#. ehemaliger JSON-Schlüssel: bulk_delete_confirm_title
+msgid "Delete {} items?"
+msgstr "{} Einträge löschen?"
+
+#. ehemaliger JSON-Schlüssel: bulk_completed_count
+msgid "{} items completed"
+msgstr "{} Einträge erledigt"
+
+#. ehemaliger JSON-Schlüssel: bulk_reopened_count
+msgid "{} items reopened"
+msgstr "{} Einträge wieder geöffnet"
+
+#. ehemaliger JSON-Schlüssel: bulk_due_set_count
+msgid "Due date set for {} items"
+msgstr "Fälligkeit für {} Einträge gesetzt"
+
+#. ehemaliger JSON-Schlüssel: bulk_assigned_count
+msgid "{} items updated"
+msgstr "{} Einträge geändert"
+
+#. ehemaliger JSON-Schlüssel: bulk_deleted_count
+msgid "{} items deleted"
+msgstr "{} Einträge gelöscht"
+
+#. ehemaliger JSON-Schlüssel: duplicate
+msgid "Duplicate task"
+msgstr "Aufgabe duplizieren"
+
+#. ehemaliger JSON-Schlüssel: duplicated_title
+msgid "Duplicated: {}"
+msgstr "Dupliziert: {}"
+
+#. ehemaliger JSON-Schlüssel: main_menu
+msgid "Main menu"
+msgstr "Hauptmenü"
+
+#. ehemaliger JSON-Schlüssel: key_settings
+msgid "Open settings"
+msgstr "Einstellungen öffnen"
+
+#. ehemaliger JSON-Schlüssel: key_delete
+msgid "Delete selected task"
+msgstr "Ausgewählte Aufgabe löschen"
+
+#. ehemaliger JSON-Schlüssel: key_close
+msgid "Close search/dialog"
+msgstr "Suche/Dialog schließen"
+
+#. ehemaliger JSON-Schlüssel: key_select
+msgid "Toggle selection"
+msgstr "Auswahl umschalten"
+
+#. ehemaliger JSON-Schlüssel: key_myday
+msgid "In the planning picker: add to My Day"
+msgstr "Im Planungs-Picker: zu Mein Tag hinzufügen"
+
+#. ehemaliger JSON-Schlüssel: shortcuts_list
+msgid "Task list"
+msgstr "Aufgabenliste"
+
+#. ehemaliger JSON-Schlüssel: shortcuts_due
+msgid "Set due date"
+msgstr "Fälligkeit setzen"
+
+#. ehemaliger JSON-Schlüssel: shortcuts_selection
+msgid "Multi-selection"
+msgstr "Mehrfachauswahl"
+
+#. ehemaliger JSON-Schlüssel: mark_done
+msgid "Mark as done"
+msgstr "Als erledigt markieren"
+
+#. ehemaliger JSON-Schlüssel: select_task
+msgid "Select task"
+msgstr "Aufgabe auswählen"
+
+#. ehemaliger JSON-Schlüssel: deleted_title
+msgid "Deleted: {}"
+msgstr "Gelöscht: {}"

@@ -25,6 +25,12 @@ modules:
       - cargo build --release --offline --workspace
       - install -D target/release/reinschrift_todo /app/bin/reinschrift
       - install -D target/release/reinschrift /app/bin/reinschrift-cli
+      - |
+        for po in po/*.po; do
+          lang=$(basename "$po" .po)
+          install -d "/app/share/locale/$lang/LC_MESSAGES"
+          msgfmt -o "/app/share/locale/$lang/LC_MESSAGES/reinschrift.mo" "$po"
+        done
       - install -D me.dumke.Reinschrift.desktop /app/share/applications/me.dumke.Reinschrift.desktop
       - install -D me.dumke.Reinschrift.metainfo.xml /app/share/metainfo/me.dumke.Reinschrift.metainfo.xml
       - install -D icon/todos.png /app/share/icons/hicolor/512x512/apps/me.dumke.Reinschrift.png
@@ -34,7 +40,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        tag: v0.24.2
+        tag: v0.24.3
       - generated-sources.json
       - type: shell
         commands:

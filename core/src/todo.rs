@@ -61,7 +61,7 @@ fn resolve_key(lines: &[String], key: &TodoKey) -> Result<usize> {
     if target_index.is_none() && key.line_index < lines.len() {
         target_index = Some(key.line_index);
     }
-    target_index.ok_or_else(|| anyhow!(t("todo_not_found")))
+    target_index.ok_or_else(|| anyhow!(t("Could not find To-do in file")))
 }
 
 /// Toggle a todo's completion state.
@@ -71,7 +71,7 @@ pub fn toggle_todo(key: &TodoKey, done: bool) -> Result<()> {
     mutate_file(action, |lines, had_trailing_newline| {
         let index = resolve_key(lines, &key)?;
         let updated_line = rewrite_line(&lines[index], done)
-            .with_context(|| t("line_update_error").replace("{}", &(index + 1).to_string()))?;
+            .with_context(|| t("Could not update line {}").replace("{}", &(index + 1).to_string()))?;
         lines[index] = updated_line;
 
         let mut output = lines.join("\n");
@@ -93,8 +93,6 @@ fn due_today_dt(current_due: Option<NaiveDateTime>) -> NaiveDateTime {
             let current_hour = now.hour();
             if current_hour < 8 {
                 NaiveTime::from_hms_opt(12, 0, 0).unwrap()
-            } else if current_hour < 14 {
-                NaiveTime::from_hms_opt(18, 0, 0).unwrap()
             } else {
                 NaiveTime::from_hms_opt(18, 0, 0).unwrap()
             }
@@ -211,13 +209,12 @@ pub fn toggle_todos(keys: &[TodoKey], done: bool) -> Result<usize> {
             if spawns_recurrence {
                 let item = item.as_ref().unwrap();
                 // Reschedule overdue recurring tasks to today before completing.
-                if let Some(due) = item.due {
-                    if due < now {
+                if let Some(due) = item.due
+                    && due < now {
                         let today_due =
                             NaiveDateTime::new(Local::now().date_naive(), due.time());
                         updated = rewrite_due(&updated, today_due)?;
                     }
-                }
             }
 
             let Ok(toggled) = rewrite_line(&updated, done) else { continue };
@@ -406,7 +403,7 @@ pub fn unique_titles_by_frequency() -> Result<Vec<String>> {
 pub fn add_todo(title: &str) -> Result<TodoKey> {
     let title = title.trim();
     if title.is_empty() {
-        bail!(t("title_empty_error"));
+        bail!(t("Title must not be empty"));
     }
     let today = Local::now().date_naive();
     let due_dt = NaiveDateTime::new(today, DEFAULT_DUE_TIME);
@@ -479,7 +476,7 @@ where
     mutate_file(description, |lines, had_trailing_newline| {
         let index = resolve_key(lines, &key)?;
         let updated_line = rewrite(&lines[index])
-            .with_context(|| t("line_update_error").replace("{}", &(index + 1).to_string()))?;
+            .with_context(|| t("Could not update line {}").replace("{}", &(index + 1).to_string()))?;
         lines[index] = updated_line;
 
         let mut output = lines.join("\n");
@@ -496,7 +493,7 @@ fn delete_line(key: &TodoKey) -> Result<()> {
     mutate_file("delete", |lines, _| {
         let index = key.line_index;
         if index >= lines.len() {
-            bail!(t("todo_not_found"));
+            bail!(t("Could not find To-do in file"));
         }
 
         lines.remove(index);

@@ -26,20 +26,20 @@ fn main() -> Result<()> {
         }
     }
 
-    gtk::glib::set_application_name(&t("app_title"));
-    adw::init().context(t("init_adw_error"))?;
+    gtk::glib::set_application_name(&t("Reinschrift"));
+    adw::init().context(t("Could not initialize libadwaita"))?;
 
     let app = adw::Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(|app| {
         if let Err(err) = ui::build_ui(app, false) {
-            eprintln!("{}: {err:?}", t("build_ui_error"));
+            eprintln!("{}: {err:?}", t("Error building UI: {:?}"));
         }
     });
 
     let status = app.run_with_args(&filtered_args);
     if status != glib::ExitCode::SUCCESS {
-        bail!("{}: {:?}", t("app_exit_status"), status);
+        bail!("{}: {:?}", t("Application exited with status {:?}"), status);
     }
 
     Ok(())

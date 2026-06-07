@@ -16,7 +16,7 @@ pub mod util;
 pub mod webdav;
 
 pub use data::*;
-pub use i18n::t;
+pub use i18n::{t, tc};
 pub use preferences::*;
 pub use sorting::*;
 
