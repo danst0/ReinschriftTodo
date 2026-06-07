@@ -4,7 +4,6 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Reinschrift</name>
-  <developer_name>Dr. Daniel Dumke</developer_name>
   <summary>Manage your todos in Markdown</summary>
   <description>
     <p>
@@ -19,26 +18,60 @@
     </p>
   </description>
   <launchable type="desktop-id">me.dumke.Reinschrift.desktop</launchable>
+  <branding>
+    <color type="primary" scheme_preference="light">#99c1f1</color>
+    <color type="primary" scheme_preference="dark">#1a5fb4</color>
+  </branding>
   <screenshots>
     <screenshot type="default">
-      <caption xml:lang="en">The main window showing the todo list</caption>
+      <caption>Tasks grouped by project, with contexts, due dates and quick add</caption>
+      <caption xml:lang="de">Aufgaben nach Projekt gruppiert, mit Kontexten, Fälligkeiten und Schnelleingabe</caption>
       <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_en.png</image>
-    </screenshot>
-    <screenshot>
-      <caption xml:lang="de">Die Hauptansicht mit der Aufgabenliste</caption>
-      <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_de.png</image>
+      <image xml:lang="de">https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_de.png</image>
     </screenshot>
   </screenshots>
   <url type="homepage">https://github.com/danst0/ReinschriftTodo</url>
   <url type="vcs-browser">https://github.com/danst0/ReinschriftTodo</url>
+  <url type="bugtracker">https://github.com/danst0/ReinschriftTodo/issues</url>
+  <url type="contribute">https://github.com/danst0/ReinschriftTodo</url>
   <developer id="me.dumke">
     <name>Dr. Daniel Dumke</name>
   </developer>
+  <keywords>
+    <keyword>todo</keyword>
+    <keyword>task</keyword>
+    <keyword>tasks</keyword>
+    <keyword>markdown</keyword>
+    <keyword>todo.txt</keyword>
+    <keyword>GTD</keyword>
+    <keyword>checklist</keyword>
+    <keyword>plain text</keyword>
+    <keyword>Nextcloud</keyword>
+    <keyword>WebDAV</keyword>
+    <keyword xml:lang="de">Aufgaben</keyword>
+    <keyword xml:lang="de">Aufgabenliste</keyword>
+    <keyword xml:lang="de">Klartext</keyword>
+  </keywords>
+  <recommends>
+    <display_length compare="ge">560</display_length>
+  </recommends>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
   <provides>
     <binary>reinschrift</binary>
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.23.7" date="2026-06-07">
+      <description>
+        <ul>
+          <li>Improved Flathub metadata: branding colors, localized screenshots, keywords, bugtracker/contribute links, and supported input/display info</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.6" date="2026-06-07">
       <description>
         <ul>
