@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.23.8" date="2026-06-07">
+      <description>
+        <ul>
+          <li>Fix release CI to install GNOME 50 runtime</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.23.7" date="2026-06-07">
       <description>
         <ul>
