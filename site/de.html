@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reinschrift — deine Todo-Liste ist eine Markdown-Datei</title>
+<meta name="description" content="Reinschrift ist eine native GNOME-App, CLI und selbst hostbare Web-App für Aufgaben in einer einzigen Markdown-Datei. WebDAV/Nextcloud-Sync, wiederkehrende Aufgaben, kein Lock-in.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="canonical" href="https://reinschrift.dumke.me/de.html">
+<link rel="alternate" hreflang="en" href="https://reinschrift.dumke.me/">
+<link rel="alternate" hreflang="de" href="https://reinschrift.dumke.me/de.html">
+<meta property="og:title" content="Reinschrift — deine Todo-Liste ist eine Markdown-Datei">
+<meta property="og:description" content="Native GNOME-App, CLI und selbst hostbare Web-App über einer einzigen Klartext-Datei. Versionierbar, synchronisierbar, deine.">
+<meta property="og:image" content="https://reinschrift.dumke.me/assets/screenshot-de.png">
+<meta property="og:url" content="https://reinschrift.dumke.me/de.html">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <img src="assets/icon.png" alt="" width="34" height="34">
+  <a class="brand" href="de.html">Reinschrift</a>
+  <nav>
+    <a href="#format">Format</a>
+    <a href="#apps">Apps</a>
+    <a href="#install">Installieren</a>
+    <a class="gh" href="https://github.com/danst0/ReinschriftTodo">GitHub&nbsp;↗</a>
+    <a class="lang" href="index.html" lang="en" hreflang="en">EN</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- ───────────────────────── hero ───────────────────────── -->
+<section class="hero">
+  <p class="kicker">Freie Software · GNOME · Klartext zuerst</p>
+  <h1>Deine Todo-Liste ist <em>nur eine Textdatei.</em></h1>
+  <p class="lede">Reinschrift ist eine native GNOME-App, ein CLI und eine selbst
+  hostbare Web-App — alle lesen und schreiben <strong>eine Markdown-Datei</strong>.
+  Versionierbar mit Git, synchronisiert über Nextcloud, in jedem Editor zu öffnen.
+  Keine Datenbank. Kein Silo. Kein Lock-in.</p>
+
+  <div class="cta-row">
+    <a class="flathub" href="https://flathub.org/de/apps/me.dumke.Reinschrift">
+      <img src="https://flathub.org/api/badge?svg&amp;locale=de" alt="Auf Flathub laden">
+    </a>
+    <button class="cmd" data-copy="flatpak install flathub me.dumke.Reinschrift">
+      flatpak install flathub me.dumke.Reinschrift
+    </button>
+  </div>
+
+  <div class="desk">
+    <figure class="file-card" aria-label="Eine Markdown-Todo-Datei, die gerade geschrieben wird">
+      <div class="file-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="name">~/Notizen/todos.md</span>
+      </div>
+      <pre class="file-lines"><span class="t-dim">- [x]</span> <span class="t-dim">Pass verlängern</span> <span class="t-done">✅ 2026-06-01</span>
+- [ ] Fahrradlicht reparieren <span class="t-proj">+werkstatt</span> <span class="t-ctx">@zuhause</span>
+<span class="typed-wrap"><span class="typed">- [ ] Hafermilch kaufen <span class="t-proj">+einkauf</span> <span class="t-ctx">@laden</span> <span class="t-due">due:2026-06-12</span></span><span class="caret"></span></span></pre>
+    </figure>
+
+    <div class="parsed-card" role="img" aria-label="Dieselbe Zeile, geparst als Aufgabe mit Projekt, Kontext und Fälligkeit">
+      <div class="row">
+        <span class="box"></span>
+        <span class="title">Hafermilch kaufen</span>
+      </div>
+      <div class="chips">
+        <span class="chip proj">+einkauf</span>
+        <span class="chip ctx">@laden</span>
+        <span class="chip due">fällig · 12. Juni</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────── format ──────────────────────── -->
+<section id="format">
+  <p class="sec-label"><b>01</b> Das Format</p>
+  <h2>Eine Zeile pro Aufgabe. Lesbar für dich, parsebar für Maschinen.</h2>
+  <p class="sec-intro">Inspiriert von todo.txt, aber zuhause in gewöhnlichen
+  Markdown-Checklisten — die jeder Editor, jede Forge und jede Notiz-App
+  ohnehin rendert.</p>
+
+  <div class="format-line reveal">- [ ] Aufgabentitel <span class="f-proj">+projekt</span> <span class="f-ctx">@kontext</span> <span class="f-due">due:2026-01-20</span> <span class="f-rec">rec:weekly</span> <span class="f-note">~note:"Details"</span> <span class="f-id">^ID123</span></div>
+
+  <div class="legend reveal">
+    <div><code class="f-proj">+projekt</code><span>Projekt, Anführungszeichen erlaubt</span></div>
+    <div><code class="f-ctx">@kontext</code><span>Kontext oder Ort</span></div>
+    <div><code class="f-due">due:…</code><span>Fälligkeit, optional mit Uhrzeit</span></div>
+    <div><code class="f-rec">rec:weekly</code><span>Wiederholung beim Abschließen</span></div>
+    <div><code>~note:"…"</code><span>Freitext-Notiz</span></div>
+    <div><code>^ID123</code><span>stabile Referenz-ID</span></div>
+  </div>
+</section>
+
+<!-- ───────────────────── drei Oberflächen ───────────────── -->
+<section id="apps">
+  <p class="sec-label"><b>02</b> Drei Apps, eine Datei</p>
+  <h2>Desktop, Terminal und Browser — such dir deine Oberfläche aus.</h2>
+
+  <div class="surfaces">
+    <div class="shot reveal">
+      <img src="assets/screenshot-de.png" alt="Reinschrift-GNOME-App mit Aufgaben nach Projekt gruppiert">
+    </div>
+
+    <div class="surface-notes">
+      <div class="surface reveal">
+        <h3><span class="no">a.</span>GNOME-Desktop</h3>
+        <p>Natives GTK4/libadwaita. „Mein Tag"-Planung, Suche, Mehrfachauswahl,
+        Spracheingabe über lokales Whisper — und Live-Reload, wenn sich die
+        Datei darunter ändert.</p>
+      </div>
+
+      <div class="surface reveal">
+        <h3><span class="no">b.</span>CLI</h3>
+        <p>Für Terminal-Workflows und Skripte — mit JSON-Ausgabe.</p>
+        <div class="terminal"><span class="p">$</span> reinschrift-cli list --due today
+ ☐ Zahnarzt anrufen   <span class="c">+Gesundheit @Zuhause</span>
+ ☐ Blumen gießen      <span class="c">+Zuhause rec:weekly</span>
+<span class="p">$</span> reinschrift-cli add "Hafermilch kaufen +einkauf"
+ ✓ hinzugefügt ^a3f</div>
+      </div>
+
+      <div class="surface reveal">
+        <h3><span class="no">c.</span>Web-App · PWA</h3>
+        <p>Selbst gehostete Flask-App mit Wischgesten, Pull-to-Refresh und
+        OIDC-Login. Auf dem Handy als PWA installierbar — deine Aufgaben
+        überall, weiterhin eine Datei.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────── Funktionen ───────────────────── -->
+<section id="features">
+  <p class="sec-label"><b>03</b> Alltagsfunktionen</p>
+  <h2>Klartext darunter. Komfort darüber.</h2>
+
+  <div class="features">
+    <div class="feature reveal"><span class="check">[x]</span><h3>WebDAV-/Nextcloud-Sync</h3>
+      <p>Alle Apps zeigen auf dieselbe Datei — lokal oder in deiner Cloud. Externe Änderungen werden live übernommen.</p></div>
+    <div class="feature reveal"><span class="check">[x]</span><h3>Mein Tag</h3>
+      <p>Eine tägliche Planungsansicht: Wähle aus, worum es heute wirklich geht.</p></div>
+    <div class="feature reveal"><span class="check">[x]</span><h3>Wiederkehrende Aufgaben</h3>
+      <p><code>rec:daily</code>, <code>rec:weekly</code>, <code>rec:monthly</code> — erledigte Aufgaben legen sich selbst neu an.</p></div>
+    <div class="feature reveal"><span class="check">[x]</span><h3>Suchen, filtern, sortieren</h3>
+      <p>Nach Projekt, Kontext oder Fälligkeit — einheitlich in allen drei Apps.</p></div>
+    <div class="feature reveal"><span class="opt">optional</span><span class="check">[x]</span><h3>Spracheingabe</h3>
+      <p>Lokale Transkription per Whisper auf dem Desktop, Web Speech API im Browser.</p></div>
+    <div class="feature reveal"><span class="opt">optional · lokal</span><span class="check">[x]</span><h3>KI-Unterstützung</h3>
+      <p>Aufgaben in natürlicher Sprache erfassen und Duplikate semantisch erkennen — über dein eigenes Ollama, nichts verlässt deinen Rechner.</p></div>
+    <div class="feature reveal"><span class="check">[x]</span><h3>Sechs Sprachen</h3>
+      <p>Deutsch, Englisch, Spanisch, Französisch, Japanisch, Schwedisch.</p></div>
+    <div class="feature reveal"><span class="check">[x]</span><h3>Freie Software</h3>
+      <p>GPL-3.0-or-later. Ein Repo: Rust-Core, GTK-App, CLI und Flask-Web-App.</p></div>
+  </div>
+</section>
+
+<!-- ─────────────────────── Installieren ─────────────────── -->
+<section id="install">
+  <p class="sec-label"><b>04</b> Installieren</p>
+  <h2>Nimm die Desktop-App, das CLI — oder hoste selbst.</h2>
+
+  <div class="install-grid">
+    <div class="install-card reveal">
+      <h3>GNOME-Desktop</h3>
+      <p>Der empfohlene Weg auf jeder Linux-Distribution.</p>
+      <a class="flathub" href="https://flathub.org/de/apps/me.dumke.Reinschrift">
+        <img src="https://flathub.org/api/badge?svg&amp;locale=de" alt="Auf Flathub laden">
+      </a>
+      <button class="cmd" data-copy="flatpak install flathub me.dumke.Reinschrift">flatpak install flathub me.dumke.Reinschrift</button>
+    </div>
+
+    <div class="install-card reveal">
+      <h3>Arch Linux</h3>
+      <p>GUI und CLI aus dem AUR, gebaut aus dem Release-Tag.</p>
+      <button class="cmd" data-copy="yay -S reinschrift">yay -S reinschrift</button>
+      <span class="alt"><a href="https://aur.archlinux.org/packages/reinschrift">aur.archlinux.org/packages/reinschrift</a></span>
+    </div>
+
+    <div class="install-card reveal">
+      <h3>Web-App selbst hosten</h3>
+      <p>Fertiges Image auf GHCR, veröffentlicht bei jedem Release. OIDC, WebDAV und Zugangsdaten per Umgebungsvariablen.</p>
+      <button class="cmd" data-copy="docker pull ghcr.io/danst0/reinschrift-web:latest">docker pull ghcr.io/danst0/reinschrift-web</button>
+      <span class="alt"><a href="https://github.com/danst0/ReinschriftTodo/tree/main/webapp">docker-compose-Beispiel auf GitHub</a></span>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p class="meaning"><b>Reinschrift</b> — die saubere, endgültige Fassung
+  eines handschriftlichen Entwurfs. Deine Aufgaben, ordentlich ausgeschrieben.</p>
+  <nav>
+    <a href="https://github.com/danst0/ReinschriftTodo">GitHub</a>
+    <a href="https://flathub.org/de/apps/me.dumke.Reinschrift">Flathub</a>
+    <a href="https://aur.archlinux.org/packages/reinschrift">AUR</a>
+    <a href="https://github.com/danst0/ReinschriftTodo/issues">Issues</a>
+    <a href="https://github.com/danst0/ReinschriftTodo/blob/main/LICENSE">GPL-3.0-or-later</a>
+  </nav>
+  <p>© Dr. Daniel Dumke</p>
+</footer>
+</div>
+
+<script src="site.js"></script>
+</body>
+</html>

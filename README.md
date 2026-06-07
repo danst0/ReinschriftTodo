@@ -49,13 +49,15 @@ flatpak install flathub me.dumke.Reinschrift
 
 ### Web app (Docker)
 
+A pre-built image is published to GHCR on every release — no local build required:
+
 ```bash
 cd webapp
 cp docker-compose.example.yml docker-compose.yml   # then adjust credentials etc.
-docker compose up --build
+docker compose up -d                               # pulls ghcr.io/danst0/reinschrift-web:latest
 ```
 
-The app is then available at `http://localhost:5000`. Login, OIDC, and WebDAV are configured via environment variables in `docker-compose.yml` (see the example file). The web app is installable as a PWA on mobile.
+Available tags: `latest` and one per version (e.g. `0.23.7`). The app is then available at `http://localhost:5000`. Login, OIDC, and WebDAV are configured via environment variables in `docker-compose.yml` (see the example file). The web app is installable as a PWA on mobile.
 
 ### Build from source
 

@@ -49,13 +49,15 @@ flatpak install flathub me.dumke.Reinschrift
 
 ### Web-App (Docker)
 
+Bei jedem Release wird ein fertiges Image auf GHCR veröffentlicht — kein lokales Bauen nötig:
+
 ```bash
 cd webapp
 cp docker-compose.example.yml docker-compose.yml   # dann Zugangsdaten etc. anpassen
-docker compose up --build
+docker compose up -d                               # zieht ghcr.io/danst0/reinschrift-web:latest
 ```
 
-Die App ist anschließend unter `http://localhost:5000` erreichbar. Login, OIDC und WebDAV werden über Umgebungsvariablen in `docker-compose.yml` konfiguriert (siehe Beispieldatei). Die Web-App lässt sich auf Mobilgeräten als PWA installieren.
+Verfügbare Tags: `latest` sowie eines pro Version (z. B. `0.23.7`). Die App ist anschließend unter `http://localhost:5000` erreichbar. Login, OIDC und WebDAV werden über Umgebungsvariablen in `docker-compose.yml` konfiguriert (siehe Beispieldatei). Die Web-App lässt sich auf Mobilgeräten als PWA installieren.
 
 ### Aus den Quellen bauen
 

@@ -2,7 +2,9 @@
 
 services:
   webapp:
-    build: .
+    image: ghcr.io/danst0/reinschrift-web:latest
+    # Or build locally instead:
+    # build: .
     ports:
       - "5000:5000"
     volumes:
