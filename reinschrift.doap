@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:foaf="http://xmlns.com/foaf/0.1/"
+         xmlns="http://usefulinc.com/ns/doap#">
+
+  <name xml:lang="en">Reinschrift</name>
+  <shortdesc xml:lang="en">Manage your todos in Markdown</shortdesc>
+  <description xml:lang="en">
+    Reinschrift combines a native GNOME interface with the simplicity of plain
+    text. Tasks live in a single Markdown file — versionable, syncable via
+    WebDAV/Nextcloud, and editable anywhere. Includes a GTK4/libadwaita desktop
+    app, a CLI, and a self-hostable web app.
+  </description>
+
+  <homepage rdf:resource="https://reinschrift.dumke.me" />
+  <download-page rdf:resource="https://flathub.org/apps/me.dumke.Reinschrift" />
+  <bug-database rdf:resource="https://github.com/danst0/ReinschriftTodo/issues" />
+
+  <programming-language>Rust</programming-language>
+  <programming-language>Python</programming-language>
+
+  <maintainer>
+    <foaf:Person>
+      <foaf:name>Daniel Dumke</foaf:name>
+      <foaf:mbox rdf:resource="mailto:reinschrift@dumke.me" />
+    </foaf:Person>
+  </maintainer>
+</Project>

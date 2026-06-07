@@ -145,6 +145,10 @@ pytest tests/ -v
 mypy app/
 ```
 
+## Verhaltenskodex
+
+Dieses Projekt folgt dem [GNOME Code of Conduct](https://conduct.gnome.org/) — siehe [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
 ## Lizenz
 
 [GPL-3.0-or-later](LICENSE)
