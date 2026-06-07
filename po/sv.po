@@ -87,6 +87,10 @@ msgstr "Övriga öppna uppgifter"
 msgid "No open tasks left to plan."
 msgstr "Inga öppna uppgifter kvar att planera."
 
+#. Abschnitts-Header für erledigte Aufgaben in der Mein-Tag-Liste
+msgid "Completed"
+msgstr "Slutförda"
+
 #. ehemaliger JSON-Schlüssel: use_ai_on_new_topic
 msgid "Use AI on add"
 msgstr "Använd AI vid tillägg"

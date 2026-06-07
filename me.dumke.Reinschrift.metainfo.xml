@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.24.6" date="2026-06-07">
+      <description>
+        <ul>
+          <li>My Day: completed tasks now appear below the active ones under a "Completed" header; topic/location grouping moved from the day list into the suggestions picker</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.24.5" date="2026-06-07">
       <description>
         <ul>

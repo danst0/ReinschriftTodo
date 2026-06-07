@@ -87,6 +87,10 @@ msgstr "Weitere offene Aufgaben"
 msgid "No open tasks left to plan."
 msgstr "Keine offenen Aufgaben zum Planen."
 
+#. Abschnitts-Header für erledigte Aufgaben in der Mein-Tag-Liste
+msgid "Completed"
+msgstr "Erledigt"
+
 #. ehemaliger JSON-Schlüssel: use_ai_on_new_topic
 msgid "Use AI on add"
 msgstr "KI beim Anlegen nutzen"

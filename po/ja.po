@@ -87,6 +87,10 @@ msgstr "その他の未完了タスク"
 msgid "No open tasks left to plan."
 msgstr "計画できる未完了タスクはありません。"
 
+#. Abschnitts-Header für erledigte Aufgaben in der Mein-Tag-Liste
+msgid "Completed"
+msgstr "完了"
+
 #. ehemaliger JSON-Schlüssel: use_ai_on_new_topic
 msgid "Use AI on add"
 msgstr "追加時にAIを使う"

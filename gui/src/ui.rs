@@ -3831,10 +3831,14 @@ impl AppState {
         self.repopulate_store();
     }
 
-    /// "Mein Tag": oben die heute geplanten Aufgaben (erledigte bleiben
-    /// durchgestrichen sichtbar), darunter der Planungs-Picker mit fälligen
-    /// Vorschlägen zuerst — analog zur Web-Ansicht.
+    /// "Mein Tag": oben die heute geplanten Aufgaben als flache Liste
+    /// (erledigte bleiben durchgestrichen sichtbar, unter "Erledigt" ans Ende
+    /// sortiert), darunter der Planungs-Picker mit fälligen Vorschlägen
+    /// zuerst, je nach Sortiermodus nach Thema/Ort untergliedert.
     fn populate_myday_view(&self, items: Vec<TodoItem>, now: NaiveDateTime, today: NaiveDate) {
+        let mode = *self.sort_mode.borrow();
+        let (canon_projects, canon_contexts) = self.canonical_tag_maps();
+
         let (planned, rest): (Vec<TodoItem>, Vec<TodoItem>) =
             items.into_iter().partition(|todo| todo.myday == Some(today));
 
@@ -3842,18 +3846,18 @@ impl AppState {
             self.store
                 .append(&BoxedAnyObject::new(ListEntry::Header(t("Nothing planned yet — add tasks for today."))));
         } else {
-            let mode = *self.sort_mode.borrow();
-            let (canon_projects, canon_contexts) = self.canonical_tag_maps();
-            let mut last_group: Option<String> = None;
-            for item in planned {
-                if let Some(label) =
-                    self.group_label(mode, &item, &canon_projects, &canon_contexts)
-                    && last_group.as_ref() != Some(&label) {
-                        self.store
-                            .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
-                        last_group = Some(label);
-                    }
+            // Flache Liste ohne Themen-Header: aktive oben, erledigte darunter.
+            let (active, done): (Vec<TodoItem>, Vec<TodoItem>) =
+                planned.into_iter().partition(|todo| !todo.done);
+            for item in active {
                 self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+            }
+            if !done.is_empty() {
+                self.store
+                    .append(&BoxedAnyObject::new(ListEntry::Header(t("Completed"))));
+                for item in done {
+                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                }
             }
         }
 
@@ -3876,24 +3880,33 @@ impl AppState {
             return;
         }
 
-        if !suggestions.is_empty() {
-            self.store.append(&BoxedAnyObject::new(ListEntry::Header(
-                t("Suggestions (due)"),
-            )));
-            for item in suggestions {
+        // Innerhalb eines Picker-Abschnitts nach Thema/Ort untergliedern
+        // (im Datums-Modus liefert group_label None → flache Liste).
+        let append_picker_section = |title: String, mut items: Vec<TodoItem>| {
+            if items.is_empty() {
+                return;
+            }
+            self.store
+                .append(&BoxedAnyObject::new(ListEntry::Header(title)));
+            if mode != SortMode::Date {
+                sort_items(&mut items, mode);
+            }
+            let mut last_group: Option<String> = None;
+            for item in items {
+                if let Some(label) =
+                    self.group_label(mode, &item, &canon_projects, &canon_contexts)
+                    && last_group.as_ref() != Some(&label) {
+                        self.store
+                            .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
+                        last_group = Some(label);
+                    }
                 self.store
                     .append(&BoxedAnyObject::new(ListEntry::PickerItem(item)));
             }
-        }
-        if !other_open.is_empty() {
-            self.store.append(&BoxedAnyObject::new(ListEntry::Header(
-                t("Other open tasks"),
-            )));
-            for item in other_open {
-                self.store
-                    .append(&BoxedAnyObject::new(ListEntry::PickerItem(item)));
-            }
-        }
+        };
+
+        append_picker_section(t("Suggestions (due)"), suggestions);
+        append_picker_section(t("Other open tasks"), other_open);
     }
 
     fn repopulate_store(&self) {
