@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.24.1" date="2026-06-07">
+      <description>
+        <ul>
+          <li>Repository: website and AUR packaging are now maintained outside version control (gitignored)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.24.0" date="2026-06-07">
       <description>
         <ul>

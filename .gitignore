@@ -21,3 +21,5 @@ flatpak-cargo-generator.py
 webapp/config.json
 .claude/
 results.json
+site/
+packaging/
