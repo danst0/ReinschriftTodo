@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.24.5" date="2026-06-07">
+      <description>
+        <ul>
+          <li>Flatpak: ship all translations inside the app instead of a partially installed locale extension, so --language works for every supported language</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.24.4" date="2026-06-07">
       <description>
         <ul>

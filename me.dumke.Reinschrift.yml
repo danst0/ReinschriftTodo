@@ -6,6 +6,10 @@ sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
   - org.freedesktop.Sdk.Extension.llvm20
 command: reinschrift
+# Übersetzungen (~13 KB je Sprache) im App-Paket belassen statt als
+# partiell installierte Locale-Extension — sonst läuft --language <lang>
+# für nicht konfigurierte Sprachen ins Leere.
+separate-locales: false
 finish-args:
   - --share=ipc
   - --socket=fallback-x11
@@ -40,7 +44,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        tag: v0.24.4
+        tag: v0.24.5
       - generated-sources.json
       - type: shell
         commands:
