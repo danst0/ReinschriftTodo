@@ -9,7 +9,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.utils.markers import generate_marker, ensure_marker
 from app.utils.escaping import escape_note, unescape_note, normalize_note
-from app.utils.helpers import parse_flag, format_due, format_due_display, is_sometime
+from app.utils.helpers import (
+    canonical_casing_map,
+    canonicalize_token,
+    parse_flag,
+    format_due,
+    format_due_display,
+    is_sometime,
+)
 
 
 class TestGenerateMarker:
@@ -181,6 +188,32 @@ class TestFormatDueDisplay:
         dt = datetime(2026, 1, 20, 0, 0)
         result = format_due_display(dt)
         assert result == "2026-01-20"
+
+
+class TestCanonicalCasing:
+    """Tests for case-insensitive tag aggregation."""
+
+    def test_prefers_most_used_variant(self):
+        """Most frequently used casing wins."""
+        mapping = canonical_casing_map(
+            ["PixelMatrix", "Pixelmatrix", "PixelMatrix", "Keller"])
+        assert mapping["pixelmatrix"] == "PixelMatrix"
+        assert mapping["keller"] == "Keller"
+
+    def test_tie_breaks_lexically(self):
+        """Equal counts: lexically smaller casing wins deterministically."""
+        mapping = canonical_casing_map(["werkstatt", "Werkstatt"])
+        assert mapping["werkstatt"] == "Werkstatt"
+
+    def test_skips_empty_values(self):
+        """Empty strings are ignored."""
+        assert canonical_casing_map(["", "Keller"]) == {"keller": "Keller"}
+
+    def test_canonicalize_token(self):
+        """Known tokens resolve, unknown pass through."""
+        mapping = {"pixelmatrix": "PixelMatrix"}
+        assert canonicalize_token(mapping, "PIXELMATRIX") == "PixelMatrix"
+        assert canonicalize_token(mapping, "Unbekannt") == "Unbekannt"
 
 
 class TestIsSometime:

@@ -1,5 +1,7 @@
 """General helper functions."""
 
+from collections import Counter, defaultdict
+from collections.abc import Iterable
 from datetime import datetime
 
 
@@ -37,6 +39,28 @@ def is_sometime(dt_value: datetime | None) -> bool:
     if dt_value is None:
         return False
     return dt_value.date().year == 9999
+
+
+def canonical_casing_map(values: Iterable[str]) -> dict[str, str]:
+    """Map each token's lowercased form to its most frequently used casing.
+
+    Aggregates case variants of projects/contexts (e.g. 'PixelMatrix' vs.
+    'Pixelmatrix') into one canonical display form. Ties are broken lexically
+    for determinism.
+    """
+    variants: dict[str, Counter[str]] = defaultdict(Counter)
+    for value in values:
+        if value:
+            variants[value.lower()][value] += 1
+    return {
+        key: min(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+        for key, counts in variants.items()
+    }
+
+
+def canonicalize_token(mapping: dict[str, str], value: str) -> str:
+    """Resolve a token to its canonical casing; unknown tokens pass through."""
+    return mapping.get(value.lower(), value)
 
 
 def normalize_prefix(token: str | None, prefix_char: str) -> str | None:

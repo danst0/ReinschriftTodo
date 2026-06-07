@@ -5,6 +5,7 @@ use reinschrift_core::{
     add_todo_full, get_backend_config, test_webdav_connection,
     TodoItem, TodoKey, SortMode, sort_items, t,
 };
+use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
 use std::io::{self, Write};
 
 /// Check if an error is a ConflictError and print a warning.
@@ -83,16 +84,23 @@ pub fn list(
         return Ok(());
     }
 
-    // Print with grouping based on sort mode
+    // Print with grouping based on sort mode. Group labels use the most
+    // frequently used casing so case variants aggregate into one group.
     match mode {
         SortMode::Topic => {
+            let canon = canonical_casing_map(
+                items.iter().flat_map(|i| i.projects.iter().map(|s| s.as_str())),
+            );
             ctx.print_todos_grouped(&items, |item| {
-                format!("Topic: {}", item.projects.first().map(|s| s.as_str()).unwrap_or("No project"))
+                format!("Topic: {}", item.projects.first().map(|s| canonicalize_token(&canon, s)).unwrap_or_else(|| "No project".to_string()))
             });
         }
         SortMode::Location => {
+            let canon = canonical_casing_map(
+                items.iter().flat_map(|i| i.contexts.iter().map(|s| s.as_str())),
+            );
             ctx.print_todos_grouped(&items, |item| {
-                format!("Location: {}", item.contexts.first().map(|s| s.as_str()).unwrap_or("No location"))
+                format!("Location: {}", item.contexts.first().map(|s| canonicalize_token(&canon, s)).unwrap_or_else(|| "No location".to_string()))
             });
         }
         SortMode::Date => {

@@ -26,8 +26,9 @@ use serde_json;
 use tokio::runtime::Runtime;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use reinschrift_core::embeddings;
+use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
 use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, Preferences, load_preferences, write_preferences};
 
 enum VoiceMsg {
@@ -89,7 +90,12 @@ fn ensure_default_database() -> Option<PathBuf> {
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
     glib::timeout_add_seconds_local(interval, clone!(#[weak] state, #[upgrade_or] glib::ControlFlow::Break, move || {
         let next_interval = match state.check_for_updates() {
-            Ok(_) => 10,
+            Ok(changed) => {
+                if changed {
+                    state.warm_semantic_index();
+                }
+                10
+            }
             Err(e) => {
                 eprintln!("{}", t("auto_reload_error").replace("{}", &e.to_string()));
                 std::cmp::min(interval * 2, 300)
@@ -334,6 +340,10 @@ fn attach_title_autocomplete_with_duplicate(
             if count == 0 {
                 popover.popdown();
             } else {
+                // Popover auf Entry-Breite bringen — sonst kollabiert das
+                // ScrolledWindow auf Minimalbreite und alle Titel
+                // ellipsieren zu „…".
+                popover.set_size_request(entry.width(), -1);
                 popover.popup();
             }
         })
@@ -454,6 +464,7 @@ fn attach_title_autocomplete_with_duplicate(
                         row.set_child(Some(&hbox));
                         listbox.append(&row);
                     }
+                    popover.set_size_request(entry.width(), -1);
                     popover.popup();
                 });
             });
@@ -1171,6 +1182,10 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         }
     }
 
+    // Embedding-Index im Hintergrund vorwärmen, damit die ersten
+    // semantischen Vorschläge nicht den vollen Index-Aufbau abwarten müssen.
+    state.warm_semantic_index();
+
     sort_selector.connect_selected_notify(clone!(#[weak] state, move |dropdown| {
         let mode = SortMode::from_index(dropdown.selected());
         state.set_sort_mode(mode);
@@ -1836,6 +1851,13 @@ struct AppState {
     /// Lazy geladener Embedding-Index (semantische Vorschläge); wird bei
     /// Fingerprint- oder Modellwechsel transparent neu aufgebaut.
     embedding_cache: RefCell<Option<Rc<embeddings::EmbeddingCache>>>,
+    /// Wache gegen parallele Index-Builds: während ein Build läuft, liefern
+    /// weitere Anfragen den (ggf. veralteten) Cache, statt pro Tastendruck
+    /// einen weiteren vollen Rebuild gegen Ollama zu starten.
+    embedding_index_building: Cell<bool>,
+    /// Memoisierte Query-Vektoren (Modell + kanonischer Text → Vektor);
+    /// spart die HTTP-Runde bei wiederholten/zurückgenommenen Eingaben.
+    query_embed_cache: RefCell<HashMap<String, Vec<f32>>>,
     _debug_mode: bool,
 }
 
@@ -1909,6 +1931,8 @@ impl AppState {
             selection_count_label: RefCell::new(None),
             selection_toggle: RefCell::new(None),
             embedding_cache: RefCell::new(None),
+            embedding_index_building: Cell::new(false),
+            query_embed_cache: RefCell::new(HashMap::new()),
             last_fingerprint: RefCell::new(None),
         }
     }
@@ -1933,34 +1957,42 @@ impl AppState {
     }
 
     fn collect_existing_tags(&self) -> (Vec<String>, Vec<String>) {
-        use std::collections::HashMap;
-
+        let (canon_projects, canon_contexts) = self.canonical_tag_maps();
         let items = self.cached_items.borrow();
 
-        // Count project frequencies
+        // Count project frequencies (case-insensitive: variants aggregate)
         let mut project_counts: HashMap<String, usize> = HashMap::new();
         for item in items.iter() {
             for project in &item.projects {
-                *project_counts.entry(project.clone()).or_insert(0) += 1;
+                *project_counts.entry(project.to_lowercase()).or_insert(0) += 1;
             }
         }
 
-        // Count context frequencies
+        // Count context frequencies (case-insensitive: variants aggregate)
         let mut context_counts: HashMap<String, usize> = HashMap::new();
         for item in items.iter() {
             for context in &item.contexts {
-                *context_counts.entry(context.clone()).or_insert(0) += 1;
+                *context_counts.entry(context.to_lowercase()).or_insert(0) += 1;
             }
         }
 
-        // Sort by frequency (descending) and take top 10
+        // Sort by frequency (descending) and take top 10, shown in the most
+        // frequently used casing
         let mut projects: Vec<_> = project_counts.into_iter().collect();
-        projects.sort_by(|a, b| b.1.cmp(&a.1));
-        let projects: Vec<String> = projects.into_iter().take(10).map(|(k, _)| k).collect();
+        projects.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        let projects: Vec<String> = projects
+            .into_iter()
+            .take(10)
+            .map(|(k, _)| canonicalize_token(&canon_projects, &k))
+            .collect();
 
         let mut contexts: Vec<_> = context_counts.into_iter().collect();
-        contexts.sort_by(|a, b| b.1.cmp(&a.1));
-        let contexts: Vec<String> = contexts.into_iter().take(10).map(|(k, _)| k).collect();
+        contexts.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        let contexts: Vec<String> = contexts
+            .into_iter()
+            .take(10)
+            .map(|(k, _)| canonicalize_token(&canon_contexts, &k))
+            .collect();
 
         (projects, contexts)
     }
@@ -2059,14 +2091,22 @@ impl AppState {
                 return Some(Rc::clone(cache));
             }
         }
+        // Ein Build läuft bereits (früherer Tastendruck oder Vorwärmen):
+        // veralteten Cache nutzen statt einen zweiten parallelen vollen
+        // Rebuild gegen Ollama zu starten.
+        if self.embedding_index_building.get() {
+            return self.embedding_cache.borrow().as_ref().map(Rc::clone);
+        }
         let items = self.cached_items.borrow().clone();
         let cfg = self.embedding_config();
         let path = self.embedding_cache_path();
         let fp = fingerprint.clone();
+        self.embedding_index_building.set(true);
         let result = self
             .ai_runtime
             .spawn_blocking(move || embeddings::ensure_index(&path, &cfg, &items, &fp))
             .await;
+        self.embedding_index_building.set(false);
         match result {
             Ok(Ok(cache)) => {
                 let cache = Rc::new(cache);
@@ -2079,6 +2119,20 @@ impl AppState {
             }
             Err(_) => None,
         }
+    }
+
+    /// Wärmt den Embedding-Index im Hintergrund vor, damit die erste
+    /// semantische Anfrage nur noch die Query-Embedding-Runde bezahlt und
+    /// nicht den vollen Index-Aufbau (der bei großer Datenbank Sekunden
+    /// dauern kann und die Vorschläge dann als veraltet verworfen würden).
+    fn warm_semantic_index(self: &Rc<Self>) {
+        if !self.semantic_enabled() {
+            return;
+        }
+        let state = Rc::clone(self);
+        glib::spawn_future_local(async move {
+            let _ = state.semantic_index().await;
+        });
     }
 
     /// Bedeutungsähnliche Aufgaben zum Suchtext (absteigend nach Score).
@@ -2098,14 +2152,31 @@ impl AppState {
             return Vec::new();
         };
         let cfg = self.embedding_config();
-        let inputs = vec![canonical.clone()];
-        let embed_result = self
-            .ai_runtime
-            .spawn_blocking(move || embeddings::embed_texts(&cfg, &inputs))
-            .await;
-        let query_vec = match embed_result {
-            Ok(Ok(mut vecs)) if !vecs.is_empty() => vecs.remove(0),
-            _ => return Vec::new(),
+        // Query-Vektor memoisieren: gleiche Eingabe (z. B. nach Backspace)
+        // kostet sonst jedes Mal eine volle Embedding-HTTP-Runde.
+        let memo_key = format!("{}\u{1f}{}", cfg.model, canonical);
+        let memoized = self.query_embed_cache.borrow().get(&memo_key).cloned();
+        let query_vec = match memoized {
+            Some(vec) => vec,
+            None => {
+                let inputs = vec![canonical.clone()];
+                let embed_result = self
+                    .ai_runtime
+                    .spawn_blocking(move || embeddings::embed_texts(&cfg, &inputs))
+                    .await;
+                match embed_result {
+                    Ok(Ok(mut vecs)) if !vecs.is_empty() => {
+                        let vec = vecs.remove(0);
+                        let mut memo = self.query_embed_cache.borrow_mut();
+                        if memo.len() >= 256 {
+                            memo.clear();
+                        }
+                        memo.insert(memo_key, vec.clone());
+                        vec
+                    }
+                    _ => return Vec::new(),
+                }
+            }
         };
         // Alle Marker über dem Threshold scoren, dann auf Items abbilden
         // und erst nach dem Filtern auf top_k kürzen.
@@ -2231,14 +2302,17 @@ impl AppState {
         Ok(())
     }
 
-    fn check_for_updates(&self) -> Result<()> {
+    /// Liefert `true`, wenn sich die Datenbank geändert hat und neu
+    /// geladen wurde (Aufrufer wärmt dann den Embedding-Index nach).
+    fn check_for_updates(&self) -> Result<bool> {
         let current_fp = data::get_fingerprint()?;
         let last_fp = self.last_fingerprint.borrow().clone();
 
         if Some(current_fp) != last_fp {
             self.reload()?;
+            return Ok(true);
         }
-        Ok(())
+        Ok(false)
     }
 
     fn toggle_item(self: &Rc<Self>, todo: &TodoItem, done: bool) -> Result<()> {
@@ -3301,7 +3375,7 @@ impl AppState {
         self.persist_preferences();
     }
 
-    fn set_semantic_enabled(&self, enabled: bool) {
+    fn set_semantic_enabled(self: &Rc<Self>, enabled: bool) {
         {
             let mut prefs = self.preferences.borrow_mut();
             if prefs.semantic_enabled == enabled {
@@ -3310,6 +3384,9 @@ impl AppState {
             prefs.semantic_enabled = enabled;
         }
         self.persist_preferences();
+        if enabled {
+            self.warm_semantic_index();
+        }
     }
 
     fn set_embedding_model(&self, model: String) {
@@ -3745,9 +3822,12 @@ impl AppState {
                 .append(&BoxedAnyObject::new(ListEntry::Header(t("my_day_empty"))));
         } else {
             let mode = *self.sort_mode.borrow();
+            let (canon_projects, canon_contexts) = self.canonical_tag_maps();
             let mut last_group: Option<String> = None;
             for item in planned {
-                if let Some(label) = self.group_label(mode, &item) {
+                if let Some(label) =
+                    self.group_label(mode, &item, &canon_projects, &canon_contexts)
+                {
                     if last_group.as_ref() != Some(&label) {
                         self.store
                             .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
@@ -3840,6 +3920,7 @@ impl AppState {
                 self.populate_myday_view(items, now, today);
             } else {
                 let mode = *self.sort_mode.borrow();
+                let (canon_projects, canon_contexts) = self.canonical_tag_maps();
                 let mut last_group: Option<String> = None;
                 for item in items.into_iter().filter(|todo| {
                     let status_ok = include_done || !todo.done;
@@ -3850,7 +3931,9 @@ impl AppState {
                     };
                     status_ok && due_ok
                 }) {
-                    if let Some(label) = self.group_label(mode, &item) {
+                    if let Some(label) =
+                        self.group_label(mode, &item, &canon_projects, &canon_contexts)
+                    {
                         if last_group.as_ref() != Some(&label) {
                             self.store
                                 .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
@@ -4827,23 +4910,49 @@ impl AppState {
         sort_items(items, *self.sort_mode.borrow());
     }
 
-    fn group_label(&self, mode: SortMode, item: &TodoItem) -> Option<String> {
+    /// Kanonische Schreibweise je Projekt/Ort (kleingeschriebener Schlüssel →
+    /// meistgenutzte Variante), damit Groß-/Kleinschreibungs-Varianten in einer
+    /// Gruppe landen.
+    fn canonical_tag_maps(&self) -> (HashMap<String, String>, HashMap<String, String>) {
+        let items = self.cached_items.borrow();
+        let projects = canonical_casing_map(
+            items
+                .iter()
+                .flat_map(|item| item.projects.iter().map(|s| s.as_str())),
+        );
+        let contexts = canonical_casing_map(
+            items
+                .iter()
+                .flat_map(|item| item.contexts.iter().map(|s| s.as_str())),
+        );
+        (projects, contexts)
+    }
+
+    fn group_label(
+        &self,
+        mode: SortMode,
+        item: &TodoItem,
+        canon_projects: &HashMap<String, String>,
+        canon_contexts: &HashMap<String, String>,
+    ) -> Option<String> {
         match mode {
             SortMode::Topic => Some(t("topic_group").replace(
                 "{}",
-                item.projects
+                &item
+                    .projects
                     .first()
                     .filter(|s| !s.is_empty())
-                    .map(|s| s.as_str())
-                    .unwrap_or(&t("no_project"))
+                    .map(|s| canonicalize_token(canon_projects, s))
+                    .unwrap_or_else(|| t("no_project")),
             )),
             SortMode::Location => Some(t("location_group").replace(
                 "{}",
-                item.contexts
+                &item
+                    .contexts
                     .first()
                     .filter(|s| !s.is_empty())
-                    .map(|s| s.as_str())
-                    .unwrap_or(&t("no_location"))
+                    .map(|s| canonicalize_token(canon_contexts, s))
+                    .unwrap_or_else(|| t("no_location")),
             )),
             SortMode::Date => None,
         }

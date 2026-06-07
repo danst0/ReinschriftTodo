@@ -1,5 +1,6 @@
 //! Utility functions for string manipulation and marker generation.
 
+use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Markers that delimit fields in a todo line.
@@ -69,6 +70,45 @@ pub fn normalize_token(value: Option<&str>) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
+/// Build a map from the lowercased form of each token (project/context) to its
+/// most frequently used casing. Ties are broken lexically for determinism.
+/// Used to aggregate case variants (e.g. `PixelMatrix` vs. `Pixelmatrix`) into
+/// one canonical display form.
+pub fn canonical_casing_map<'a>(
+    values: impl IntoIterator<Item = &'a str>,
+) -> HashMap<String, String> {
+    let mut variants: HashMap<String, HashMap<String, usize>> = HashMap::new();
+    for value in values {
+        if value.is_empty() {
+            continue;
+        }
+        *variants
+            .entry(value.to_lowercase())
+            .or_default()
+            .entry(value.to_string())
+            .or_insert(0) += 1;
+    }
+    variants
+        .into_iter()
+        .filter_map(|(key, counts)| {
+            counts
+                .into_iter()
+                // max_by: higher count wins; on ties the lexically smaller casing
+                // compares greater so the result is deterministic.
+                .max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(&a.0)))
+                .map(|(casing, _)| (key, casing))
+        })
+        .collect()
+}
+
+/// Resolve a token to its canonical casing via [`canonical_casing_map`];
+/// unknown tokens are returned unchanged.
+pub fn canonicalize_token(map: &HashMap<String, String>, value: &str) -> String {
+    map.get(&value.to_lowercase())
+        .cloned()
+        .unwrap_or_else(|| value.to_string())
+}
+
 /// Normalize a reference string by trimming whitespace.
 pub fn normalize_reference(value: Option<&str>) -> Option<String> {
     value
@@ -116,4 +156,26 @@ pub fn unescape_note(input: &str) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canonical_casing_prefers_most_used_variant() {
+        let values = ["PixelMatrix", "Pixelmatrix", "PixelMatrix", "Keller"];
+        let map = canonical_casing_map(values.into_iter());
+        assert_eq!(map.get("pixelmatrix").map(String::as_str), Some("PixelMatrix"));
+        assert_eq!(map.get("keller").map(String::as_str), Some("Keller"));
+        assert_eq!(canonicalize_token(&map, "pixelmatrix"), "PixelMatrix");
+        assert_eq!(canonicalize_token(&map, "Unbekannt"), "Unbekannt");
+    }
+
+    #[test]
+    fn canonical_casing_breaks_ties_lexically() {
+        let map = canonical_casing_map(["Werkstatt", "werkstatt"].into_iter());
+        // Equal counts: the lexically smaller casing wins deterministically.
+        assert_eq!(map.get("werkstatt").map(String::as_str), Some("Werkstatt"));
+    }
 }

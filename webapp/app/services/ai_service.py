@@ -12,6 +12,7 @@ from flask import current_app
 
 from app.services.todo_service import load_todos
 from app.services.date_service import recent_window_bounds
+from app.utils.helpers import canonical_casing_map
 
 logger = logging.getLogger(__name__)
 
@@ -52,16 +53,19 @@ def collect_recent_context(todos: list, window_days: int = RECENT_CONTEXT_WINDOW
 
     all_relevant = open_todos + recent_closed
 
-    # Extract topics (projects) and locations (contexts)
-    topics: set[str] = set()
-    locations: set[str] = set()
+    # Extract topics (projects) and locations (contexts); case variants are
+    # aggregated to their most frequently used casing.
+    raw_topics: list[str] = []
+    raw_locations: list[str] = []
     for t in all_relevant:
         if hasattr(t, 'projects'):
-            topics.update(p for p in t.projects if p)
-            locations.update(c for c in t.contexts if c)
+            raw_topics.extend(p for p in t.projects if p)
+            raw_locations.extend(c for c in t.contexts if c)
         else:
-            topics.update(p for p in t.get('projects', []) if p)
-            locations.update(c for c in t.get('contexts', []) if c)
+            raw_topics.extend(p for p in t.get('projects', []) if p)
+            raw_locations.extend(c for c in t.get('contexts', []) if c)
+    topics = set(canonical_casing_map(raw_topics).values())
+    locations = set(canonical_casing_map(raw_locations).values())
 
     recent_full_text = []
     for t in recent_closed:
@@ -121,8 +125,12 @@ def get_top_tags(todos: list, max_projects: int = 5, max_contexts: int = 5) -> t
     """
     from collections import Counter
 
+    # Count case-insensitively so casing variants aggregate; display the most
+    # frequently used casing.
     project_counts: Counter[str] = Counter()
     context_counts: Counter[str] = Counter()
+    raw_projects: list[str] = []
+    raw_contexts: list[str] = []
 
     for t in todos:
         if hasattr(t, 'projects'):
@@ -134,13 +142,19 @@ def get_top_tags(todos: list, max_projects: int = 5, max_contexts: int = 5) -> t
 
         for p in projects:
             if p:
-                project_counts[p] += 1
+                project_counts[p.lower()] += 1
+                raw_projects.append(p)
         for c in contexts:
             if c:
-                context_counts[c] += 1
+                context_counts[c.lower()] += 1
+                raw_contexts.append(c)
 
-    top_projects = [tag for tag, _ in project_counts.most_common(max_projects)]
-    top_contexts = [tag for tag, _ in context_counts.most_common(max_contexts)]
+    canon_projects = canonical_casing_map(raw_projects)
+    canon_contexts = canonical_casing_map(raw_contexts)
+    top_projects = [canon_projects.get(tag, tag)
+                    for tag, _ in project_counts.most_common(max_projects)]
+    top_contexts = [canon_contexts.get(tag, tag)
+                    for tag, _ in context_counts.most_common(max_contexts)]
 
     return top_projects, top_contexts
 

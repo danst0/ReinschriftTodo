@@ -316,7 +316,7 @@ def api_move_to_section():
     if group_mode not in ('topic', 'location'):
         return jsonify({'error': 'Invalid group_mode'}), 400
 
-    if from_key == to_key:
+    if from_key.lower() == to_key.lower():
         return jsonify({'error': 'Source and target are the same'}), 400
 
     # Load and find the todo
@@ -330,22 +330,24 @@ def api_move_to_section():
     if not item:
         return jsonify({'error': 'Invalid item'}), 400
 
+    # Section keys are canonical casings, so match case-insensitively against
+    # whatever casing is stored on the todo itself.
     if group_mode == 'topic':
         projects = list(item.projects)
-        # Remove from_key project (if present)
-        if from_key and from_key in projects:
-            projects.remove(from_key)
-        # Add to_key project (if not empty and not already present)
-        if to_key and to_key not in projects:
+        # Remove from_key project (if present, any casing)
+        if from_key:
+            projects = [p for p in projects if p.lower() != from_key.lower()]
+        # Add to_key project (if not empty and not already present in any casing)
+        if to_key and to_key.lower() not in (p.lower() for p in projects):
             projects.append(to_key)
         if not update_todo_by_marker(marker, {'projects': projects}):
             return jsonify({'error': 'Update failed'}), 500
     else:
         # location mode
         contexts = list(item.contexts)
-        if from_key and from_key in contexts:
-            contexts.remove(from_key)
-        if to_key and to_key not in contexts:
+        if from_key:
+            contexts = [c for c in contexts if c.lower() != from_key.lower()]
+        if to_key and to_key.lower() not in (c.lower() for c in contexts):
             contexts.append(to_key)
         if not update_todo_by_marker(marker, {'contexts': contexts}):
             return jsonify({'error': 'Update failed'}), 500

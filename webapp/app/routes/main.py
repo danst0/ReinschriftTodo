@@ -10,7 +10,7 @@ from app.services import (
     save_settings,
     sort_todos,
 )
-from app.utils.helpers import parse_flag
+from app.utils.helpers import canonical_casing_map, canonicalize_token, parse_flag
 
 main_bp = Blueprint('main', __name__)
 
@@ -249,13 +249,22 @@ def index():
     # Sorting
     sorted_todos = sort_todos(todos_as_dicts, sort_mode)
 
-    # Grouping logic for display
+    # Grouping logic for display. Sections use the most frequently used casing
+    # so case variants (e.g. 'PixelMatrix' vs. 'Pixelmatrix') share one group.
     t = TRANSLATIONS.get(lang, TRANSLATIONS['de'])
+    canon_projects = canonical_casing_map(
+        p for todo in sorted_todos for p in todo['projects'])
+    canon_contexts = canonical_casing_map(
+        c for todo in sorted_todos for c in todo['contexts'])
     display_todos = []
     for todo in sorted_todos:
         display_item = todo.copy()
         first_project = todo['projects'][0] if todo['projects'] else None
         first_context = todo['contexts'][0] if todo['contexts'] else None
+        if first_project:
+            first_project = canonicalize_token(canon_projects, first_project)
+        if first_context:
+            first_context = canonicalize_token(canon_contexts, first_context)
 
         if sort_mode == 'topic':
             display_item['section'] = first_project if first_project else t.get('no_project', 'No Project')

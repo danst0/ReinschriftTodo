@@ -3,7 +3,7 @@ members = ["core", "gui", "cli"]
 resolver = "3"
 
 [workspace.package]
-version = "0.23.8"
+version = "0.23.9"
 edition = "2024"
 license = "GPL-3.0-or-later"
 
