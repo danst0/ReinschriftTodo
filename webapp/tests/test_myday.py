@@ -259,6 +259,56 @@ class TestMydayView:
         assert html.index('Overdue task') < html.index('Future task')
         assert 'Sometime task' in html
 
+    def test_myday_done_sorted_below_active(self, client, monkeypatch):
+        # Completed planned todos move below the active ones, under a
+        # "Done" header — even when their date sort would rank them first.
+        self._login(client)
+        self._patch(monkeypatch, [
+            f"- [x] Done planned task myday:{TODAY} ✅ {TODAY} ^aaa111",
+            f"- [ ] Active planned task due:2026-12-20T12:00 myday:{TODAY} ^bbb222",
+        ])
+        response = client.get('/?view=myday&partial=1')
+        html = response.get_data(as_text=True)
+        assert (html.index('Active planned task')
+                < html.index('Erledigt')
+                < html.index('Done planned task'))
+
+    def test_myday_picker_grouped_by_topic(self, client, monkeypatch):
+        # In topic mode the picker sections are subdivided by project.
+        self._login(client)
+        self._patch(monkeypatch, [
+            "- [ ] Overdue B due:2020-01-02T12:00 +work ^aaa111",
+            "- [ ] Overdue A due:2020-01-01T12:00 +home ^bbb222",
+            "- [ ] Future task due:2099-01-01T12:00 ^ccc333",
+        ], settings={'sort_mode': 'topic'})
+        response = client.get('/?view=myday&partial=1')
+        html = response.get_data(as_text=True)
+        assert 'myday-picker-group' in html
+        # Suggestions sorted by project, not by due date
+        assert html.index('Thema: home') < html.index('Thema: work')
+        assert html.index('Overdue A') < html.index('Overdue B')
+        # Item without project falls under "Ohne Projekt"
+        assert html.index('Thema: Ohne Projekt') < html.index('Future task')
+
+    def test_myday_picker_grouped_by_location(self, client, monkeypatch):
+        self._login(client)
+        self._patch(monkeypatch, [
+            "- [ ] Overdue task due:2020-01-01T12:00 @office ^aaa111",
+        ], settings={'sort_mode': 'location'})
+        response = client.get('/?view=myday&partial=1')
+        html = response.get_data(as_text=True)
+        assert 'Ort: office' in html
+
+    def test_myday_picker_flat_in_date_mode(self, client, monkeypatch):
+        # Date mode keeps the flat, due-first picker without sub-headers.
+        self._login(client)
+        self._patch(monkeypatch, [
+            "- [ ] Overdue task due:2020-01-01T12:00 +work ^aaa111",
+        ], settings={'sort_mode': 'date'})
+        response = client.get('/?view=myday&partial=1')
+        html = response.get_data(as_text=True)
+        assert 'myday-picker-group' not in html
+
     def test_myday_partial_returns_fragment(self, client, monkeypatch):
         self._login(client)
         self._patch(monkeypatch, [

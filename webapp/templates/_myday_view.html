@@ -17,10 +17,17 @@
 <div class="myday-picker">
     <h3 class="myday-picker-title">{{ t.plan_my_day }}</h3>
 
+    {# Within a section, items are subdivided by topic/location depending on
+       the sort mode (picker_group is None in date mode → flat list). #}
     {% if suggestions %}
     <div class="myday-picker-section">
         <h4>{{ t.myday_suggestions }}</h4>
+        {% set group = namespace(value=None) %}
         {% for todo in suggestions %}
+            {% if todo.picker_group and todo.picker_group != group.value %}
+                <h5 class="myday-picker-group">{{ todo.picker_group }}</h5>
+                {% set group.value = todo.picker_group %}
+            {% endif %}
             {% include '_myday_picker_item.html' %}
         {% endfor %}
     </div>
@@ -29,7 +36,12 @@
     {% if other_open %}
     <div class="myday-picker-section">
         <h4>{{ t.myday_other_open }}</h4>
+        {% set group = namespace(value=None) %}
         {% for todo in other_open %}
+            {% if todo.picker_group and todo.picker_group != group.value %}
+                <h5 class="myday-picker-group">{{ todo.picker_group }}</h5>
+                {% set group.value = todo.picker_group %}
+            {% endif %}
             {% include '_myday_picker_item.html' %}
         {% endfor %}
     </div>

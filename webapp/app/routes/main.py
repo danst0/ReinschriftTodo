@@ -308,24 +308,66 @@ def index():
 def _render_myday_view(todos, **template_args):
     """Render the "Mein Tag" planning view.
 
-    The day's list shows every todo planned for today (myday == today),
-    including completed ones (struck through). Below it, a picker offers all
-    other open todos: due/overdue suggestions first, then the rest.
+    The day's list shows every todo planned for today (myday == today) as a
+    flat list: active todos first, completed ones (struck through) below a
+    "Done" header. Below it, a picker offers all other open todos —
+    due/overdue suggestions first, then the rest — subdivided by topic or
+    location depending on the sort mode (flat in date mode).
     """
+    lang = get_locale()
+    t = TRANSLATIONS.get(lang, TRANSLATIONS['de'])
+    sort_mode = template_args.get('sort_mode', 'topic')
+
     myday_dicts = sort_todos(
-        [_todo_to_dict(t) for t in todos if t.in_myday], 'date')
-    for d in myday_dicts:
+        [_todo_to_dict(x) for x in todos if x.in_myday], 'date')
+    # Flat list without topic headers: active on top, completed below.
+    active = [d for d in myday_dicts if not d['done']]
+    completed = [d for d in myday_dicts if d['done']]
+    for d in active + completed:
         d['section'] = ""
         d['group_key'] = ''
+    for d in completed:
+        d['section'] = t.get('done', 'Done')
+    myday_dicts = active + completed
 
     now = datetime.now()
-    candidates = [t for t in todos if not t.done and not t.in_myday]
-    suggestions = sort_todos(
-        [_todo_to_dict(t) for t in candidates
-         if t.due and t.due <= now and not t.due_is_sometime], 'date')
-    other_open = sort_todos(
-        [_todo_to_dict(t) for t in candidates
-         if not (t.due and t.due <= now and not t.due_is_sometime)], 'date')
+    candidates = [x for x in todos if not x.done and not x.in_myday]
+
+    # Picker sections use the most frequently used casing so case variants
+    # share one group (same as the main list).
+    canon_projects = canonical_casing_map(
+        p for todo in todos for p in todo.projects)
+    canon_contexts = canonical_casing_map(
+        c for todo in todos for c in todo.contexts)
+
+    def _picker_group(d) -> str | None:
+        """Sub-header label for a picker item, mirroring the GUI's group_label."""
+        if sort_mode == 'topic':
+            p = d['projects'][0] if d['projects'] else None
+            name = canonicalize_token(canon_projects, p) if p \
+                else t.get('no_project', 'No Project')
+            return f"{t.get('topic', 'Topic')}: {name}"
+        if sort_mode == 'location':
+            c = d['contexts'][0] if d['contexts'] else None
+            name = canonicalize_token(canon_contexts, c) if c \
+                else t.get('no_location', 'No Location')
+            return f"{t.get('location', 'Location')}: {name}"
+        return None
+
+    def _prepare_picker(items) -> list:
+        """Sort a picker section and attach group labels (None in date mode)."""
+        mode = sort_mode if sort_mode in ('topic', 'location') else 'date'
+        dicts = sort_todos([_todo_to_dict(x) for x in items], mode)
+        for d in dicts:
+            d['picker_group'] = _picker_group(d)
+        return dicts
+
+    suggestions = _prepare_picker(
+        [x for x in candidates
+         if x.due and x.due <= now and not x.due_is_sometime])
+    other_open = _prepare_picker(
+        [x for x in candidates
+         if not (x.due and x.due <= now and not x.due_is_sometime)])
 
     if request.args.get('partial'):
         return render_template('_myday_view.html',

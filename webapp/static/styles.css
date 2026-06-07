@@ -1697,6 +1697,13 @@ a.bottom-nav-btn {
     margin: 1rem 0 0.5rem;
 }
 
+.myday-picker-group {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin: 0.75rem 0 0.4rem;
+}
+
 .myday-picker-empty {
     color: var(--color-text-muted);
 }
