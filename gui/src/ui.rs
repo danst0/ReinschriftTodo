@@ -1373,7 +1373,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         container.append(&weekend_btn);
 
         let sometimes_btn = gtk::Button::builder()
-            .icon_name("clock-symbolic")
+            .icon_name("alarm-symbolic")
             .tooltip_text(t("Postpone to 'sometimes'"))
             .build();
         sometimes_btn.set_valign(gtk::Align::Center);
@@ -1837,6 +1837,17 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                             title_widget.add_css_class("dim-label");
                         } else {
                             title_widget.remove_css_class("dim-label");
+                        }
+                        // In "Mein Tag" bleiben erledigte Aufgaben (auch
+                        // wiederkehrende, deren nächste Instanz sofort wieder
+                        // aktiv auftaucht) durchgestrichen sichtbar.
+                        let in_myday = highlight_state.upgrade().map(|s| s.myday_view()).unwrap_or(false);
+                        if todo.done && in_myday {
+                            let attrs = pango::AttrList::new();
+                            attrs.insert(pango::AttrInt::new_strikethrough(true));
+                            title_widget.set_attributes(Some(&attrs));
+                        } else {
+                            title_widget.set_attributes(None);
                         }
                     }
                 if let Some(meta_ref_ptr) = unsafe {
@@ -2398,6 +2409,10 @@ impl AppState {
                     next_item.key = data::TodoKey { line_index: 0, marker: None };
                     next_item.done = false;
                     next_item.due = Some(next_due);
+                    // Die neue Instanz plant sich nicht von selbst für "Mein Tag" —
+                    // sonst taucht sie sofort wieder unerledigt neben der gerade
+                    // abgehakten Aufgabe auf.
+                    next_item.myday = None;
                     if let Err(err) = data::add_todo_full(&next_item) {
                         eprintln!("Failed to add recurring task: {err}");
                     }

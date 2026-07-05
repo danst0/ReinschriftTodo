@@ -233,6 +233,10 @@ pub fn toggle_todos(keys: &[TodoKey], done: bool) -> Result<usize> {
                     };
                     next_item.done = false;
                     next_item.due = Some(next_due);
+                    // Nicht von selbst wieder für "Mein Tag" planen — sonst
+                    // taucht die neue Instanz sofort unerledigt neben der
+                    // gerade abgehakten Aufgabe auf.
+                    next_item.myday = None;
                     spawned.push(render_line(&next_item)?);
                 }
             }
@@ -669,6 +673,28 @@ mod tests {
             .format("%Y-%m-%d")
             .to_string();
         assert!(spawned.contains(&format!("due:{tomorrow}T09:00")), "{spawned}");
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn toggle_todos_does_not_carry_myday_to_spawned_occurrence() {
+        let _guard = file_lock();
+        let today = Local::now().date_naive().format("%Y-%m-%d").to_string();
+        let path = setup(&format!(
+            "- [ ] Gießen due:2020-01-01T09:00 myday:{today} rec:daily ^aaa1\n"
+        ));
+
+        toggle_todos(&[key("aaa1")], true).expect("toggle ok");
+        let content = read(&path);
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines.len(), 2, "next occurrence appended: {content}");
+
+        // The completed instance keeps its "Mein Tag" planning for today...
+        assert!(lines[0].contains(&format!("myday:{today}")), "{}", lines[0]);
+        // ...but the freshly spawned next occurrence must not inherit it,
+        // otherwise it would immediately reappear as an open task in
+        // "Mein Tag" right next to the one that was just completed.
+        assert!(!lines[1].contains("myday:"), "{}", lines[1]);
         std::fs::remove_file(&path).ok();
     }
 
