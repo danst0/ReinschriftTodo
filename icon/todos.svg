@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8fc0f7"/>
+      <stop offset="100%" stop-color="#1a5fb4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- squircle backdrop, 420x420 centered (82% of canvas, 46px margin) -->
+  <rect x="46" y="46" width="420" height="420" rx="92" ry="92" fill="url(#bg)"/>
+
+  <!-- flat white card -->
+  <rect x="152" y="122" width="208" height="268" rx="22" ry="22" fill="#fbfcfe"/>
+
+  <!-- row 1: checked -->
+  <path d="M 184 210 L 202 228 L 234 190" fill="none" stroke="#3a944a" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="252" y="212" width="82" height="13" rx="6.5" fill="#c6d3e6"/>
+
+  <!-- row 2: unchecked -->
+  <rect x="184" y="255" width="34" height="34" rx="9" fill="none" stroke="#c6d3e6" stroke-width="10"/>
+  <rect x="252" y="265" width="82" height="13" rx="6.5" fill="#dbe4f0"/>
+
+  <!-- row 3: unchecked -->
+  <rect x="184" y="317" width="34" height="34" rx="9" fill="none" stroke="#c6d3e6" stroke-width="10"/>
+  <rect x="252" y="327" width="82" height="13" rx="6.5" fill="#dbe4f0"/>
+</svg>

@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.25.1" date="2026-07-05">
+      <description>
+        <ul>
+          <li>Redesigned the app icon in a flatter, contemporary style with proper canvas padding</li>
+          <li>Replaced the store screenshots with real window captures including native shadow and rounded corners</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.25.0" date="2026-07-05">
       <description>
         <ul>
