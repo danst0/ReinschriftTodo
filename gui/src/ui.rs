@@ -2064,6 +2064,47 @@ impl AppState {
         (projects, contexts)
     }
 
+    /// Collect the recurring project/context tags to offer the AI as the
+    /// existing structure it should reuse. Unlike [`collect_existing_tags`]
+    /// (used for manual autocomplete, where even one-off tags are helpful),
+    /// this drops one-off tags (count < 2, mostly typos/ad-hoc noise) and caps
+    /// at the top 25 by frequency — so genuinely reused but less frequent tags
+    /// (e.g. +Einkaufen) are still offered, while noise is kept out. Returned
+    /// in the most frequently used casing.
+    fn collect_ai_tag_hints(&self) -> (Vec<String>, Vec<String>) {
+        const MAX_TAGS: usize = 25;
+        const MIN_TAG_COUNT: usize = 2;
+
+        let (canon_projects, canon_contexts) = self.canonical_tag_maps();
+        let items = self.cached_items.borrow();
+
+        let mut project_counts: HashMap<String, usize> = HashMap::new();
+        let mut context_counts: HashMap<String, usize> = HashMap::new();
+        for item in items.iter() {
+            for project in &item.projects {
+                *project_counts.entry(project.to_lowercase()).or_insert(0) += 1;
+            }
+            for context in &item.contexts {
+                *context_counts.entry(context.to_lowercase()).or_insert(0) += 1;
+            }
+        }
+
+        let rank = |counts: HashMap<String, usize>, canon: &HashMap<String, String>| {
+            let mut tags: Vec<_> = counts.into_iter().collect();
+            tags.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+            tags.into_iter()
+                .filter(|(_, count)| *count >= MIN_TAG_COUNT)
+                .take(MAX_TAGS)
+                .map(|(k, _)| canonicalize_token(canon, &k))
+                .collect::<Vec<String>>()
+        };
+
+        (
+            rank(project_counts, &canon_projects),
+            rank(context_counts, &canon_contexts),
+        )
+    }
+
     fn store(&self) -> gio::ListStore {
         self.store.clone()
     }
@@ -3509,7 +3550,7 @@ impl AppState {
                 return;
             };
 
-            let (known_projects, known_contexts) = state.collect_existing_tags();
+            let (known_projects, known_contexts) = state.collect_ai_tag_hints();
             let timeout_secs = state.ai_timeout_secs();
             let ollama_url = state.ollama_url();
             let ollama_model = state.ollama_model();
@@ -5419,7 +5460,16 @@ async fn request_ai_parse(
             .into_iter()
             .filter(|s| !s.is_empty())
             .collect();
-        format!("Prefer these tags: {}. ", parts.join(". "))
+        // Hard constraint: the model must reuse an existing tag whenever one
+        // fits, so that similar inputs land on the same project/context instead
+        // of inventing a fresh tag each time.
+        format!(
+            "{}. \
+             You MUST choose `project` and `context` from these existing lists whenever a listed tag reasonably fits the task. \
+             Reuse the closest existing tag instead of inventing a synonym. \
+             Only create a new tag if NONE of the existing ones fits; in that case prefer leaving `project` empty over guessing. ",
+            parts.join(". ")
+        )
     } else {
         String::new()
     };
@@ -5429,7 +5479,7 @@ async fn request_ai_parse(
             "Parse todo items. Today: {}. {}",
             "TASK: Extract structured data from input. ",
             "OUTPUT JSON: {{\"title\": str, \"due\": \"YYYY-MM-DD\"|null, \"context\": str, \"project\": str}} ",
-            "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. Match existing tag case. ",
+            "RULES: JSON only. Keep input language. German tags. Assign context and (when a fitting tag exists) project. Match existing tag case exactly. ",
             "Example: 'Kaufe morgen Milch' -> {{\"title\": \"Kaufe Milch\", \"due\": \"2026-01-18\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}}"
         ),
         Local::now().format("%A, %Y-%m-%d"),
@@ -5444,6 +5494,12 @@ async fn request_ai_parse(
         ],
         "stream": false,
         "format": "json",
+        // Deterministic sampling so identical inputs yield identical tags and the
+        // model sticks to the instructed existing-tag reuse.
+        "options": {
+            "temperature": 0.0,
+            "top_p": 0.9,
+        },
     });
 
     let client = reqwest::Client::new();

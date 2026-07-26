@@ -178,7 +178,10 @@ def build_verbose_prompt(today: str, weekday: str, projects: list[str], contexts
         "INVALID: speculative thoughts ('ich glaube vielleicht...'), observations, questions, chat.\n\n"
         "OUTPUT JSON (all keys required):\n"
         '{"rejected": bool, "confidence": 0.0-1.0, "title": str|null, "note": str|null, "due": "YYYY-MM-DDTHH:MM"|null, "context": str, "project": str}\n\n'
-        "RULES: JSON only. Keep input language. German tags. ALWAYS assign context and project. If existing tag matches (case-insensitive), use exact existing case.\n\n"
+        "RULES: JSON only. Keep input language. German tags. Assign context and (when a fitting tag exists) project. "
+        "You MUST reuse an existing tag from the lists below whenever one reasonably fits, instead of inventing a synonym. "
+        "Only create a new tag if none of the existing ones fits; then prefer leaving project empty over guessing. "
+        "If an existing tag matches (case-insensitive), use the exact existing case.\n\n"
         'Example: \'Kaufe morgen Milch\' -> {"rejected": false, "confidence": 0.95, "title": "Kaufe Milch", "note": null, "due": "2026-01-18T00:00", "context": "einkaufen", "project": "haushalt"}\n'
         'Example: \'ich glaube ich gehe schwimmen\' -> {"rejected": true, "confidence": 0.9, "title": null, "note": null, "due": null, "context": null, "project": null}'
     )
@@ -190,7 +193,7 @@ def build_verbose_prompt(today: str, weekday: str, projects: list[str], contexts
     if contexts:
         tag_hints.append("Existing contexts: " + ", ".join(contexts))
     if tag_hints:
-        prompt += "\n\nPrefer these tags: " + ". ".join(tag_hints) + "."
+        prompt += "\n\nReuse these existing tags whenever one fits: " + ". ".join(tag_hints) + "."
 
     return prompt
 
@@ -237,7 +240,7 @@ def build_system_prompt(today: str, weekday: str, todos: list, style: str = 'ver
         System prompt string.
     """
     if style == 'minimal':
-        top_projects, top_contexts = get_top_tags(todos, max_projects=10, max_contexts=10)
+        top_projects, top_contexts = get_top_tags(todos, max_projects=25, max_contexts=25)
         return build_minimal_prompt(today, weekday, top_projects, top_contexts)
     else:
         # For verbose, collect all tags from recent context
@@ -323,7 +326,10 @@ def parse_nlp(text: str) -> Optional[dict[str, Any]]:
                 {"role": "user", "content": text}
             ],
             "stream": False,
-            "format": "json"
+            "format": "json",
+            # Deterministic sampling: identical inputs yield identical tags and
+            # the model sticks to reusing existing tags.
+            "options": {"temperature": 0.0, "top_p": 0.9},
         }, timeout=45)
 
         logger.info("Ollama response status: %s", response.status_code)
@@ -537,7 +543,10 @@ def parse_nlp_with_debug(text: str) -> dict[str, Any]:
                 {"role": "user", "content": text}
             ],
             "stream": False,
-            "format": "json"
+            "format": "json",
+            # Deterministic sampling: identical inputs yield identical tags and
+            # the model sticks to reusing existing tags.
+            "options": {"temperature": 0.0, "top_p": 0.9},
         }, timeout=45)
 
         debug_info['timing_ms'] = int((time.time() - start_time) * 1000)

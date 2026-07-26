@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.25.2" date="2026-07-26">
+      <description>
+        <ul>
+          <li>Smart Add now sticks to your existing projects and contexts instead of inventing new tags for similar tasks</li>
+          <li>The AI is offered more of your recurring tags and uses deterministic settings for consistent results</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.25.1" date="2026-07-05">
       <description>
         <ul>
