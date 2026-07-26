@@ -178,6 +178,9 @@ def build_verbose_prompt(today: str, weekday: str, projects: list[str], contexts
         "INVALID: speculative thoughts ('ich glaube vielleicht...'), observations, questions, chat.\n\n"
         "OUTPUT JSON (all keys required):\n"
         '{"rejected": bool, "confidence": 0.0-1.0, "title": str|null, "note": str|null, "due": "YYYY-MM-DDTHH:MM"|null, "context": str, "project": str}\n\n'
+        "FIELDS: context = the place or mode where the task happens (e.g. einkaufen, Garten, Computer, Keller). "
+        "project = the topic/area the task belongs to, describing what it is about (e.g. Haushalt, Urlaub, Familie). "
+        "context and project MUST NOT be the same word.\n\n"
         "RULES: JSON only. Keep input language. German tags. Assign context and (when a fitting tag exists) project. "
         "You MUST reuse an existing tag from the lists below whenever one reasonably fits, instead of inventing a synonym. "
         "Only create a new tag if none of the existing ones fits; then prefer leaving project empty over guessing. "
@@ -214,8 +217,9 @@ def build_minimal_prompt(today: str, weekday: str, projects: list[str], contexts
     prompt += 'Output JSON with these fields:\n'
     prompt += '- title: the task from user input\n'
     prompt += '- due: date as "YYYY-MM-DDTHH:MM" or null\n'
-    prompt += '- context: where/how (pick from list below)\n'
-    prompt += '- project: topic (pick from list below)\n'
+    prompt += '- context: place/mode where the task happens, e.g. einkaufen, Garten (pick from list below)\n'
+    prompt += '- project: topic/area the task is about, e.g. Haushalt, Urlaub (pick from list below)\n'
+    prompt += '- context and project must not be the same word\n'
 
     if projects:
         prompt += "Projects: " + ", ".join(projects) + "\n"

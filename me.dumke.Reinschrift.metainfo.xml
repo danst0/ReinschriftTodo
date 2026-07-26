@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.25.3" date="2026-07-26">
+      <description>
+        <ul>
+          <li>Smart Add now keeps context and project distinct: context is the place/mode, project describes the task's topic</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.25.2" date="2026-07-26">
       <description>
         <ul>

@@ -5479,6 +5479,9 @@ async fn request_ai_parse(
             "Parse todo items. Today: {}. {}",
             "TASK: Extract structured data from input. ",
             "OUTPUT JSON: {{\"title\": str, \"due\": \"YYYY-MM-DD\"|null, \"context\": str, \"project\": str}} ",
+            "FIELDS: `context` = the place or mode where the task happens (e.g. einkaufen, Garten, Computer, Keller). ",
+            "`project` = the topic/area the task belongs to, describing what it is about (e.g. Haushalt, Urlaub, Familie). ",
+            "`context` and `project` MUST NOT be the same word. ",
             "RULES: JSON only. Keep input language. German tags. Assign context and (when a fitting tag exists) project. Match existing tag case exactly. ",
             "Example: 'Kaufe morgen Milch' -> {{\"title\": \"Kaufe Milch\", \"due\": \"2026-01-18\", \"context\": \"einkaufen\", \"project\": \"haushalt\"}}"
         ),
