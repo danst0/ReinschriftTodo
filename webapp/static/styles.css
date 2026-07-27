@@ -1768,6 +1768,11 @@ a.bottom-nav-btn {
     flex-wrap: wrap;
 }
 
+/* display: flex above would beat the UA stylesheet's [hidden] rule. */
+.bulk-bar[hidden] {
+    display: none;
+}
+
 .bulk-count {
     font-size: var(--font-size-sm);
     font-weight: 600;
