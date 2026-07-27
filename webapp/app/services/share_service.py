@@ -1,14 +1,19 @@
-"""Share service: manages public bearer-token links to a single +project scope.
+"""Share service: manages public bearer-token links scoped to one tag.
 
+A share is scoped either to a ``+project`` or to an ``@context`` (location).
 Shares are stored as a list under the ``shares`` key in the application
-settings file (see :func:`load_settings`/:func:`save_settings`). Each entry::
+settings file (see :func:`load_settings`/:func:`save_settings`). Each entry
+carries exactly one scope key — ``project`` or ``context``::
 
     {
         "token": "<22-char base64url>",
-        "project": "<name>",
+        "project": "<name>",   # or "context": "<name>"
         "created": "<iso>",
         "expires_at": "<iso>"  # optional; missing/None means no expiration
     }
+
+Entries written before context sharing existed only ever have ``project``,
+so the format stays backward compatible.
 
 The URL path component ``/s/<token>`` *is* the capability — anyone with the
 link gets access to the share's scope without authentication.
@@ -28,6 +33,11 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_TTL_DAYS = {7, 30, 90}
 
+SCOPE_PROJECT = 'project'
+SCOPE_CONTEXT = 'context'
+#: Order matters: a malformed entry carrying both keys resolves as a project.
+SCOPE_TYPES = (SCOPE_PROJECT, SCOPE_CONTEXT)
+
 
 def _load_shares() -> list[dict[str, Any]]:
     settings = load_settings()
@@ -39,6 +49,15 @@ def _save_shares(shares: list[dict[str, Any]]) -> None:
     settings = load_settings()
     settings['shares'] = shares
     save_settings(settings)
+
+
+def share_scope(share: dict[str, Any]) -> tuple[str, str] | None:
+    """Return ``(scope_type, name)`` for a share, or None if malformed."""
+    for scope_type in SCOPE_TYPES:
+        value = share.get(scope_type)
+        if isinstance(value, str) and value:
+            return scope_type, value
+    return None
 
 
 def _is_expired(share: dict[str, Any], now: datetime) -> bool:
@@ -82,40 +101,57 @@ def get_share_by_token(token: str) -> dict[str, Any] | None:
     return None
 
 
-def get_share_by_project(project: str) -> dict[str, Any] | None:
-    """Return the existing share for ``project`` or None."""
-    if not project:
+def get_share_by_scope(scope_type: str, name: str) -> dict[str, Any] | None:
+    """Return the existing share for a ``+project``/``@context`` or None.
+
+    The name is matched case-insensitively, matching how the main list
+    aggregates tag casing variants into one group.
+    """
+    if scope_type not in SCOPE_TYPES or not name:
         return None
+    wanted = name.casefold()
     for share in _load_shares():
-        if share.get('project') == project:
+        scope = share_scope(share)
+        if scope and scope[0] == scope_type and scope[1].casefold() == wanted:
             return share
     return None
 
 
-def create_share(project: str, ttl_days: int | None = None) -> dict[str, Any]:
-    """Create (or return existing) share for the given project.
+def get_share_by_project(project: str) -> dict[str, Any] | None:
+    """Return the existing share for ``project`` or None."""
+    return get_share_by_scope(SCOPE_PROJECT, project)
 
-    Idempotent: calling twice for the same project returns the same entry —
+
+def create_share(
+    name: str,
+    ttl_days: int | None = None,
+    scope_type: str = SCOPE_PROJECT,
+) -> dict[str, Any]:
+    """Create (or return existing) share for a project or context.
+
+    Idempotent: calling twice for the same scope returns the same entry —
     the ``ttl_days`` argument is only honored when a *new* entry is created.
     To change the TTL of an existing share, revoke it first.
 
     ``ttl_days`` must be one of :data:`ALLOWED_TTL_DAYS` or ``None`` (no
     expiration). Other values raise :class:`ValueError`.
     """
-    project = (project or '').strip()
-    if not project:
-        raise ValueError("project must not be empty")
+    if scope_type not in SCOPE_TYPES:
+        raise ValueError(f"scope_type must be one of {list(SCOPE_TYPES)}")
+    name = (name or '').strip()
+    if not name:
+        raise ValueError(f"{scope_type} must not be empty")
     if ttl_days is not None and ttl_days not in ALLOWED_TTL_DAYS:
         raise ValueError(f"ttl_days must be one of {sorted(ALLOWED_TTL_DAYS)} or None")
 
-    existing = get_share_by_project(project)
+    existing = get_share_by_scope(scope_type, name)
     if existing:
         return existing
 
     created = datetime.now(timezone.utc)
     entry: dict[str, Any] = {
         'token': secrets.token_urlsafe(16),
-        'project': project,
+        scope_type: name,
         'created': created.isoformat(),
     }
     if ttl_days is not None:
@@ -153,9 +189,14 @@ def delete_share(token: str) -> bool:
     return True
 
 
-def delete_share_by_project(project: str) -> bool:
-    """Remove the share for the given project. Returns True on success."""
-    share = get_share_by_project(project)
+def delete_share_by_scope(scope_type: str, name: str) -> bool:
+    """Remove the share for the given project/context. True on success."""
+    share = get_share_by_scope(scope_type, name)
     if not share:
         return False
     return delete_share(share['token'])
+
+
+def delete_share_by_project(project: str) -> bool:
+    """Remove the share for the given project. Returns True on success."""
+    return delete_share_by_scope(SCOPE_PROJECT, project)

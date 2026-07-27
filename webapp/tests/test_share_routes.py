@@ -15,10 +15,12 @@ from app.services import share_service
 from app.services.storage import load_settings, save_settings
 
 
-TODOS_CONTENT = """- [ ] Eier kaufen +einkauf due:2026-05-16T12:00 ^aaaaaa11
-- [ ] Brot kaufen +einkauf due:2026-05-16T12:00 ^aaaaaa22
-- [x] Milch kaufen +einkauf due:2026-05-15T12:00 ✅ 2026-05-15 ^aaaaaa33
-- [ ] Steuer machen +arbeit due:2026-05-20T12:00 ^bbbbbb11
+TODOS_CONTENT = """- [ ] Eier kaufen +einkauf @supermarkt due:2026-05-16T12:00 ^aaaaaa11
+- [ ] Brot kaufen +einkauf @supermarkt due:2026-05-16T12:00 ^aaaaaa22
+- [x] Milch kaufen +einkauf @supermarkt due:2026-05-15T12:00 ✅ 2026-05-15 ^aaaaaa33
+- [ ] Steuer machen +arbeit @buero due:2026-05-20T12:00 ^bbbbbb11
+- [ ] Schrauben holen +heimwerken @Baumarkt due:2026-05-18T12:00 ^cccccc11
+- [ ] Farbe holen +heimwerken @baumarkt due:2026-05-19T12:00 ^cccccc22
 """
 
 
@@ -169,6 +171,120 @@ class TestPublicAdd:
         content = _read_todo(share_app)
         new_line = [l for l in content.splitlines() if 'Karte schreiben' in l][0]
         assert '+"Geburtstag Mama"' in new_line
+
+
+class TestContextShare:
+    """Location/context shares (@tag) behave like project shares (+tag)."""
+
+    def _context_share(self, share_app, name='Baumarkt'):
+        with share_app.app_context():
+            return share_service.create_share(
+                name, scope_type=share_service.SCOPE_CONTEXT)
+
+    def test_view_shows_open_todos_with_context(self, share_app, client):
+        share = self._context_share(share_app)
+        resp = client.get(f"/s/{share['token']}")
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert 'Schrauben holen' in body
+        # Casing variant of the same location belongs to the same list
+        assert 'Farbe holen' in body
+        # Other locations must not appear
+        assert 'Eier kaufen' not in body
+        assert 'Steuer machen' not in body
+        # Header shows the @ sigil, not +
+        assert '@Baumarkt' in body
+
+    def test_toggle_within_context_scope(self, share_app, client):
+        share = self._context_share(share_app)
+        resp = client.post(f"/s/{share['token']}/toggle/cccccc11")
+        assert resp.status_code == 200
+        assert '- [x] Schrauben holen' in _read_todo(share_app)
+
+    def test_toggle_outside_context_scope_is_forbidden(self, share_app, client):
+        share = self._context_share(share_app)
+        resp = client.post(f"/s/{share['token']}/toggle/aaaaaa11")
+        assert resp.status_code == 403
+        assert '- [ ] Eier kaufen' in _read_todo(share_app)
+
+    def test_add_forces_context_tag_and_keeps_project(self, share_app, client):
+        share = self._context_share(share_app)
+        resp = client.post(
+            f"/s/{share['token']}/add",
+            json={'title': 'Dübel kaufen +heimwerken @woanders'}
+        )
+        assert resp.status_code == 200
+        new_line = [l for l in _read_todo(share_app).splitlines() if 'Dübel' in l][0]
+        assert '@Baumarkt' in new_line
+        # User-provided context must have been stripped, project preserved
+        assert '@woanders' not in new_line
+        assert '+heimwerken' in new_line
+
+    def test_add_multiword_context_is_quoted(self, share_app, client):
+        share = self._context_share(share_app, 'Grüner Markt')
+        resp = client.post(f"/s/{share['token']}/add", json={'title': 'Äpfel'})
+        assert resp.status_code == 200
+        new_line = [l for l in _read_todo(share_app).splitlines() if 'Äpfel' in l][0]
+        assert '@"Grüner Markt"' in new_line
+
+    def test_project_share_does_not_match_same_named_context(self, share_app, client):
+        """A +einkauf share must not expose @einkauf todos (and vice versa)."""
+        with share_app.app_context():
+            proj = share_service.create_share('supermarkt')
+        resp = client.get(f"/s/{proj['token']}")
+        assert resp.status_code == 200
+        # No todo carries +supermarkt — only @supermarkt
+        assert 'Eier kaufen' not in resp.get_data(as_text=True)
+
+    def test_owner_api_context_flow(self, share_app, client):
+        _login(client)
+        resp = client.get('/api/shares/Baumarkt?type=context')
+        assert resp.status_code == 200
+        assert resp.get_json()['token'] is None
+
+        resp = client.post('/api/shares/Baumarkt?type=context')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data['token'] and data['url']
+        assert data['scope'] == 'context'
+        assert data['name'] == 'Baumarkt'
+        assert data['project'] is None
+
+        # A project share of the same name is a separate link
+        resp = client.get('/api/shares/Baumarkt')
+        assert resp.get_json()['token'] is None
+
+        resp = client.get('/api/shares/Baumarkt?type=context')
+        assert resp.get_json()['token'] == data['token']
+
+        resp = client.delete('/api/shares/Baumarkt?type=context')
+        assert resp.get_json()['ok'] is True
+        resp = client.get('/api/shares/Baumarkt?type=context')
+        assert resp.get_json()['token'] is None
+
+    def test_owner_api_rejects_unknown_scope(self, share_app, client):
+        _login(client)
+        resp = client.get('/api/shares/Baumarkt?type=bogus')
+        assert resp.status_code == 400
+        assert resp.get_json()['error'] == 'scope_required'
+
+
+class TestShareButtonRendering:
+    """The group header offers sharing in both grouping modes."""
+
+    @pytest.mark.parametrize('sort_mode,scope', [('topic', 'project'), ('location', 'context')])
+    def test_group_header_has_share_button(self, share_app, client, sort_mode, scope):
+        _login(client)
+        resp = client.get(f'/?sort_mode={sort_mode}&partial=1')
+        assert resp.status_code == 200
+        body = resp.get_data(as_text=True)
+        assert f'data-share-scope="{scope}"' in body
+
+    def test_date_mode_has_no_share_button(self, share_app, client):
+        _login(client)
+        resp = client.get('/?sort_mode=date&partial=1')
+        assert resp.status_code == 200
+        assert 'data-share-scope' not in resp.get_data(as_text=True)
 
 
 class TestOwnerShareApi:

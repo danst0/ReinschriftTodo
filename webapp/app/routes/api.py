@@ -25,9 +25,11 @@ from app.services.ai_service import parse_nlp_with_debug, get_top_tags
 from app.services.storage import write_content
 from app.services.share_service import (
     ALLOWED_TTL_DAYS,
+    SCOPE_PROJECT,
+    SCOPE_TYPES,
     create_share,
-    delete_share_by_project,
-    get_share_by_project,
+    delete_share_by_scope,
+    get_share_by_scope,
     purge_expired_shares,
 )
 from app.services.undo_service import push_undo, pop_undo, can_undo
@@ -385,44 +387,68 @@ def get_suggestions():
 DEFAULT_SHARE_TTL_DAYS = 30
 
 
-def _share_response(share: dict | None, project: str) -> dict:
+def _share_response(share: dict | None, scope_type: str, name: str) -> dict:
+    """Serialize a share. ``project`` is kept for backward compatibility and
+    is only set for project-scoped shares."""
+    base = {
+        'scope': scope_type,
+        'name': name,
+        'project': name if scope_type == SCOPE_PROJECT else None,
+    }
     if not share:
-        return {'token': None, 'url': None, 'project': project, 'expires_at': None}
+        return {**base, 'token': None, 'url': None, 'expires_at': None}
     return {
+        **base,
         'token': share['token'],
         'url': url_for('share.view', token=share['token'], _external=True),
-        'project': project,
         'created': share.get('created'),
         'expires_at': share.get('expires_at'),
     }
 
 
-@api_bp.route('/shares/<path:project>', methods=['GET'])
+def _share_scope_args(name: str) -> tuple[str, str] | None:
+    """Resolve ``(scope_type, name)`` from the URL path and ``?type=`` query.
+
+    Returns None when the request is malformed; callers turn that into a 400.
+    """
+    scope_type = (request.args.get('type') or SCOPE_PROJECT).strip()
+    if scope_type not in SCOPE_TYPES:
+        return None
+    name = unquote(name).strip()
+    if not name:
+        return None
+    return scope_type, name
+
+
+@api_bp.route('/shares/<path:name>', methods=['GET'])
 @require_login_json
-def api_get_share(project: str):
-    """Return the existing share for a project, if any."""
+def api_get_share(name: str):
+    """Return the existing share for a project/context, if any."""
     purge_expired_shares()
-    project = unquote(project).strip()
-    if not project:
-        return jsonify({'error': 'project_required'}), 400
-    share = get_share_by_project(project)
-    return jsonify(_share_response(share, project))
+    scope = _share_scope_args(name)
+    if not scope:
+        return jsonify({'error': 'scope_required'}), 400
+    scope_type, scope_name = scope
+    share = get_share_by_scope(scope_type, scope_name)
+    return jsonify(_share_response(share, scope_type, scope_name))
 
 
-@api_bp.route('/shares/<path:project>', methods=['POST'])
+@api_bp.route('/shares/<path:name>', methods=['POST'])
 @csrf.exempt
 @require_login_json
-def api_create_share(project: str):
-    """Create (or return existing) share token for a project.
+def api_create_share(name: str):
+    """Create (or return existing) share token for a project/context.
 
-    Accepts an optional JSON body ``{"ttl_days": 7|30|90|null}``. When
-    omitted, defaults to 30 days. ``null`` creates a share that never
-    expires.
+    The scope kind comes from ``?type=project|context`` (default:
+    ``project``). Accepts an optional JSON body ``{"ttl_days":
+    7|30|90|null}``. When omitted, defaults to 30 days. ``null`` creates a
+    share that never expires.
     """
     purge_expired_shares()
-    project = unquote(project).strip()
-    if not project:
-        return jsonify({'error': 'project_required'}), 400
+    scope = _share_scope_args(name)
+    if not scope:
+        return jsonify({'error': 'scope_required'}), 400
+    scope_type, scope_name = scope
 
     payload = request.get_json(silent=True) or {}
     ttl_days: int | None
@@ -437,20 +463,21 @@ def api_create_share(project: str):
     else:
         ttl_days = DEFAULT_SHARE_TTL_DAYS
 
-    share = create_share(project, ttl_days=ttl_days)
-    return jsonify(_share_response(share, project))
+    share = create_share(scope_name, ttl_days=ttl_days, scope_type=scope_type)
+    return jsonify(_share_response(share, scope_type, scope_name))
 
 
-@api_bp.route('/shares/<path:project>', methods=['DELETE'])
+@api_bp.route('/shares/<path:name>', methods=['DELETE'])
 @csrf.exempt
 @require_login_json
-def api_delete_share(project: str):
-    """Revoke the share for a project."""
+def api_delete_share(name: str):
+    """Revoke the share for a project/context."""
     purge_expired_shares()
-    project = unquote(project).strip()
-    if not project:
-        return jsonify({'error': 'project_required'}), 400
-    ok = delete_share_by_project(project)
+    scope = _share_scope_args(name)
+    if not scope:
+        return jsonify({'error': 'scope_required'}), 400
+    scope_type, scope_name = scope
+    ok = delete_share_by_scope(scope_type, scope_name)
     return jsonify({'ok': ok})
 
 

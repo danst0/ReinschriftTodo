@@ -1,16 +1,19 @@
 /**
- * Share dialog: manage public share-link for a project.
+ * Share dialog: manage the public share-link for a project (+) or a
+ * location/context (@).
  *
- * Backed by:
- *   - GET    /api/shares/<project>  → existing share or null
- *   - POST   /api/shares/<project>  → create (idempotent)
- *   - DELETE /api/shares/<project>  → revoke
+ * Backed by (with ?type=project|context):
+ *   - GET    /api/shares/<name>  → existing share or null
+ *   - POST   /api/shares/<name>  → create (idempotent)
+ *   - DELETE /api/shares/<name>  → revoke
  */
 
 import { fetchWithCsrf } from './api.js';
 
 let dialogEl = null;
 let translations = {};
+
+const SCOPE_SIGILS = { project: '+', context: '@' };
 
 const TTL_OPTIONS = [
     { value: 7, labelKey: 'shareValidity7', fallback: '7 Tage' },
@@ -101,12 +104,18 @@ function formatExpiry(isoString) {
     }
 }
 
+function apiUrl(state) {
+    return `/api/shares/${encodeURIComponent(state.name)}?type=${encodeURIComponent(state.scope)}`;
+}
+
 function setState(state) {
     const el = ensureDialog();
+    const sigil = SCOPE_SIGILS[state.scope] || '+';
     el.querySelector('.share-dialog-title').textContent =
-        t('share', 'Teilen') + ': +' + state.project;
-    el.querySelector('.share-dialog-hint').textContent =
-        t('shareHint', 'Mit diesem Link können andere die Aufgaben dieses Projekts sehen, abhaken und neue hinzufügen — ohne Anmeldung.');
+        t('share', 'Teilen') + ': ' + sigil + state.name;
+    el.querySelector('.share-dialog-hint').textContent = state.scope === 'context'
+        ? t('shareHintContext', 'Mit diesem Link können andere die Aufgaben dieses Ortes sehen, abhaken und neue hinzufügen — ohne Anmeldung.')
+        : t('shareHint', 'Mit diesem Link können andere die Aufgaben dieses Projekts sehen, abhaken und neue hinzufügen — ohne Anmeldung.');
 
     const ttlRow = el.querySelector('.share-dialog-ttl-row');
     const ttlLabel = el.querySelector('.share-dialog-ttl-label');
@@ -163,43 +172,47 @@ function setState(state) {
     revokeBtn.onclick = async () => {
         const msg = t('shareRevokeConfirm', 'Diesen Link wirklich entfernen?');
         if (!window.confirm(msg)) return;
-        const resp = await fetchWithCsrf(`/api/shares/${encodeURIComponent(state.project)}`, {
-            method: 'DELETE'
-        });
+        const resp = await fetchWithCsrf(apiUrl(state), { method: 'DELETE' });
         if (resp.ok) {
-            setState({ project: state.project, url: null });
+            setState({ scope: state.scope, name: state.name, url: null });
         }
     };
 
     createBtn.onclick = async () => {
         const raw = ttlSelect.value;
         const ttlDays = raw === '' ? null : parseInt(raw, 10);
-        const resp = await fetchWithCsrf(`/api/shares/${encodeURIComponent(state.project)}`, {
+        const resp = await fetchWithCsrf(apiUrl(state), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ttl_days: ttlDays }),
         });
         if (resp.ok) {
             const data = await resp.json();
-            setState({ project: state.project, url: data.url, expires_at: data.expires_at });
+            setState({ scope: state.scope, name: state.name, url: data.url, expires_at: data.expires_at });
         }
     };
 
     el.classList.remove('hidden');
 }
 
-export async function openShareDialog(ev, project) {
+/**
+ * @param {string} name   project or context name (without sigil)
+ * @param {string} scope  'project' (default) or 'context'
+ */
+export async function openShareDialog(ev, name, scope = 'project') {
     if (ev && ev.preventDefault) ev.preventDefault();
-    if (!project) return;
+    if (!name) return;
+    if (!SCOPE_SIGILS[scope]) scope = 'project';
     ensureDialog();
-    setState({ project, url: null });
+    const state = { scope, name };
+    setState({ ...state, url: null });
     try {
-        const resp = await fetch(`/api/shares/${encodeURIComponent(project)}`, {
+        const resp = await fetch(apiUrl(state), {
             headers: { 'Accept': 'application/json' }
         });
         if (resp.ok) {
             const data = await resp.json();
-            setState({ project, url: data.url, expires_at: data.expires_at });
+            setState({ ...state, url: data.url, expires_at: data.expires_at });
         }
     } catch (e) {
         // ignore — dialog already showing "Erstellen" state

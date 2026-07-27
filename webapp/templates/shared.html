@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from '_icons.html' import icon %}
 
-{% block title %}{{ project }} — {{ t.todos }}{% endblock %}
+{% block title %}{{ scope_name }} — {{ t.todos }}{% endblock %}
 
 {% block head %}
 <meta name="robots" content="noindex,nofollow">
@@ -21,9 +21,12 @@
         font-size: 1.4rem;
         margin: 0;
     }
-    .share-project-tag {
-        color: #3584e4;
+    .share-scope-tag {
+        color: #e66100;
         font-weight: 600;
+    }
+    .share-scope-tag.context {
+        color: #1a5fb4;
     }
     .share-empty {
         text-align: center;
@@ -95,9 +98,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="share-container" data-token="{{ token }}" data-project="{{ project }}">
+<div class="share-container" data-token="{{ token }}" data-scope="{{ scope_type }}" data-scope-name="{{ scope_name }}">
     <div class="share-header">
-        <h1>{{ t.shared_list }}: <span class="share-project-tag">+{{ project }}</span></h1>
+        <h1>{{ t.shared_list }}: <span class="share-scope-tag {{ scope_type }}">{{ scope_sigil }}{{ scope_name }}</span></h1>
     </div>
 
     <div id="share-error" class="share-error" role="alert"></div>

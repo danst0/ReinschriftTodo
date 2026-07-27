@@ -17,8 +17,8 @@
             </span>
             {% if sort_mode in ['topic', 'location'] %}
             <div class="group-actions">
-                {% if sort_mode == 'topic' and todo.group_key %}
-                <a href="javascript:void(0)" class="btn-action" data-share-project="{{ todo.group_key }}" onclick="openShareDialog(event, this.dataset.shareProject)" title="{{ t.share }}" aria-label="{{ t.share }}">{{ icon('share') }}</a>
+                {% if todo.group_key %}
+                <a href="javascript:void(0)" class="btn-action" data-share-name="{{ todo.group_key }}" data-share-scope="{{ 'project' if sort_mode == 'topic' else 'context' }}" onclick="openShareDialog(event, this.dataset.shareName, this.dataset.shareScope)" title="{{ t.share }}" aria-label="{{ t.share }}">{{ icon('share') }}</a>
                 {% endif %}
                 <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'today', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar') }}</a>
                 <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'tomorrow', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right') }}</a>

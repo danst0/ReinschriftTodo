@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.25.5" date="2026-07-27">
+      <description>
+        <ul>
+          <li>Web: locations/contexts (@tag) can now be shared as a public link, just like projects</li>
+          <li>Web: share links match tag names case-insensitively, so casing variants stay in one shared list</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.25.4" date="2026-07-27">
       <description>
         <ul>

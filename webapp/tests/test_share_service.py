@@ -88,6 +88,53 @@ class TestShareService:
         assert share_service.get_share_by_token(a['token'])['project'] == 'a'
         assert share_service.get_share_by_token(b['token'])['project'] == 'b'
 
+    def test_lookup_is_case_insensitive(self, isolated_app):
+        created = share_service.create_share('Einkauf')
+        assert share_service.get_share_by_project('einkauf')['token'] == created['token']
+        # Idempotency follows the same rule — no second token for a casing variant.
+        assert share_service.create_share('EINKAUF')['token'] == created['token']
+
+
+class TestContextScope:
+    def test_create_context_share_stores_context_key(self, isolated_app):
+        share = share_service.create_share('baumarkt', scope_type=share_service.SCOPE_CONTEXT)
+        assert share['context'] == 'baumarkt'
+        assert 'project' not in share
+        assert share_service.share_scope(share) == ('context', 'baumarkt')
+
+    def test_project_and_context_of_same_name_are_separate(self, isolated_app):
+        proj = share_service.create_share('umzug')
+        ctx = share_service.create_share('umzug', scope_type=share_service.SCOPE_CONTEXT)
+        assert proj['token'] != ctx['token']
+        assert share_service.get_share_by_scope('project', 'umzug')['token'] == proj['token']
+        assert share_service.get_share_by_scope('context', 'umzug')['token'] == ctx['token']
+
+    def test_get_by_scope_rejects_unknown_scope(self, isolated_app):
+        share_service.create_share('einkauf')
+        assert share_service.get_share_by_scope('bogus', 'einkauf') is None
+
+    def test_create_rejects_unknown_scope(self, isolated_app):
+        with pytest.raises(ValueError):
+            share_service.create_share('einkauf', scope_type='bogus')
+
+    def test_create_rejects_empty_context(self, isolated_app):
+        with pytest.raises(ValueError):
+            share_service.create_share('  ', scope_type=share_service.SCOPE_CONTEXT)
+
+    def test_delete_by_scope_only_hits_matching_scope(self, isolated_app):
+        proj = share_service.create_share('umzug')
+        share_service.create_share('umzug', scope_type=share_service.SCOPE_CONTEXT)
+        assert share_service.delete_share_by_scope('context', 'umzug') is True
+        assert share_service.get_share_by_scope('context', 'umzug') is None
+        assert share_service.get_share_by_token(proj['token']) is not None
+
+    def test_delete_by_project_ignores_context_shares(self, isolated_app):
+        share_service.create_share('umzug', scope_type=share_service.SCOPE_CONTEXT)
+        assert share_service.delete_share_by_project('umzug') is False
+
+    def test_share_scope_of_malformed_entry_is_none(self, isolated_app):
+        assert share_service.share_scope({'token': 'x', 'created': 'y'}) is None
+
 
 def _set_share_expires_at(token: str, expires_at_iso: str | None) -> None:
     """Test helper: patch the stored ``expires_at`` for a share."""
