@@ -6,6 +6,8 @@
     const errorEl = document.getElementById('share-error');
     const listEl = document.getElementById('share-todo-list');
     const form = document.getElementById('share-add-form');
+    const addFailedMsg = root.dataset.errorAddFailed || 'Konnte nicht hinzufügen.';
+    const invalidTitleMsg = root.dataset.errorInvalidTitle || addFailedMsg;
 
     function showError(msg) {
         errorEl.textContent = msg;
@@ -60,7 +62,11 @@
                 body: JSON.stringify({ title }),
             });
             if (!resp.ok) {
-                showError('Konnte nicht hinzufügen.');
+                // The server rejects anything that would parse as metadata
+                // (+project, @context, ^marker, due:) instead of silently
+                // dropping it — say why, so the text can be reworded.
+                const data = await resp.json().catch(() => ({}));
+                showError(data.error === 'invalid_title' ? invalidTitleMsg : addFailedMsg);
                 return;
             }
             input.value = '';

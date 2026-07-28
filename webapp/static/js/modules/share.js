@@ -12,6 +12,9 @@ import { fetchWithCsrf } from './api.js';
 
 let dialogEl = null;
 let translations = {};
+// Incremented whenever the dialog is opened or closed; an awaited response
+// only applies if its generation is still the current one.
+let generation = 0;
 
 const SCOPE_SIGILS = { project: '+', context: '@' };
 
@@ -47,6 +50,7 @@ function ensureDialog() {
                 <button type="button" class="btn-secondary share-dialog-copy"></button>
             </div>
             <p class="share-dialog-expiry hidden"></p>
+            <p class="share-dialog-error hidden" role="alert"></p>
             <div class="share-dialog-actions">
                 <button type="button" class="btn-secondary share-dialog-revoke hidden"></button>
                 <button type="button" class="btn-primary share-dialog-create hidden"></button>
@@ -71,7 +75,21 @@ function ensureDialog() {
 }
 
 function closeDialog() {
+    // Bump the generation so an in-flight response can no longer re-open
+    // the dialog or overwrite a newer one.
+    generation += 1;
     if (dialogEl) dialogEl.classList.add('hidden');
+}
+
+function showError(message) {
+    const el = dialogEl?.querySelector('.share-dialog-error');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.remove('hidden');
+}
+
+function clearError() {
+    dialogEl?.querySelector('.share-dialog-error')?.classList.add('hidden');
 }
 
 function t(key, fallback) {
@@ -110,6 +128,7 @@ function apiUrl(state) {
 
 function setState(state) {
     const el = ensureDialog();
+    clearError();
     const sigil = SCOPE_SIGILS[state.scope] || '+';
     el.querySelector('.share-dialog-title').textContent =
         t('share', 'Teilen') + ': ' + sigil + state.name;
@@ -172,23 +191,44 @@ function setState(state) {
     revokeBtn.onclick = async () => {
         const msg = t('shareRevokeConfirm', 'Diesen Link wirklich entfernen?');
         if (!window.confirm(msg)) return;
-        const resp = await fetchWithCsrf(apiUrl(state), { method: 'DELETE' });
-        if (resp.ok) {
+        clearError();
+        const myGeneration = generation;
+        try {
+            const resp = await fetchWithCsrf(apiUrl(state), { method: 'DELETE' });
+            if (myGeneration !== generation) return;
+            const data = resp.ok ? await resp.json().catch(() => ({})) : null;
+            // The server reports ok:false when there was nothing to revoke —
+            // treating that as success would claim a still-live link is gone.
+            if (!data || data.ok !== true) {
+                showError(t('shareError', 'Aktion fehlgeschlagen. Bitte erneut versuchen.'));
+                return;
+            }
             setState({ scope: state.scope, name: state.name, url: null });
+        } catch (e) {
+            showError(t('shareError', 'Aktion fehlgeschlagen. Bitte erneut versuchen.'));
         }
     };
 
     createBtn.onclick = async () => {
         const raw = ttlSelect.value;
         const ttlDays = raw === '' ? null : parseInt(raw, 10);
-        const resp = await fetchWithCsrf(apiUrl(state), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ttl_days: ttlDays }),
-        });
-        if (resp.ok) {
+        clearError();
+        const myGeneration = generation;
+        try {
+            const resp = await fetchWithCsrf(apiUrl(state), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ttl_days: ttlDays }),
+            });
+            if (myGeneration !== generation) return;
+            if (!resp.ok) {
+                showError(t('shareError', 'Aktion fehlgeschlagen. Bitte erneut versuchen.'));
+                return;
+            }
             const data = await resp.json();
             setState({ scope: state.scope, name: state.name, url: data.url, expires_at: data.expires_at });
+        } catch (e) {
+            showError(t('shareError', 'Aktion fehlgeschlagen. Bitte erneut versuchen.'));
         }
     };
 
@@ -205,16 +245,26 @@ export async function openShareDialog(ev, name, scope = 'project') {
     if (!SCOPE_SIGILS[scope]) scope = 'project';
     ensureDialog();
     const state = { scope, name };
+    const myGeneration = ++generation;
     setState({ ...state, url: null });
     try {
         const resp = await fetch(apiUrl(state), {
             headers: { 'Accept': 'application/json' }
         });
+        // Dropped if the user closed the dialog or opened another group
+        // meanwhile — otherwise a slow response would re-open the dialog or
+        // point its revoke button at the wrong share.
+        if (myGeneration !== generation) return;
         if (resp.ok) {
             const data = await resp.json();
+            if (myGeneration !== generation) return;
             setState({ ...state, url: data.url, expires_at: data.expires_at });
+        } else {
+            showError(t('shareError', 'Aktion fehlgeschlagen. Bitte erneut versuchen.'));
         }
     } catch (e) {
-        // ignore — dialog already showing "Erstellen" state
+        if (myGeneration === generation) {
+            showError(t('shareError', 'Aktion fehlgeschlagen. Bitte erneut versuchen.'));
+        }
     }
 }

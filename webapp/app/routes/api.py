@@ -1,7 +1,5 @@
 """API routes blueprint - JSON endpoints."""
 
-from urllib.parse import unquote
-
 from flask import Blueprint, request, session, jsonify, current_app, url_for
 
 from app.exceptions import ConflictError
@@ -409,12 +407,18 @@ def _share_response(share: dict | None, scope_type: str, name: str) -> dict:
 def _share_scope_args(name: str) -> tuple[str, str] | None:
     """Resolve ``(scope_type, name)`` from the URL path and ``?type=`` query.
 
+    An explicitly empty ``type=`` is rejected rather than defaulting to
+    project — a client that builds the query from an unset variable must not
+    silently revoke the wrong scope's link. The path segment arrives already
+    percent-decoded from Werkzeug; decoding it again would corrupt names
+    containing '%'.
+
     Returns None when the request is malformed; callers turn that into a 400.
     """
-    scope_type = (request.args.get('type') or SCOPE_PROJECT).strip()
+    scope_type = request.args.get('type', SCOPE_PROJECT).strip()
     if scope_type not in SCOPE_TYPES:
         return None
-    name = unquote(name).strip()
+    name = name.strip()
     if not name:
         return None
     return scope_type, name

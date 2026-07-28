@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.25.6" date="2026-07-28">
+      <description>
+        <ul>
+          <li>Web: share links are hardened — recipients can only contribute plain task text, and a link now covers exactly the group it was created from</li>
+          <li>Web: revoking a share removes every link for that tag, and failed share actions are reported instead of failing silently</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.25.5" date="2026-07-27">
       <description>
         <ul>

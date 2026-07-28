@@ -98,7 +98,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="share-container" data-token="{{ token }}" data-scope="{{ scope_type }}" data-scope-name="{{ scope_name }}">
+<div class="share-container" data-token="{{ token }}" data-scope="{{ scope_type }}" data-scope-name="{{ scope_name }}"
+     data-error-add-failed="{{ t.share_add_failed }}" data-error-invalid-title="{{ t.share_invalid_title }}">
     <div class="share-header">
         <h1>{{ t.shared_list }}: <span class="share-scope-tag {{ scope_type }}">{{ scope_sigil }}{{ scope_name }}</span></h1>
     </div>

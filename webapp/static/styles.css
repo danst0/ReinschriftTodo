@@ -1641,6 +1641,15 @@ button, a, .checkbox, .filter-link, .todo-item {
     color: #555;
 }
 .share-dialog-expiry.hidden { display: none; }
+.share-dialog-error {
+    margin: 0 0 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm, 6px);
+    background: var(--color-error-bg);
+    color: var(--color-danger);
+    font-size: 0.85rem;
+}
+.share-dialog-error.hidden { display: none; }
 .share-dialog-actions {
     display: flex;
     justify-content: flex-end;

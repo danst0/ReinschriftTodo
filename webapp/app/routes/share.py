@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+import re
 
 from flask import (
     Blueprint,
@@ -42,7 +43,16 @@ logger = logging.getLogger(__name__)
 share_bp = Blueprint('share', __name__)
 
 SCOPE_SIGILS = {SCOPE_PROJECT: '+', SCOPE_CONTEXT: '@'}
-SCOPE_TAG_RES = {SCOPE_PROJECT: PROJECT_RE, SCOPE_CONTEXT: CONTEXT_RE}
+#: Same patterns as the parser, but anchored to a word start so an address
+#: like "info@example.com" is not mistaken for an @context and silently
+#: stripped out of the recipient's text.
+SCOPE_TAG_RES = {
+    SCOPE_PROJECT: re.compile(r'(?<!\S)' + PROJECT_RE.pattern),
+    SCOPE_CONTEXT: re.compile(r'(?<!\S)' + CONTEXT_RE.pattern),
+}
+#: Control characters (newlines included) would break one submission into
+#: several markdown lines — see :func:`_normalize_title`.
+CONTROL_CHARS_RE = re.compile(r'[\x00-\x1f\x7f]')
 
 
 def _resolve_share(token: str) -> tuple[str, str]:
@@ -64,23 +74,68 @@ def _resolve_share(token: str) -> tuple[str, str]:
 
 
 def _in_scope(item, scope_type: str, name: str) -> bool:
-    """True if the todo carries the share's tag (case-insensitive).
+    """True if the todo's *primary* tag is the share's tag.
 
-    Casing is ignored for the same reason the main list groups case variants
-    together: '@Baumarkt' and '@baumarkt' are one location to the user.
+    Only the first tag counts, because that is the one the owner's list
+    groups by: sharing the '@Baumarkt' header must not also hand out todos
+    that merely mention @Baumarkt behind some other location. Casing is
+    compared with ``lower()`` — the same normalization
+    :func:`canonical_casing_map` uses to build those groups, so the share
+    covers exactly one group and never a neighbouring one (``casefold()``
+    would fold 'ß' into 'ss' and merge two distinct groups).
     """
     tags = item.projects if scope_type == SCOPE_PROJECT else item.contexts
-    wanted = name.casefold()
-    return any(tag.casefold() == wanted for tag in tags)
+    return bool(tags) and tags[0].lower() == name.lower()
+
+
+def _normalize_title(text: str) -> str:
+    """Flatten recipient input into a single line of text.
+
+    Control characters become spaces and whitespace runs collapse. Without
+    this a submitted '\\n' would split one entry into several markdown
+    lines, and every line after the first would land in the file untagged —
+    outside the share's scope entirely.
+    """
+    return ' '.join(CONTROL_CHARS_RE.sub(' ', text).split())
 
 
 def _strip_scope_tags(text: str, scope_type: str) -> str:
-    """Remove all tokens of the share's own kind from text.
+    """Remove tokens of the share's own kind from text.
 
-    Tags of the *other* kind survive: a +project share keeps the recipient's
-    @contexts and vice versa.
+    Lets a recipient type '@Baumarkt' on the @Baumarkt share without ending
+    up with the tag twice. Everything else is left alone and rejected later
+    by :func:`_only_scope_tag`, rather than silently deleted.
     """
     return SCOPE_TAG_RES[scope_type].sub('', text).strip()
+
+
+def _only_scope_tag(composed: str, scope_type: str, name: str) -> bool:
+    """True if the composed line carries nothing but a title and the share tag.
+
+    The public add route is unauthenticated, so it is deny-by-default: the
+    line is parsed exactly as the storage layer will read it back, and any
+    metadata the recipient managed to smuggle in — a foreign +project or
+    @context, a '^marker' that would collide with an existing todo's id, a
+    due date, recurrence or note — makes the submission invalid instead of
+    being written to the shared file.
+    """
+    item = parse_line(f"- [ ] {composed}", 0)
+    if item is None:
+        return False
+    expected_projects = [name] if scope_type == SCOPE_PROJECT else []
+    expected_contexts = [name] if scope_type == SCOPE_CONTEXT else []
+    return (
+        item.projects == expected_projects
+        and item.contexts == expected_contexts
+        and item.marker is None
+        and item.due is None
+        and item.recurrence is None
+        and item.note is None
+        and not item.in_myday
+        and item.myday is None
+        and not item.done
+        and bool(item.title.strip())
+    )
 
 
 def _quote_if_needed(name: str) -> str:
@@ -152,13 +207,15 @@ def toggle(token: str, marker: str):
 def add(token: str):
     """Add a new todo into the share's scope.
 
-    The share's own tag is enforced — any markers of that kind the recipient
-    typed are stripped before appending the share's tag.
+    Recipients may only contribute plain task text: the share's own tag is
+    enforced, and anything else that would parse as metadata is rejected
+    (``invalid_title``) rather than stripped, so nothing the recipient typed
+    disappears silently and nothing lands outside the share's scope.
     """
     scope_type, name = _resolve_share(token)
 
     payload = request.get_json(silent=True) or {}
-    title = (payload.get('title') or '').strip()
+    title = _normalize_title(payload.get('title') or '')
     if not title:
         return jsonify({'error': 'title_required'}), 400
 
@@ -168,6 +225,8 @@ def add(token: str):
 
     scope_token = f"{SCOPE_SIGILS[scope_type]}{_quote_if_needed(name)}"
     composed = f"{sanitized} {scope_token}"
+    if not _only_scope_tag(composed, scope_type, name):
+        return jsonify({'error': 'invalid_title'}), 400
 
     result = add_todo(composed)
     return jsonify({'ok': True, 'marker': result['marker']})

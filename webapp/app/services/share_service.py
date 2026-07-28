@@ -82,6 +82,18 @@ def list_shares() -> list[dict[str, Any]]:
     return _load_shares()
 
 
+def _tokens_equal(stored: Any, token: str) -> bool:
+    """Constant-time token comparison that tolerates any input.
+
+    ``hmac.compare_digest`` raises TypeError on non-ASCII strings, so both
+    sides are compared as UTF-8 bytes — otherwise an anonymous request to
+    ``/s/<non-ascii>`` would surface as a 500 instead of the generic 404.
+    """
+    if not isinstance(stored, str):
+        return False
+    return hmac.compare_digest(stored.encode('utf-8'), token.encode('utf-8'))
+
+
 def get_share_by_token(token: str) -> dict[str, Any] | None:
     """Look up a share by its token using constant-time comparison.
 
@@ -93,26 +105,32 @@ def get_share_by_token(token: str) -> dict[str, Any] | None:
         return None
     now = datetime.now(timezone.utc)
     for share in _load_shares():
-        stored = share.get('token', '')
-        if isinstance(stored, str) and hmac.compare_digest(stored, token):
+        if _tokens_equal(share.get('token', ''), token):
             if _is_expired(share, now):
                 return None
             return share
     return None
 
 
+def _scope_matches(share: dict[str, Any], scope_type: str, wanted_lower: str) -> bool:
+    scope = share_scope(share)
+    if scope is None:
+        return False
+    return scope[0] == scope_type and scope[1].lower() == wanted_lower
+
+
 def get_share_by_scope(scope_type: str, name: str) -> dict[str, Any] | None:
     """Return the existing share for a ``+project``/``@context`` or None.
 
-    The name is matched case-insensitively, matching how the main list
-    aggregates tag casing variants into one group.
+    The name is matched with ``lower()`` — the same normalization
+    :func:`canonical_casing_map` uses when the list aggregates tag casing
+    variants into one group, so a share covers exactly one group.
     """
     if scope_type not in SCOPE_TYPES or not name:
         return None
-    wanted = name.casefold()
+    wanted = name.lower()
     for share in _load_shares():
-        scope = share_scope(share)
-        if scope and scope[0] == scope_type and scope[1].casefold() == wanted:
+        if _scope_matches(share, scope_type, wanted):
             return share
     return None
 
@@ -146,6 +164,18 @@ def create_share(
 
     existing = get_share_by_scope(scope_type, name)
     if existing:
+        # Adopt the caller's casing: the share button passes the group's
+        # current canonical casing, and todos added through the link are
+        # tagged from the stored name — keeping a superseded variant would
+        # re-introduce it into the file.
+        if existing.get(scope_type) != name:
+            shares = _load_shares()
+            for share in shares:
+                if _tokens_equal(share.get('token', ''), existing['token']):
+                    share[scope_type] = name
+                    existing = share
+                    break
+            _save_shares(shares)
         return existing
 
     created = datetime.now(timezone.utc)
@@ -182,7 +212,7 @@ def delete_share(token: str) -> bool:
     if not token:
         return False
     shares = _load_shares()
-    new_shares = [s for s in shares if not hmac.compare_digest(s.get('token', ''), token)]
+    new_shares = [s for s in shares if not _tokens_equal(s.get('token', ''), token)]
     if len(new_shares) == len(shares):
         return False
     _save_shares(new_shares)
@@ -190,11 +220,21 @@ def delete_share(token: str) -> bool:
 
 
 def delete_share_by_scope(scope_type: str, name: str) -> bool:
-    """Remove the share for the given project/context. True on success."""
-    share = get_share_by_scope(scope_type, name)
-    if not share:
+    """Remove *every* share for the given project/context. True if any went.
+
+    Older installs can hold several entries for one tag that differ only in
+    casing (lookup used to be exact-match). Revoking must not leave one of
+    them live while the dialog reports the link as gone.
+    """
+    if scope_type not in SCOPE_TYPES or not name:
         return False
-    return delete_share(share['token'])
+    wanted = name.lower()
+    shares = _load_shares()
+    kept = [s for s in shares if not _scope_matches(s, scope_type, wanted)]
+    if len(kept) == len(shares):
+        return False
+    _save_shares(kept)
+    return True
 
 
 def delete_share_by_project(project: str) -> bool:

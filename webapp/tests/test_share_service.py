@@ -136,6 +136,40 @@ class TestContextScope:
         assert share_service.share_scope({'token': 'x', 'created': 'y'}) is None
 
 
+class TestScopeNormalization:
+    def test_lookup_does_not_fold_sharp_s(self, isolated_app):
+        """casefold() would treat 'Straßenfest' and 'Strassenfest' as one group."""
+        a = share_service.create_share('Straßenfest')
+        b = share_service.create_share('Strassenfest')
+        assert a['token'] != b['token']
+        assert share_service.get_share_by_project('straßenfest')['token'] == a['token']
+        assert share_service.get_share_by_project('strassenfest')['token'] == b['token']
+
+    def test_recreate_updates_stored_casing(self, isolated_app):
+        created = share_service.create_share('Einkauf')
+        again = share_service.create_share('EINKAUF')
+        assert again['token'] == created['token']
+        assert again['project'] == 'EINKAUF'
+        assert share_service.get_share_by_token(created['token'])['project'] == 'EINKAUF'
+
+    def test_delete_removes_every_casing_duplicate(self, isolated_app):
+        """Legacy installs can hold two entries for one tag — revoke must kill both."""
+        settings = load_settings()
+        settings['shares'] = [
+            {'token': 'tok-upper', 'project': 'Einkauf', 'created': 'x'},
+            {'token': 'tok-lower', 'project': 'einkauf', 'created': 'x'},
+        ]
+        save_settings(settings)
+        assert share_service.delete_share_by_project('einkauf') is True
+        assert share_service.get_share_by_token('tok-upper') is None
+        assert share_service.get_share_by_token('tok-lower') is None
+
+    def test_non_ascii_token_lookup_does_not_raise(self, isolated_app):
+        share_service.create_share('einkauf')
+        assert share_service.get_share_by_token('töken') is None
+        assert share_service.delete_share('töken') is False
+
+
 def _set_share_expires_at(token: str, expires_at_iso: str | None) -> None:
     """Test helper: patch the stored ``expires_at`` for a share."""
     settings = load_settings()

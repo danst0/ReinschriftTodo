@@ -137,18 +137,26 @@ class TestPublicAdd:
             share = share_service.create_share('einkauf')
         resp = client.post(
             f"/s/{share['token']}/add",
-            json={'title': 'Käse +sonst @market'}
+            json={'title': 'Käse +sonst'}
         )
         assert resp.status_code == 200
         content = _read_todo(share_app)
-        assert 'Käse' in content
-        # New todo must have +einkauf
         new_line = [l for l in content.splitlines() if 'Käse' in l][0]
         assert '+einkauf' in new_line
         # User-provided +sonst must have been stripped
         assert '+sonst' not in new_line
-        # Context should be preserved
-        assert '@market' in new_line
+
+    def test_add_rejects_foreign_context(self, share_app, client):
+        """Recipients may only contribute plain text, no cross-scope tags."""
+        with share_app.app_context():
+            share = share_service.create_share('einkauf')
+        resp = client.post(
+            f"/s/{share['token']}/add",
+            json={'title': 'Käse @market'}
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()['error'] == 'invalid_title'
+        assert 'Käse' not in _read_todo(share_app)
 
     def test_add_empty_title_rejected(self, share_app, client):
         with share_app.app_context():
@@ -207,18 +215,27 @@ class TestContextShare:
         assert resp.status_code == 403
         assert '- [ ] Eier kaufen' in _read_todo(share_app)
 
-    def test_add_forces_context_tag_and_keeps_project(self, share_app, client):
+    def test_add_forces_context_tag(self, share_app, client):
         share = self._context_share(share_app)
         resp = client.post(
             f"/s/{share['token']}/add",
-            json={'title': 'Dübel kaufen +heimwerken @woanders'}
+            json={'title': 'Dübel kaufen @woanders'}
         )
         assert resp.status_code == 200
         new_line = [l for l in _read_todo(share_app).splitlines() if 'Dübel' in l][0]
         assert '@Baumarkt' in new_line
-        # User-provided context must have been stripped, project preserved
         assert '@woanders' not in new_line
-        assert '+heimwerken' in new_line
+
+    def test_add_rejects_foreign_project(self, share_app, client):
+        """A location link must not be a write channel into other projects."""
+        share = self._context_share(share_app)
+        resp = client.post(
+            f"/s/{share['token']}/add",
+            json={'title': 'Gehaltserhoehung fordern +arbeit'}
+        )
+        assert resp.status_code == 400
+        assert resp.get_json()['error'] == 'invalid_title'
+        assert 'Gehaltserhoehung' not in _read_todo(share_app)
 
     def test_add_multiword_context_is_quoted(self, share_app, client):
         share = self._context_share(share_app, 'Grüner Markt')
@@ -267,6 +284,139 @@ class TestContextShare:
         resp = client.get('/api/shares/Baumarkt?type=bogus')
         assert resp.status_code == 400
         assert resp.get_json()['error'] == 'scope_required'
+
+
+class TestPublicAddHardening:
+    """The unauthenticated add route accepts plain task text and nothing else."""
+
+    def _share(self, share_app, scope='project', name='einkauf'):
+        with share_app.app_context():
+            return share_service.create_share(name, scope_type=scope)
+
+    def test_newline_in_title_cannot_write_a_second_line(self, share_app, client):
+        share = self._share(share_app)
+        before = len(_read_todo(share_app).splitlines())
+        resp = client.post(
+            f"/s/{share['token']}/add",
+            json={'title': 'harmlos\n- [ ] EINGESCHLEUST +arbeit'}
+        )
+        content = _read_todo(share_app)
+        # Either rejected or flattened — never a second, untagged todo line.
+        assert len(content.splitlines()) <= before + 1
+        assert 'EINGESCHLEUST +arbeit' not in content
+        if resp.status_code == 200:
+            new_line = [l for l in content.splitlines() if 'harmlos' in l][0]
+            assert '+einkauf' in new_line
+
+    def test_injected_marker_is_rejected(self, share_app, client):
+        """A smuggled ^ID would collide with an existing todo's marker."""
+        share = self._share(share_app)
+        resp = client.post(f"/s/{share['token']}/add", json={'title': 'Hijack ^aaaaaa11'})
+        assert resp.status_code == 400
+        assert resp.get_json()['error'] == 'invalid_title'
+        content = _read_todo(share_app)
+        assert 'Hijack' not in content
+        assert len([l for l in content.splitlines() if '^aaaaaa11' in l]) == 1
+
+    @pytest.mark.parametrize('title', [
+        'Frist setzen due:2027-01-01',
+        'Jede Woche rec:weekly',
+        'Mit Notiz ~note:"geheim"',
+        'Heute planen myday:2026-07-28',
+    ])
+    def test_metadata_tokens_are_rejected(self, share_app, client, title):
+        share = self._share(share_app)
+        resp = client.post(f"/s/{share['token']}/add", json={'title': title})
+        assert resp.status_code == 400
+        assert resp.get_json()['error'] == 'invalid_title'
+
+    def test_tag_only_title_is_rejected(self, share_app, client):
+        """Would otherwise store a todo whose title is its own due:/^marker."""
+        share = self._share(share_app, scope='context', name='Baumarkt')
+        before = _read_todo(share_app)
+        resp = client.post(f"/s/{share['token']}/add", json={'title': '+heimwerken'})
+        assert resp.status_code == 400
+        assert _read_todo(share_app) == before
+
+    def test_email_address_is_not_silently_destroyed(self, share_app, client):
+        """An @-address must not be quietly deleted from the stored text."""
+        share = self._share(share_app, scope='context', name='Baumarkt')
+        resp = client.post(
+            f"/s/{share['token']}/add",
+            json={'title': 'Angebot bei info@baumarkt-mueller.de anfragen'}
+        )
+        content = _read_todo(share_app)
+        if resp.status_code == 200:
+            assert 'info@baumarkt-mueller.de' in content
+        else:
+            # Rejected with a reason the UI explains — no mangled text stored.
+            assert resp.get_json()['error'] == 'invalid_title'
+            assert 'Angebot bei info anfragen' not in content
+
+
+class TestScopeBoundaries:
+    def test_share_covers_only_the_primary_tag(self, share_app, client):
+        """The link must expose exactly the group the owner clicked."""
+        with open(share_app.config['TODO_PATH'], 'a', encoding='utf-8') as f:
+            f.write('- [ ] Geheimes Geschenk @zuhause @Baumarkt ^dddddd11\n')
+        with share_app.app_context():
+            share = share_service.create_share('Baumarkt', scope_type=share_service.SCOPE_CONTEXT)
+        body = client.get(f"/s/{share['token']}").get_data(as_text=True)
+        assert 'Schrauben holen' in body
+        assert 'Geheimes Geschenk' not in body
+        assert client.post(f"/s/{share['token']}/toggle/dddddd11").status_code == 403
+
+    def test_scope_matching_does_not_fold_sharp_s(self, share_app, client):
+        """casefold() would merge +Straßenfest and +Strassenfest into one share."""
+        with open(share_app.config['TODO_PATH'], 'a', encoding='utf-8') as f:
+            f.write('- [ ] Fest planen +Straßenfest ^eeeeee11\n')
+            f.write('- [ ] Buden aufbauen +Strassenfest ^eeeeee22\n')
+        with share_app.app_context():
+            share = share_service.create_share('Straßenfest')
+        body = client.get(f"/s/{share['token']}").get_data(as_text=True)
+        assert 'Fest planen' in body
+        assert 'Buden aufbauen' not in body
+        assert client.post(f"/s/{share['token']}/toggle/eeeeee22").status_code == 403
+
+    def test_non_ascii_token_returns_404_not_500(self, share_app, client):
+        with share_app.app_context():
+            share_service.create_share('einkauf')
+        assert client.get('/s/töken').status_code == 404
+
+
+class TestOwnerApiHardening:
+    def test_name_is_not_double_decoded(self, share_app, client):
+        """unquote() on an already-decoded path segment corrupts '%' names."""
+        _login(client)
+        resp = client.post('/api/shares/Sale%20100%25ab')
+        assert resp.status_code == 200
+        assert resp.get_json()['name'] == 'Sale 100%ab'
+        with share_app.app_context():
+            assert share_service.get_share_by_project('Sale 100%ab') is not None
+
+    def test_empty_type_is_rejected(self, share_app, client):
+        """An empty type= must not silently target the project scope."""
+        _login(client)
+        with share_app.app_context():
+            proj = share_service.create_share('Baumarkt')
+        resp = client.delete('/api/shares/Baumarkt?type=')
+        assert resp.status_code == 400
+        with share_app.app_context():
+            assert share_service.get_share_by_token(proj['token']) is not None
+
+    def test_recreate_adopts_new_casing(self, share_app, client):
+        _login(client)
+        first = client.post('/api/shares/Einkauf').get_json()
+        second = client.post('/api/shares/EINKAUF').get_json()
+        assert second['token'] == first['token']
+        assert second['name'] == 'EINKAUF'
+        with share_app.app_context():
+            stored = share_service.get_share_by_token(first['token'])
+            assert stored['project'] == 'EINKAUF'
+        # Tasks added through the link carry the current casing
+        client.post(f"/s/{first['token']}/add", json={'title': 'Kaffee'})
+        new_line = [l for l in _read_todo(share_app).splitlines() if 'Kaffee' in l][0]
+        assert '+EINKAUF' in new_line
 
 
 class TestShareButtonRendering:
