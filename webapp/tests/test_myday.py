@@ -14,6 +14,7 @@ from app.services import todo_service
 
 TODAY = date.today().strftime("%Y-%m-%d")
 YESTERDAY = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+TOMORROW = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
 
 
 class _MemoryStorage:
@@ -272,6 +273,19 @@ class TestMydayView:
         assert (html.index('Active planned task')
                 < html.index('Erledigt')
                 < html.index('Done planned task'))
+
+    def test_myday_picker_suggests_later_today(self, client, monkeypatch):
+        # A todo due later today belongs in the suggestions, not in
+        # "other open" — the split goes by calendar day, not wall clock.
+        self._login(client)
+        self._patch(monkeypatch, [
+            f"- [ ] Later today due:{TODAY}T23:59 ^aaa111",
+            f"- [ ] Tomorrow task due:{TOMORROW}T00:01 ^bbb222",
+        ], settings={'sort_mode': 'date'})
+        response = client.get('/?view=myday&partial=1')
+        html = response.get_data(as_text=True)
+        assert html.index('Later today') < html.index('Weitere offene')
+        assert html.index('Weitere offene') < html.index('Tomorrow task')
 
     def test_myday_picker_grouped_by_topic(self, client, monkeypatch):
         # In topic mode the picker sections are subdivided by project.

@@ -3911,7 +3911,7 @@ impl AppState {
     /// (erledigte bleiben durchgestrichen sichtbar, unter "Erledigt" ans Ende
     /// sortiert), darunter der Planungs-Picker mit fälligen Vorschlägen
     /// zuerst, je nach Sortiermodus nach Thema/Ort untergliedert.
-    fn populate_myday_view(&self, items: Vec<TodoItem>, now: NaiveDateTime, today: NaiveDate) {
+    fn populate_myday_view(&self, items: Vec<TodoItem>, today: NaiveDate) {
         let mode = *self.sort_mode.borrow();
         let (canon_projects, canon_contexts) = self.canonical_tag_maps();
 
@@ -3942,10 +3942,13 @@ impl AppState {
         let mut candidates: Vec<TodoItem> =
             rest.into_iter().filter(|todo| !todo.done).collect();
         candidates.sort_by_key(|todo| todo.due.unwrap_or(NaiveDateTime::MAX));
+        // Fällig wird kalendertagweise beurteilt, nicht nach Uhrzeit: was
+        // heute später fällig ist, gehört in die Vorschläge und nicht zu den
+        // übrigen offenen Aufgaben.
         let (suggestions, other_open): (Vec<TodoItem>, Vec<TodoItem>) =
             candidates.into_iter().partition(|todo| {
                 todo.due
-                    .map(|d| d <= now && d.date().year() != 9999)
+                    .map(|d| d.date() <= today && d.date().year() != 9999)
                     .unwrap_or(false)
             });
 
@@ -4021,7 +4024,7 @@ impl AppState {
 
         if search_term.is_empty() {
             if myday_only {
-                self.populate_myday_view(items, now, today);
+                self.populate_myday_view(items, today);
             } else {
                 let mode = *self.sort_mode.borrow();
                 let (canon_projects, canon_contexts) = self.canonical_tag_maps();

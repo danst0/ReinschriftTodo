@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.25.7" date="2026-08-11">
+      <description>
+        <ul>
+          <li>My Day: tasks due later today now show up under the due suggestions instead of being treated as future tasks</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.25.6" date="2026-07-28">
       <description>
         <ul>

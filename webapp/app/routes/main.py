@@ -362,12 +362,18 @@ def _render_myday_view(todos, **template_args):
             d['picker_group'] = _picker_group(d)
         return dicts
 
-    suggestions = _prepare_picker(
-        [x for x in candidates
-         if x.due and x.due <= now and not x.due_is_sometime])
+    def _due_for_today(x) -> bool:
+        """Whether a todo belongs in the suggestions section.
+
+        Compares calendar days, not wall clock: a todo due later today is
+        still something to plan for today, not a future task.
+        """
+        return bool(x.due) and not x.due_is_sometime \
+            and x.due.date() <= now.date()
+
+    suggestions = _prepare_picker([x for x in candidates if _due_for_today(x)])
     other_open = _prepare_picker(
-        [x for x in candidates
-         if not (x.due and x.due <= now and not x.due_is_sometime)])
+        [x for x in candidates if not _due_for_today(x)])
 
     if request.args.get('partial'):
         return render_template('_myday_view.html',
