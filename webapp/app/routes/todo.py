@@ -20,9 +20,11 @@ from app.services import (
     insert_line,
 )
 from app.services.storage import read_content_with_fingerprint, write_content_checked
+from app.services.todo_service import render_tagged
 from app.services.undo_service import push_undo, pop_undo
 from app.utils.markers import ensure_marker, generate_marker
 from app.utils.escaping import escape_note, normalize_note
+from app.utils.helpers import split_tag_input
 from app.utils.helpers import format_due, normalize_prefix
 
 todo_bp = Blueprint('todo', __name__)
@@ -102,9 +104,9 @@ def _handle_edit_post(lines, line_index):
     note_raw = request.form.get('note')
     done = request.form.get('done') == 'on'
 
-    # Parse space-separated projects and contexts
-    projects = [p.strip().lstrip('+') for p in projects_raw.split() if p.strip().lstrip('+')]
-    contexts = [c.strip().lstrip('@') for c in contexts_raw.split() if c.strip().lstrip('@')]
+    # '+'/'@' delimit the names, so multi-word tags survive editing.
+    projects = split_tag_input(projects_raw, '+')
+    contexts = split_tag_input(contexts_raw, '@')
 
     due_dt = parse_due_input(due_str)
     note_value = normalize_note(note_raw)
@@ -133,10 +135,10 @@ def _handle_edit_post(lines, line_index):
     new_line += title.strip()
 
     for project in projects:
-        new_line += f" +{project}"
+        new_line += f" {render_tagged('+', project)}"
 
     for context in contexts:
-        new_line += f" @{context}"
+        new_line += f" {render_tagged('@', context)}"
 
     if due_dt:
         new_line += f" due:{format_due(due_dt)}"
@@ -172,9 +174,9 @@ def _handle_edit_post(lines, line_index):
                 clone_title = title.strip()
                 new_rec_line = "- [ ] " + clone_title
                 for project in projects:
-                    new_rec_line += f" +{project}"
+                    new_rec_line += f" {render_tagged('+', project)}"
                 for context in contexts:
-                    new_rec_line += f" @{context}"
+                    new_rec_line += f" {render_tagged('@', context)}"
                 new_rec_line += f" due:{format_due(next_due)}"
                 new_rec_line += f" rec:{recurrence.strip()}"
                 if reference and reference.strip():

@@ -2,7 +2,10 @@
 
 from app.utils.markers import generate_marker, ensure_marker
 from app.utils.escaping import escape_note, unescape_note, normalize_note
-from app.utils.helpers import parse_flag, format_due, format_due_display, is_sometime
+from app.utils.helpers import (
+    parse_flag, format_due, format_due_display, is_sometime,
+    split_tag_input, split_ai_tags,
+)
 
 __all__ = [
     'generate_marker',
@@ -14,4 +17,6 @@ __all__ = [
     'format_due',
     'format_due_display',
     'is_sometime',
+    'split_tag_input',
+    'split_ai_tags',
 ]

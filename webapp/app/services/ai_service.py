@@ -12,11 +12,46 @@ from flask import current_app
 
 from app.services.todo_service import load_todos
 from app.services.date_service import recent_window_bounds
-from app.utils.helpers import canonical_casing_map
+from app.utils.helpers import canonical_casing_map, split_ai_tags
 
 logger = logging.getLogger(__name__)
 
 RECENT_CONTEXT_WINDOW_DAYS = 30
+
+
+def _normalize_parsed_tags(parsed: dict, recent_context: dict) -> None:
+    """Resolve the model's project/context fields into normalized tag lists.
+
+    A plain value stays one name even when it contains spaces ("Big Project");
+    only an explicitly prefixed list ("+haushalt +urlaub") is split. Names are
+    then snapped onto an existing tag when they only differ in case.
+    """
+    existing_projects = recent_context.get('topics') or []
+    existing_contexts = recent_context.get('locations') or []
+
+    def normalize(values, existing):
+        result = []
+        for value in values:
+            match = next((e for e in existing if e.lower() == value.lower()), value)
+            result.append(match)
+        return result
+
+    def collect(raw, prefix_char):
+        if isinstance(raw, str):
+            return split_ai_tags(raw, prefix_char)
+        if isinstance(raw, list):
+            return [name for item in raw if item for name in split_ai_tags(str(item), prefix_char)]
+        return []
+
+    if parsed.get('projects'):
+        parsed['projects'] = normalize(collect(parsed['projects'], '+'), existing_projects)
+    elif parsed.get('project'):
+        parsed['projects'] = normalize(collect(parsed['project'], '+'), existing_projects)
+
+    if parsed.get('contexts'):
+        parsed['contexts'] = normalize(collect(parsed['contexts'], '@'), existing_contexts)
+    elif parsed.get('context'):
+        parsed['contexts'] = normalize(collect(parsed['context'], '@'), existing_contexts)
 
 
 def collect_recent_context(todos: list, window_days: int = RECENT_CONTEXT_WINDOW_DAYS) -> dict[str, Any]:
@@ -395,70 +430,7 @@ def parse_nlp(text: str) -> Optional[dict[str, Any]]:
             parsed['note'] = None
 
         # Normalize tag case to match existing tags
-        existing_projects = recent_context.get('topics') or []
-        existing_contexts = recent_context.get('locations') or []
-
-        # Handle projects - can be string (space-separated) or list
-        if parsed.get('projects'):
-            projects_input = parsed['projects']
-            if isinstance(projects_input, str):
-                projects = [p.strip().lstrip('+') for p in projects_input.split() if p.strip().lstrip('+')]
-            elif isinstance(projects_input, list):
-                projects = [p.strip().lstrip('+') for p in projects_input if p and p.strip().lstrip('+')]
-            else:
-                projects = []
-            # Normalize case
-            normalized_projects = []
-            for proj in projects:
-                matched = False
-                for existing in existing_projects:
-                    if existing.lower() == proj.lower():
-                        normalized_projects.append(existing)
-                        matched = True
-                        break
-                if not matched:
-                    normalized_projects.append(proj)
-            parsed['projects'] = normalized_projects
-        elif parsed.get('project'):
-            # Handle single project field
-            proj = parsed['project'].strip().lstrip('+')
-            matched_proj = proj
-            for existing in existing_projects:
-                if existing.lower() == proj.lower():
-                    matched_proj = existing
-                    break
-            parsed['projects'] = [matched_proj] if matched_proj else []
-
-        # Handle contexts - can be string (space-separated) or list
-        if parsed.get('contexts'):
-            contexts_input = parsed['contexts']
-            if isinstance(contexts_input, str):
-                contexts = [c.strip().lstrip('@') for c in contexts_input.split() if c.strip().lstrip('@')]
-            elif isinstance(contexts_input, list):
-                contexts = [c.strip().lstrip('@') for c in contexts_input if c and c.strip().lstrip('@')]
-            else:
-                contexts = []
-            # Normalize case
-            normalized_contexts = []
-            for ctx in contexts:
-                matched = False
-                for existing in existing_contexts:
-                    if existing.lower() == ctx.lower():
-                        normalized_contexts.append(existing)
-                        matched = True
-                        break
-                if not matched:
-                    normalized_contexts.append(ctx)
-            parsed['contexts'] = normalized_contexts
-        elif parsed.get('context'):
-            # Handle single context field
-            ctx = parsed['context'].strip().lstrip('@')
-            matched_ctx = ctx
-            for existing in existing_contexts:
-                if existing.lower() == ctx.lower():
-                    matched_ctx = existing
-                    break
-            parsed['contexts'] = [matched_ctx] if matched_ctx else []
+        _normalize_parsed_tags(parsed, recent_context)
 
         # Remove internal fields from response
         parsed.pop('rejected', None)
@@ -616,70 +588,7 @@ def parse_nlp_with_debug(text: str) -> dict[str, Any]:
             parsed['note'] = None
 
         # Normalize tag case to match existing tags
-        existing_projects = recent_context.get('topics') or []
-        existing_contexts = recent_context.get('locations') or []
-
-        # Handle projects - can be string (space-separated) or list
-        if parsed.get('projects'):
-            projects_input = parsed['projects']
-            if isinstance(projects_input, str):
-                projects = [p.strip().lstrip('+') for p in projects_input.split() if p.strip().lstrip('+')]
-            elif isinstance(projects_input, list):
-                projects = [p.strip().lstrip('+') for p in projects_input if p and p.strip().lstrip('+')]
-            else:
-                projects = []
-            # Normalize case
-            normalized_projects = []
-            for proj in projects:
-                matched = False
-                for existing in existing_projects:
-                    if existing.lower() == proj.lower():
-                        normalized_projects.append(existing)
-                        matched = True
-                        break
-                if not matched:
-                    normalized_projects.append(proj)
-            parsed['projects'] = normalized_projects
-        elif parsed.get('project'):
-            # Handle single project field
-            proj = parsed['project'].strip().lstrip('+')
-            matched_proj = proj
-            for existing in existing_projects:
-                if existing.lower() == proj.lower():
-                    matched_proj = existing
-                    break
-            parsed['projects'] = [matched_proj] if matched_proj else []
-
-        # Handle contexts - can be string (space-separated) or list
-        if parsed.get('contexts'):
-            contexts_input = parsed['contexts']
-            if isinstance(contexts_input, str):
-                contexts = [c.strip().lstrip('@') for c in contexts_input.split() if c.strip().lstrip('@')]
-            elif isinstance(contexts_input, list):
-                contexts = [c.strip().lstrip('@') for c in contexts_input if c and c.strip().lstrip('@')]
-            else:
-                contexts = []
-            # Normalize case
-            normalized_contexts = []
-            for ctx in contexts:
-                matched = False
-                for existing in existing_contexts:
-                    if existing.lower() == ctx.lower():
-                        normalized_contexts.append(existing)
-                        matched = True
-                        break
-                if not matched:
-                    normalized_contexts.append(ctx)
-            parsed['contexts'] = normalized_contexts
-        elif parsed.get('context'):
-            # Handle single context field
-            ctx = parsed['context'].strip().lstrip('@')
-            matched_ctx = ctx
-            for existing in existing_contexts:
-                if existing.lower() == ctx.lower():
-                    matched_ctx = existing
-                    break
-            parsed['contexts'] = [matched_ctx] if matched_ctx else []
+        _normalize_parsed_tags(parsed, recent_context)
 
         # Store full parsed result (keep rejected/confidence for debug)
         # Auto-fill note with original input text

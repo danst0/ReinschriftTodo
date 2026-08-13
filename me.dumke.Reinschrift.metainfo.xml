@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.25.8" date="2026-08-13">
+      <description>
+        <ul>
+          <li>Projects and locations with spaces in their name survive editing — saving a task no longer splits "Big Project" into two separate tags</li>
+          <li>The project and location fields now treat + and @ as the separator, so multi-word names can be typed directly</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.25.7" date="2026-08-11">
       <description>
         <ul>

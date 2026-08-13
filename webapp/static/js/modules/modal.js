@@ -54,11 +54,12 @@ export function openEditModal(lineIndex, config = {}) {
 
             document.getElementById('edit-title').value = data.title;
 
-            // Format projects with + prefix, space-separated
+            // Format projects with + prefix — the '+' delimits the names on save,
+            // so spaces inside a name survive the round-trip (issue #9).
             const projects = data.projects || [];
             document.getElementById('edit-projects').value = projects.map(p => `+${p}`).join(' ');
 
-            // Format contexts with @ prefix, space-separated
+            // Same for contexts with the @ prefix.
             const contexts = data.contexts || [];
             document.getElementById('edit-contexts').value = contexts.map(c => `@${c}`).join(' ');
 

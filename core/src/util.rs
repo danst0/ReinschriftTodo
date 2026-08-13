@@ -70,6 +70,69 @@ pub fn normalize_token(value: Option<&str>) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
+/// Split the free-form content of a dedicated project/context entry field into
+/// individual tag names.
+///
+/// The `prefix` (`+` or `@`) acts as the delimiter whenever it is present, so
+/// spaces inside a name are preserved: `+Big Project +Other` yields
+/// `["Big Project", "Other"]`. This is what makes multi-word names survive a
+/// round-trip through the edit dialogs, which render them as `+Big Project`.
+/// Input without any prefix keeps the historical whitespace split
+/// (`steuer buero` → `["steuer", "buero"]`), and the quoted form used in the
+/// markdown file (`+"Big Project"`) is accepted as well.
+///
+/// Only for fields that contain nothing but tags — free-text input such as the
+/// quick-add entry stays quote-based, since there the prefix cannot swallow
+/// everything up to the next tag without eating the title.
+pub fn split_tag_input(raw: &str, prefix: char) -> Vec<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+
+    let starts = prefix_positions(trimmed, prefix);
+    if starts.is_empty() {
+        return trimmed.split_whitespace().map(str::to_string).collect();
+    }
+
+    let mut names: Vec<String> = Vec::new();
+    // Bare text before the first prefix (e.g. `foo +bar`) follows the legacy rule.
+    names.extend(trimmed[..starts[0]].split_whitespace().map(str::to_string));
+
+    for (idx, start) in starts.iter().enumerate() {
+        let end = starts.get(idx + 1).copied().unwrap_or(trimmed.len());
+        let segment = trimmed[start + prefix.len_utf8()..end].trim();
+        if let Some(name) = normalize_token(Some(&unquote_tag(segment))) {
+            names.push(name);
+        }
+    }
+
+    names
+}
+
+/// Byte offsets of every `prefix` that starts a token (string start or after
+/// whitespace) — a `+` inside a name like `C++` must not split it.
+fn prefix_positions(text: &str, prefix: char) -> Vec<usize> {
+    let mut positions = Vec::new();
+    let mut at_token_start = true;
+    for (idx, ch) in text.char_indices() {
+        if ch == prefix && at_token_start {
+            positions.push(idx);
+        }
+        at_token_start = ch.is_whitespace();
+    }
+    positions
+}
+
+/// Strip the quoted form (`"Big Project"`) if present, unescaping the content.
+fn unquote_tag(segment: &str) -> String {
+    if segment.len() >= 2 && segment.starts_with('"') && segment.ends_with('"') {
+        unescape_note(&segment[1..segment.len() - 1])
+    } else {
+        segment.to_string()
+    }
+}
+
 /// Build a map from the lowercased form of each token (project/context) to its
 /// most frequently used casing. Ties are broken lexically for determinism.
 /// Used to aggregate case variants (e.g. `PixelMatrix` vs. `Pixelmatrix`) into
@@ -170,6 +233,47 @@ mod tests {
         assert_eq!(map.get("keller").map(String::as_str), Some("Keller"));
         assert_eq!(canonicalize_token(&map, "pixelmatrix"), "PixelMatrix");
         assert_eq!(canonicalize_token(&map, "Unbekannt"), "Unbekannt");
+    }
+
+    #[test]
+    fn split_tag_input_keeps_spaces_after_prefix() {
+        assert_eq!(split_tag_input("+Big Project", '+'), vec!["Big Project"]);
+        assert_eq!(
+            split_tag_input("+Big Project +Other Thing", '+'),
+            vec!["Big Project", "Other Thing"]
+        );
+        assert_eq!(
+            split_tag_input("@Home Office @Auf Reisen", '@'),
+            vec!["Home Office", "Auf Reisen"]
+        );
+    }
+
+    #[test]
+    fn split_tag_input_without_prefix_splits_on_whitespace() {
+        assert_eq!(split_tag_input("steuer buero", '+'), vec!["steuer", "buero"]);
+        assert_eq!(split_tag_input("keller", '@'), vec!["keller"]);
+    }
+
+    #[test]
+    fn split_tag_input_accepts_quoted_form() {
+        assert_eq!(
+            split_tag_input(r#"+"Big Project" +plain"#, '+'),
+            vec!["Big Project", "plain"]
+        );
+    }
+
+    #[test]
+    fn split_tag_input_ignores_prefix_inside_name() {
+        assert_eq!(split_tag_input("+C++ Kurs", '+'), vec!["C++ Kurs"]);
+    }
+
+    #[test]
+    fn split_tag_input_handles_edges() {
+        assert!(split_tag_input("   ", '+').is_empty());
+        assert!(split_tag_input("+", '+').is_empty());
+        assert_eq!(split_tag_input("+  Big Project  ", '+'), vec!["Big Project"]);
+        // Bare text before the first prefix keeps the legacy whitespace split.
+        assert_eq!(split_tag_input("a b +Big Project", '+'), vec!["a", "b", "Big Project"]);
     }
 
     #[test]

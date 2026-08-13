@@ -174,10 +174,11 @@ fn create_suggestion_entry(
                 let suggestion_with_prefix = format!("{}{}", prefix_owned, suggestion);
                 let current = entry_clone.text();
 
-                // Check if already present
-                let already_present = current
-                    .split_whitespace()
-                    .any(|s| s == suggestion_with_prefix);
+                // Check if already present (tag-aware: names may contain spaces)
+                let prefix_char = prefix_owned.chars().next().unwrap_or('+');
+                let already_present = data::split_tag_input(&current, prefix_char)
+                    .iter()
+                    .any(|s| s == suggestion);
 
                 if !already_present {
                     let new_text = if current.is_empty() {
@@ -4730,15 +4731,13 @@ impl AppState {
         let state = Rc::clone(self);
         let dialog_assign = dialog.clone();
         assign_btn.connect_clicked(move |_| {
-            let project = project_entry.text().trim().trim_start_matches('+').trim().to_string();
-            let context = context_entry.text().trim().trim_start_matches('@').trim().to_string();
-            if project.is_empty() && context.is_empty() {
+            let projects = data::split_tag_input(&project_entry.text(), '+');
+            let contexts = data::split_tag_input(&context_entry.text(), '@');
+            if projects.is_empty() && contexts.is_empty() {
                 dialog_assign.close();
                 return;
             }
-            let project_opt = (!project.is_empty()).then_some(project.as_str());
-            let context_opt = (!context.is_empty()).then_some(context.as_str());
-            let result = data::assign_project_context_batch(&keys, project_opt, context_opt);
+            let result = data::assign_project_context_batch(&keys, &projects, &contexts);
             dialog_assign.close();
             state.finish_bulk_action(result, &t("{} items updated"));
         });
@@ -5015,19 +5014,9 @@ impl AppState {
                 }
             }
 
-            let project_text = project_entry_save.text().trim().to_string();
-            let projects_value: Vec<String> = project_text
-                .split_whitespace()
-                .map(|s| s.trim_start_matches('+').to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-
-            let context_text = context_entry_save.text().trim().to_string();
-            let contexts_value: Vec<String> = context_text
-                .split_whitespace()
-                .map(|s| s.trim_start_matches('@').to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
+            // `+`/`@` delimit the names here, so multi-word tags survive editing.
+            let projects_value = data::split_tag_input(&project_entry_save.text(), '+');
+            let contexts_value = data::split_tag_input(&context_entry_save.text(), '@');
 
             let due_text = due_entry_save.text().trim().to_string();
             let due_value = if due_text.is_empty() {
@@ -5373,6 +5362,35 @@ fn format_metadata(item: &TodoItem) -> String {
     parts.join(" • ")
 }
 
+/// Interpret a `project`/`context` value returned by the model. The prompt asks
+/// for one tag per field, so a plain value stays a single name even when it
+/// contains spaces (`Big Project`); only an explicitly prefixed list
+/// (`+haushalt +urlaub`) is split into several tags.
+fn split_ai_tags(raw: &str, prefix: char) -> Vec<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+    let prefixed = trimmed.starts_with(prefix)
+        || trimmed
+            .split_whitespace()
+            .any(|token| token.starts_with(prefix));
+    if prefixed {
+        data::split_tag_input(trimmed, prefix)
+    } else {
+        vec![trimmed.to_string()]
+    }
+}
+
+/// Snap a model-supplied tag onto an existing one when it only differs in case.
+fn match_known_tag(name: &str, known: &[String]) -> String {
+    known
+        .iter()
+        .find(|existing| existing.to_lowercase() == name.to_lowercase())
+        .cloned()
+        .unwrap_or_else(|| name.to_string())
+}
+
 fn build_todo_from_ai(parsed: &AiParseResult, original_text: &str) -> data::TodoItem {
     let title = parsed
         .title
@@ -5384,23 +5402,13 @@ fn build_todo_from_ai(parsed: &AiParseResult, original_text: &str) -> data::Todo
     let contexts: Vec<String> = parsed
         .context
         .as_deref()
-        .map(|c| {
-            c.split_whitespace()
-                .map(|s| s.trim().trim_start_matches('@').to_string())
-                .filter(|s| !s.is_empty())
-                .collect()
-        })
+        .map(|c| split_ai_tags(c, '@'))
         .unwrap_or_default();
 
     let projects: Vec<String> = parsed
         .project
         .as_deref()
-        .map(|p| {
-            p.split_whitespace()
-                .map(|s| s.trim().trim_start_matches('+').to_string())
-                .filter(|s| !s.is_empty())
-                .collect()
-        })
+        .map(|p| split_ai_tags(p, '+'))
         .unwrap_or_default();
 
     // Always use original input text as note
@@ -5535,17 +5543,9 @@ async fn request_ai_parse(
 
     // Normalize tag case to match existing tags
     if let Some(ref project) = parsed.project {
-        let normalized_projects: Vec<String> = project
-            .split_whitespace()
-            .map(|p| {
-                let p_clean = p.trim_start_matches('+');
-                for existing in &known_projects {
-                    if existing.to_lowercase() == p_clean.to_lowercase() {
-                        return existing.clone();
-                    }
-                }
-                p_clean.to_string()
-            })
+        let normalized_projects: Vec<String> = split_ai_tags(project, '+')
+            .into_iter()
+            .map(|p| match_known_tag(&p, &known_projects))
             .collect();
         parsed.project = Some(normalized_projects.iter()
             .map(|p| format!("+{}", p))
@@ -5553,17 +5553,9 @@ async fn request_ai_parse(
             .join(" "));
     }
     if let Some(ref context) = parsed.context {
-        let normalized_contexts: Vec<String> = context
-            .split_whitespace()
-            .map(|c| {
-                let c_clean = c.trim_start_matches('@');
-                for existing in &known_contexts {
-                    if existing.to_lowercase() == c_clean.to_lowercase() {
-                        return existing.clone();
-                    }
-                }
-                c_clean.to_string()
-            })
+        let normalized_contexts: Vec<String> = split_ai_tags(context, '@')
+            .into_iter()
+            .map(|c| match_known_tag(&c, &known_contexts))
             .collect();
         parsed.context = Some(normalized_contexts.iter()
             .map(|c| format!("@{}", c))

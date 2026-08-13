@@ -2,7 +2,6 @@
 
 import logging
 import re
-import shlex
 from dataclasses import replace
 from datetime import date, datetime
 from typing import Optional, Any
@@ -15,21 +14,10 @@ from app.services.parser import parse_line, find_line_by_marker, parse_due_input
 from app.services.date_service import next_due_date
 from app.utils.markers import generate_marker, ensure_marker
 from app.utils.escaping import escape_note
-from app.utils.helpers import format_due, normalize_prefix
+from app.utils.helpers import format_due, normalize_prefix, split_tag_input
 
 
-def _split_tag_input(raw: str, prefix_char: str) -> list[str]:
-    """Tokenize free-form project/context input, honoring shell-like quoting."""
-    try:
-        tokens = shlex.split(raw)
-    except ValueError:
-        # Unmatched quotes — fall back to whitespace split so the user still
-        # sees their input saved.
-        tokens = raw.split()
-    return [t for t in (tok.strip().lstrip(prefix_char).strip() for tok in tokens) if t]
-
-
-def _render_tagged(prefix: str, name: str) -> str:
+def render_tagged(prefix: str, name: str) -> str:
     """Render a +project / @context token, quoting when the name needs it."""
     needs_quote = any(ch.isspace() or ch in '"\\' for ch in name)
     if needs_quote:
@@ -67,12 +55,12 @@ def _render_todo_line(item: TodoItem, original_line: str,
     for project in item.projects:
         project_clean = normalize_prefix(project, '+')
         if project_clean:
-            new_line += f" {_render_tagged('+', project_clean)}"
+            new_line += f" {render_tagged('+', project_clean)}"
 
     for context in item.contexts:
         context_clean = normalize_prefix(context, '@')
         if context_clean:
-            new_line += f" {_render_tagged('@', context_clean)}"
+            new_line += f" {render_tagged('@', context_clean)}"
 
     due_value = due if due is not None else item.due
     if due_value:
@@ -270,11 +258,11 @@ def update_todo_by_marker(marker: str, updates: dict[str, Any]) -> bool:
     if not title:
         title = existing.title or ''
 
-    # Handle projects - can be a string (shell-quoted) or list
+    # Handle projects - can be a '+'-delimited string or a list
     if 'projects' in updates:
         projects_input = updates.get('projects')
         if isinstance(projects_input, str):
-            projects = _split_tag_input(projects_input, '+')
+            projects = split_tag_input(projects_input, '+')
         elif isinstance(projects_input, list):
             projects = [p.strip().lstrip('+').strip() for p in projects_input if p and p.strip().lstrip('+').strip()]
         else:
@@ -282,11 +270,11 @@ def update_todo_by_marker(marker: str, updates: dict[str, Any]) -> bool:
     else:
         projects = existing.projects
 
-    # Handle contexts - can be a string (shell-quoted) or list
+    # Handle contexts - can be a '@'-delimited string or a list
     if 'contexts' in updates:
         contexts_input = updates.get('contexts')
         if isinstance(contexts_input, str):
-            contexts = _split_tag_input(contexts_input, '@')
+            contexts = split_tag_input(contexts_input, '@')
         elif isinstance(contexts_input, list):
             contexts = [c.strip().lstrip('@').strip() for c in contexts_input if c and c.strip().lstrip('@').strip()]
         else:
@@ -315,9 +303,9 @@ def update_todo_by_marker(marker: str, updates: dict[str, Any]) -> bool:
     new_line += f" {title}"
 
     for project in projects:
-        new_line += f" {_render_tagged('+', project)}"
+        new_line += f" {render_tagged('+', project)}"
     for context in contexts:
-        new_line += f" {_render_tagged('@', context)}"
+        new_line += f" {render_tagged('@', context)}"
     if due_dt:
         new_line += f" due:{format_due(due_dt)}"
     new_line += _myday_segment(existing)

@@ -51,6 +51,9 @@ pub use crate::undo::can_undo;
 // Re-export reminders
 pub use crate::reminders::{get_due_reminders, overdue_summary};
 
+// Re-export util
+pub use crate::util::split_tag_input;
+
 // Re-export util (used by tests in lib.rs)
 #[allow(unused_imports)]
 pub(crate) use crate::util::encode_base36;

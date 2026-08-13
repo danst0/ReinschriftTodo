@@ -4,6 +4,8 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable
 from datetime import datetime
 
+from app.utils.escaping import unescape_note
+
 
 def parse_flag(value, default: bool = True) -> bool:
     """Parse a boolean flag from various input types."""
@@ -69,3 +71,60 @@ def normalize_prefix(token: str | None, prefix_char: str) -> str | None:
         return None
     normalized = token.lstrip(prefix_char).strip()
     return normalized if normalized else None
+
+
+def _unquote_tag(segment: str) -> str:
+    """Strip the quoted form ('"Big Project"') used in the markdown file."""
+    if len(segment) >= 2 and segment.startswith('"') and segment.endswith('"'):
+        return unescape_note(segment[1:-1])
+    return segment
+
+
+def split_tag_input(raw: str | None, prefix_char: str) -> list[str]:
+    """Split a dedicated project/context input field into individual tag names.
+
+    Mirrors `split_tag_input` in the Rust core: the prefix ('+' or '@') acts as
+    the delimiter whenever it is present, so spaces inside a name survive
+    ('+Big Project +Other' -> ['Big Project', 'Other']). Input without any
+    prefix keeps the historical whitespace split ('a b' -> ['a', 'b']), and the
+    quoted form ('+"Big Project"') is accepted too.
+
+    Only for fields that contain nothing but tags — free text such as the
+    quick-add box stays quote-based, otherwise a prefix would eat the title.
+    """
+    trimmed = (raw or '').strip()
+    if not trimmed:
+        return []
+
+    # Prefix positions that start a token — a '+' inside a name (C++) must not split.
+    starts = [
+        idx for idx, ch in enumerate(trimmed)
+        if ch == prefix_char and (idx == 0 or trimmed[idx - 1].isspace())
+    ]
+    if not starts:
+        return trimmed.split()
+
+    names = trimmed[:starts[0]].split()
+    for idx, start in enumerate(starts):
+        end = starts[idx + 1] if idx + 1 < len(starts) else len(trimmed)
+        name = _unquote_tag(trimmed[start + 1:end].strip()).lstrip(prefix_char).strip()
+        if name:
+            names.append(name)
+    return names
+
+
+def split_ai_tags(raw: str | None, prefix_char: str) -> list[str]:
+    """Interpret a project/context value returned by the model.
+
+    The prompt asks for one tag per field, so a plain value stays a single name
+    even when it contains spaces ('Big Project'); only an explicitly prefixed
+    list ('+haushalt +urlaub') is split into several tags.
+    """
+    trimmed = (raw or '').strip()
+    if not trimmed:
+        return []
+    if trimmed.startswith(prefix_char) or any(
+        token.startswith(prefix_char) for token in trimmed.split()
+    ):
+        return split_tag_input(trimmed, prefix_char)
+    return [trimmed]

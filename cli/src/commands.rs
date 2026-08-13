@@ -26,12 +26,11 @@ const DEFAULT_DUE_TIME: NaiveTime = match NaiveTime::from_hms_opt(0, 0, 0) {
     None => panic!("invalid time"),
 };
 
-fn parse_space_separated_tags(input: &str, prefix: char) -> Vec<String> {
-    input
-        .split_whitespace()
-        .map(|s| s.trim_start_matches(prefix).to_string())
-        .filter(|s| !s.is_empty())
-        .collect()
+/// Tokenize a `--project` / `--context` value. `+`/`@` delimit the names, so
+/// multi-word tags stay intact (`--project "+Big Project"`); a value without
+/// any prefix keeps the plain whitespace split (`--project "a b"`).
+fn parse_tag_argument(input: &str, prefix: char) -> Vec<String> {
+    data::split_tag_input(input, prefix)
 }
 
 pub fn list(
@@ -138,8 +137,8 @@ pub fn add(
     let item = TodoItem {
         key: TodoKey { line_index: 0, marker: None },
         title: title.to_string(),
-        projects: project.map(|s| parse_space_separated_tags(s, '+')).unwrap_or_default(),
-        contexts: context.map(|s| parse_space_separated_tags(s, '@')).unwrap_or_default(),
+        projects: project.map(|s| parse_tag_argument(s, '+')).unwrap_or_default(),
+        contexts: context.map(|s| parse_tag_argument(s, '@')).unwrap_or_default(),
         due: due_dt,
         myday: None,
         reference: None,
@@ -174,10 +173,10 @@ pub fn edit(
         item.title = t.to_string();
     }
     if let Some(p) = project {
-        item.projects = if p.is_empty() { Vec::new() } else { parse_space_separated_tags(p, '+') };
+        item.projects = if p.is_empty() { Vec::new() } else { parse_tag_argument(p, '+') };
     }
     if let Some(c) = context {
-        item.contexts = if c.is_empty() { Vec::new() } else { parse_space_separated_tags(c, '@') };
+        item.contexts = if c.is_empty() { Vec::new() } else { parse_tag_argument(c, '@') };
     }
     if let Some(d) = due {
         item.due = if d.is_empty() { None } else { Some(parse_date(d)?) };

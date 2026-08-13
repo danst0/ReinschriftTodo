@@ -16,6 +16,8 @@ from app.utils.helpers import (
     format_due,
     format_due_display,
     is_sometime,
+    split_tag_input,
+    split_ai_tags,
 )
 
 
@@ -232,3 +234,55 @@ class TestIsSometime:
     def test_none_is_not_sometime(self):
         """Test None is not sometime."""
         assert is_sometime(None) is False
+
+
+class TestSplitTagInput:
+    """Tests for issue #9: '+'/'@' delimit tags, so names keep their spaces."""
+
+    def test_prefix_keeps_spaces(self):
+        """A prefixed name runs until the next prefix."""
+        assert split_tag_input("+Big Project", '+') == ["Big Project"]
+        assert split_tag_input("+Big Project +Other Thing", '+') == ["Big Project", "Other Thing"]
+
+    def test_contexts_behave_like_projects(self):
+        """The same rule applies to @contexts."""
+        assert split_tag_input("@Home Office @Auf Reisen", '@') == ["Home Office", "Auf Reisen"]
+
+    def test_without_prefix_splits_on_whitespace(self):
+        """Legacy input without any prefix keeps the whitespace split."""
+        assert split_tag_input("steuer buero", '+') == ["steuer", "buero"]
+        assert split_tag_input("keller", '@') == ["keller"]
+
+    def test_accepts_quoted_form(self):
+        """The quoted form used in the markdown file still works."""
+        assert split_tag_input('+"Big Project" +plain', '+') == ["Big Project", "plain"]
+
+    def test_prefix_inside_name_does_not_split(self):
+        """Only a prefix at token start delimits — 'C++' stays intact."""
+        assert split_tag_input("+C++ Kurs", '+') == ["C++ Kurs"]
+
+    def test_edge_cases(self):
+        """Empty, blank and prefix-only input yield no tags."""
+        assert split_tag_input("", '+') == []
+        assert split_tag_input("   ", '+') == []
+        assert split_tag_input("+", '+') == []
+        assert split_tag_input(None, '+') == []
+        assert split_tag_input("+  Big Project  ", '+') == ["Big Project"]
+
+    def test_bare_text_before_first_prefix(self):
+        """Text before the first prefix follows the legacy rule."""
+        assert split_tag_input("a b +Big Project", '+') == ["a", "b", "Big Project"]
+
+
+class TestSplitAiTags:
+    """A model-supplied value is one tag unless it is explicitly prefixed."""
+
+    def test_plain_value_stays_one_name(self):
+        assert split_ai_tags("Big Project", '+') == ["Big Project"]
+
+    def test_prefixed_list_is_split(self):
+        assert split_ai_tags("+haushalt +urlaub", '+') == ["haushalt", "urlaub"]
+
+    def test_empty(self):
+        assert split_ai_tags("", '+') == []
+        assert split_ai_tags(None, '@') == []

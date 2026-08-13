@@ -299,17 +299,23 @@ pub fn set_due_batch(keys: &[TodoKey], target: DueTarget) -> Result<usize> {
     Ok(count)
 }
 
-/// Add a project and/or context to multiple todos in a single read/write
-/// pass. Items that already carry the token are left untouched. Returns the
+/// Add projects and/or contexts to multiple todos in a single read/write
+/// pass. Items that already carry a token are left untouched. Returns the
 /// number of changed items.
 pub fn assign_project_context_batch(
     keys: &[TodoKey],
-    project: Option<&str>,
-    context: Option<&str>,
+    projects: &[String],
+    contexts: &[String],
 ) -> Result<usize> {
-    let project = normalize_token(project);
-    let context = normalize_token(context);
-    if keys.is_empty() || (project.is_none() && context.is_none()) {
+    let projects: Vec<String> = projects
+        .iter()
+        .filter_map(|p| normalize_token(Some(p)))
+        .collect();
+    let contexts: Vec<String> = contexts
+        .iter()
+        .filter_map(|c| normalize_token(Some(c)))
+        .collect();
+    if keys.is_empty() || (projects.is_empty() && contexts.is_empty()) {
         return Ok(0);
     }
     let keys = keys.to_vec();
@@ -320,21 +326,21 @@ pub fn assign_project_context_batch(
             let Some(mut item) = parse_line(&lines[index], index) else { continue };
 
             let mut changed = false;
-            if let Some(p) = &project {
+            for p in &projects {
                 let exists = item
                     .projects
                     .iter()
-                    .any(|existing| normalize_token(Some(existing)).as_deref() == Some(p));
+                    .any(|existing| normalize_token(Some(existing)).as_ref() == Some(p));
                 if !exists {
                     item.projects.push(p.clone());
                     changed = true;
                 }
             }
-            if let Some(c) = &context {
+            for c in &contexts {
                 let exists = item
                     .contexts
                     .iter()
-                    .any(|existing| normalize_token(Some(existing)).as_deref() == Some(c));
+                    .any(|existing| normalize_token(Some(existing)).as_ref() == Some(c));
                 if !exists {
                     item.contexts.push(c.clone());
                     changed = true;
@@ -723,12 +729,10 @@ mod tests {
         let _guard = file_lock();
         let path = setup("- [ ] Eins +steuer ^aaa1\n- [ ] Zwei ^bbb2\n");
 
-        let count = assign_project_context_batch(
-            &[key("aaa1"), key("bbb2")],
-            Some("steuer"),
-            Some("buero"),
-        )
-        .expect("assign ok");
+        let steuer = vec!["steuer".to_string()];
+        let buero = vec!["buero".to_string()];
+        let count = assign_project_context_batch(&[key("aaa1"), key("bbb2")], &steuer, &buero)
+            .expect("assign ok");
         // "Eins" only gains the context, "Zwei" gains both — both count as changed.
         assert_eq!(count, 2);
         let content = read(&path);
@@ -736,9 +740,58 @@ mod tests {
         assert_eq!(content.matches("@buero").count(), 2);
 
         // Re-assigning the same tokens changes nothing.
-        let count = assign_project_context_batch(&[key("aaa1"), key("bbb2")], Some("steuer"), Some("buero"))
+        let count = assign_project_context_batch(&[key("aaa1"), key("bbb2")], &steuer, &buero)
             .expect("assign ok");
         assert_eq!(count, 0);
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn edit_dialog_round_trip_keeps_multi_word_tags() {
+        // The details dialog shows tags as `+Big Project` / `@Home Office`.
+        // Saving that unchanged used to shred them into one tag per word (#9).
+        let _guard = file_lock();
+        let path = setup("- [ ] Unterlagen sortieren +\"Big Project\" @\"Home Office\" ^aaa1\n");
+
+        let mut item = load_todos().expect("load ok").remove(0);
+        let shown_projects = item
+            .projects
+            .iter()
+            .map(|p| format!("+{p}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let shown_contexts = item
+            .contexts
+            .iter()
+            .map(|c| format!("@{c}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        item.projects = crate::util::split_tag_input(&shown_projects, '+');
+        item.contexts = crate::util::split_tag_input(&shown_contexts, '@');
+        update_todo_details(&item).expect("update ok");
+
+        let reloaded = load_todos().expect("load ok").remove(0);
+        assert_eq!(reloaded.projects, vec!["Big Project".to_string()]);
+        assert_eq!(reloaded.contexts, vec!["Home Office".to_string()]);
+        assert_eq!(reloaded.title, "Unterlagen sortieren");
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn assign_batch_handles_multi_word_and_multiple_tags() {
+        let _guard = file_lock();
+        let path = setup("- [ ] Eins ^aaa1\n");
+
+        let projects = crate::util::split_tag_input("+Big Project +Zweites", '+');
+        let contexts = crate::util::split_tag_input("@Home Office", '@');
+        let count = assign_project_context_batch(&[key("aaa1")], &projects, &contexts)
+            .expect("assign ok");
+        assert_eq!(count, 1);
+        let content = read(&path);
+        assert!(content.contains(r#"+"Big Project""#), "got {content}");
+        assert!(content.contains("+Zweites"), "got {content}");
+        assert!(content.contains(r#"@"Home Office""#), "got {content}");
         std::fs::remove_file(&path).ok();
     }
 
