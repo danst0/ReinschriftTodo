@@ -30,7 +30,7 @@ from app.services.share_service import (
     get_share_by_scope,
     purge_expired_shares,
 )
-from app.services.undo_service import push_undo, pop_undo, can_undo
+from app.services.undo_service import content_hash, push_entry, push_undo, pop_undo, can_undo
 from app.utils.helpers import format_due
 
 api_bp = Blueprint('api', __name__)
@@ -363,10 +363,29 @@ def api_undo():
     entry = pop_undo()
     if not entry:
         return jsonify({'error': 'Nothing to undo'}), 404
+
+    # Restoring a whole file over somebody else's newer write would roll their
+    # changes back too, so only undo the state this entry was recorded for.
+    expected = entry.get('expected_hash')
+    current = read_content()
+    if expected and content_hash(current) != expected:
+        push_entry(entry)
+        return jsonify({
+            'error': 'The file was changed elsewhere. Reload before undoing.',
+            'conflict': True,
+        }), 409
+
     try:
         write_content(entry['content'])
         return jsonify({'ok': True, 'description': entry['description']})
+    except ConflictError:
+        push_entry(entry)
+        return jsonify({
+            'error': 'The file was changed elsewhere. Reload before undoing.',
+            'conflict': True,
+        }), 409
     except Exception as e:
+        push_entry(entry)
         return jsonify({'error': str(e)}), 500
 
 

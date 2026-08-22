@@ -21,6 +21,9 @@
             <h2>{{ t.edit_todo }}</h2>
             <form id="editForm" method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {# The line index can go stale while the list sits open; the
+                   marker identifies the todo regardless of where it moved. #}
+                <input type="hidden" name="marker" id="edit-marker" value="">
                 <div class="form-group">
                     <label for="edit-title">{{ t.title }}</label>
                     <input type="text" id="edit-title" name="title" required>

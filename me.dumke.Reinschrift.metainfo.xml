@@ -65,6 +65,17 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.26.0" date="2026-08-22">
+      <description>
+        <ul>
+          <li>Completed tasks no longer reappear as open: a save based on an outdated state is now rejected instead of silently overwriting what another device stored in the meantime</li>
+          <li>"Overwrite" in the conflict dialog now applies your own change — it used to upload the state from before it and discard everything newer</li>
+          <li>"Undo" only reverts to the state it was recorded for and refuses once another device has written since</li>
+          <li>Deleting a task now identifies it by its ID instead of its position in the file, so a task that moved in the meantime can no longer be hit by mistake</li>
+          <li>Tasks linked from Obsidian notes are recognised by their own ID again, so completing one no longer changes a different line</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.25.9" date="2026-08-22">
       <description>
         <ul>

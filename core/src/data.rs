@@ -21,7 +21,7 @@ pub use crate::config::{
 };
 
 // Re-export storage
-pub use crate::storage::get_fingerprint;
+pub use crate::storage::{force_write_content, get_fingerprint};
 
 // Re-export webdav
 pub use crate::webdav::{initiate_nextcloud_login, poll_nextcloud_login, test_webdav_connection};

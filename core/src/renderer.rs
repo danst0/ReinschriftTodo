@@ -7,7 +7,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::i18n::t;
-use crate::parser::{COMPLETION_RE, DUE_RE, ID_RE, MYDAY_RE};
+use crate::parser::{marker_match, COMPLETION_RE, DUE_RE, MYDAY_RE};
 use crate::types::TodoItem;
 use crate::util::{escape_note, generate_marker, normalize_note, normalize_reference, normalize_token, FIELD_MARKERS};
 
@@ -150,13 +150,13 @@ pub fn apply_completion_marker(line: &str, done: bool) -> String {
     if done {
         if let Some(m) = COMPLETION_RE.find(line) {
             // Already present. Check if it's after the ID.
-            if let Some(id_m) = ID_RE.find(line)
-                && m.start() > id_m.start() {
+            if let Some((id_start, _)) = marker_match(line)
+                && m.start() > id_start {
                     let done_str = format!("{} ", m.as_str().trim_start());
                     let mut s = line.to_string();
                     s.replace_range(m.range(), "");
-                    if let Some(new_id_m) = ID_RE.find(&s) {
-                        s.insert_str(new_id_m.start(), &done_str);
+                    if let Some((new_id_start, _)) = marker_match(&s) {
+                        s.insert_str(new_id_start, &done_str);
                         return s;
                     }
                 }
@@ -165,9 +165,9 @@ pub fn apply_completion_marker(line: &str, done: bool) -> String {
             // Add completion marker, keeping the ^ID a whitespace-separated
             // token (find_line_by_marker matches tokens).
             let today = Local::now().date_naive().format("%Y-%m-%d");
-            if let Some(id_m) = ID_RE.find(line) {
+            if let Some((id_start, _)) = marker_match(line) {
                 let mut s = line.to_string();
-                s.insert_str(id_m.start(), &format!("✅ {today} "));
+                s.insert_str(id_start, &format!("✅ {today} "));
                 s
             } else {
                 format!("{line} ✅ {today}")

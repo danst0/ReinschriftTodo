@@ -155,21 +155,25 @@ pub fn get_fingerprint_webdav(
         if !resp.status().is_success() {
             bail!("WebDAV error: {}", resp.status());
         }
-        let etag = resp
-            .headers()
-            .get("etag")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("");
-        let last_mod = resp
-            .headers()
-            .get("last-modified")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("");
-        Ok(format!("{}-{}", etag, last_mod))
+        Ok(fingerprint_from_headers(resp.headers()))
     };
 
     let full_url = construct_full_url(url, path);
     do_head(&full_url)
+}
+
+/// Build the fingerprint string from a response's validators.
+/// Kept in one place so `HEAD` and `GET` cannot drift apart.
+fn fingerprint_from_headers(headers: &reqwest::header::HeaderMap) -> String {
+    let etag = headers
+        .get("etag")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let last_mod = headers
+        .get("last-modified")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    format!("{}-{}", etag, last_mod)
 }
 
 /// Read content from WebDAV server.
@@ -179,6 +183,22 @@ pub fn read_content_webdav(
     username: Option<String>,
     password: Option<String>,
 ) -> Result<String> {
+    read_content_with_fingerprint_webdav(url, path, username, password).map(|(content, _)| content)
+}
+
+/// Read content and its fingerprint from a *single* `GET`.
+///
+/// Fetching the validator separately (`GET` then `HEAD`) is unsafe: a write
+/// landing between the two requests pairs old content with the new ETag, so the
+/// `If-Match` guard passes while the edit is applied to a stale file — silently
+/// discarding the other writer's changes. The `ETag`/`Last-Modified` of the very
+/// response that carried the bytes cannot drift like that.
+pub fn read_content_with_fingerprint_webdav(
+    url: &str,
+    path: Option<String>,
+    username: Option<String>,
+    password: Option<String>,
+) -> Result<(String, String)> {
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
@@ -188,7 +208,7 @@ pub fn read_content_webdav(
     let username_ref = username.as_deref();
     let password_ref = password.as_deref();
 
-    let try_get = |target_url: &str| -> Result<String> {
+    let try_get = |target_url: &str| -> Result<(String, String)> {
         let mut req = client.get(target_url);
         if let (Some(u), Some(p)) = (username_ref, password_ref) {
             req = req.basic_auth(u, Some(p));
@@ -200,7 +220,8 @@ pub fn read_content_webdav(
             }
             bail!("WebDAV error: {}", resp.status());
         }
-        Ok(resp.text()?)
+        let fingerprint = fingerprint_from_headers(resp.headers());
+        Ok((resp.text()?, fingerprint))
     };
 
     let full_url = construct_full_url(url, path_ref);
@@ -208,10 +229,10 @@ pub fn read_content_webdav(
         return Err(folder_target_error(&full_url));
     }
     match try_get(&full_url) {
-        Ok(content) => Ok(content),
+        Ok(result) => Ok(result),
         Err(e) => {
             // Try Nextcloud fallback
-            if let Ok(Some((content, candidate_base))) =
+            if let Ok(Some((result, candidate_base))) =
                 try_nextcloud_fallback(url, path_ref, username_ref, try_get)
             {
                 // Update internal config to use this working base URL
@@ -221,7 +242,7 @@ pub fn read_content_webdav(
                     username,
                     password,
                 });
-                return Ok(content);
+                return Ok(result);
             }
             // Return original error with hint
             if e.to_string().contains("404 Not Found") {
@@ -311,15 +332,15 @@ pub fn write_content_webdav(
         let resp = req.send()?;
         if !resp.status().is_success() {
             if resp.status() == reqwest::StatusCode::PRECONDITION_FAILED {
-                return Err(crate::conflict::ConflictError {
-                    local_fingerprint: etag_clone.clone().unwrap_or_default(),
-                    remote_fingerprint: resp
-                        .headers()
+                return Err(crate::conflict::ConflictError::new(
+                    etag_clone.clone().unwrap_or_default(),
+                    resp.headers()
                         .get("etag")
                         .and_then(|v| v.to_str().ok())
                         .unwrap_or("unknown")
                         .to_string(),
-                }
+                )
+                .with_pending(content_clone.clone())
                 .into());
             }
             if resp.status() == reqwest::StatusCode::NOT_FOUND {

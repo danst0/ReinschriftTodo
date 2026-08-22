@@ -213,7 +213,9 @@ def register_context_processors(app: Flask) -> None:
 def register_error_handlers(app: Flask) -> None:
     """Register error handlers."""
     from flask_wtf.csrf import CSRFError
-    from flask import render_template
+    from flask import jsonify, render_template, request
+
+    from app.exceptions import ConflictError
 
     @app.errorhandler(CSRFError)
     def handle_csrf_error(e):
@@ -226,3 +228,20 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(500)
     def handle_internal_error(e):
         return render_template('error.html', error='Internal server error'), 500
+
+    @app.errorhandler(ConflictError)
+    def handle_conflict(e):
+        """A rejected write is not a server fault — say so and keep the data.
+
+        The change was *not* applied; the stored file still holds whatever the
+        other writer put there. Reloading shows the truth.
+        """
+        message = 'The file was changed elsewhere. Reload and try again.'
+        wants_json = (
+            request.path.startswith('/api/')
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or request.accept_mimetypes.best == 'application/json'
+        )
+        if wants_json:
+            return jsonify({'error': message, 'conflict': True}), 409
+        return render_template('error.html', error=message), 409

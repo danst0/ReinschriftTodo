@@ -226,7 +226,7 @@ def parse_line(line: str, line_index: int) -> Optional[TodoItem]:
                 done_date = None
 
     reference = capture_token(LINK_RE, rest)
-    marker = capture_token(ID_RE, rest)
+    marker = marker_of(rest)
     raw_note = capture_token(NOTE_RE, rest)
     note = normalize_note(unescape_note(raw_note)) if raw_note else None
 
@@ -250,6 +250,31 @@ def parse_line(line: str, line_index: int) -> Optional[TodoItem]:
     )
 
 
+def marker_match(text: str) -> Optional[tuple[int, str]]:
+    """Locate the ``^id`` that identifies a todo: the last standalone one.
+
+    Returns its offset and the id. Reinschrift appends its marker at the end,
+    so anything before it (Obsidian block links such as ``^3pip9m``) belongs to
+    the note text, not to the todo — and the same block link can sit on many
+    lines, which would make the first match resolve to a foreign line.
+    """
+    fallback = None
+    standalone = None
+    for m in ID_RE.finditer(text):
+        start = m.start()
+        if start == 0 or text[start - 1].isspace():
+            standalone = (start, m.group(1))
+        else:
+            fallback = (start, m.group(1))
+    return standalone or fallback
+
+
+def marker_of(text: str) -> Optional[str]:
+    """The marker identifying this line, if any."""
+    found = marker_match(text)
+    return found[1] if found else None
+
+
 def find_line_by_marker(lines: list[str], marker: str) -> Optional[int]:
     """Find a line index by its marker ID.
 
@@ -260,6 +285,12 @@ def find_line_by_marker(lines: list[str], marker: str) -> Optional[int]:
     Returns:
         Line index or None if not found.
     """
+    # Prefer the line whose own marker this is, so a block link shared by
+    # several lines cannot pull the edit onto an unrelated one.
+    for idx, line in enumerate(lines):
+        if marker_of(line) == marker:
+            return idx
+
     needle = f"^{marker}"
     for idx, line in enumerate(lines):
         for token in line.split():

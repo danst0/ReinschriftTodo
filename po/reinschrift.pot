@@ -865,3 +865,9 @@ msgstr ""
 
 msgid "WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md."
 msgstr ""
+
+msgid "The file keeps changing while it is being read. Please try again."
+msgstr ""
+
+msgid "The change could not be applied. Please try again after reloading."
+msgstr ""

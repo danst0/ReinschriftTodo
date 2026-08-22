@@ -2,19 +2,24 @@
 //! sabre/dav (the layer Nextcloud uses) that issue #11 hinges on:
 //! a PUT onto a collection, or into a missing parent, answers 409 Conflict.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 
-use reinschrift_core::webdav::{test_webdav_connection, write_content_webdav};
+use reinschrift_core::conflict::ConflictError;
+use reinschrift_core::webdav::{
+    read_content_with_fingerprint_webdav, test_webdav_connection, write_content_webdav,
+};
 
 const USER: &str = "alice";
 
 #[derive(Default)]
 struct Store {
     collections: HashSet<String>,
-    files: HashSet<String>,
+    /// path -> (content, version). The version stands in for Nextcloud's ETag,
+    /// which changes on every write.
+    files: HashMap<String, (String, u32)>,
 }
 
 struct MockServer {
@@ -40,7 +45,7 @@ impl MockServer {
         }
         let store = Arc::new(Mutex::new(Store {
             collections,
-            files: HashSet::new(),
+            files: HashMap::new(),
         }));
 
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock server");
@@ -63,7 +68,21 @@ impl MockServer {
 
     fn has_file(&self, relative: &str) -> bool {
         let path = format!("{}/{relative}", self.root);
-        self.store.lock().unwrap().files.contains(&path)
+        self.store.lock().unwrap().files.contains_key(&path)
+    }
+
+    /// Seed a file, as if another client had stored it.
+    fn put_file(&self, relative: &str, content: &str) {
+        let path = format!("{}/{relative}", self.root);
+        let mut store = self.store.lock().unwrap();
+        let version = store.files.get(&path).map(|(_, v)| v + 1).unwrap_or(1);
+        store.files.insert(path, (content.to_string(), version));
+    }
+
+    fn content_of(&self, relative: &str) -> Option<String> {
+        let path = format!("{}/{relative}", self.root);
+        let store = self.store.lock().unwrap();
+        store.files.get(&path).map(|(c, _)| c.clone())
     }
 
     fn has_collection(&self, relative: &str) -> bool {
@@ -80,12 +99,21 @@ fn parent_of(path: &str) -> String {
 }
 
 fn respond(stream: &mut TcpStream, status: &str, body: &str) {
+    respond_with(stream, status, body, "");
+}
+
+/// Like `respond`, plus extra headers (already CRLF-terminated).
+fn respond_with(stream: &mut TcpStream, status: &str, body: &str, extra_headers: &str) {
     let _ = write!(
         stream,
-        "HTTP/1.1 {status}\r\nContent-Length: {}\r\nContent-Type: application/xml\r\nConnection: close\r\n\r\n{body}",
+        "HTTP/1.1 {status}\r\nContent-Length: {}\r\nContent-Type: application/xml\r\n{extra_headers}Connection: close\r\n\r\n{body}",
         body.len()
     );
     let _ = stream.flush();
+}
+
+fn etag_of(version: u32) -> String {
+    format!("\"v{version}\"")
 }
 
 fn handle(mut stream: TcpStream, store: Arc<Mutex<Store>>) {
@@ -99,29 +127,42 @@ fn handle(mut stream: TcpStream, store: Arc<Mutex<Store>>) {
     let method = parts.next().unwrap_or_default().to_string();
     let path = parts.next().unwrap_or_default().to_string();
 
-    // Drain headers, remembering the body length.
+    // Drain headers, remembering the body length and the If-Match validator.
     let mut content_length = 0usize;
+    let mut if_match: Option<String> = None;
     loop {
         let mut line = String::new();
         if reader.read_line(&mut line).is_err() || line.trim().is_empty() {
             break;
         }
-        if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+        let lower = line.to_ascii_lowercase();
+        if let Some(value) = lower.strip_prefix("content-length:") {
             content_length = value.trim().parse().unwrap_or(0);
         }
+        if lower.starts_with("if-match:") {
+            if_match = Some(line[("if-match:".len())..].trim().to_string());
+        }
     }
+    let mut body = Vec::new();
     if content_length > 0 {
-        let mut body = vec![0u8; content_length];
+        body = vec![0u8; content_length];
         let _ = reader.read_exact(&mut body);
     }
+    let body = String::from_utf8_lossy(&body).to_string();
 
     let mut store = store.lock().unwrap();
     let is_collection = store.collections.contains(&path);
-    let is_file = store.files.contains(&path);
+    let is_file = store.files.contains_key(&path);
 
     match method.as_str() {
         "HEAD" | "GET" => {
-            if is_collection || is_file {
+            if let Some((content, version)) = store.files.get(&path) {
+                let headers = format!(
+                    "ETag: {}\r\nLast-Modified: Sat, 22 Aug 2026 15:41:20 GMT\r\n",
+                    etag_of(*version)
+                );
+                respond_with(&mut stream, "200 OK", content, &headers);
+            } else if is_collection {
                 respond(&mut stream, "200 OK", "ok");
             } else {
                 respond(&mut stream, "404 Not Found", "");
@@ -150,8 +191,22 @@ fn handle(mut stream: TcpStream, store: Arc<Mutex<Store>>) {
             } else if !store.collections.contains(&parent_of(&path)) {
                 respond(&mut stream, "409 Conflict", "Parent node does not exist.");
             } else {
-                store.files.insert(path);
-                respond(&mut stream, "201 Created", "");
+                let current = store.files.get(&path).map(|(_, v)| *v);
+                let matches = match (&if_match, current) {
+                    (None, _) => true,
+                    (Some(tag), Some(version)) => tag == &etag_of(version),
+                    (Some(_), None) => false,
+                };
+                if !matches {
+                    let headers = current
+                        .map(|v| format!("ETag: {}\r\n", etag_of(v)))
+                        .unwrap_or_default();
+                    respond_with(&mut stream, "412 Precondition Failed", "", &headers);
+                } else {
+                    let version = current.map(|v| v + 1).unwrap_or(1);
+                    store.files.insert(path, (body, version));
+                    respond(&mut stream, "201 Created", "");
+                }
             }
         }
         "MKCOL" => {
@@ -372,5 +427,106 @@ fn unrelated_errors_are_not_relabelled_as_a_path_problem() {
     assert!(
         !err.to_string().contains("todos.md"),
         "transport errors must not be relabelled as a path problem: {err}"
+    );
+}
+
+/// The validator must come from the very response that carried the bytes.
+/// Fetching it separately pairs stale content with a fresh ETag — the If-Match
+/// on the way out then passes and the other writer's change is overwritten.
+#[test]
+fn a_read_returns_the_validator_of_the_content_it_returned() {
+    let server = MockServer::start(&[]);
+    let (user, pass) = creds();
+    server.put_file("todos.md", "- [ ] Eins ^aaa1\n");
+
+    let (content, fingerprint) = read_content_with_fingerprint_webdav(
+        &server.base_url,
+        Some("todos.md".to_string()),
+        user,
+        pass,
+    )
+    .expect("read");
+
+    assert_eq!(content, "- [ ] Eins ^aaa1\n");
+    assert!(
+        fingerprint.starts_with("\"v1\"-"),
+        "expected the ETag of this very response, got: {fingerprint}"
+    );
+}
+
+#[test]
+fn a_write_against_the_current_validator_succeeds() {
+    let server = MockServer::start(&[]);
+    let (user, pass) = creds();
+    server.put_file("todos.md", "- [ ] Eins ^aaa1\n");
+
+    let (_, fingerprint) = read_content_with_fingerprint_webdav(
+        &server.base_url,
+        Some("todos.md".to_string()),
+        user.clone(),
+        pass.clone(),
+    )
+    .expect("read");
+
+    write_content_webdav(
+        &server.base_url,
+        Some("todos.md".to_string()),
+        user,
+        pass,
+        "- [x] Eins ✅ 2026-08-22 ^aaa1\n".to_string(),
+        Some(&fingerprint),
+    )
+    .expect("write");
+
+    assert_eq!(
+        server.content_of("todos.md").as_deref(),
+        Some("- [x] Eins ✅ 2026-08-22 ^aaa1\n")
+    );
+}
+
+/// The reported failure: a completion written on top of a newer state. The
+/// server must reject it, and the rejection must carry the change so the UI can
+/// offer to force it through instead of restoring an old snapshot.
+#[test]
+fn a_stale_write_is_rejected_and_keeps_the_foreign_change() {
+    let server = MockServer::start(&[]);
+    let (user, pass) = creds();
+    server.put_file("todos.md", "- [ ] Eins ^aaa1\n- [ ] Zwei ^bbb2\n");
+
+    let (_, stale) = read_content_with_fingerprint_webdav(
+        &server.base_url,
+        Some("todos.md".to_string()),
+        user.clone(),
+        pass.clone(),
+    )
+    .expect("read");
+
+    // Another client stores a completion in the meantime.
+    let foreign = "- [ ] Eins ^aaa1\n- [x] Zwei ✅ 2026-08-22 ^bbb2\n";
+    server.put_file("todos.md", foreign);
+
+    let pending = "- [x] Eins ✅ 2026-08-22 ^aaa1\n- [ ] Zwei ^bbb2\n".to_string();
+    let err = write_content_webdav(
+        &server.base_url,
+        Some("todos.md".to_string()),
+        user,
+        pass,
+        pending.clone(),
+        Some(&stale),
+    )
+    .expect_err("a stale write must be refused");
+
+    let conflict = err
+        .downcast_ref::<ConflictError>()
+        .expect("a conflict, not a generic error");
+    assert_eq!(
+        conflict.pending_content.as_deref(),
+        Some(pending.as_str()),
+        "\"Overwrite\" needs the change it is supposed to force through"
+    );
+    assert_eq!(
+        server.content_of("todos.md").as_deref(),
+        Some(foreign),
+        "the other writer's completion must survive"
     );
 }

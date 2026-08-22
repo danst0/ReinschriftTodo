@@ -17,7 +17,10 @@ class TestPushUndo:
             push_undo('content1', 'toggle')
             stack = session.get('_undo_stack', [])
             assert len(stack) == 1
-            assert stack[0] == {'content': 'content1', 'description': 'toggle'}
+            assert stack[0]['content'] == 'content1'
+            assert stack[0]['description'] == 'toggle'
+            # Not stamped until the mutation actually reached storage.
+            assert stack[0]['expected_hash'] is None
 
     def test_push_multiple_entries(self, app):
         """Test pushing multiple entries preserves order."""
@@ -53,7 +56,8 @@ class TestPopUndo:
             push_undo('first', 'add')
             push_undo('second', 'delete')
             entry = pop_undo()
-            assert entry == {'content': 'second', 'description': 'delete'}
+            assert entry['content'] == 'second'
+            assert entry['description'] == 'delete'
 
     def test_pop_removes_entry(self, app):
         """Test popping removes the entry from the stack."""

@@ -68,7 +68,7 @@ pub fn parse_line(line: &str, line_index: usize) -> Option<TodoItem> {
     let myday = parse_myday(rest);
     let recurrence = capture_token(&RECUR_RE, rest);
     let reference = capture_token(&LINK_RE, rest);
-    let marker = capture_token(&ID_RE, rest);
+    let marker = marker_of(rest);
     let note = capture_token(&NOTE_RE, rest)
         .map(|raw| unescape_note(&raw))
         .and_then(|n| normalize_note(Some(&n)));
@@ -168,10 +168,51 @@ pub fn extract_title(rest: &str) -> String {
 
 /// Find a line by its marker ID.
 pub fn find_line_by_marker(lines: &[String], marker: &str) -> Option<usize> {
+    // Prefer the line whose *own* marker this is. A line may carry several
+    // `^id` tokens — an Obsidian block link plus the todo marker — and the same
+    // block link can appear on many lines. Matching those first would rewrite
+    // an unrelated line, leaving the todo the user acted on untouched.
+    if let Some(index) = lines
+        .iter()
+        .position(|line| marker_of(line).as_deref() == Some(marker))
+    {
+        return Some(index);
+    }
+
     let needle = format!("^{marker}");
     lines
         .iter()
         .position(|line| line.split_whitespace().any(|token| token == needle))
+}
+
+/// Locate the `^id` that identifies a todo: the last whitespace-delimited one.
+///
+/// Returns its byte offset and the id itself. Reinschrift appends its marker at
+/// the end, so anything before it (Obsidian block links such as `^3pip9m`)
+/// belongs to the note, not to the todo.
+pub fn marker_match(text: &str) -> Option<(usize, String)> {
+    let is_standalone = |start: usize| {
+        start == 0
+            || text.as_bytes()[start - 1].is_ascii_whitespace()
+    };
+
+    let mut fallback = None;
+    let mut standalone = None;
+    for caps in ID_RE.captures_iter(text) {
+        let whole = caps.get(0)?;
+        let id = caps.get(1)?.as_str().to_string();
+        if is_standalone(whole.start()) {
+            standalone = Some((whole.start(), id));
+        } else {
+            fallback = Some((whole.start(), id));
+        }
+    }
+    standalone.or(fallback)
+}
+
+/// The marker identifying this line, if any.
+pub fn marker_of(text: &str) -> Option<String> {
+    marker_match(text).map(|(_, id)| id)
 }
 
 #[cfg(test)]

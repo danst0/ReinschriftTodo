@@ -6,7 +6,7 @@ use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
 use crate::i18n::t;
 use crate::parser::{find_line_by_marker, parse_line};
 use crate::renderer::{render_line, rewrite_due, rewrite_line, rewrite_myday};
-use crate::storage::{read_content, read_content_with_fingerprint, write_content, write_content_checked};
+use crate::storage::{read_content, read_content_with_fingerprint, write_content_checked};
 use crate::types::{TodoItem, TodoKey, DEFAULT_DUE_TIME};
 use crate::undo::push_undo;
 use crate::util::{generate_marker, normalize_token};
@@ -42,13 +42,30 @@ where
     F: FnOnce(&mut Vec<String>, bool) -> Result<String>,
 {
     let snapshot = read_content_with_fingerprint()?;
-    push_undo(snapshot.content.clone(), description.to_string());
 
     let mut lines: Vec<String> = snapshot.content.lines().map(|l| l.to_string()).collect();
     let had_trailing_newline = snapshot.content.ends_with('\n');
 
     let output = rewrite(&mut lines, had_trailing_newline)?;
-    write_content_checked(output, &snapshot.fingerprint)?;
+    commit(description, snapshot.content, output, &snapshot.fingerprint)
+}
+
+/// Write `output` under the fingerprint it was derived from and, only once that
+/// succeeded, record the undo entry.
+///
+/// Pushing the entry before the write would leave a snapshot behind whenever
+/// the write is rejected — a later "Undo" would then restore a state the
+/// backend never held and wipe whatever the other writer had just stored.
+fn commit(
+    description: &str,
+    previous: String,
+    output: String,
+    expected_fingerprint: &str,
+) -> Result<()> {
+    let restored_hash = crate::undo::content_hash(&output);
+    write_content_checked(output.clone(), expected_fingerprint)
+        .map_err(|e| crate::conflict::attach_pending(e, output))?;
+    push_undo(previous, description.to_string(), restored_hash);
     Ok(())
 }
 
@@ -454,7 +471,6 @@ pub fn add_todo_full(item: &TodoItem) -> Result<TodoKey> {
 /// Insert a new line before the "---" separator (or at end).
 fn insert_line(line: String, marker: String) -> Result<TodoKey> {
     let snapshot = read_content_with_fingerprint()?;
-    push_undo(snapshot.content.clone(), "add".to_string());
 
     let mut lines: Vec<String> = snapshot.content.lines().map(|l| l.to_string()).collect();
 
@@ -470,7 +486,7 @@ fn insert_line(line: String, marker: String) -> Result<TodoKey> {
         output.push('\n');
     }
 
-    write_content_checked(output, &snapshot.fingerprint)?;
+    commit("add", snapshot.content, output, &snapshot.fingerprint)?;
     Ok(TodoKey {
         line_index: insert_index,
         marker: Some(marker),
@@ -501,10 +517,10 @@ where
 fn delete_line(key: &TodoKey) -> Result<()> {
     let key = key.clone();
     mutate_file("delete", |lines, _| {
-        let index = key.line_index;
-        if index >= lines.len() {
-            bail!(t("Could not find To-do in file"));
-        }
+        // Resolve marker-first like every other operation. Trusting the cached
+        // line index deletes whatever moved into that slot when the file
+        // changed between load and delete.
+        let index = resolve_key(lines, &key)?;
 
         lines.remove(index);
 
@@ -516,13 +532,40 @@ fn delete_line(key: &TodoKey) -> Result<()> {
 
 /// Undo the most recent mutation by restoring the previous file content.
 /// Returns the description of the undone action, or None if the stack is empty.
+///
+/// Refuses when the file no longer holds the state this entry was recorded for:
+/// restoring a snapshot over somebody else's newer write would roll back their
+/// changes too, which is exactly what an unconditional restore used to do.
 pub fn undo() -> Result<Option<String>> {
     let entry = match crate::undo::pop_undo() {
         Some(e) => e,
         None => return Ok(None),
     };
-    write_content(entry.content)?;
-    Ok(Some(entry.description))
+
+    let snapshot = match read_content_with_fingerprint() {
+        Ok(s) => s,
+        Err(e) => {
+            crate::undo::push_entry(entry);
+            return Err(e);
+        }
+    };
+
+    if crate::undo::content_hash(&snapshot.content) != entry.expected_hash {
+        let conflict = crate::conflict::ConflictError::new(
+            format!("undo:{}", entry.expected_hash),
+            format!("undo:{}", crate::undo::content_hash(&snapshot.content)),
+        )
+        .with_pending(entry.content.clone());
+        crate::undo::push_entry(entry);
+        return Err(conflict.into());
+    }
+
+    let description = entry.description.clone();
+    if let Err(e) = write_content_checked(entry.content.clone(), &snapshot.fingerprint) {
+        crate::undo::push_entry(entry);
+        return Err(e);
+    }
+    Ok(Some(description))
 }
 
 /// Add months to a date, handling month-end edge cases.
@@ -602,6 +645,122 @@ mod tests {
             line_index: 999,
             marker: Some(marker.to_string()),
         }
+    }
+
+    #[test]
+    fn delete_todo_resolves_by_marker_not_by_stale_index() {
+        let _guard = file_lock();
+        let path = setup("- [ ] Eins ^aaa1\n- [ ] Zwei ^bbb2\n- [ ] Drei ^ccc3\n");
+
+        // The item was loaded when it sat on line 0, then two lines appeared
+        // above it — exactly what a recurrence spawn or another client does.
+        let stale = TodoItem {
+            key: TodoKey {
+                line_index: 0,
+                marker: Some("ccc3".to_string()),
+            },
+            ..parse_line("- [ ] Drei ^ccc3", 0).expect("parse")
+        };
+        delete_todo(&stale).expect("delete ok");
+
+        assert_eq!(read(&path), "- [ ] Eins ^aaa1\n- [ ] Zwei ^bbb2\n");
+    }
+
+    #[test]
+    fn a_failed_write_leaves_no_undo_entry() {
+        let _guard = file_lock();
+        let path = setup("- [ ] Eins ^aaa1\n");
+
+        // Unknown marker and an out-of-range index: the rewrite fails, so no
+        // snapshot may be recorded — undoing one would restore a phantom state.
+        let missing = TodoKey {
+            line_index: 999,
+            marker: Some("nope".to_string()),
+        };
+        assert!(toggle_todo(&missing, true).is_err());
+        assert!(!can_undo(), "no undo entry for a rejected mutation");
+        assert_eq!(read(&path), "- [ ] Eins ^aaa1\n");
+    }
+
+    #[test]
+    fn undo_refuses_to_roll_back_a_foreign_write() {
+        let _guard = file_lock();
+        let path = setup("- [ ] Eins ^aaa1\n- [ ] Zwei ^bbb2\n");
+
+        toggle_todo(&key("aaa1"), true).expect("toggle ok");
+        assert!(can_undo());
+
+        // Another client completes the second todo after our mutation.
+        let foreign = read(&path).replace("- [ ] Zwei ^bbb2", "- [x] Zwei ✅ 2026-08-22 ^bbb2");
+        std::fs::write(&path, &foreign).expect("foreign write");
+
+        let err = undo().expect_err("undo must refuse");
+        assert!(
+            err.downcast_ref::<crate::conflict::ConflictError>().is_some(),
+            "expected a conflict, got: {err}"
+        );
+        assert_eq!(read(&path), foreign, "the foreign write survives");
+        assert!(can_undo(), "the entry stays available for a retry");
+    }
+
+    #[test]
+    fn undo_still_works_when_nothing_else_wrote() {
+        let _guard = file_lock();
+        let path = setup("- [ ] Eins ^aaa1\n");
+
+        toggle_todo(&key("aaa1"), true).expect("toggle ok");
+        assert!(read(&path).starts_with("- [x]"));
+
+        let description = undo().expect("undo ok").expect("an entry");
+        assert_eq!(description, "complete");
+        assert_eq!(read(&path), "- [ ] Eins ^aaa1\n");
+    }
+
+    #[test]
+    fn a_conflict_carries_the_rejected_content() {
+        let _guard = file_lock();
+        let path = setup("- [ ] Eins ^aaa1\n");
+
+        // Force a stale fingerprint by writing directly under the app's feet.
+        let snapshot = read_content_with_fingerprint().expect("read");
+        std::fs::write(&path, "- [ ] Eins geändert ^aaa1\n").expect("foreign write");
+
+        let err = write_content_checked("- [x] Eins ✅ 2026-08-22 ^aaa1\n".to_string(), &snapshot.fingerprint)
+            .expect_err("must conflict");
+        let conflict = err
+            .downcast_ref::<crate::conflict::ConflictError>()
+            .expect("a conflict");
+        assert_eq!(
+            conflict.pending_content.as_deref(),
+            Some("- [x] Eins ✅ 2026-08-22 ^aaa1\n"),
+            "\"Overwrite\" needs the change it is supposed to force through"
+        );
+    }
+
+    #[test]
+    fn a_block_link_is_not_mistaken_for_the_todo_marker() {
+        let _guard = file_lock();
+        // ^3pip9m is an Obsidian block link shared by both lines; only the
+        // trailing ^id identifies the todo.
+        let path = setup(concat!(
+            "- [ ] Laufen gehen [[Tagebuch/2025-12-22.md]] ^3pip9m ^aaa1\n",
+            "- [ ] Laufen gehen [[Tagebuch/2025-12-22.md]] ^3pip9m ^bbb2\n",
+        ));
+
+        // Go through the parsed key, the way the UI does — that is where the
+        // wrong id used to be picked up.
+        let items = load_todos().expect("load");
+        assert_eq!(
+            items[1].key.marker.as_deref(),
+            Some("bbb2"),
+            "the trailing id identifies the todo, not the block link"
+        );
+        toggle_todo(&items[1].key, true).expect("toggle ok");
+
+        let content = read(&path);
+        let lines: Vec<&str> = content.lines().collect();
+        assert!(lines[0].starts_with("- [ ]"), "first line untouched: {}", lines[0]);
+        assert!(lines[1].starts_with("- [x]"), "second line completed: {}", lines[1]);
     }
 
     #[test]

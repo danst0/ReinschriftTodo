@@ -868,3 +868,9 @@ msgstr "No hay ninguna ruta configurada. Indique en 'Ruta (relativa)' el archivo
 
 msgid "WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md."
 msgstr "Error de WebDAV: 409 Conflict. El destino es una carpeta o su carpeta superior no existe. Compruebe 'Ruta (relativa)' — por ejemplo todos.md."
+
+msgid "The file keeps changing while it is being read. Please try again."
+msgstr "El archivo cambia continuamente mientras se lee. Inténtelo de nuevo."
+
+msgid "The change could not be applied. Please try again after reloading."
+msgstr "No se pudo aplicar el cambio. Vuelva a intentarlo después de recargar."

@@ -868,3 +868,9 @@ msgstr "パスが設定されていません。「パス (相対)」にタスク
 
 msgid "WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md."
 msgstr "WebDAV エラー: 409 Conflict。対象がフォルダーであるか、親フォルダーが存在しません。「パス (相対)」を確認してください (例: todos.md)。"
+
+msgid "The file keeps changing while it is being read. Please try again."
+msgstr "読み込み中にファイルが変更され続けています。もう一度お試しください。"
+
+msgid "The change could not be applied. Please try again after reloading."
+msgstr "変更を適用できませんでした。再読み込みしてからもう一度お試しください。"

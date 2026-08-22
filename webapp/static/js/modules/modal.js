@@ -72,6 +72,12 @@ export function openEditModal(lineIndex, config = {}) {
             document.getElementById('btn-save-main').style.display = 'inline-block';
             document.getElementById('comment-section').style.display = 'none';
 
+            // Save by marker: the index this modal was opened with can go
+            // stale if the file changes while the list is open.
+            const markerField = document.getElementById('edit-marker');
+            if (markerField) {
+                markerField.value = data.marker || '';
+            }
             document.getElementById('editForm').action = '/edit/' + lineIndex;
 
             modal.style.display = 'block';

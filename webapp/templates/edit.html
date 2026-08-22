@@ -115,6 +115,9 @@
     <h2>{{ t.edit_todo }}</h2>
     <form method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {# The line index can go stale between rendering and saving; the marker
+           identifies the todo regardless of where it moved. #}
+        <input type="hidden" name="marker" id="edit-marker" value="{{ todo.marker or '' }}">
         <div class="form-group">
             <label for="title">{{ t.title }}</label>
             <input type="text" id="title" name="title" value="{{ todo.title }}" required>
@@ -166,6 +169,7 @@
 
     <form id="delete-form" action="{{ url_for('todo.delete', line_index=todo.line_index) }}" method="post" style="display: none;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="marker" value="{{ todo.marker or '' }}">
     </form>
 
     <script>

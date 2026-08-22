@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 
 from translations import TRANSLATIONS
 from app.exceptions import ConflictError
-from app.models.todo import ID_RE, COMPLETION_RE
+from app.models.todo import COMPLETION_RE
 from app.services import (
     read_content,
     write_content,
@@ -19,9 +19,10 @@ from app.services import (
     next_due_date,
     insert_line,
 )
+from app.services.parser import find_line_by_marker, marker_of
 from app.services.storage import read_content_with_fingerprint, write_content_checked
 from app.services.todo_service import render_tagged
-from app.services.undo_service import push_undo, pop_undo
+from app.services.undo_service import content_hash, push_entry, push_undo, pop_undo
 from app.utils.markers import ensure_marker, generate_marker
 from app.utils.escaping import escape_note, normalize_note
 from app.utils.helpers import split_tag_input
@@ -92,6 +93,20 @@ def edit(line_index):
     return render_template('edit.html', todo=item_dict)
 
 
+def _resolve_index(lines, line_index, marker):
+    """Resolve a todo's line, preferring its marker over the index.
+
+    The index comes from a page that was rendered earlier; if the file changed
+    since, it points at whatever moved into that slot. Writing there edits or
+    deletes a todo the user never touched.
+    """
+    if marker:
+        found = find_line_by_marker(lines, marker)
+        if found is not None:
+            return found
+    return line_index
+
+
 def _handle_edit_post(lines, line_index):
     """Handle POST request for edit."""
     title = request.form.get('title')
@@ -115,9 +130,13 @@ def _handle_edit_post(lines, line_index):
         title = f"{title.strip()} ({comment.strip()})"
 
     # Reconstruct line
+    line_index = _resolve_index(lines, line_index, request.form.get('marker'))
+    if line_index >= len(lines):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Invalid line index'}), 400
+        return redirect(url_for('main.index'))
     original_line = lines[line_index]
-    from app.services.parser import capture_token
-    marker = ensure_marker(capture_token(ID_RE, original_line))
+    marker = ensure_marker(marker_of(original_line))
     original_item = parse_line(original_line, line_index)
     was_done = original_item.done if original_item else False
 
@@ -206,6 +225,9 @@ def _handle_edit_post(lines, line_index):
 def delete(line_index):
     """Delete a todo."""
     content = read_content()
+    line_index = _resolve_index(
+        content.splitlines(), line_index, request.form.get('marker')
+    )
     push_undo(content, 'delete')
     delete_todo(line_index)
     return redirect(url_for('main.index'))
@@ -230,5 +252,17 @@ def undo():
     """Undo the last destructive action."""
     entry = pop_undo()
     if entry:
-        write_content(entry['content'])
+        # Only undo the state this entry was recorded for — restoring it over a
+        # newer foreign write would roll that write back as well.
+        expected = entry.get('expected_hash')
+        current = read_content()
+        if expected and content_hash(current) != expected:
+            # Keep the entry so the user can retry after seeing the fresh state
+            # the redirect below renders.
+            push_entry(entry)
+            return redirect(url_for('main.index'))
+        try:
+            write_content(entry['content'])
+        except ConflictError:
+            push_entry(entry)
     return redirect(url_for('main.index'))

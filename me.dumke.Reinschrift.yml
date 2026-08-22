@@ -48,7 +48,7 @@ modules:
         # hinter dem Tag eintragen (`git rev-parse v<version>^{commit}` — nicht
         # die SHA des Tag-Objekts). Flathubs Linter verlangt Tag + Commit; hier
         # kann der Hash nicht stehen, weil er erst durch diesen Commit entsteht.
-        tag: v0.25.9
+        tag: v0.26.0
       - generated-sources.json
       - type: shell
         commands:

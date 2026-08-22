@@ -5184,6 +5184,12 @@ impl AppState {
         dialog.set_default_button(0);
         dialog.set_cancel_button(2);
 
+        // The rejected write travels with the error, so "Overwrite" can push
+        // exactly the change the user just made.
+        let pending = err
+            .downcast_ref::<data::ConflictError>()
+            .and_then(|c| c.pending_content.clone());
+
         let state = Rc::clone(self);
         dialog.choose(
             Some(&parent),
@@ -5191,15 +5197,26 @@ impl AppState {
             move |result| {
                 match result {
                     Ok(0) => {
-                        // Reload
+                        // Reload — drop our change and take the remote state.
                         if let Err(e) = state.reload() {
                             state.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
                         }
                     }
                     Ok(1) => {
-                        // Overwrite — pop the undo entry which still contains the pre-mutation
-                        // snapshot and is no longer useful, then let user retry manually.
-                        let _ = data::undo();
+                        // Overwrite — force our own change through. Restoring
+                        // the pre-mutation snapshot here (what this used to do)
+                        // uploaded the *old* file and undid everything the
+                        // other writer had stored in the meantime.
+                        match pending.clone() {
+                            Some(content) => {
+                                if let Err(e) = data::force_write_content(content) {
+                                    state.show_error(&t("Could not update entry: {}").replace("{}", &e.to_string()));
+                                }
+                            }
+                            None => {
+                                state.show_error(&t("The change could not be applied. Please try again after reloading."));
+                            }
+                        }
                         if let Err(e) = state.reload() {
                             state.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
                         }
@@ -5232,7 +5249,9 @@ impl AppState {
                     state.show_info(&t("Nothing to undo"));
                 }
                 Err(e) => {
-                    state.show_error(&e.to_string());
+                    if !state.handle_conflict(&e) {
+                        state.show_error(&e.to_string());
+                    }
                 }
             }
         });

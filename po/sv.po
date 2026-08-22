@@ -868,3 +868,9 @@ msgstr "Ingen sökväg har angetts. Ange uppgiftsfilen under ”Sökväg (relati
 
 msgid "WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md."
 msgstr "WebDAV-fel: 409 Conflict. Målet är en mapp, eller så saknas den överordnade mappen. Kontrollera ”Sökväg (relativ)” — till exempel todos.md."
+
+msgid "The file keeps changing while it is being read. Please try again."
+msgstr "Filen ändras hela tiden medan den läses. Försök igen."
+
+msgid "The change could not be applied. Please try again after reloading."
+msgstr "Ändringen kunde inte tillämpas. Försök igen efter omladdning."

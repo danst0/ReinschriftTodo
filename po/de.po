@@ -868,3 +868,9 @@ msgstr "Kein Pfad konfiguriert. Tragen Sie unter 'Pfad (relativ)' die Aufgabenda
 
 msgid "WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md."
 msgstr "WebDAV-Fehler: 409 Conflict. Das Ziel ist ein Ordner, oder der übergeordnete Ordner existiert nicht. Prüfen Sie 'Pfad (relativ)' — zum Beispiel todos.md."
+
+msgid "The file keeps changing while it is being read. Please try again."
+msgstr "Die Datei ändert sich fortlaufend, während sie gelesen wird. Bitte erneut versuchen."
+
+msgid "The change could not be applied. Please try again after reloading."
+msgstr "Die Änderung konnte nicht angewendet werden. Bitte nach dem Neuladen erneut versuchen."
