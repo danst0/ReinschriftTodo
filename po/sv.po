@@ -859,3 +859,12 @@ msgstr "Välj uppgift"
 #. ehemaliger JSON-Schlüssel: deleted_title
 msgid "Deleted: {}"
 msgstr "Borttagen: {}"
+
+msgid "'{}' is a folder, not a file. Set 'Path (relative)' to the todo file, for example todos.md."
+msgstr "”{}” är en mapp, inte en fil. Ange uppgiftsfilen under ”Sökväg (relativ)”, till exempel todos.md."
+
+msgid "No path configured. Set 'Path (relative)' to the todo file, for example todos.md."
+msgstr "Ingen sökväg har angetts. Ange uppgiftsfilen under ”Sökväg (relativ)”, till exempel todos.md."
+
+msgid "WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md."
+msgstr "WebDAV-fel: 409 Conflict. Målet är en mapp, eller så saknas den överordnade mappen. Kontrollera ”Sökväg (relativ)” — till exempel todos.md."

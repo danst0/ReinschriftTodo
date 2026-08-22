@@ -44,7 +44,11 @@ modules:
     sources:
       - type: git
         url: https://github.com/danst0/ReinschriftTodo.git
-        tag: v0.25.8
+        # Beim Übernehmen ins Flathub-Repo zusätzlich `commit:` mit dem Commit
+        # hinter dem Tag eintragen (`git rev-parse v<version>^{commit}` — nicht
+        # die SHA des Tag-Objekts). Flathubs Linter verlangt Tag + Commit; hier
+        # kann der Hash nicht stehen, weil er erst durch diesen Commit entsteht.
+        tag: v0.25.9
       - generated-sources.json
       - type: shell
         commands:

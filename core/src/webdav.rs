@@ -1,11 +1,21 @@
 //! WebDAV client operations for remote storage.
 
 use anyhow::{bail, Result};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use reqwest::blocking::Client;
 use serde_json;
 
 use crate::config::{set_backend_config, BackendConfig};
 use crate::i18n::t;
+
+/// PROPFIND body asking only for the resource type of the target itself.
+const PROPFIND_RESOURCETYPE: &str = r#"<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>"#;
+
+/// Matches a `<collection/>` element in a PROPFIND response, whatever namespace
+/// prefix the server happens to use.
+static COLLECTION_RESOURCETYPE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)<[a-z0-9]*:?collection\s*/?>").unwrap());
 
 /// Construct a full URL from base URL and optional path.
 pub fn construct_full_url(base_url: &str, path: Option<&str>) -> String {
@@ -34,6 +44,71 @@ pub fn is_nextcloud_url(url: &str) -> bool {
     url.contains("remote.php/dav/files")
 }
 
+/// Normalize an optional relative path: trim it, and treat an empty string as unset.
+pub fn normalize_webdav_path(path: Option<String>) -> Option<String> {
+    path.map(|p| p.trim().to_string()).filter(|p| !p.is_empty())
+}
+
+/// Heuristic check whether a URL addresses a collection (folder) instead of a file.
+///
+/// A trailing slash is the WebDAV convention for collections, and a bare Nextcloud
+/// dav root (`…/remote.php/dav/files/USER`) is always the user's home folder — which
+/// is exactly what an empty "Path (relative)" resolves to.
+pub fn looks_like_collection(full_url: &str) -> bool {
+    let target = full_url.split(['?', '#']).next().unwrap_or(full_url);
+    if target.ends_with('/') {
+        return true;
+    }
+    if let Some(rest) = target.split("remote.php/dav/files").nth(1) {
+        let rest = rest.trim_start_matches('/').trim_end_matches('/');
+        // "" is the dav root itself, "USER" the user's home collection
+        return !rest.contains('/');
+    }
+    false
+}
+
+/// Ask the server via PROPFIND (Depth: 0) whether a target is a collection.
+/// Returns `None` when the server does not answer the PROPFIND at all, so that
+/// servers without PROPFIND support do not turn into a false alarm.
+fn probe_is_collection(
+    client: &Client,
+    target_url: &str,
+    username: Option<&str>,
+    password: Option<&str>,
+) -> Option<bool> {
+    let method = reqwest::Method::from_bytes(b"PROPFIND").ok()?;
+    let mut req = client
+        .request(method, target_url)
+        .header("Depth", "0")
+        .header("Content-Type", "application/xml; charset=utf-8")
+        .body(PROPFIND_RESOURCETYPE);
+    if let (Some(u), Some(p)) = (username, password) {
+        req = req.basic_auth(u, Some(p));
+    }
+    let resp = req.send().ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    Some(COLLECTION_RESOURCETYPE.is_match(&resp.text().ok()?))
+}
+
+/// Error for a target that is a folder rather than the todo file.
+fn folder_target_error(full_url: &str) -> anyhow::Error {
+    anyhow::anyhow!(
+        "{}",
+        t("'{}' is a folder, not a file. Set 'Path (relative)' to the todo file, for example todos.md.")
+            .replacen("{}", full_url, 1)
+    )
+}
+
+/// Error for a WebDAV backend without a configured relative path.
+fn missing_path_error() -> anyhow::Error {
+    anyhow::anyhow!(
+        "{}",
+        t("No path configured. Set 'Path (relative)' to the todo file, for example todos.md.")
+    )
+}
+
 /// Try a Nextcloud fallback URL if the primary URL fails.
 /// Returns Ok(Some(working_base_url)) if fallback succeeds, Ok(None) if no fallback attempted.
 fn try_nextcloud_fallback<F, T>(
@@ -49,6 +124,10 @@ where
         && !is_nextcloud_url(base_url) {
             let candidate_base = nextcloud_webdav_url(base_url, user);
             let candidate_full = construct_full_url(&candidate_base, path);
+            // A folder is never a usable todo file — don't adopt it as the base URL.
+            if looks_like_collection(&candidate_full) {
+                return Ok(None);
+            }
             if let Ok(result) = try_request(&candidate_full) {
                 return Ok(Some((result, candidate_base)));
             }
@@ -104,6 +183,7 @@ pub fn read_content_webdav(
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
 
+    let path = normalize_webdav_path(path);
     let path_ref = path.as_deref();
     let username_ref = username.as_deref();
     let password_ref = password.as_deref();
@@ -124,6 +204,9 @@ pub fn read_content_webdav(
     };
 
     let full_url = construct_full_url(url, path_ref);
+    if looks_like_collection(&full_url) {
+        return Err(folder_target_error(&full_url));
+    }
     match try_get(&full_url) {
         Ok(content) => Ok(content),
         Err(e) => {
@@ -149,6 +232,47 @@ pub fn read_content_webdav(
     }
 }
 
+/// Create the parent collections for `path` below `base_url`, top-down.
+/// Returns true when the server accepted at least one MKCOL, i.e. when a retry
+/// of the PUT has a chance of succeeding.
+fn ensure_parent_collections(
+    client: &Client,
+    base_url: &str,
+    path: &str,
+    username: Option<&str>,
+    password: Option<&str>,
+) -> bool {
+    let segments: Vec<&str> = path
+        .split('/')
+        .filter(|s| !s.is_empty() && *s != "." && *s != "..")
+        .collect();
+    if segments.len() < 2 {
+        // The file sits directly in the base collection — nothing to create.
+        return false;
+    }
+    let Ok(method) = reqwest::Method::from_bytes(b"MKCOL") else {
+        return false;
+    };
+
+    let mut created = false;
+    let mut current = base_url.trim_end_matches('/').to_string();
+    for segment in &segments[..segments.len() - 1] {
+        current = format!("{}/{}", current, segment);
+        let mut req = client.request(method.clone(), &current);
+        if let (Some(u), Some(p)) = (username, password) {
+            req = req.basic_auth(u, Some(p));
+        }
+        match req.send() {
+            // 201 Created — the collection is new.
+            Ok(resp) if resp.status().is_success() => created = true,
+            // 405 Method Not Allowed — it was already there, keep walking down.
+            Ok(_) => {}
+            Err(_) => return created,
+        }
+    }
+    created
+}
+
 /// Write content to WebDAV server.
 /// When `expected_etag` is provided, sends an `If-Match` header and returns
 /// `ConflictError` on HTTP 412 Precondition Failed.
@@ -164,6 +288,7 @@ pub fn write_content_webdav(
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
 
+    let path = normalize_webdav_path(path);
     let path_ref = path.as_deref();
     let username_ref = username.as_deref();
     let password_ref = password.as_deref();
@@ -200,18 +325,43 @@ pub fn write_content_webdav(
             if resp.status() == reqwest::StatusCode::NOT_FOUND {
                 bail!("404 Not Found");
             }
+            if resp.status() == reqwest::StatusCode::CONFLICT {
+                bail!("409 Conflict");
+            }
             bail!("WebDAV error: {}", resp.status());
         }
         Ok(())
     };
 
     let full_url = construct_full_url(url, path_ref);
+    if looks_like_collection(&full_url) {
+        return Err(folder_target_error(&full_url));
+    }
     match try_put(&full_url) {
         Ok(_) => Ok(()),
         Err(e) => {
             // Don't retry on conflict — propagate immediately
             if e.downcast_ref::<crate::conflict::ConflictError>().is_some() {
                 return Err(e);
+            }
+            // A 409 on an otherwise reachable server usually means the parent
+            // folder does not exist yet — create it and retry once.
+            if e.to_string().contains("409 Conflict")
+                && let Some(p) = path_ref
+                && ensure_parent_collections(&client, url, p, username_ref, password_ref)
+            {
+                match try_put(&full_url) {
+                    Ok(()) => return Ok(()),
+                    // A precondition failure is a real conflict, not a missing folder.
+                    Err(retry_err)
+                        if retry_err
+                            .downcast_ref::<crate::conflict::ConflictError>()
+                            .is_some() =>
+                    {
+                        return Err(retry_err);
+                    }
+                    Err(_) => {}
+                }
             }
             // Try Nextcloud fallback
             if let Ok(Some((_, candidate_base))) =
@@ -225,6 +375,15 @@ pub fn write_content_webdav(
                     password,
                 });
                 return Ok(());
+            }
+            if e.to_string().contains("409 Conflict") {
+                if path.is_none() {
+                    return Err(missing_path_error());
+                }
+                bail!(
+                    "{}",
+                    t("WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md.")
+                );
             }
             if e.to_string().contains("404 Not Found") {
                 bail!("WebDAV error: 404 Not Found. (Hint: For Nextcloud, ensure URL ends with /remote.php/dav/files/USERNAME)");
@@ -343,26 +502,99 @@ pub fn test_webdav_connection(
         Ok(())
     };
 
+    let path = path.map(str::trim).filter(|p| !p.is_empty());
     let full_url = construct_full_url(base_url, path);
-    match try_connect(&full_url) {
-        Ok(_) => Ok(()),
+
+    // Which URL actually answered — the primary one or the Nextcloud fallback.
+    let reachable_url = match try_connect(&full_url) {
+        Ok(_) => full_url.clone(),
         Err(e) => {
             // Try Nextcloud fallback (test only, don't update config)
+            let mut fallback = None;
             if let Some(user) = username
                 && !is_nextcloud_url(base_url) {
                     let candidate_base = nextcloud_webdav_url(base_url, user);
                     let candidate_full = construct_full_url(&candidate_base, path);
                     if try_connect(&candidate_full).is_ok() {
-                        return Ok(());
+                        fallback = Some(candidate_full);
                     }
                 }
-            // Return original error with context
-            bail!(
-                "{}",
-                t("Connection to '{}' failed: {}")
-                    .replace("{}", &full_url)
-                    .replace("{}", &e.to_string())
-            );
+            match fallback {
+                Some(url) => url,
+                // Return original error with context
+                None => bail!(
+                    "{}",
+                    t("Connection to '{}' failed: {}")
+                        .replacen("{}", &full_url, 1)
+                        .replacen("{}", &e.to_string(), 1)
+                ),
+            }
         }
+    };
+
+    // Reachable is not enough: a folder answers happily but can never hold the
+    // todos, and the PUT would only fail later with a bare 409.
+    if looks_like_collection(&reachable_url)
+        || probe_is_collection(&client, &reachable_url, username, password) == Some(true)
+    {
+        return Err(folder_target_error(&reachable_url));
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_path_counts_as_unset() {
+        assert_eq!(normalize_webdav_path(None), None);
+        assert_eq!(normalize_webdav_path(Some(String::new())), None);
+        assert_eq!(normalize_webdav_path(Some("   ".to_string())), None);
+        assert_eq!(
+            normalize_webdav_path(Some("  todos.md  ".to_string())),
+            Some("todos.md".to_string())
+        );
+    }
+
+    #[test]
+    fn nextcloud_root_is_recognised_as_folder() {
+        // The exact configuration from issue #11: login flow filled in the URL,
+        // "Path (relative)" stayed empty.
+        let base = "https://cloud.example.com/remote.php/dav/files/alice";
+        assert!(looks_like_collection(&construct_full_url(base, None)));
+        assert!(looks_like_collection(&construct_full_url(base, Some(""))));
+        assert!(looks_like_collection(
+            "https://cloud.example.com/remote.php/dav/files"
+        ));
+    }
+
+    #[test]
+    fn file_targets_are_not_folders() {
+        let base = "https://cloud.example.com/remote.php/dav/files/alice";
+        assert!(!looks_like_collection(&construct_full_url(
+            base,
+            Some("todos.md")
+        )));
+        assert!(!looks_like_collection(&construct_full_url(
+            base,
+            Some("Notes/todos.md")
+        )));
+        assert!(!looks_like_collection("https://dav.example.com/todos.md"));
+    }
+
+    #[test]
+    fn trailing_slash_marks_a_collection() {
+        assert!(looks_like_collection("https://dav.example.com/notes/"));
+        assert!(!looks_like_collection("https://dav.example.com/notes"));
+    }
+
+    #[test]
+    fn collection_resourcetype_is_detected_regardless_of_prefix() {
+        assert!(COLLECTION_RESOURCETYPE.is_match("<d:resourcetype><d:collection/></d:resourcetype>"));
+        assert!(COLLECTION_RESOURCETYPE.is_match("<D:resourcetype><D:collection /></D:resourcetype>"));
+        assert!(COLLECTION_RESOURCETYPE.is_match("<resourcetype><collection/></resourcetype>"));
+        assert!(!COLLECTION_RESOURCETYPE.is_match("<d:resourcetype/>"));
     }
 }

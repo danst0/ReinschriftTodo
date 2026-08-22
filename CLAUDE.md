@@ -284,6 +284,15 @@ Before every commit, update the version and all Flatpak manifests:
    - `me.dumke.Reinschrift.metainfo.xml` — add new `<release>` entry at top of `<releases>` with today's date
 3. **Commit message**: Prefix with `v<version>:` (e.g. `v0.18.12: Add feature X`)
 
+### Publishing after the tag
+
+The Flatpak manifest in this repo is the template; the package itself lives in a
+separate checkout of `github.com/flathub/me.dumke.Reinschrift`. When copying the
+manifest over, add a `commit:` line next to `tag:` with the commit behind the tag
+(`git rev-parse v<version>^{commit}` — not the SHA of the annotated tag object).
+Flathub's linter requires tag and commit together; the value cannot live in this
+repo's manifest because it only comes into existence with the release commit.
+
 ## Environment Variables
 
 Desktop/CLI: `TODOS_DB_PATH`

@@ -859,3 +859,12 @@ msgstr "Seleccionar tarea"
 #. ehemaliger JSON-Schlüssel: deleted_title
 msgid "Deleted: {}"
 msgstr "Eliminada: {}"
+
+msgid "'{}' is a folder, not a file. Set 'Path (relative)' to the todo file, for example todos.md."
+msgstr "'{}' es una carpeta, no un archivo. Indique en 'Ruta (relativa)' el archivo de tareas, por ejemplo todos.md."
+
+msgid "No path configured. Set 'Path (relative)' to the todo file, for example todos.md."
+msgstr "No hay ninguna ruta configurada. Indique en 'Ruta (relativa)' el archivo de tareas, por ejemplo todos.md."
+
+msgid "WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md."
+msgstr "Error de WebDAV: 409 Conflict. El destino es una carpeta o su carpeta superior no existe. Compruebe 'Ruta (relativa)' — por ejemplo todos.md."

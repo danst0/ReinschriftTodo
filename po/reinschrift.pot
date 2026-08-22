@@ -856,3 +856,12 @@ msgstr ""
 #. ehemaliger JSON-Schlüssel: deleted_title
 msgid "Deleted: {}"
 msgstr ""
+
+msgid "'{}' is a folder, not a file. Set 'Path (relative)' to the todo file, for example todos.md."
+msgstr ""
+
+msgid "No path configured. Set 'Path (relative)' to the todo file, for example todos.md."
+msgstr ""
+
+msgid "WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md."
+msgstr ""

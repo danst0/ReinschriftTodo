@@ -65,6 +65,16 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="0.25.9" date="2026-08-22">
+      <description>
+        <ul>
+          <li>WebDAV: adding a task no longer fails with "409 Conflict" when the account was connected via the Nextcloud login without a file name — the login now fills in a default path</li>
+          <li>The connection check no longer reports success when the configured target is a folder rather than the todo file</li>
+          <li>WebDAV errors now explain what to change instead of showing a bare status code</li>
+          <li>Missing folders in a WebDAV path are created automatically instead of failing the save</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.25.8" date="2026-08-13">
       <description>
         <ul>

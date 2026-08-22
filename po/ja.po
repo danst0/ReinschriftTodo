@@ -859,3 +859,12 @@ msgstr "タスクを選択"
 #. ehemaliger JSON-Schlüssel: deleted_title
 msgid "Deleted: {}"
 msgstr "削除しました: {}"
+
+msgid "'{}' is a folder, not a file. Set 'Path (relative)' to the todo file, for example todos.md."
+msgstr "「{}」はファイルではなくフォルダーです。「パス (相対)」にタスクファイルを指定してください (例: todos.md)。"
+
+msgid "No path configured. Set 'Path (relative)' to the todo file, for example todos.md."
+msgstr "パスが設定されていません。「パス (相対)」にタスクファイルを指定してください (例: todos.md)。"
+
+msgid "WebDAV error: 409 Conflict. The target is a folder, or its parent folder does not exist. Check 'Path (relative)' — for example todos.md."
+msgstr "WebDAV エラー: 409 Conflict。対象がフォルダーであるか、親フォルダーが存在しません。「パス (相対)」を確認してください (例: todos.md)。"

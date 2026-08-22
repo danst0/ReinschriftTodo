@@ -67,6 +67,9 @@ struct AiChatResponse {
 
 const DEFAULT_DUE_TIME: NaiveTime = NaiveTime::from_hms_opt(0, 0, 0).expect("midnight available");
 
+/// File name used when a WebDAV account is connected without an explicit path.
+const DEFAULT_WEBDAV_PATH: &str = "todos.md";
+
 /// Create (if missing) and return the fallback todos file inside XDG data home.
 /// Returns None if the directory cannot be prepared or the file cannot be created.
 fn ensure_default_database() -> Option<PathBuf> {
@@ -3032,6 +3035,7 @@ impl AppState {
         let url_row_for_nc = url_row.clone();
         let user_row_for_nc = user_row.clone();
         let pass_row_for_nc = pass_row.clone();
+        let path_row_for_nc = path_row.clone();
         let state_for_nc = Rc::clone(self);
         let nc_polling = Rc::new(RefCell::new(false));
         let nc_polling_for_handler = Rc::clone(&nc_polling);
@@ -3061,6 +3065,7 @@ impl AppState {
             let url_row_bg = url_row_for_nc.clone();
             let user_row_bg = user_row_for_nc.clone();
             let pass_row_bg = pass_row_for_nc.clone();
+            let path_row_bg = path_row_for_nc.clone();
             let nc_polling_bg = Rc::clone(&nc_polling_for_handler);
 
             let (init_sender, init_receiver) = std::sync::mpsc::channel();
@@ -3085,6 +3090,7 @@ impl AppState {
                                 let url_row_poll = url_row_bg.clone();
                                 let user_row_poll = user_row_bg.clone();
                                 let pass_row_poll = pass_row_bg.clone();
+                                let path_row_poll = path_row_bg.clone();
                                 let nc_polling_poll = Rc::clone(&nc_polling_bg);
                                 let poll_count = Rc::new(RefCell::new(0u32));
 
@@ -3114,6 +3120,7 @@ impl AppState {
                                     let url_row_inner = url_row_poll.clone();
                                     let user_row_inner = user_row_poll.clone();
                                     let pass_row_inner = pass_row_poll.clone();
+                                    let path_row_inner = path_row_poll.clone();
                                     let nc_polling_inner = Rc::clone(&nc_polling_poll);
                                     glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
                                         match poll_receiver.try_recv() {
@@ -3131,6 +3138,12 @@ impl AppState {
                                                         url_row_inner.set_text(&webdav_url);
                                                         state_inner.set_webdav_username(login_name.clone());
                                                         state_inner.set_webdav_password(app_password);
+
+                                                        // The login only yields the account root; without a
+                                                        // file name every write would land on a folder.
+                                                        if path_row_inner.text().trim().is_empty() {
+                                                            path_row_inner.set_text(DEFAULT_WEBDAV_PATH);
+                                                        }
 
                                                         row_inner.set_subtitle("");
                                                         *nc_polling_inner.borrow_mut() = false;
@@ -3827,9 +3840,13 @@ impl AppState {
     }
 
     fn set_webdav_path(&self, path: String) {
+        // An empty field means "not configured" — storing Some("") would only
+        // append a slash to the URL and silently target the parent folder.
+        let trimmed = path.trim();
+        let normalized = (!trimmed.is_empty()).then(|| trimmed.to_string());
         {
             let mut prefs = self.preferences.borrow_mut();
-            prefs.webdav_path = Some(path.clone());
+            prefs.webdav_path = normalized.clone();
         }
         self.persist_preferences();
         
@@ -3838,7 +3855,7 @@ impl AppState {
             && let Some(u) = url {
                 data::set_backend_config(data::BackendConfig::WebDav {
                     url: u,
-                    path: Some(path),
+                    path: normalized,
                     username: user,
                     password: pass,
                 });
