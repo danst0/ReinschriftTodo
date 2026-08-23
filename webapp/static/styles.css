@@ -1552,6 +1552,9 @@ button, a, .checkbox, .filter-link, .todo-item {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
+.undo-toast.is-error {
+    border-left: 3px solid var(--color-danger, #d33);
+}
 .undo-toast-message {
     flex: 1;
     font-size: var(--font-size-md);

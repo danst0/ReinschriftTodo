@@ -14,6 +14,7 @@ import {
 } from './modules/modal.js';
 import {
     setReloadCallback as setTodoReloadCallback,
+    configureTodoActions,
     toggleTodo, postponeTodo, postponeGroup
 } from './modules/todo-actions.js';
 import {
@@ -77,6 +78,7 @@ function initApp(config = {}) {
 
     // Set up todo actions reload callback
     setTodoReloadCallback(handleReload);
+    configureTodoActions({ translations: appConfig.translations || {} });
 
     // Set up auto-reload callback
     setReloadCallback(handleReloadComplete);

@@ -39,7 +39,7 @@
         {% if sort_mode in ['topic', 'location'] %}
         <span class="drag-handle" title="Drag to move" aria-hidden="true">{{ icon('grip', size=18) }}</span>
         {% endif %}
-        <a href="javascript:void(0)" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="toggleTodo(event, {{ todo.line_index }})">
+        <a href="javascript:void(0)" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="toggleTodo(event, {{ todo.line_index }}, '{{ todo.marker or '' }}')">
             {% if todo.done %}☑{% else %}☐{% endif %}
         </a>
         <div class="content" onclick="openEditModal({{ todo.line_index }})">
@@ -80,10 +80,10 @@
             {% if view == 'myday' %}
             <a href="javascript:void(0)" class="btn-action myday-remove-btn" onclick="removeFromMyDay(event, '{{ todo.marker or '' }}')" title="{{ t.remove_from_my_day }}" aria-label="{{ t.remove_from_my_day }}">{{ icon('x') }}</a>
             {% endif %}
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'today')" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar') }}</a>
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow')" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right') }}</a>
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'weekend')" title="{{ t.next_weekend }}" aria-label="{{ t.next_weekend }}">{{ icon('umbrella') }}</a>
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'sometime')" title="{{ t.sometime }}" aria-label="{{ t.sometime }}">{{ icon('clock') }}</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'today', '{{ todo.marker or '' }}')" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar') }}</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow', '{{ todo.marker or '' }}')" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right') }}</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'weekend', '{{ todo.marker or '' }}')" title="{{ t.next_weekend }}" aria-label="{{ t.next_weekend }}">{{ icon('umbrella') }}</a>
+            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'sometime', '{{ todo.marker or '' }}')" title="{{ t.sometime }}" aria-label="{{ t.sometime }}">{{ icon('clock') }}</a>
         </div>
     </div>
 {% endfor %}

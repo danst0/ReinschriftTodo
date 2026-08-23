@@ -11,6 +11,13 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev_secret_key')
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)
 
+    # The CSRF token is baked into the page when it renders and the 30 s partial
+    # reloads never replace it. With Flask-WTF's default hour, a page left open
+    # kept looking current but could no longer write: every POST came back 400,
+    # and a tapped checkbox silently reappeared unticked. The token stays signed
+    # and bound to the session, so the session is the lifetime that matters.
+    WTF_CSRF_TIME_LIMIT = None
+
     # Session cookie settings - Lax works for same-site navigations
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = False

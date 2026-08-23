@@ -217,8 +217,30 @@ def register_error_handlers(app: Flask) -> None:
 
     from app.exceptions import ConflictError
 
+    def _wants_json() -> bool:
+        """Whether this request came from the page's JS rather than a form post.
+
+        ``X-CSRFToken`` is set by fetchWithCsrf and by nothing else, so it
+        distinguishes a background call — which needs a machine-readable answer
+        it can act on — from a plain form submit, which wants the error page.
+        """
+        return (
+            request.path.startswith('/api/')
+            or request.headers.get('X-CSRFToken') is not None
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or request.accept_mimetypes.best == 'application/json'
+        )
+
     @app.errorhandler(CSRFError)
     def handle_csrf_error(e):
+        """Let the client tell an expired token apart from a real rejection.
+
+        An expired token is recoverable: CSRFProtect rejects before the view
+        runs, so nothing was written and the call can simply be repeated with a
+        fresh token. Saying so beats failing a write the user has no way to fix.
+        """
+        if _wants_json():
+            return jsonify({'error': 'csrf_expired'}), 400
         return render_template('error.html', error='CSRF token missing or invalid'), 400
 
     @app.errorhandler(404)
@@ -237,11 +259,6 @@ def register_error_handlers(app: Flask) -> None:
         other writer put there. Reloading shows the truth.
         """
         message = 'The file was changed elsewhere. Reload and try again.'
-        wants_json = (
-            request.path.startswith('/api/')
-            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-            or request.accept_mimetypes.best == 'application/json'
-        )
-        if wants_json:
+        if _wants_json():
             return jsonify({'error': message, 'conflict': True}), 409
         return render_template('error.html', error=message), 409

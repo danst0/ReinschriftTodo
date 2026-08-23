@@ -51,3 +51,20 @@ class ConflictError(ReinschriftError):
             f"Conflict: local fingerprint '{local_fingerprint}' "
             f"does not match remote '{remote_fingerprint}'"
         )
+
+
+class StaleReferenceError(ConflictError):
+    """The todo a request points at is no longer in the file.
+
+    The line index came from a page rendered earlier and the marker that came
+    with it is gone: the todo was deleted or rewritten elsewhere. Writing at
+    the index anyway would hit whatever moved into that slot. From the user's
+    side this is the same situation as a rejected write — the file changed
+    underneath the page — so it is a ConflictError.
+    """
+
+    def __init__(self, marker: str = ""):
+        self.marker = marker
+        self.local_fingerprint = ""
+        self.remote_fingerprint = ""
+        Exception.__init__(self, f"Todo '{marker}' is no longer in the file")

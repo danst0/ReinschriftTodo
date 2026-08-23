@@ -51,6 +51,34 @@ export function showUndoToast(message, duration = 8000) {
 }
 
 /**
+ * Show a plain message toast, with no action attached.
+ *
+ * Used to report an action that did not go through. A write that fails must
+ * say so — reloading on a silent failure just makes the change look undone.
+ *
+ * @param {string} message - Message to display
+ * @param {number} [duration=5000] - Toast duration in ms
+ * @param {boolean} [isError=false] - Style it as a failure
+ */
+export function showToast(message, duration = 5000, isError = false) {
+    removeToast();
+
+    const toast = document.createElement('div');
+    toast.className = isError ? 'undo-toast is-error' : 'undo-toast';
+    toast.setAttribute('role', 'status');
+
+    const text = document.createElement('span');
+    text.className = 'undo-toast-message';
+    text.textContent = message;
+    toast.appendChild(text);
+
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+
+    toastTimeout = setTimeout(() => removeToast(), duration);
+}
+
+/**
  * Remove the current toast if present.
  */
 function removeToast() {

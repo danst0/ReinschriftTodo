@@ -276,7 +276,7 @@ webapp/
 
 Before every commit, update the version and all Flatpak manifests:
 
-1. **Increment version**: Increase patch by 1. If patch reaches 9, reset to 0 and increment minor. If minor reaches 9, reset to 0 and increment major. (e.g. 0.18.8 → 0.18.9 → 0.19.0 → 0.19.1)
+1. **Increment version**: Every component counts 0–9 and then carries, like an odometer. Increase patch by 1; if patch would pass 9, reset it to 0 and increment minor; if minor would pass 9, reset it to 0 and increment major. No component ever exceeds 9. (e.g. 0.1.8 → 0.1.9 → 0.2.0, and 0.9.9 → 1.0.0)
 2. **Update files**:
    - `Cargo.toml` — `version` field in `[workspace.package]`
    - `webapp/pyproject.toml` — `version` field in `[project]`

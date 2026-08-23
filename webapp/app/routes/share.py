@@ -198,7 +198,9 @@ def toggle(token: str, marker: str):
     if item.done:
         return jsonify({'error': 'already_done'}), 409
 
-    handle_toggle_with_recurrence(line_index)
+    # Pass the marker on: the service reads the file again, and the index found
+    # above describes the state before that read.
+    handle_toggle_with_recurrence(line_index, marker)
     return jsonify({'ok': True})
 
 

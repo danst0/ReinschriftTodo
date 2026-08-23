@@ -65,6 +65,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.0.0" date="2026-08-23">
+      <description>
+        <ul>
+          <li>Web interface: ticking a task off no longer fails silently — a page left open for more than an hour could not save any more, and the tick simply reappeared unticked</li>
+          <li>Web interface: completing or postponing a task now identifies it by its ID instead of its position in the file, so a task that moved in the meantime can no longer be hit by mistake</li>
+          <li>Web interface: an action that cannot be carried out now says so instead of quietly reloading over it</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.26.0" date="2026-08-22">
       <description>
         <ul>

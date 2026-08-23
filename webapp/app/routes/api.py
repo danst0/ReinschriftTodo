@@ -48,6 +48,19 @@ def require_login_json(f):
     return decorated
 
 
+@api_bp.route('/csrf-token')
+@require_login_json
+def api_csrf_token():
+    """Hand out a fresh CSRF token for a page that has been open a while.
+
+    Lets the client recover from a rejected write instead of reporting a
+    failure the user can do nothing about.
+    """
+    from flask_wtf.csrf import generate_csrf
+
+    return jsonify({'csrf_token': generate_csrf()})
+
+
 @api_bp.route('/todo/<int:line_index>')
 @require_login_json
 def get_todo_json(line_index):
@@ -159,7 +172,9 @@ def api_parse_debug():
 def api_postpone_batch():
     """Postpone multiple todos in a single operation.
 
-    Expects JSON: {"line_indexes": [0, 1, 2], "target": "tomorrow"}
+    Expects JSON: {"line_indexes": [0, 1, 2], "target": "tomorrow",
+                   "markers": ["a1", "b2", "c3"]}
+    The optional markers match line_indexes positionally and win over them.
     Returns: {"ok": true, "updated": 3, "failed": []}
     """
     data = request.get_json(silent=True) or {}
@@ -182,7 +197,7 @@ def api_postpone_batch():
         return jsonify({'error': 'Invalid line indexes'}), 400
 
     push_undo(read_content(), 'postpone')
-    result = postpone_todos_batch(line_indexes, target)
+    result = postpone_todos_batch(line_indexes, target, _parse_markers(data))
     return jsonify({'ok': True, **result})
 
 
@@ -201,13 +216,28 @@ def _parse_line_indexes(data: dict):
         return None, (jsonify({'error': 'Invalid line indexes'}), 400)
 
 
+def _parse_markers(data: dict) -> list[str] | None:
+    """Read the optional markers field, positionally matching line_indexes.
+
+    Markers identify the todos across a file that moved under the page; the
+    indexes alone cannot. An older client that sends none still works, it just
+    falls back to the indexes.
+    """
+    markers = data.get('markers')
+    if not isinstance(markers, list):
+        return None
+    return [str(marker or '') for marker in markers]
+
+
 @api_bp.route('/toggle-batch', methods=['POST'])
 @csrf.exempt
 @require_login_json
 def api_toggle_batch():
     """Toggle multiple todos in a single operation.
 
-    Expects JSON: {"line_indexes": [0, 1, 2], "done": true}
+    Expects JSON: {"line_indexes": [0, 1, 2], "done": true,
+                   "markers": ["a1", "b2", "c3"]}
+    The optional markers match line_indexes positionally and win over them.
     Returns: {"ok": true, "updated": 3, "failed": []}
     """
     data = request.get_json(silent=True) or {}
@@ -220,7 +250,7 @@ def api_toggle_batch():
         return jsonify({'error': 'Field "done" must be a boolean'}), 400
 
     push_undo(read_content(), 'complete' if done else 'reopen')
-    result = toggle_todos_batch(line_indexes, done)
+    result = toggle_todos_batch(line_indexes, done, _parse_markers(data))
     return jsonify({'ok': True, **result})
 
 
@@ -230,7 +260,8 @@ def api_toggle_batch():
 def api_delete_batch():
     """Delete multiple todos in a single operation.
 
-    Expects JSON: {"line_indexes": [0, 1, 2]}
+    Expects JSON: {"line_indexes": [0, 1, 2], "markers": ["a1", "b2", "c3"]}
+    The optional markers match line_indexes positionally and win over them.
     Returns: {"ok": true, "updated": 3, "failed": []}
     """
     data = request.get_json(silent=True) or {}
@@ -239,7 +270,7 @@ def api_delete_batch():
         return error
 
     push_undo(read_content(), 'delete')
-    result = delete_todos_batch(line_indexes)
+    result = delete_todos_batch(line_indexes, _parse_markers(data))
     return jsonify({'ok': True, **result})
 
 
@@ -249,7 +280,9 @@ def api_delete_batch():
 def api_assign_batch():
     """Add a project and/or context to multiple todos in a single operation.
 
-    Expects JSON: {"line_indexes": [0, 1], "project": "tax", "context": "home"}
+    Expects JSON: {"line_indexes": [0, 1], "project": "tax", "context": "home",
+                   "markers": ["a1", "b2"]}
+    The optional markers match line_indexes positionally and win over them.
     At least one of project/context is required.
     Returns: {"ok": true, "updated": 2, "failed": []}
     """
@@ -264,7 +297,8 @@ def api_assign_batch():
         return jsonify({'error': 'Project or context required'}), 400
 
     push_undo(read_content(), 'assign')
-    result = assign_todos_batch(line_indexes, project=project, context=context)
+    result = assign_todos_batch(line_indexes, project=project, context=context,
+                                markers=_parse_markers(data))
     return jsonify({'ok': True, **result})
 
 

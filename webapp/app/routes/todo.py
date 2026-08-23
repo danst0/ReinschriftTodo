@@ -5,7 +5,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
 
 from translations import TRANSLATIONS
-from app.exceptions import ConflictError
+from app.exceptions import ConflictError, StaleReferenceError
 from app.models.todo import COMPLETION_RE
 from app.services import (
     read_content,
@@ -21,7 +21,7 @@ from app.services import (
 )
 from app.services.parser import find_line_by_marker, marker_of
 from app.services.storage import read_content_with_fingerprint, write_content_checked
-from app.services.todo_service import render_tagged
+from app.services.todo_service import render_tagged, resolve_index
 from app.services.undo_service import content_hash, push_entry, push_undo, pop_undo
 from app.utils.markers import ensure_marker, generate_marker
 from app.utils.escaping import escape_note, normalize_note
@@ -51,7 +51,7 @@ def toggle(line_index):
     """Toggle a todo's completion status."""
     content = read_content()
     push_undo(content, 'toggle')
-    handle_toggle_with_recurrence(line_index)
+    handle_toggle_with_recurrence(line_index, request.form.get('marker'))
     return redirect(url_for('main.index'))
 
 
@@ -61,7 +61,7 @@ def postpone(line_index, target):
     """Postpone a todo to a new date."""
     content = read_content()
     push_undo(content, 'postpone')
-    postpone_todo(line_index, target)
+    postpone_todo(line_index, target, request.form.get('marker'))
     return redirect(url_for('main.index'))
 
 
@@ -93,18 +93,9 @@ def edit(line_index):
     return render_template('edit.html', todo=item_dict)
 
 
-def _resolve_index(lines, line_index, marker):
-    """Resolve a todo's line, preferring its marker over the index.
-
-    The index comes from a page that was rendered earlier; if the file changed
-    since, it points at whatever moved into that slot. Writing there edits or
-    deletes a todo the user never touched.
-    """
-    if marker:
-        found = find_line_by_marker(lines, marker)
-        if found is not None:
-            return found
-    return line_index
+# Kept importable here for the callers and tests that already know this name;
+# the implementation lives next to the mutations it guards.
+_resolve_index = resolve_index
 
 
 def _handle_edit_post(lines, line_index):
@@ -130,11 +121,12 @@ def _handle_edit_post(lines, line_index):
         title = f"{title.strip()} ({comment.strip()})"
 
     # Reconstruct line
-    line_index = _resolve_index(lines, line_index, request.form.get('marker'))
-    if line_index >= len(lines):
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'error': 'Invalid line index'}), 400
-        return redirect(url_for('main.index'))
+    resolved = resolve_index(lines, line_index, request.form.get('marker'))
+    if resolved is None:
+        # The todo this form was opened on is gone from the file. Writing at
+        # the stale index would rewrite whatever moved into that slot.
+        raise StaleReferenceError(request.form.get('marker') or "")
+    line_index = resolved
     original_line = lines[line_index]
     marker = ensure_marker(marker_of(original_line))
     original_item = parse_line(original_line, line_index)
@@ -225,11 +217,8 @@ def _handle_edit_post(lines, line_index):
 def delete(line_index):
     """Delete a todo."""
     content = read_content()
-    line_index = _resolve_index(
-        content.splitlines(), line_index, request.form.get('marker')
-    )
     push_undo(content, 'delete')
-    delete_todo(line_index)
+    delete_todo(line_index, request.form.get('marker'))
     return redirect(url_for('main.index'))
 
 

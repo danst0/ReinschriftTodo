@@ -6,6 +6,7 @@ from dataclasses import replace
 from datetime import date, datetime
 from typing import Optional, Any
 
+from app.exceptions import StaleReferenceError
 from app.models.todo import (
     TodoItem, ID_RE, COMPLETION_RE, DUE_RE, MYDAY_STRIP_RE, DEFAULT_DUE_TIME
 )
@@ -107,19 +108,78 @@ def load_todos() -> list[TodoItem]:
     return items
 
 
-def toggle_todo(line_index: int, done: bool) -> None:
+def resolve_index(lines: list[str], line_index: int,
+                  marker: Optional[str] = None) -> Optional[int]:
+    """Resolve a todo's line, preferring its marker over the index.
+
+    The index comes from a page that was rendered earlier; if the file changed
+    since, it points at whatever moved into that slot. Writing there touches a
+    todo the user never clicked — and if that line happened to be completed
+    already, toggling it puts a finished task back on the list.
+
+    Returns None when the caller supplied a marker that is no longer in the
+    file. The todo was deleted or rewritten elsewhere, and the index that
+    travelled with it is worthless. Lines without a marker (hand-written ones)
+    still resolve by index; there is nothing better to go on.
+    """
+    if marker:
+        return find_line_by_marker(lines, marker)
+    if 0 <= line_index < len(lines):
+        return line_index
+    return None
+
+
+def _resolve_or_raise(lines: list[str], line_index: int,
+                      marker: Optional[str]) -> int:
+    """Resolve a line or refuse the write, rather than hitting a foreign todo."""
+    index = resolve_index(lines, line_index, marker)
+    if index is None:
+        raise StaleReferenceError(marker or "")
+    return index
+
+
+def _resolve_batch(lines: list[str], line_indexes: list[int],
+                   markers: Optional[list[str]] = None
+                   ) -> tuple[list[tuple[int, int]], list[int]]:
+    """Resolve a batch of todos, pairing each index with its marker.
+
+    ``markers`` is positional: entry *n* belongs to ``line_indexes[n]``. A
+    missing or empty entry means "no marker known", which falls back to the
+    index. One vanished todo should not sink the whole batch, so entries that
+    cannot be resolved are reported instead of raising.
+
+    Returns:
+        (resolved, failed) — resolved holds (requested_index, actual_index)
+        pairs, failed holds the requested indexes that are gone.
+    """
+    resolved: list[tuple[int, int]] = []
+    failed: list[int] = []
+
+    for position, line_index in enumerate(line_indexes):
+        marker = markers[position] if markers and position < len(markers) else None
+        index = resolve_index(lines, line_index, marker)
+        if index is None:
+            failed.append(line_index)
+        else:
+            resolved.append((line_index, index))
+
+    return resolved, failed
+
+
+def toggle_todo(line_index: int, done: bool, marker: Optional[str] = None) -> None:
     """Toggle a todo's completion status.
 
     Args:
-        line_index: Line index of the todo.
+        line_index: Line index of the todo, as rendered on the page.
         done: New completion status.
+        marker: Marker ID of the todo; wins over the index when present.
     """
     content = read_content()
     lines = content.splitlines()
 
-    if line_index < len(lines):
-        lines[line_index] = rewrite_line(lines[line_index], done)
-        write_content('\n'.join(lines) + '\n')
+    index = _resolve_or_raise(lines, line_index, marker)
+    lines[index] = rewrite_line(lines[index], done)
+    write_content('\n'.join(lines) + '\n')
 
 
 def rewrite_line(line: str, done: bool) -> str:
@@ -195,6 +255,14 @@ def add_todo(title: str, myday: bool = False) -> dict[str, Any]:
     }
 
 
+def _separator_index(lines: list[str]) -> int:
+    """Where new todos go: just above the ``---`` separator, else at the end."""
+    for i, line in enumerate(lines):
+        if line.strip() == "---":
+            return i
+    return len(lines)
+
+
 def insert_line(line: str) -> None:
     """Insert a line at the appropriate position.
 
@@ -204,21 +272,16 @@ def insert_line(line: str) -> None:
     content = read_content()
     lines = content.splitlines()
 
-    insert_index = len(lines)
-    for i, l in enumerate(lines):
-        if l.strip() == "---":
-            insert_index = i
-            break
-
-    lines.insert(insert_index, line)
+    lines.insert(_separator_index(lines), line)
     write_content('\n'.join(lines) + '\n')
 
 
-def delete_todo(line_index: int) -> bool:
+def delete_todo(line_index: int, marker: Optional[str] = None) -> bool:
     """Delete a todo by line index.
 
     Args:
-        line_index: Line index to delete.
+        line_index: Line index to delete, as rendered on the page.
+        marker: Marker ID of the todo; wins over the index when present.
 
     Returns:
         True if deleted, False if index out of range.
@@ -226,11 +289,10 @@ def delete_todo(line_index: int) -> bool:
     content = read_content()
     lines = content.splitlines()
 
-    if line_index < len(lines):
-        lines.pop(line_index)
-        write_content('\n'.join(lines) + '\n')
-        return True
-    return False
+    index = _resolve_or_raise(lines, line_index, marker)
+    lines.pop(index)
+    write_content('\n'.join(lines) + '\n')
+    return True
 
 
 def update_todo_by_marker(marker: str, updates: dict[str, Any]) -> bool:
@@ -327,24 +389,31 @@ def update_todo_by_marker(marker: str, updates: dict[str, Any]) -> bool:
     return True
 
 
-def handle_toggle_with_recurrence(line_index: int) -> None:
+def handle_toggle_with_recurrence(line_index: int,
+                                  marker: Optional[str] = None) -> None:
     """Handle toggling a todo that has recurrence.
 
+    One read-modify-write for the whole operation. Splitting it up used to mean
+    re-reading the file between the completion and the spawned occurrence, which
+    both re-opened the window for a foreign writer and reset the ETag guard to
+    the innermost read — so the guard proved nothing about the state the user
+    actually clicked on.
+
     Args:
-        line_index: Line index of the todo.
+        line_index: Line index of the todo, as rendered on the page.
+        marker: Marker ID of the todo; wins over the index when present.
     """
     content = read_content()
     lines = content.splitlines()
 
-    if line_index >= len(lines):
-        return
+    index = _resolve_or_raise(lines, line_index, marker)
 
-    line = lines[line_index]
+    line = lines[index]
     is_done = "- [x]" in line or "- [X]" in line
-    item = parse_line(line, line_index)
+    item = parse_line(line, index)
 
     if not item:
-        return
+        raise StaleReferenceError(marker or "")
 
     now = datetime.now()
 
@@ -353,12 +422,10 @@ def handle_toggle_with_recurrence(line_index: int) -> None:
         base_time = item.due.time() if item.due else DEFAULT_DUE_TIME
         due_dt = datetime.combine(now.date(), base_time)
         due_str = format_due(due_dt)
-        new_line = re.sub(r'due:\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?', f'due:{due_str}', line)
-        lines[line_index] = new_line
-        write_content('\n'.join(lines) + '\n')
-        toggle_todo(line_index, True)
+        line = re.sub(r'due:\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?', f'due:{due_str}', line)
+        lines[index] = rewrite_line(line, True)
     else:
-        toggle_todo(line_index, not is_done)
+        lines[index] = rewrite_line(line, not is_done)
 
     # Create next occurrence if completing a recurring task
     if item.recurrence and not is_done:
@@ -381,7 +448,9 @@ def handle_toggle_with_recurrence(line_index: int) -> None:
                 new_line += f' ~note:"{escape_note(item.note)}"'
             # Fresh marker: the completed occurrence keeps the old one.
             new_line += f" ^{generate_marker()}"
-            insert_line(new_line)
+            lines.insert(_separator_index(lines), new_line)
+
+    write_content('\n'.join(lines) + '\n')
 
 
 def set_myday(marker: str, on: bool) -> bool:
@@ -422,12 +491,14 @@ def set_myday(marker: str, on: bool) -> bool:
     return True
 
 
-def postpone_todo(line_index: int, target: str) -> bool:
+def postpone_todo(line_index: int, target: str,
+                  marker: Optional[str] = None) -> bool:
     """Postpone a todo to a new date.
 
     Args:
-        line_index: Line index of the todo.
+        line_index: Line index of the todo, as rendered on the page.
         target: Postpone target ('today', 'tomorrow', 'weekend', 'sometime').
+        marker: Marker ID of the todo; wins over the index when present.
 
     Returns:
         True if updated, False if not found.
@@ -437,29 +508,31 @@ def postpone_todo(line_index: int, target: str) -> bool:
     content = read_content()
     lines = content.splitlines()
 
-    if line_index >= len(lines):
-        return False
+    index = _resolve_or_raise(lines, line_index, marker)
 
-    line = lines[line_index]
-    item = parse_line(line, line_index)
+    line = lines[index]
+    item = parse_line(line, index)
     if not item:
         return False
 
     new_datetime, new_time = calculate_postpone_date(target, item.due)
 
-    lines[line_index] = _render_todo_line(item, lines[line_index], due=new_datetime)
+    lines[index] = _render_todo_line(item, lines[index], due=new_datetime)
     write_content('\n'.join(lines) + '\n')
     return True
 
 
-def postpone_todos_batch(line_indexes: list[int], target: str) -> dict:
+def postpone_todos_batch(line_indexes: list[int], target: str,
+                         markers: Optional[list[str]] = None) -> dict:
     """Postpone multiple todos to a new date in a single operation.
 
     This avoids WebDAV locking issues by doing a single read-modify-write cycle.
 
     Args:
-        line_indexes: List of line indexes to postpone.
+        line_indexes: List of line indexes to postpone, as rendered on the page.
         target: Postpone target ('today', 'tomorrow', 'weekend', 'sometime').
+        markers: Marker IDs positionally matching line_indexes; each wins over
+            its index when present.
 
     Returns:
         Dict with 'updated' count and 'failed' list of indexes that couldn't be updated.
@@ -470,21 +543,17 @@ def postpone_todos_batch(line_indexes: list[int], target: str) -> dict:
     lines = content.splitlines()
 
     updated = 0
-    failed = []
+    resolved, failed = _resolve_batch(lines, line_indexes, markers)
 
-    for line_index in line_indexes:
-        if line_index >= len(lines):
-            failed.append(line_index)
-            continue
-
-        line = lines[line_index]
-        item = parse_line(line, line_index)
+    for line_index, index in resolved:
+        line = lines[index]
+        item = parse_line(line, index)
         if not item:
             failed.append(line_index)
             continue
 
         new_datetime, _ = calculate_postpone_date(target, item.due)
-        lines[line_index] = _render_todo_line(item, lines[line_index], due=new_datetime)
+        lines[index] = _render_todo_line(item, lines[index], due=new_datetime)
         updated += 1
 
     if updated > 0:
@@ -493,7 +562,8 @@ def postpone_todos_batch(line_indexes: list[int], target: str) -> dict:
     return {'updated': updated, 'failed': failed}
 
 
-def toggle_todos_batch(line_indexes: list[int], done: bool) -> dict:
+def toggle_todos_batch(line_indexes: list[int], done: bool,
+                       markers: Optional[list[str]] = None) -> dict:
     """Toggle multiple todos in a single read-modify-write cycle.
 
     Completing a recurring task mirrors handle_toggle_with_recurrence: an
@@ -501,8 +571,10 @@ def toggle_todos_batch(line_indexes: list[int], done: bool) -> dict:
     next occurrence is appended within the same write.
 
     Args:
-        line_indexes: List of line indexes to toggle.
+        line_indexes: List of line indexes to toggle, as rendered on the page.
         done: New completion status for all items.
+        markers: Marker IDs positionally matching line_indexes; each wins over
+            its index when present.
 
     Returns:
         Dict with 'updated' count and 'failed' list of indexes.
@@ -511,17 +583,14 @@ def toggle_todos_batch(line_indexes: list[int], done: bool) -> dict:
     lines = content.splitlines()
 
     updated = 0
-    failed = []
     spawned: list[str] = []
     now = datetime.now()
 
-    for line_index in line_indexes:
-        if not 0 <= line_index < len(lines):
-            failed.append(line_index)
-            continue
+    resolved, failed = _resolve_batch(lines, line_indexes, markers)
 
-        line = lines[line_index]
-        item = parse_line(line, line_index)
+    for line_index, index in resolved:
+        line = lines[index]
+        item = parse_line(line, index)
         if not item:
             failed.append(line_index)
             continue
@@ -536,24 +605,20 @@ def toggle_todos_batch(line_indexes: list[int], done: bool) -> dict:
                 )
             next_due = next_due_date(item.due, item.recurrence)
             if next_due:
-                next_item = parse_line(line, line_index)
+                next_item = parse_line(line, index)
                 if next_item:
                     next_item.done = False
                     next_item.marker = generate_marker()
                     next_item.myday = None
                     spawned.append(_render_todo_line(next_item, "", due=next_due))
 
-        lines[line_index] = rewrite_line(line, done)
+        lines[index] = rewrite_line(line, done)
         updated += 1
 
     # Append next occurrences only after all index-based edits, so the
     # insertions cannot shift lines the indexes still refer to.
     if spawned:
-        insert_index = len(lines)
-        for i, existing in enumerate(lines):
-            if existing.strip() == "---":
-                insert_index = i
-                break
+        insert_index = _separator_index(lines)
         for offset, new_line in enumerate(spawned):
             lines.insert(insert_index + offset, new_line)
 
@@ -563,14 +628,17 @@ def toggle_todos_batch(line_indexes: list[int], done: bool) -> dict:
     return {'updated': updated, 'failed': failed}
 
 
-def delete_todos_batch(line_indexes: list[int]) -> dict:
+def delete_todos_batch(line_indexes: list[int],
+                       markers: Optional[list[str]] = None) -> dict:
     """Delete multiple todos in a single read-modify-write cycle.
 
-    Indexes are removed bottom-up so earlier removals cannot shift lines
+    Lines are removed bottom-up so earlier removals cannot shift lines
     that later removals still refer to.
 
     Args:
-        line_indexes: List of line indexes to delete.
+        line_indexes: List of line indexes to delete, as rendered on the page.
+        markers: Marker IDs positionally matching line_indexes; each wins over
+            its index when present.
 
     Returns:
         Dict with 'updated' count and 'failed' list of indexes.
@@ -578,8 +646,8 @@ def delete_todos_batch(line_indexes: list[int]) -> dict:
     content = read_content()
     lines = content.splitlines()
 
-    valid = sorted({i for i in line_indexes if 0 <= i < len(lines)}, reverse=True)
-    failed = [i for i in line_indexes if not 0 <= i < len(lines)]
+    resolved, failed = _resolve_batch(lines, line_indexes, markers)
+    valid = sorted({index for _, index in resolved}, reverse=True)
 
     for index in valid:
         del lines[index]
@@ -632,15 +700,18 @@ def duplicate_todo(marker: str) -> Optional[dict]:
 
 
 def assign_todos_batch(line_indexes: list[int], project: Optional[str] = None,
-                       context: Optional[str] = None) -> dict:
+                       context: Optional[str] = None,
+                       markers: Optional[list[str]] = None) -> dict:
     """Add a project and/or context to multiple todos in a single
     read-modify-write cycle. Items already carrying the token are left
     untouched and do not count as updated.
 
     Args:
-        line_indexes: List of line indexes to update.
+        line_indexes: List of line indexes to update, as rendered on the page.
         project: Project name to add (without '+' prefix).
         context: Context name to add (without '@' prefix).
+        markers: Marker IDs positionally matching line_indexes; each wins over
+            its index when present.
 
     Returns:
         Dict with 'updated' count and 'failed' list of indexes.
@@ -654,14 +725,10 @@ def assign_todos_batch(line_indexes: list[int], project: Optional[str] = None,
     lines = content.splitlines()
 
     updated = 0
-    failed = []
+    resolved, failed = _resolve_batch(lines, line_indexes, markers)
 
-    for line_index in line_indexes:
-        if not 0 <= line_index < len(lines):
-            failed.append(line_index)
-            continue
-
-        item = parse_line(lines[line_index], line_index)
+    for line_index, index in resolved:
+        item = parse_line(lines[index], index)
         if not item:
             failed.append(line_index)
             continue
@@ -679,7 +746,7 @@ def assign_todos_batch(line_indexes: list[int], project: Optional[str] = None,
                 changed = True
 
         if changed:
-            lines[line_index] = _render_todo_line(item, lines[line_index])
+            lines[index] = _render_todo_line(item, lines[index])
             updated += 1
 
     if updated > 0:

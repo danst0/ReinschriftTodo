@@ -12,7 +12,10 @@ import { stopAutoReload, startAutoReload } from './auto-reload.js';
 import { showUndoToast } from './undo-toast.js';
 
 let selectMode = false;
-const selected = new Set(); // line indexes (strings, from data-line-index)
+// line index (string, from data-line-index) -> marker (may be '' for
+// hand-written lines). The marker is what survives the file being rewritten
+// underneath the page; the index only describes how the page was rendered.
+const selected = new Map();
 
 let translations = {};
 let onReload = null;
@@ -99,7 +102,7 @@ function toggleItemSelection(item) {
         selected.delete(lineIndex);
         item.classList.remove('selected');
     } else {
-        selected.add(lineIndex);
+        selected.set(lineIndex, item.dataset.marker || '');
         item.classList.add('selected');
     }
     updateBar();
@@ -111,8 +114,15 @@ function toggleItemSelection(item) {
  */
 export function reattachSelectState() {
     if (!selectMode) return;
+    const selectedMarkers = new Set([...selected.values()].filter(Boolean));
     document.querySelectorAll('.todo-item').forEach(item => {
-        item.classList.toggle('selected', selected.has(item.dataset.lineIndex));
+        // Match on the marker where there is one: a re-render renumbers the
+        // indexes, so re-applying by index would light up the wrong rows.
+        const marker = item.dataset.marker || '';
+        item.classList.toggle(
+            'selected',
+            marker ? selectedMarkers.has(marker) : selected.has(item.dataset.lineIndex)
+        );
     });
     updateBar();
 }
@@ -128,7 +138,12 @@ function updateBar() {
 }
 
 function lineIndexes() {
-    return [...selected].map(Number);
+    return [...selected.keys()].map(Number);
+}
+
+/** Markers of the selection, positionally matching lineIndexes(). */
+function markers() {
+    return [...selected.values()];
 }
 
 async function runBatch(url, payload) {
@@ -160,6 +175,7 @@ export async function bulkComplete(done) {
     try {
         const result = await runBatch('/api/toggle-batch', {
             line_indexes: lineIndexes(),
+            markers: markers(),
             done
         });
         await finishAction(
@@ -180,6 +196,7 @@ export async function bulkSetDue(target) {
     try {
         const result = await runBatch('/api/postpone-batch', {
             line_indexes: lineIndexes(),
+            markers: markers(),
             target
         });
         await finishAction(translations.bulkSetDue, result.updated);
@@ -197,7 +214,8 @@ export async function bulkDelete() {
     if (!confirm(template.replace('{count}', String(selected.size)))) return;
     try {
         const result = await runBatch('/api/delete-batch', {
-            line_indexes: lineIndexes()
+            line_indexes: lineIndexes(),
+            markers: markers()
         });
         await finishAction(translations.bulkDelete, result.updated);
     } catch (err) {
@@ -232,7 +250,7 @@ export async function submitBulkAssign() {
     const context = document.getElementById('bulk-assign-context')?.value.trim() || '';
     if (!project && !context) return;
     try {
-        const payload = { line_indexes: lineIndexes() };
+        const payload = { line_indexes: lineIndexes(), markers: markers() };
         if (project) payload.project = project;
         if (context) payload.context = context;
         const result = await runBatch('/api/assign-batch', payload);

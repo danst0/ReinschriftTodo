@@ -82,18 +82,19 @@ export function initSwipeGestures() {
 
             if (isHorizontalSwipe) {
                 const lineIndex = item.dataset.lineIndex;
+                const marker = item.dataset.marker || '';
 
                 if (currentX > SWIPE_THRESHOLD) {
                     // Swipe right: Mark as done
                     if (lineIndex) {
                         item.classList.add('haptic-feedback');
-                        toggleTodo({ stopPropagation: () => {} }, lineIndex);
+                        toggleTodo({ stopPropagation: () => {} }, lineIndex, marker);
                     }
                 } else if (currentX < -SWIPE_THRESHOLD) {
                     // Swipe left: Postpone to tomorrow
                     if (lineIndex) {
                         item.classList.add('haptic-feedback');
-                        postponeTodo({ stopPropagation: () => {} }, lineIndex, 'tomorrow');
+                        postponeTodo({ stopPropagation: () => {} }, lineIndex, 'tomorrow', marker);
                     }
                 }
             }

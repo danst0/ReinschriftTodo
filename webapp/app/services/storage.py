@@ -61,9 +61,19 @@ def _fingerprint_slot() -> dict[str, str] | None:
 
 
 def _remember_fingerprint(value: str) -> None:
+    """Record the fingerprint of the *first* read of this request.
+
+    A mutation often reads the file more than once (route, then service). If
+    every read overwrote this, ``If-Match`` would end up validating against the
+    innermost read — a window of microseconds — and prove nothing about the
+    state the request actually started from. Keeping the first read means a
+    foreign write landing anywhere inside the request is caught.
+    ``_forget_fingerprint`` clears it after each write, so a second write in
+    the same request starts a fresh window.
+    """
     slot = _fingerprint_slot()
     if slot is not None:
-        slot['value'] = value
+        slot.setdefault('value', value)
 
 
 def _expected_fingerprint() -> str:
@@ -91,9 +101,18 @@ def _stamp_undo(content: str) -> None:
         pass
 
 
+# The two validators are joined with a newline because a header value cannot
+# contain one. A dash could: Apache/mod_dav hands out ETags of the form
+# "inode-size-mtime", and splitting those on the first dash truncated the ETag,
+# so every If-Match was answered with 412 and every write looked like a conflict.
+FINGERPRINT_SEP = "\n"
+
+
 def _fingerprint_from_headers(headers) -> str:
     """Build the fingerprint from a response's validators."""
-    return f"{headers.get('etag', '')}-{headers.get('last-modified', '')}"
+    etag = headers.get('etag', '')
+    last_modified = headers.get('last-modified', '')
+    return f"{etag}{FINGERPRINT_SEP}{last_modified}"
 
 
 def read_content() -> str:
@@ -195,8 +214,8 @@ def _write(content: str, expected_fingerprint: str) -> None:
 
         headers = {}
         if expected_fingerprint:
-            # The fingerprint is "<etag>-<last-modified>"; If-Match wants the ETag.
-            etag = expected_fingerprint.split('-', 1)[0]
+            # The fingerprint is "<etag>\n<last-modified>"; If-Match wants the ETag.
+            etag = expected_fingerprint.split(FINGERPRINT_SEP, 1)[0]
             if etag:
                 headers['If-Match'] = etag
 
@@ -273,9 +292,7 @@ def get_fingerprint() -> str:
                 auth = HTTPBasicAuth(config['webdav_username'], config['webdav_password'])
             response = requests.head(config['webdav_url'], auth=auth, timeout=5)
             response.raise_for_status()
-            etag = response.headers.get('etag', '')
-            last_mod = response.headers.get('last-modified', '')
-            return f"{etag}-{last_mod}"
+            return _fingerprint_from_headers(response.headers)
         except requests.RequestException as e:
             logger.warning("Failed to get WebDAV fingerprint: %s", e)
             return ""
