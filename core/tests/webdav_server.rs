@@ -238,10 +238,37 @@ fn assert_points_at_the_path_setting(message: &str, expected_url: &str) {
         message.contains("todos.md"),
         "expected the example file name in: {message}"
     );
+    assert_no_raw_status_code(message, expected_url);
+}
+
+/// The message must not leak a bare status code — but it does carry the URL,
+/// and the mock server listens on an ephemeral port. A port like 40915 or
+/// 34090 contains "409" and used to fail this assertion a few runs in a
+/// hundred, with nothing wrong in the code under test. So look everywhere
+/// except in the URL itself.
+fn assert_no_raw_status_code(message: &str, url: &str) {
+    let outside_the_url = message.replace(url, "");
     assert!(
-        !message.contains("409"),
+        !outside_the_url.contains("409"),
         "the raw status code should not reach the user: {message}"
     );
+}
+
+/// Pins the flake itself: the check must survive a port that reads like a
+/// status code, and must still catch a status code that really did leak.
+#[test]
+fn a_port_that_looks_like_a_status_code_is_not_mistaken_for_one() {
+    let url = "http://127.0.0.1:40915/remote.php/dav/files/alice";
+
+    assert_no_raw_status_code(
+        &format!("'{url}' is a folder, not a file. Set 'Path (relative)' to todos.md."),
+        url,
+    );
+
+    let leaked = std::panic::catch_unwind(|| {
+        assert_no_raw_status_code(&format!("WebDAV error: 409 Conflict at '{url}'"), url);
+    });
+    assert!(leaked.is_err(), "a leaked status code must still be caught");
 }
 
 /// The exact configuration from issue #11: WebDAV root as URL, no relative path.
@@ -399,10 +426,7 @@ fn a_plain_webdav_root_without_a_path_is_explained_too() {
         message.contains("todos.md"),
         "expected the example file name in: {message}"
     );
-    assert!(
-        !message.contains("409"),
-        "the raw status code should not reach the user: {message}"
-    );
+    assert_no_raw_status_code(&message, &server.base_url);
 }
 
 /// An unrelated failure must keep its own error — the path hint would only
