@@ -30,7 +30,7 @@ from app.services.share_service import (
     get_share_by_scope,
     purge_expired_shares,
 )
-from app.services.undo_service import content_hash, push_entry, push_undo, pop_undo, can_undo
+from app.services.undo_service import apply_undo, push_entry, push_undo, pop_undo, can_undo
 from app.utils.helpers import format_due
 
 api_bp = Blueprint('api', __name__)
@@ -398,11 +398,10 @@ def api_undo():
     if not entry:
         return jsonify({'error': 'Nothing to undo'}), 404
 
-    # Restoring a whole file over somebody else's newer write would roll their
-    # changes back too, so only undo the state this entry was recorded for.
-    expected = entry.get('expected_hash')
-    current = read_content()
-    if expected and content_hash(current) != expected:
+    # Replay the inverse of the recorded change onto the file as it is now:
+    # restoring a whole file would roll back everything written since.
+    restored, skipped = apply_undo(entry, read_content())
+    if restored is None:
         push_entry(entry)
         return jsonify({
             'error': 'The file was changed elsewhere. Reload before undoing.',
@@ -410,8 +409,14 @@ def api_undo():
         }), 409
 
     try:
-        write_content(entry['content'])
-        return jsonify({'ok': True, 'description': entry['description']})
+        write_content(restored)
+        # 'skipped' counts lines another writer had touched since; those were
+        # deliberately left alone, so the undo is reported as partial.
+        return jsonify({
+            'ok': True,
+            'description': entry['description'],
+            'skipped': skipped,
+        })
     except ConflictError:
         push_entry(entry)
         return jsonify({
@@ -620,10 +625,11 @@ def api_duplicate():
     if not marker:
         return jsonify({'error': 'Marker required'}), 400
 
-    snapshot = read_content()
+    # Before the mutation: the undo entry is born from the write itself, and a
+    # duplicate that finds no source never writes and so leaves no entry.
+    push_undo(read_content(), 'add')
     result = duplicate_todo(marker)
     if result is None:
         return jsonify({'error': 'Todo not found'}), 404
 
-    push_undo(snapshot, 'add')
     return jsonify({'ok': True, **result})

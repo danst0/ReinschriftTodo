@@ -12,6 +12,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.services import todo_service
+from app.services.undo_service import stamp_last_result
 from app.services.parser import parse_line
 
 
@@ -26,6 +27,9 @@ class _MemoryStorage:
 
     def write(self, content: str) -> None:
         self.content = content
+        # The real write path is where an undo entry is recorded, so a
+        # stand-in that skipped this would hide undo bugs from these tests.
+        stamp_last_result(content)
 
 
 CONTENT = (

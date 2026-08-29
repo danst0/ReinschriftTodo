@@ -8,6 +8,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.services import todo_service
+from app.services.undo_service import stamp_last_result
 
 
 class _MemoryStorage:
@@ -21,6 +22,9 @@ class _MemoryStorage:
 
     def write(self, content: str) -> None:
         self.content = content
+        # The real write path is where an undo entry is recorded, so a
+        # stand-in that skipped this would hide undo bugs from these tests.
+        stamp_last_result(content)
 
 
 CONTENT = (
@@ -183,16 +187,18 @@ class TestBulkRoutes:
         assert response.status_code == 400
 
     def test_delete_batch_undo_restores(self, logged_in_client, storage):
-        from app.services.undo_service import UNDO_SESSION_KEY
+        from app.services.undo_service import UNDO_SESSION_KEY, apply_undo
         logged_in_client.post('/api/delete-batch', json={'line_indexes': [0, 2]})
         assert '^aaa111' not in storage.content
         with logged_in_client.session_transaction() as sess:
             stack = sess.get(UNDO_SESSION_KEY, [])
-        # Exactly one undo entry per batch, restoring the full snapshot.
+        # Exactly one undo entry per batch, naming both deleted lines.
         assert len(stack) == 1
         assert stack[0]['description'] == 'delete'
-        storage.write(stack[0]['content'])
-        assert storage.content == CONTENT
+        assert len(stack[0]['ops']) == 2
+        restored, skipped = apply_undo(stack[0], storage.content)
+        assert restored == CONTENT
+        assert skipped == 0
 
     def test_toggle_batch(self, logged_in_client, storage):
         response = logged_in_client.post(

@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.0.1" date="2026-08-29">
+      <description>
+        <ul>
+          <li>Web interface: undoing an action no longer discards what other devices saved in the meantime — it now reverses just the lines it changed instead of restoring a whole earlier copy of the file</li>
+          <li>Web interface: an undo that cannot be applied says so, instead of looking as though it had worked</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-08-23">
       <description>
         <ul>

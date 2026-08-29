@@ -17,7 +17,7 @@ from app.exceptions import ConflictError
 from app.routes.todo import _resolve_index
 from app.services import storage
 from app.services.parser import find_line_by_marker, marker_of
-from app.services.undo_service import content_hash, pop_undo, push_undo, stamp_last_result
+from app.services.undo_service import apply_undo, pop_undo, push_undo, stamp_last_result
 
 
 class TestMarkerResolution:
@@ -250,28 +250,73 @@ class TestStaleIndexToggle:
         assert '- [ ] Zwei' in content
 
 
-class TestUndoGuard:
-    """Undo restores a whole file — only over the state it was recorded for."""
+class TestUndoIsLineWise:
+    """Undo replays the inverse of a change; it never restores a whole file.
 
-    def test_stamp_records_the_produced_state(self, app):
+    Restoring a snapshot rolled back everything other clients had written since
+    it was taken. On 2026-08-29 that cost two freshly added todos and two ticks,
+    six minutes after they had been written.
+    """
+
+    def test_an_entry_records_only_the_touched_line(self, app):
         with app.test_request_context():
-            push_undo('vorher', 'toggle')
-            stamp_last_result('nachher')
+            before = '- [ ] Eins ^aaa1\n- [ ] Zwei ^bbb2\n'
+            push_undo(before, 'toggle')
+            stamp_last_result(before.replace('- [ ] Eins', '- [x] Eins'))
+            ops = pop_undo()['ops']
+            assert [op['marker'] for op in ops] == ['aaa1']
+            assert ops[0]['before'] == '- [ ] Eins ^aaa1'
+
+    def test_a_mutation_that_never_wrote_leaves_no_entry(self, app):
+        """Nothing reached storage, so there is nothing to restore."""
+        with app.test_request_context():
+            push_undo('- [ ] Eins ^aaa1\n', 'toggle')
+            assert pop_undo() is None
+
+    def test_undo_keeps_a_todo_added_by_somebody_else(self, app):
+        """The regression: undoing a tick must not delete a foreign new line."""
+        with app.test_request_context():
+            push_undo('- [ ] Eins ^aaa1\n', 'toggle')
+            stamp_last_result('- [x] Eins ^aaa1\n')
             entry = pop_undo()
-            assert entry['expected_hash'] == content_hash('nachher')
 
-    def test_unstamped_entry_stays_unguarded(self, app):
+            meanwhile = '- [x] Eins ^aaa1\n- [ ] GPU einbauen ^h3ebsZ7O\n'
+            restored, skipped = apply_undo(entry, meanwhile)
+
+            assert '- [ ] GPU einbauen ^h3ebsZ7O' in restored
+            assert '- [ ] Eins ^aaa1' in restored
+            assert skipped == 0
+
+    def test_undo_leaves_a_line_somebody_else_changed_alone(self, app):
         with app.test_request_context():
-            push_undo('vorher', 'toggle')
-            assert pop_undo()['expected_hash'] is None
+            push_undo('- [ ] Eins ^aaa1\n', 'toggle')
+            stamp_last_result('- [x] Eins ^aaa1\n')
+            entry = pop_undo()
 
-    def test_write_stamps_the_entry(self, app, local_file):
+            restored, skipped = apply_undo(entry, '- [x] Eins anders ^aaa1\n')
+            assert restored is None
+            assert skipped == 1
+
+    def test_undo_of_a_delete_puts_the_line_back_where_it_was(self, app):
+        with app.test_request_context():
+            before = '- [ ] Eins ^aaa1\n- [ ] Zwei ^bbb2\n- [ ] Drei ^ccc3\n'
+            after = '- [ ] Eins ^aaa1\n- [ ] Drei ^ccc3\n'
+            push_undo(before, 'delete')
+            stamp_last_result(after)
+
+            restored, _ = apply_undo(pop_undo(), after)
+            assert restored.splitlines() == [
+                '- [ ] Eins ^aaa1',
+                '- [ ] Zwei ^bbb2',
+                '- [ ] Drei ^ccc3',
+            ]
+
+    def test_a_write_records_the_entry(self, app, local_file):
         with app.test_request_context():
             content = storage.read_content()
             push_undo(content, 'toggle')
-            produced = content.replace('- [ ] Eins', '- [x] Eins')
-            storage.write_content(produced)
-            assert pop_undo()['expected_hash'] == content_hash(produced)
+            storage.write_content(content.replace('- [ ] Eins', '- [x] Eins'))
+            assert pop_undo()['ops'][0]['marker'] == 'aaa1'
 
 
 class TestCsrfLifetime:

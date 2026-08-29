@@ -9,6 +9,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.services import todo_service
+from app.services.undo_service import stamp_last_result
 from app.services.parser import parse_line
 
 
@@ -23,6 +24,9 @@ class _MemoryStorage:
 
     def write(self, content: str) -> None:
         self.content = content
+        # The real write path is where an undo entry is recorded, so a
+        # stand-in that skipped this would hide undo bugs from these tests.
+        stamp_last_result(content)
 
 
 CONTENT = (
@@ -113,12 +117,16 @@ class TestDuplicateRoutes:
         assert storage.content == CONTENT
 
     def test_duplicate_pushes_undo(self, logged_in_client, storage):
-        from app.services.undo_service import UNDO_SESSION_KEY
+        from app.services.undo_service import UNDO_SESSION_KEY, apply_undo
         logged_in_client.post('/api/duplicate', json={'marker': 'aaa111'})
         with logged_in_client.session_transaction() as sess:
             stack = sess.get(UNDO_SESSION_KEY, [])
         assert len(stack) == 1
-        assert stack[0]['content'] == CONTENT
+        # The entry names only the new line, so undoing removes just that one.
+        assert len(stack[0]['ops']) == 1
+        assert stack[0]['ops'][0]['before'] is None
+        restored, _ = apply_undo(stack[0], storage.content)
+        assert restored == CONTENT
 
     def test_suggestions_include_markers(self, logged_in_client, monkeypatch, storage):
         from app.routes import api as api_routes

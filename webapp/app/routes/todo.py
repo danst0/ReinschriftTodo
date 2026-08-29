@@ -22,7 +22,7 @@ from app.services import (
 from app.services.parser import find_line_by_marker, marker_of
 from app.services.storage import read_content_with_fingerprint, write_content_checked
 from app.services.todo_service import render_tagged, resolve_index
-from app.services.undo_service import content_hash, push_entry, push_undo, pop_undo
+from app.services.undo_service import apply_undo, push_entry, push_undo, pop_undo
 from app.utils.markers import ensure_marker, generate_marker
 from app.utils.escaping import escape_note, normalize_note
 from app.utils.helpers import split_tag_input
@@ -241,17 +241,16 @@ def undo():
     """Undo the last destructive action."""
     entry = pop_undo()
     if entry:
-        # Only undo the state this entry was recorded for — restoring it over a
-        # newer foreign write would roll that write back as well.
-        expected = entry.get('expected_hash')
-        current = read_content()
-        if expected and content_hash(current) != expected:
-            # Keep the entry so the user can retry after seeing the fresh state
-            # the redirect below renders.
+        # Replay the inverse of the recorded change onto the file as it is now,
+        # so a newer foreign write is not rolled back along with ours.
+        restored, _ = apply_undo(entry, read_content())
+        if restored is None:
+            # Every line it recorded has moved on since. Keep the entry so the
+            # user can retry after seeing the fresh state rendered below.
             push_entry(entry)
-            return redirect(url_for('main.index'))
-        try:
-            write_content(entry['content'])
-        except ConflictError:
-            push_entry(entry)
+        else:
+            try:
+                write_content(restored)
+            except ConflictError:
+                push_entry(entry)
     return redirect(url_for('main.index'))

@@ -34,11 +34,19 @@ export function showUndoToast(message, duration = 8000) {
         removeToast();
         try {
             const resp = await fetchWithCsrf('/api/undo', { method: 'POST' });
-            if (resp.ok && onReloadCallback) {
+            if (!resp.ok) {
+                // A refused undo — the lines have moved on since — must say so.
+                // Staying silent looks exactly like an undo that worked.
+                const data = await resp.json().catch(() => ({}));
+                showToast(data.error || 'Undo failed', 5000, true);
+                return;
+            }
+            if (onReloadCallback) {
                 onReloadCallback();
             }
         } catch (err) {
             console.error('Undo failed', err);
+            showToast('Undo failed', 5000, true);
         }
     });
 
