@@ -246,7 +246,7 @@ pub fn toggle_todos(keys: &[TodoKey], done: bool) -> Result<usize> {
                     let mut next_item = item.clone();
                     next_item.key = TodoKey {
                         line_index: 0,
-                        marker: Some(generate_marker()),
+                        marker: Some(unique_marker(lines, &spawned)),
                     };
                     next_item.done = false;
                     next_item.due = Some(next_due);
@@ -468,11 +468,48 @@ pub fn add_todo_full(item: &TodoItem) -> Result<TodoKey> {
     insert_line(line, marker)
 }
 
+/// How many times to redraw a marker the file already carries.
+const MARKER_ATTEMPTS: usize = 8;
+
+/// Draw a marker that neither `lines` nor `pending` already carries.
+///
+/// [`generate_marker`] does not repeat within a process, but the file may have
+/// been written by another device. A duplicate `^id` is silent, lasting damage:
+/// [`find_line_by_marker`] resolves to the first match, so every later toggle,
+/// edit or delete would act on the wrong todo.
+fn unique_marker(lines: &[String], pending: &[String]) -> String {
+    let mut candidate = generate_marker();
+    for _ in 1..MARKER_ATTEMPTS {
+        if find_line_by_marker(lines, &candidate).is_none()
+            && find_line_by_marker(pending, &candidate).is_none()
+        {
+            break;
+        }
+        candidate = generate_marker();
+    }
+    candidate
+}
+
 /// Insert a new line before the "---" separator (or at end).
 fn insert_line(line: String, marker: String) -> Result<TodoKey> {
     let snapshot = read_content_with_fingerprint()?;
 
     let mut lines: Vec<String> = snapshot.content.lines().map(|l| l.to_string()).collect();
+
+    // The marker was drawn before the file was read, so it may already be in
+    // use — another device got there first, or the caller supplied it. Swap it
+    // out: add_todo and render_line both append it as the last token, so the
+    // final `^id` of the line is the one to replace.
+    let mut line = line;
+    let mut marker = marker;
+    if find_line_by_marker(&lines, &marker).is_some() {
+        let fresh = unique_marker(&lines, &[]);
+        let needle = format!("^{marker}");
+        if let Some(pos) = line.rfind(&needle) {
+            line.replace_range(pos..pos + needle.len(), &format!("^{fresh}"));
+            marker = fresh;
+        }
+    }
 
     let insert_index = lines
         .iter()
@@ -761,6 +798,67 @@ mod tests {
         let lines: Vec<&str> = content.lines().collect();
         assert!(lines[0].starts_with("- [ ]"), "first line untouched: {}", lines[0]);
         assert!(lines[1].starts_with("- [x]"), "second line completed: {}", lines[1]);
+    }
+
+    #[test]
+    fn bulk_completing_recurring_todos_gives_each_spawn_its_own_marker() {
+        let _guard = file_lock();
+        let path = setup(
+            "- [ ] Eins rec:daily due:2026-01-01T09:00 ^aaa1\n\
+             - [ ] Zwei rec:daily due:2026-01-01T09:00 ^bbb2\n",
+        );
+
+        let count = toggle_todos(&[key("aaa1"), key("bbb2")], true).expect("toggle ok");
+        assert_eq!(count, 2);
+
+        // Both next occurrences are rendered inside one loop, microseconds
+        // apart — the clock alone does not tell them apart.
+        let content = read(&path);
+        let spawned: Vec<String> = content
+            .lines()
+            .enumerate()
+            .filter(|(_, line)| line.starts_with("- [ ]"))
+            .filter_map(|(index, line)| parse_line(line, index))
+            .filter_map(|item| item.key.marker)
+            .collect();
+        assert_eq!(spawned.len(), 2, "two next occurrences: {content}");
+        assert_ne!(spawned[0], spawned[1], "distinct markers: {content}");
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn adding_a_todo_does_not_reuse_a_marker_already_in_the_file() {
+        let _guard = file_lock();
+        let path = setup("- [ ] Eins ^aaa1\n");
+
+        let item = TodoItem {
+            // A marker another device already handed out.
+            key: TodoKey { line_index: 0, marker: Some("aaa1".to_string()) },
+            title: "Zwei".to_string(),
+            projects: Vec::new(),
+            contexts: Vec::new(),
+            due: None,
+            myday: None,
+            reference: None,
+            recurrence: None,
+            note: None,
+            done: false,
+        };
+        let added = add_todo_full(&item).expect("add ok");
+
+        let marker = added.marker.expect("new todo has a marker");
+        assert_ne!(marker, "aaa1");
+        let content = read(&path);
+        assert_eq!(
+            content.matches("^aaa1").count(),
+            1,
+            "the existing todo keeps its id alone: {content}"
+        );
+        assert!(
+            content.contains(&format!("^{marker}")),
+            "the new line carries the returned id: {content}"
+        );
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]

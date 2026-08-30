@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.0.2" date="2026-08-30">
+      <description>
+        <ul>
+          <li>To-dos created in the same instant no longer share an ID — completing several recurring tasks at once used to give every spawned occurrence the same one, so later edits acted on the wrong task</li>
+          <li>A new to-do never reuses an ID that is already in the file, even one another device handed out</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.1" date="2026-08-29">
       <description>
         <ul>

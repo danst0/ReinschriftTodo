@@ -1,6 +1,7 @@
 //! Utility functions for string manipulation and marker generation.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Markers that delimit fields in a todo line.
@@ -10,26 +11,47 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub const FIELD_MARKERS: [&str; 9] =
     [" +", " @", " due:", " myday:", " rec:", " [[", " ~note:", " ^", " ✅"];
 
-/// Generate a unique marker ID using timestamp and process ID.
+/// Number of base36 digits in a marker.
+const MARKER_LEN: usize = 8;
+
+/// Odd stride that keeps two markers apart when the clock has not advanced
+/// between the calls.
+const SEQUENCE_STRIDE: u64 = 0x9E37_79B9_7F4A_7C15;
+
+/// Counts the markers this process has handed out.
+static MARKER_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+/// Generate a unique marker ID from the clock, the process ID and a
+/// per-process counter.
+///
+/// The three inputs are mixed before being cut down to 8 digits. Taking the
+/// digits straight off the raw value does not work: base36 writes the
+/// slow-moving bits first, so the leading digits are all but pure process ID
+/// while the nanoseconds — the only part that separates two calls — sit at the
+/// far end and fall off. The counter covers what is left, two calls landing in
+/// the same clock tick, as a batch of recurring tasks respawning in one loop
+/// does.
 pub fn generate_marker() -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_else(|_| std::time::Duration::from_secs(0))
-        .as_nanos();
-    let pid = std::process::id() as u128;
-    let mixed = now ^ (pid << 64);
-    let mut encoded = encode_base36(mixed);
+        .as_nanos() as u64;
+    let pid = std::process::id() as u64;
+    let seq = MARKER_SEQUENCE.fetch_add(1, Ordering::Relaxed);
 
-    // Keep IDs short and alphanumeric (e.g., 8 chars)
-    if encoded.len() > 8 {
-        encoded.truncate(8);
-    } else {
-        while encoded.len() < 8 {
-            encoded.push('0');
-        }
-    }
+    let mixed = mix64(now.wrapping_add(seq.wrapping_mul(SEQUENCE_STRIDE)) ^ (pid << 32));
+    let value = u128::from(mixed) % 36u128.pow(MARKER_LEN as u32);
 
-    encoded
+    format!("{:0>width$}", encode_base36(value), width = MARKER_LEN)
+}
+
+/// splitmix64's finalizer: gives every input bit an even chance of flipping
+/// every output bit, so neighbouring clock ticks and process IDs stop sharing a
+/// prefix.
+fn mix64(mut z: u64) -> u64 {
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
 }
 
 /// Encode a value as base36 string.
@@ -224,6 +246,28 @@ pub fn unescape_note(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn markers_do_not_repeat_within_a_process() {
+        let markers: std::collections::HashSet<String> =
+            (0..1_000).map(|_| generate_marker()).collect();
+        // The clock alone does not separate calls this close together.
+        assert_eq!(markers.len(), 1_000);
+    }
+
+    #[test]
+    fn markers_are_eight_base36_digits() {
+        for _ in 0..100 {
+            let marker = generate_marker();
+            assert_eq!(marker.len(), MARKER_LEN, "marker: {marker}");
+            assert!(
+                marker
+                    .chars()
+                    .all(|c| c.is_ascii_digit() || c.is_ascii_lowercase()),
+                "marker: {marker}"
+            );
+        }
+    }
 
     #[test]
     fn canonical_casing_prefers_most_used_variant() {
