@@ -87,6 +87,10 @@ msgstr "Övriga öppna uppgifter"
 msgid "No open tasks left to plan."
 msgstr "Inga öppna uppgifter kvar att planera."
 
+#. Leerer Planungs-Picker in „Mein Tag", wenn „Nur fällige anzeigen" aktiv ist
+msgid "No due tasks left to plan."
+msgstr "Inga förfallna uppgifter kvar att planera."
+
 #. Abschnitts-Header für erledigte Aufgaben in der Mein-Tag-Liste
 msgid "Completed"
 msgstr "Slutförda"

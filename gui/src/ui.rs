@@ -3955,25 +3955,15 @@ impl AppState {
             }
         }
 
-        // Planungs-Picker: alle anderen offenen Aufgaben, fällige zuerst
-        // (das "Irgendwann"-Sentinel-Jahr 9999 zählt nicht als fällig).
-        let mut candidates: Vec<TodoItem> =
-            rest.into_iter().filter(|todo| !todo.done).collect();
-        candidates.sort_by_key(|todo| todo.due.unwrap_or(NaiveDateTime::MAX));
-        // Fällig wird kalendertagweise beurteilt, nicht nach Uhrzeit: was
-        // heute später fällig ist, gehört in die Vorschläge und nicht zu den
-        // übrigen offenen Aufgaben.
-        let (suggestions, other_open): (Vec<TodoItem>, Vec<TodoItem>) =
-            candidates.into_iter().partition(|todo| {
-                todo.due
-                    .map(|d| d.date() <= today && d.date().year() != 9999)
-                    .unwrap_or(false)
-            });
+        let due_only = self.show_due_only();
+        let (suggestions, other_open) = split_picker_candidates(rest, today, due_only);
 
         if suggestions.is_empty() && other_open.is_empty() {
-            self.store.append(&BoxedAnyObject::new(ListEntry::Header(
-                t("No open tasks left to plan."),
-            )));
+            self.store.append(&BoxedAnyObject::new(ListEntry::Header(if due_only {
+                t("No due tasks left to plan.")
+            } else {
+                t("No open tasks left to plan.")
+            })));
             return;
         }
 
@@ -5338,6 +5328,38 @@ impl AppState {
     }
 }
 
+/// Ist die Aufgabe am Stichtag fällig? Fällig wird kalendertagweise
+/// beurteilt, nicht nach Uhrzeit: was heute später fällig ist, zählt bereits
+/// als fällig. Das "Irgendwann"-Sentinel-Jahr 9999 zählt nie als fällig.
+fn is_due_by(todo: &TodoItem, today: NaiveDate) -> bool {
+    todo.due
+        .map(|d| d.date() <= today && d.date().year() != 9999)
+        .unwrap_or(false)
+}
+
+/// Teilt die noch nicht für heute geplanten Aufgaben in die beiden
+/// Picker-Abschnitte "Vorschläge (fällig)" und "Weitere offene Aufgaben",
+/// fällige zuerst. `due_only` ist der Filter "Nur fällige anzeigen": er wirkt
+/// hier nur auf den Picker — was bewusst für heute geplant wurde, bleibt in
+/// "Mein Tag" immer sichtbar. Gefiltert wird nach derselben Regel wie in der
+/// Hauptliste, undatierte Aufgaben bleiben also stehen.
+fn split_picker_candidates(
+    rest: Vec<TodoItem>,
+    today: NaiveDate,
+    due_only: bool,
+) -> (Vec<TodoItem>, Vec<TodoItem>) {
+    let mut candidates: Vec<TodoItem> = rest
+        .into_iter()
+        .filter(|todo| {
+            !todo.done && (!due_only || todo.due.is_none() || is_due_by(todo, today))
+        })
+        .collect();
+    candidates.sort_by_key(|todo| todo.due.unwrap_or(NaiveDateTime::MAX));
+    candidates
+        .into_iter()
+        .partition(|todo| is_due_by(todo, today))
+}
+
 fn normalize_token(raw: &str) -> Option<String> {
     let trimmed = raw.trim().trim_start_matches(['+', '@']);
     if trimmed.is_empty() {
@@ -5600,4 +5622,72 @@ async fn request_ai_parse(
     }
 
     Ok(parsed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reinschrift_core::parser::parse_line;
+
+    fn items(lines: &[&str]) -> Vec<TodoItem> {
+        lines
+            .iter()
+            .enumerate()
+            .map(|(i, line)| parse_line(line, i).expect("parsable todo line"))
+            .collect()
+    }
+
+    fn titles(items: &[TodoItem]) -> Vec<&str> {
+        items.iter().map(|todo| todo.title.as_str()).collect()
+    }
+
+    #[test]
+    fn picker_shows_everything_open_without_due_filter() {
+        let today = NaiveDate::from_ymd_opt(2026, 9, 10).unwrap();
+        let (suggestions, other_open) = split_picker_candidates(
+            items(&[
+                "- [ ] Fenster putzen due:2026-09-01T12:00 ^aaa1",
+                "- [ ] Pool füllen due:2027-05-01T12:00 ^aaa2",
+                "- [ ] Irgendwann mal due:9999-12-31T12:00 ^aaa3",
+                "- [ ] Ohne Datum ^aaa4",
+                "- [x] Schon erledigt due:2026-09-01T12:00 ^aaa5",
+            ]),
+            today,
+            false,
+        );
+
+        assert_eq!(titles(&suggestions), ["Fenster putzen"]);
+        assert_eq!(titles(&other_open), ["Pool füllen", "Irgendwann mal", "Ohne Datum"]);
+    }
+
+    #[test]
+    fn due_filter_hides_future_and_someday_from_picker() {
+        let today = NaiveDate::from_ymd_opt(2026, 9, 10).unwrap();
+        let (suggestions, other_open) = split_picker_candidates(
+            items(&[
+                "- [ ] Fenster putzen due:2026-09-01T12:00 ^aaa1",
+                "- [ ] Pool füllen due:2027-05-01T12:00 ^aaa2",
+                "- [ ] Irgendwann mal due:9999-12-31T12:00 ^aaa3",
+                "- [ ] Ohne Datum ^aaa4",
+            ]),
+            today,
+            true,
+        );
+
+        assert_eq!(titles(&suggestions), ["Fenster putzen"]);
+        assert_eq!(titles(&other_open), ["Ohne Datum"]);
+    }
+
+    #[test]
+    fn tasks_due_later_today_stay_suggestions_under_due_filter() {
+        let today = NaiveDate::from_ymd_opt(2026, 9, 10).unwrap();
+        let (suggestions, other_open) = split_picker_candidates(
+            items(&["- [ ] Heute Abend due:2026-09-10T23:00 ^aaa1"]),
+            today,
+            true,
+        );
+
+        assert_eq!(titles(&suggestions), ["Heute Abend"]);
+        assert!(other_open.is_empty());
+    }
 }

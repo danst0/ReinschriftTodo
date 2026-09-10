@@ -87,6 +87,10 @@ msgstr "Weitere offene Aufgaben"
 msgid "No open tasks left to plan."
 msgstr "Keine offenen Aufgaben zum Planen."
 
+#. Leerer Planungs-Picker in „Mein Tag", wenn „Nur fällige anzeigen" aktiv ist
+msgid "No due tasks left to plan."
+msgstr "Keine fälligen Aufgaben zum Planen."
+
 #. Abschnitts-Header für erledigte Aufgaben in der Mein-Tag-Liste
 msgid "Completed"
 msgstr "Erledigt"

@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.0.3" date="2026-09-10">
+      <description>
+        <ul>
+          <li>The "Show only due" filter now also applies to the planning list in My Day — tasks due far in the future no longer clutter it</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.2" date="2026-08-30">
       <description>
         <ul>
