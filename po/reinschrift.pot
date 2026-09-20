@@ -160,6 +160,10 @@ msgstr ""
 msgid "Postpone to 'sometimes'"
 msgstr ""
 
+#. Tooltip/Barrierefreiheits-Label für das Überlaufmenü einer Aufgabe im Kompaktmodus
+msgid "More actions"
+msgstr ""
+
 #. ehemaliger JSON-Schlüssel: sometimes
 msgid "Sometimes"
 msgstr ""

@@ -593,6 +593,10 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         .selected-row {
             background-color: alpha(@accent_bg_color, 0.15);
             border-radius: 6px;
+        }
+        .compact-touch {
+            min-width: 44px;
+            min-height: 44px;
         }",
     );
     gtk::style_context_add_provider_for_display(
@@ -605,18 +609,42 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     // bestimmt unter Wayland ausschließlich der Compositor — GTK4 bietet
     // dafür bewusst keine API mehr.
     let saved_prefs = load_preferences();
+    let mut start_width = saved_prefs.window_width.filter(|w| *w > 0).unwrap_or(560);
+    let mut start_height = saved_prefs.window_height.filter(|h| *h > 0).unwrap_or(780);
+    // Auf kleinen Bildschirmen (Linux-Smartphones, Issue #12) passt die
+    // gespeicherte Desktop-Größe nicht aufs Display: begrenzen und
+    // gleich maximiert starten.
+    let mut small_screen = false;
+    if let Some(display) = gdk::Display::default()
+        && let Some(monitor) = display.monitors().item(0).and_downcast::<gdk::Monitor>()
+    {
+        let geometry = monitor.geometry();
+        if geometry.width() > 0 {
+            start_width = start_width.min(geometry.width());
+            small_screen = geometry.width() < 560;
+        }
+        if geometry.height() > 0 {
+            start_height = start_height.min(geometry.height());
+        }
+    }
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title(t("Reinschrift"))
-        .default_width(saved_prefs.window_width.filter(|w| *w > 0).unwrap_or(560))
-        .default_height(saved_prefs.window_height.filter(|h| *h > 0).unwrap_or(780))
+        .default_width(start_width)
+        .default_height(start_height)
         .build();
-    if saved_prefs.window_maximized {
+    if saved_prefs.window_maximized || small_screen {
         window.maximize();
     }
 
+    // Titel darf schrumpfen: auf schmalen Fenstern (Issue #12) würde ein
+    // nicht kürzbarer Titel die Kopfzeile über die Fensterbreite drücken.
+    let title_label = gtk::Label::builder()
+        .label(t("Reinschrift"))
+        .ellipsize(pango::EllipsizeMode::End)
+        .build();
     let header = adw::HeaderBar::builder()
-        .title_widget(&gtk::Label::builder().label(t("Reinschrift")).build())
+        .title_widget(&title_label)
         .build();
 
     let search_entry = gtk::SearchEntry::builder()
@@ -804,11 +832,19 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     add_btn.add_css_class("suggested-action");
     new_row.append(&add_btn);
 
-    let controls = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    controls.set_margin_start(12);
-    controls.set_margin_end(12);
-    controls.set_margin_top(6);
-    controls.set_margin_bottom(6);
+    // FlowBox statt Box: auf schmalen Bildschirmen (Issue #12) rutschen die
+    // Filter in die nächste Zeile, statt aus dem Fenster zu laufen.
+    let controls = gtk::FlowBox::builder()
+        .selection_mode(gtk::SelectionMode::None)
+        .max_children_per_line(4)
+        .min_children_per_line(1)
+        .row_spacing(6)
+        .column_spacing(12)
+        .margin_start(12)
+        .margin_end(12)
+        .margin_top(6)
+        .margin_bottom(6)
+        .build();
 
     let sort_label = gtk::Label::builder()
         .label(t("Sort by:"))
@@ -822,7 +858,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     controls.append(&sort_selector);
 
     let due_filter = gtk::CheckButton::with_label(&t("Show only due"));
-    due_filter.set_margin_start(18);
+    due_filter.set_valign(gtk::Align::Center);
     due_filter.set_active(state.show_due_only());
     controls.append(&due_filter);
 
@@ -830,7 +866,6 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         .label(t("My Day"))
         .tooltip_text(t("My Day"))
         .build();
-    myday_filter.set_margin_start(18);
     myday_filter.set_valign(gtk::Align::Center);
     myday_filter.set_active(state.myday_view());
     controls.append(&myday_filter);
@@ -1209,6 +1244,40 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
         window.set_data("app-state", state.clone());
     }
 
+    // Kompaktmodus (Issue #12): Linux-Smartphones haben rund 360 px logische
+    // Breite. Unter 480 px wechseln die To-do-Zeilen auf ein Überlaufmenü,
+    // die Auswahlleiste auf Ikonen und die Filterleiste lässt das Sort-Label weg.
+    let bulk_text_buttons: Vec<(gtk::Button, &'static str, String)> = vec![
+        (bulk_complete_btn.clone(), "object-select-symbolic", t("Complete")),
+        (bulk_reopen_btn.clone(), "edit-undo-symbolic", t("Reopen")),
+        (bulk_assign_btn.clone(), "document-edit-symbolic", t("Assign")),
+        (bulk_delete_btn.clone(), "user-trash-symbolic", t("Delete")),
+    ];
+    let breakpoint = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+        adw::BreakpointConditionLengthType::MaxWidth,
+        480.0,
+        adw::LengthUnit::Px,
+    ));
+    let state_apply = Rc::clone(&state);
+    let sort_label_apply = sort_label.clone();
+    let bulk_apply = bulk_text_buttons.clone();
+    let due_apply = bulk_due_btn.clone();
+    breakpoint.connect_apply(move |_| {
+        state_apply.set_compact(true);
+        sort_label_apply.set_visible(false);
+        set_bulk_bar_compact(&bulk_apply, &due_apply, true);
+    });
+    let state_unapply = Rc::clone(&state);
+    let sort_label_unapply = sort_label.clone();
+    let bulk_unapply = bulk_text_buttons.clone();
+    let due_unapply = bulk_due_btn.clone();
+    breakpoint.connect_unapply(move |_| {
+        state_unapply.set_compact(false);
+        sort_label_unapply.set_visible(true);
+        set_bulk_bar_compact(&bulk_unapply, &due_unapply, false);
+    });
+    window.add_breakpoint(breakpoint);
+
     window.present();
 
     if let Err(err) = state.reload() {
@@ -1264,6 +1333,69 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     state.schedule_reminder_check();
 
     Ok(())
+}
+
+/// Auswahlleiste im Kompaktmodus (Issue #12): Text-Buttons werden zu
+/// ikonenbasierten Buttons mit Tooltip, damit die Leiste auf 360 px passt.
+fn set_bulk_bar_compact(
+    text_buttons: &[(gtk::Button, &'static str, String)],
+    due_button: &gtk::MenuButton,
+    compact: bool,
+) {
+    for (button, icon_name, label) in text_buttons {
+        set_a11y_label(button, label);
+        if compact {
+            button.set_icon_name(icon_name);
+            button.set_tooltip_text(Some(label.as_str()));
+        } else {
+            button.set_label(label);
+            button.set_tooltip_text(None);
+        }
+    }
+    let due_label = t("Due…");
+    set_a11y_label(due_button, &due_label);
+    if compact {
+        due_button.set_icon_name("x-office-calendar-symbolic");
+        due_button.set_tooltip_text(Some(&due_label));
+    } else {
+        due_button.set_label(&due_label);
+        due_button.set_tooltip_text(None);
+    }
+}
+
+/// Verdrahtet einen Zeilen-Button mit der Aufgabe der aktuell gebundenen
+/// Zeile. Zeilen werden recycelt, deshalb wird das To-do erst beim Klick
+/// aufgelöst.
+fn wire_row_action<F>(
+    button: &gtk::Button,
+    list_item: &gtk::ListItem,
+    state: &std::rc::Weak<AppState>,
+    action: F,
+) where
+    F: Fn(&Rc<AppState>, &TodoItem) + 'static,
+{
+    let weak_item = list_item.downgrade();
+    let weak_state = state.clone();
+    button.connect_clicked(move |_| {
+        let Some(list_item) = weak_item.upgrade() else {
+            return;
+        };
+        let Some(obj) = list_item.item() else {
+            return;
+        };
+        let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else {
+            return;
+        };
+        let entry = todo_obj.borrow::<ListEntry>();
+        let todo = match &*entry {
+            ListEntry::Item(todo) => todo.clone(),
+            _ => return,
+        };
+        drop(entry);
+        if let Some(state) = weak_state.upgrade() {
+            action(&state, &todo);
+        }
+    });
 }
 
 fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
@@ -1385,6 +1517,41 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         set_a11y_label(&sometimes_btn, &t("Postpone to 'sometimes'"));
         container.append(&sometimes_btn);
 
+        // Kompaktmodus (Issue #12): auf schmalen Fenstern ersetzt ein
+        // Überlaufmenü die fünf Schnellaktionen.
+        let menu_btn = gtk::MenuButton::builder()
+            .icon_name("view-more-symbolic")
+            .tooltip_text(t("More actions"))
+            .build();
+        menu_btn.set_valign(gtk::Align::Center);
+        menu_btn.add_css_class("flat");
+        set_a11y_label(&menu_btn, &t("More actions"));
+
+        let menu_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        menu_box.set_margin_top(6);
+        menu_box.set_margin_bottom(6);
+        menu_box.set_margin_start(6);
+        menu_box.set_margin_end(6);
+        let menu_myday_btn = gtk::Button::with_label(&t("My Day"));
+        let menu_today_btn = gtk::Button::with_label(&t("Set due date to today"));
+        let menu_tomorrow_btn = gtk::Button::with_label(&t("Postpone to tomorrow"));
+        let menu_weekend_btn = gtk::Button::with_label(&t("Postpone to weekend"));
+        let menu_sometimes_btn = gtk::Button::with_label(&t("Postpone to 'sometimes'"));
+        for btn in [
+            &menu_myday_btn,
+            &menu_today_btn,
+            &menu_tomorrow_btn,
+            &menu_weekend_btn,
+            &menu_sometimes_btn,
+        ] {
+            btn.add_css_class("flat");
+            btn.set_halign(gtk::Align::Fill);
+            menu_box.append(btn);
+        }
+        let menu_popover = gtk::Popover::builder().child(&menu_box).build();
+        menu_btn.set_popover(Some(&menu_popover));
+        container.append(&menu_btn);
+
         stack.add_named(&container, Some("item"));
 
         // Picker row: "Mein Tag" planen — [+]-Button plus Titel/Metadaten
@@ -1493,6 +1660,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             list_item.set_data("todo-title", title.downgrade());
             list_item.set_data("todo-meta", meta.downgrade());
             list_item.set_data("todo-button", tomorrow_btn.downgrade());
+            list_item.set_data("todo-menu-btn", menu_btn.downgrade());
             list_item.set_data("todo-myday-btn", myday_btn.downgrade());
             list_item.set_data("todo-today-btn", today_btn.downgrade());
             list_item.set_data("todo-weekend-btn", weekend_btn.downgrade());
@@ -1700,6 +1868,32 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 }
         });
 
+        wire_row_action(&menu_myday_btn, list_item, &factory_state, |state, todo| {
+            if let Err(err) = state.toggle_myday(todo) {
+                state.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
+            }
+        });
+        wire_row_action(&menu_today_btn, list_item, &factory_state, |state, todo| {
+            if let Err(err) = state.set_due_today(todo) {
+                state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
+            }
+        });
+        wire_row_action(&menu_tomorrow_btn, list_item, &factory_state, |state, todo| {
+            if let Err(err) = state.set_due_tomorrow(todo) {
+                state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
+            }
+        });
+        wire_row_action(&menu_weekend_btn, list_item, &factory_state, |state, todo| {
+            if let Err(err) = state.set_due_weekend(todo) {
+                state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
+            }
+        });
+        wire_row_action(&menu_sometimes_btn, list_item, &factory_state, |state, todo| {
+            if let Err(err) = state.set_due_sometimes(todo) {
+                state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
+            }
+        });
+
         let picker_list = list_item.downgrade();
         let picker_state = factory_state.clone();
         picker_add_btn.connect_clicked(move |_| {
@@ -1792,6 +1986,11 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                     })
                     .unwrap_or((false, false));
 
+                let compact = highlight_state
+                    .upgrade()
+                    .map(|s| s.compact.get())
+                    .unwrap_or(false);
+
                 if is_selected {
                     stack.add_css_class("selected-row");
                 } else {
@@ -1819,15 +2018,32 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                         list_item.data::<glib::WeakRef<gtk::Button>>(button_key)
                     }
                         && let Some(btn) = unsafe { btn_ref_ptr.as_ref() }.upgrade() {
-                            btn.set_visible(!selection_mode);
+                            btn.set_visible(!selection_mode && !compact);
                         }
                 }
+
+                if let Some(menu_ref_ptr) = unsafe {
+                    list_item.data::<glib::WeakRef<gtk::MenuButton>>("todo-menu-btn")
+                }
+                    && let Some(menu_widget) = unsafe { menu_ref_ptr.as_ref() }.upgrade() {
+                        menu_widget.set_visible(!selection_mode && compact);
+                        if compact {
+                            menu_widget.add_css_class("compact-touch");
+                        } else {
+                            menu_widget.remove_css_class("compact-touch");
+                        }
+                    }
 
                 if let Some(check_ref_ptr) = unsafe {
                     list_item.data::<glib::WeakRef<gtk::CheckButton>>("todo-check")
                 }
                     && let Some(check_widget) = unsafe { check_ref_ptr.as_ref() }.upgrade() {
                         check_widget.set_visible(!selection_mode);
+                        if compact {
+                            check_widget.add_css_class("compact-touch");
+                        } else {
+                            check_widget.remove_css_class("compact-touch");
+                        }
                         if check_widget.is_active() != todo.done {
                             check_widget.set_active(todo.done);
                         }
@@ -1914,6 +2130,9 @@ struct AppState {
     notified_items: RefCell<HashSet<String>>,
     /// Mehrfachauswahl-Modus (Issue #8): Klicks selektieren statt zu bearbeiten.
     selection_mode: Cell<bool>,
+    /// Kompaktmodus (Issue #12): schmale Fenster (Linux-Smartphones) zeigen
+    /// die Schnellaktionen der Zeilen in einem Überlaufmenü.
+    compact: Cell<bool>,
     /// Auswahl per Marker — line_index verschiebt sich bei jedem Reload.
     selected_markers: RefCell<HashSet<String>>,
     selection_bar: RefCell<Option<gtk::Revealer>>,
@@ -1997,6 +2216,7 @@ impl AppState {
             recently_updated: RefCell::new(None),
             notified_items: RefCell::new(HashSet::new()),
             selection_mode: Cell::new(false),
+            compact: Cell::new(false),
             selected_markers: RefCell::new(HashSet::new()),
             selection_bar: RefCell::new(None),
             selection_count_label: RefCell::new(None),
@@ -4544,6 +4764,81 @@ impl AppState {
         self.repopulate_store();
     }
 
+    /// Kompaktmodus (Issue #12) umschalten und die sichtbaren Zeilen
+    /// aktualisieren; das Fenster bekommt zusätzlich die CSS-Klasse
+    /// `compact` für Touch-Anpassungen.
+    fn set_compact(self: &Rc<Self>, compact: bool) {
+        if self.compact.get() == compact {
+            return;
+        }
+        self.compact.set(compact);
+        if let Some(window) = self.window.upgrade() {
+            if compact {
+                window.add_css_class("compact");
+            } else {
+                window.remove_css_class("compact");
+            }
+        }
+        self.refresh_row_compact_state();
+        // Bereits gebundene Zeilen neu aufbauen: der Modus kann sich ändern,
+        // bevor die ersten Zeilen gebunden wurden (Start bei schmalem Fenster).
+        self.repopulate_store();
+    }
+
+    /// Sichtbarkeiten der Zeilen-Buttons an den Kompaktmodus anpassen.
+    /// Nötig, weil die Zeilen beim Umschalten bereits gebunden sind.
+    fn refresh_row_compact_state(&self) {
+        let Some(list_view) = self.list_view.borrow().as_ref().cloned() else {
+            return;
+        };
+        let compact = self.compact.get();
+        let selection_mode = self.selection_mode.get();
+        let children = list_view.observe_children();
+        for i in 0..children.n_items() {
+            let Some(child) = children.item(i) else {
+                continue;
+            };
+            let Ok(list_item) = child.downcast::<gtk::ListItem>() else {
+                continue;
+            };
+            for button_key in [
+                "todo-myday-btn",
+                "todo-today-btn",
+                "todo-button",
+                "todo-weekend-btn",
+                "todo-sometimes-btn",
+            ] {
+                if let Some(btn_ref_ptr) = unsafe {
+                    list_item.data::<glib::WeakRef<gtk::Button>>(button_key)
+                }
+                    && let Some(btn) = unsafe { btn_ref_ptr.as_ref() }.upgrade() {
+                        btn.set_visible(!selection_mode && !compact);
+                    }
+            }
+            if let Some(menu_ref_ptr) = unsafe {
+                list_item.data::<glib::WeakRef<gtk::MenuButton>>("todo-menu-btn")
+            }
+                && let Some(menu_widget) = unsafe { menu_ref_ptr.as_ref() }.upgrade() {
+                    menu_widget.set_visible(!selection_mode && compact);
+                    if compact {
+                        menu_widget.add_css_class("compact-touch");
+                    } else {
+                        menu_widget.remove_css_class("compact-touch");
+                    }
+                }
+            if let Some(check_ref_ptr) = unsafe {
+                list_item.data::<glib::WeakRef<gtk::CheckButton>>("todo-check")
+            }
+                && let Some(check_widget) = unsafe { check_ref_ptr.as_ref() }.upgrade() {
+                    if compact {
+                        check_widget.add_css_class("compact-touch");
+                    } else {
+                        check_widget.remove_css_class("compact-touch");
+                    }
+                }
+        }
+    }
+
     fn toggle_selection_marker(self: &Rc<Self>, marker: &str, selected: bool) {
         {
             let mut set = self.selected_markers.borrow_mut();
@@ -4899,8 +5194,16 @@ impl AppState {
         comment_row.set_visible(false);
         content.append(&comment_row);
 
-        let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        buttons.set_halign(gtk::Align::End);
+        // Auf schmalen Bildschirmen (Issue #12) umbrechen die Buttons,
+        // statt aus dem Dialog zu laufen.
+        let buttons = gtk::FlowBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .max_children_per_line(4)
+            .min_children_per_line(1)
+            .row_spacing(6)
+            .column_spacing(6)
+            .halign(gtk::Align::End)
+            .build();
         let cancel_btn = gtk::Button::with_label(&t("Cancel"));
         let delete_btn = gtk::Button::builder()
             .icon_name("user-trash-symbolic")

@@ -163,6 +163,10 @@ msgstr "Skjut upp till helgen"
 msgid "Postpone to 'sometimes'"
 msgstr "Skjut upp till 'när som helst'"
 
+#. Tooltip/Barrierefreiheits-Label für das Überlaufmenü einer Aufgabe im Kompaktmodus
+msgid "More actions"
+msgstr "Fler åtgärder"
+
 #. ehemaliger JSON-Schlüssel: sometimes
 msgid "Sometimes"
 msgstr "När som helst"

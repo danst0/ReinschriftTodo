@@ -163,6 +163,10 @@ msgstr "週末に延期"
 msgid "Postpone to 'sometimes'"
 msgstr "「いつか」に延期"
 
+#. Tooltip/Barrierefreiheits-Label für das Überlaufmenü einer Aufgabe im Kompaktmodus
+msgid "More actions"
+msgstr "その他の操作"
+
 #. ehemaliger JSON-Schlüssel: sometimes
 msgid "Sometimes"
 msgstr "いつか"

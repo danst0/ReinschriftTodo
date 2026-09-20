@@ -163,6 +163,10 @@ msgstr "Reporter au week-end"
 msgid "Postpone to 'sometimes'"
 msgstr "Reporter à 'un jour'"
 
+#. Tooltip/Barrierefreiheits-Label für das Überlaufmenü einer Aufgabe im Kompaktmodus
+msgid "More actions"
+msgstr "Plus d'actions"
+
 #. ehemaliger JSON-Schlüssel: sometimes
 msgid "Sometimes"
 msgstr "Un jour"

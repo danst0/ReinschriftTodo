@@ -53,7 +53,7 @@
     <keyword xml:lang="de">Klartext</keyword>
   </keywords>
   <recommends>
-    <display_length compare="ge">560</display_length>
+    <display_length compare="ge">360</display_length>
   </recommends>
   <supports>
     <control>pointing</control>
@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.0.4" date="2026-09-20">
+      <description>
+        <ul>
+          <li>Mobile-friendly compact layout: on narrow screens (Linux phones), task rows collapse their quick actions into an overflow menu, the selection bar becomes icon-based, and the window starts maximized</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.3" date="2026-09-10">
       <description>
         <ul>
