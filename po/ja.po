@@ -882,3 +882,9 @@ msgstr "読み込み中にファイルが変更され続けています。もう
 
 msgid "The change could not be applied. Please try again after reloading."
 msgstr "変更を適用できませんでした。再読み込みしてからもう一度お試しください。"
+
+msgid "Saving {} changes from the last session"
+msgstr "前回のセッションの変更 {} 件を保存しています"
+
+msgid "{} changes from the last session could not be restored"
+msgstr "前回のセッションの変更 {} 件を復元できませんでした"

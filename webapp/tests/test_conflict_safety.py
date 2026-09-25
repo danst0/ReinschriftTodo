@@ -434,3 +434,29 @@ class TestConflictHandler:
         response = app.test_client().get('/_conflict_probe')
         assert response.status_code == 409
         assert b'changed elsewhere' in response.data
+
+
+class TestAjaxActionsSkipTheIndex:
+    """The page queues clicks and reloads the list itself.
+
+    Redirecting its requests to the index made fetch follow the redirect and
+    render the whole page — a further full read of the file per click, for HTML
+    nobody looks at.
+    """
+
+    def _client(self, app):
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        return client
+
+    @pytest.mark.parametrize('url', ['/toggle/0', '/postpone/0/tomorrow', '/delete/0'])
+    def test_xhr_gets_an_empty_answer(self, app, local_file, url):
+        response = self._client(app).post(url, data={'marker': 'aaa1'},
+                                          headers={'X-Requested-With': 'XMLHttpRequest'})
+        assert response.status_code == 204
+        assert response.data == b''
+
+    def test_a_plain_form_post_is_still_redirected(self, app, local_file):
+        response = self._client(app).post('/toggle/0', data={'marker': 'aaa1'})
+        assert response.status_code == 302

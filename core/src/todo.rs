@@ -12,7 +12,7 @@ use crate::undo::push_undo;
 use crate::util::{generate_marker, normalize_token};
 
 /// Target for due-date operations, shared by single and batch variants.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DueTarget {
     Today,
     Tomorrow,
@@ -33,6 +33,22 @@ pub fn load_todos() -> Result<Vec<TodoItem>> {
     }
 
     Ok(items)
+}
+
+/// Load all todos together with the fingerprint of exactly that content.
+///
+/// Loading and then asking for the fingerprint separately lets a foreign write
+/// slip in between: the list would show the old state while carrying the new
+/// fingerprint, so change detection would never pick the newer file up.
+pub fn load_todos_with_fingerprint() -> Result<(Vec<TodoItem>, String)> {
+    let snapshot = read_content_with_fingerprint()?;
+    let items = snapshot
+        .content
+        .lines()
+        .enumerate()
+        .filter_map(|(line_index, line)| parse_line(line, line_index))
+        .collect();
+    Ok((items, snapshot.fingerprint))
 }
 
 /// Core helper: read file with fingerprint, push undo, apply rewrite, write with conflict check.
@@ -146,6 +162,16 @@ fn due_weekend_dt() -> NaiveDateTime {
 fn due_sometime_dt() -> NaiveDateTime {
     let sometime = NaiveDate::from_ymd_opt(9999, 12, 31).unwrap();
     NaiveDateTime::new(sometime, DEFAULT_DUE_TIME)
+}
+
+/// The due date a [`DueTarget`] stands for, given the item's current due date.
+pub fn due_for_target(target: DueTarget, current_due: Option<NaiveDateTime>) -> NaiveDateTime {
+    match target {
+        DueTarget::Today => due_today_dt(current_due),
+        DueTarget::Tomorrow => due_tomorrow_dt(),
+        DueTarget::Weekend => due_weekend_dt(),
+        DueTarget::Sometime => due_sometime_dt(),
+    }
 }
 
 /// Set a todo's due date to today (smart time selection).
@@ -291,17 +317,10 @@ pub fn set_due_batch(keys: &[TodoKey], target: DueTarget) -> Result<usize> {
     mutate_file("set due", |lines, had_trailing_newline| {
         for key in &keys {
             let Ok(index) = resolve_key(lines, key) else { continue };
-            let due_dt = match target {
-                DueTarget::Today => {
-                    // Preserve the smart-time selection by passing the item's
-                    // current due date, like the single-item variant.
-                    let current_due = parse_line(&lines[index], index).and_then(|i| i.due);
-                    due_today_dt(current_due)
-                }
-                DueTarget::Tomorrow => due_tomorrow_dt(),
-                DueTarget::Weekend => due_weekend_dt(),
-                DueTarget::Sometime => due_sometime_dt(),
-            };
+            // Preserve the smart-time selection by passing the item's current
+            // due date, like the single-item variant.
+            let current_due = parse_line(&lines[index], index).and_then(|i| i.due);
+            let due_dt = due_for_target(target, current_due);
             let Ok(updated) = rewrite_due(&lines[index], due_dt) else { continue };
             lines[index] = updated;
             count += 1;
@@ -428,6 +447,16 @@ pub fn unique_titles_by_frequency() -> Result<Vec<String>> {
 
 /// Add a new todo with just a title.
 pub fn add_todo(title: &str) -> Result<TodoKey> {
+    let (line, marker) = title_line(title, false)?;
+    insert_line(line, marker, InsertMode::Fresh)
+}
+
+/// Render the line for a new todo typed as a bare title: due today, a fresh
+/// marker, and planned for today when `myday` is set. Inline tokens in the
+/// title (`+project`, `@context`) stay where the user typed them.
+///
+/// Returns the line and its marker.
+pub fn title_line(title: &str, myday: bool) -> Result<(String, String)> {
     let title = title.trim();
     if title.is_empty() {
         bail!(t("Title must not be empty"));
@@ -435,17 +464,23 @@ pub fn add_todo(title: &str) -> Result<TodoKey> {
     let today = Local::now().date_naive();
     let due_dt = NaiveDateTime::new(today, DEFAULT_DUE_TIME);
     let marker = generate_marker();
-    let line = format!(
-        "- [ ] {} due:{} ^{}",
-        title,
-        due_dt.format("%Y-%m-%dT%H:%M"),
-        marker
-    );
-    insert_line(line, marker)
+    let mut line = format!("- [ ] {} due:{}", title, due_dt.format("%Y-%m-%dT%H:%M"));
+    if myday {
+        line = rewrite_myday(&line, true)?;
+    }
+    line.push_str(&format!(" ^{marker}"));
+    Ok((line, marker))
 }
 
 /// Add a new todo from a full TodoItem.
 pub fn add_todo_full(item: &TodoItem) -> Result<TodoKey> {
+    let (line, marker) = item_line(item)?;
+    insert_line(line, marker, InsertMode::Fresh)
+}
+
+/// Render the line for a new todo from a full item, giving it a marker if it
+/// has none. Returns the line and its marker.
+pub fn item_line(item: &TodoItem) -> Result<(String, String)> {
     let mut clone = item.clone();
     clone.done = false;
     if clone
@@ -465,7 +500,7 @@ pub fn add_todo_full(item: &TodoItem) -> Result<TodoKey> {
         .clone()
         .unwrap_or_else(generate_marker);
     let line = render_line(&clone)?;
-    insert_line(line, marker)
+    Ok((line, marker))
 }
 
 /// How many times to redraw a marker the file already carries.
@@ -490,11 +525,32 @@ fn unique_marker(lines: &[String], pending: &[String]) -> String {
     candidate
 }
 
+/// What [`insert_line`] does when the file already carries the new marker.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum InsertMode {
+    /// The line is new: a marker already in the file belongs to another todo,
+    /// so the new line gets a fresh one.
+    Fresh,
+    /// The line may have been stored before (a journal replay after the write
+    /// landed but before it was crossed off): the marker in the file *is* this
+    /// todo, and inserting it again would duplicate it.
+    Replay,
+}
+
 /// Insert a new line before the "---" separator (or at end).
-fn insert_line(line: String, marker: String) -> Result<TodoKey> {
+pub(crate) fn insert_line(line: String, marker: String, mode: InsertMode) -> Result<TodoKey> {
     let snapshot = read_content_with_fingerprint()?;
 
     let mut lines: Vec<String> = snapshot.content.lines().map(|l| l.to_string()).collect();
+
+    if mode == InsertMode::Replay
+        && let Some(index) = find_line_by_marker(&lines, &marker)
+    {
+        return Ok(TodoKey {
+            line_index: index,
+            marker: Some(marker),
+        });
+    }
 
     // The marker was drawn before the file was read, so it may already be in
     // use — another device got there first, or the caller supplied it. Swap it
@@ -645,7 +701,7 @@ pub fn next_due_date(current_due: Option<NaiveDateTime>, rule: &str) -> Option<N
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::config::set_todo_path;
     use crate::undo::{can_undo, pop_undo};
@@ -654,7 +710,7 @@ mod tests {
 
     /// The todo path and undo stack are process-global, so file-backed tests
     /// must not run concurrently.
-    fn file_lock() -> MutexGuard<'static, ()> {
+    pub(crate) fn file_lock() -> MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
         LOCK.get_or_init(|| Mutex::new(()))
             .lock()
@@ -663,7 +719,7 @@ mod tests {
 
     /// Write `content` to a fresh temp file, point the backend at it and
     /// drain the undo stack.
-    fn setup(content: &str) -> PathBuf {
+    pub(crate) fn setup(content: &str) -> PathBuf {
         let path =
             std::env::temp_dir().join(format!("reinschrift_todo_test_{}.md", generate_marker()));
         std::fs::write(&path, content).expect("write temp todo file");
@@ -672,7 +728,7 @@ mod tests {
         path
     }
 
-    fn read(path: &PathBuf) -> String {
+    pub(crate) fn read(path: &PathBuf) -> String {
         std::fs::read_to_string(path).expect("read temp todo file")
     }
 

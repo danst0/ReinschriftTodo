@@ -879,3 +879,9 @@ msgstr ""
 
 msgid "The change could not be applied. Please try again after reloading."
 msgstr ""
+
+msgid "Saving {} changes from the last session"
+msgstr ""
+
+msgid "{} changes from the last session could not be restored"
+msgstr ""

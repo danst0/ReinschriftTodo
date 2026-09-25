@@ -16,7 +16,7 @@ pub use crate::types::{TodoItem, TodoKey, DEFAULT_DUE_TIME};
 
 // Re-export config
 pub use crate::config::{
-    default_todo_path, get_backend_config, set_backend_config, set_todo_path, todo_path,
+    backend_identity, default_todo_path, get_backend_config, set_backend_config, set_todo_path, todo_path,
     BackendConfig,
 };
 
@@ -36,11 +36,14 @@ pub(crate) use crate::renderer::{render_line, rewrite_due, rewrite_line};
 
 // Re-export todo business logic
 pub use crate::todo::{
-    add_todo, add_todo_full, assign_project_context_batch, delete_todo, delete_todos, load_todos,
-    next_due_date, set_due_batch, set_due_sometime, set_due_today, set_due_tomorrow,
+    add_todo, add_todo_full, assign_project_context_batch, delete_todo, delete_todos,
+    due_for_target, item_line, load_todos, load_todos_with_fingerprint, next_due_date, set_due_batch, set_due_sometime, set_due_today, set_due_tomorrow,
     set_due_weekend, set_myday_today, toggle_todo, toggle_todos, undo,
-    unique_titles_by_frequency, unset_myday, update_todo_details, DueTarget,
+    title_line, unique_titles_by_frequency, unset_myday, update_todo_details, DueTarget,
 };
+
+// Re-export the background write queue's building blocks
+pub use crate::pending::{ApplyMode, Journal, JournalEntry, PendingOp};
 
 // Re-export conflict types
 pub use crate::conflict::ConflictError;

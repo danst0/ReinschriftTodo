@@ -45,6 +45,18 @@ def require_login(f):
     return decorated
 
 
+def _after_action():
+    """Answer a finished mutation.
+
+    The page's JS knows what it changed and reloads the list itself. A redirect
+    made ``fetch`` follow it and render the entire index — one more full read
+    of the todo file per click — only for the HTML to be thrown away.
+    """
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return '', 204
+    return redirect(url_for('main.index'))
+
+
 @todo_bp.route('/toggle/<int:line_index>', methods=['POST'])
 @require_login
 def toggle(line_index):
@@ -52,7 +64,7 @@ def toggle(line_index):
     content = read_content()
     push_undo(content, 'toggle')
     handle_toggle_with_recurrence(line_index, request.form.get('marker'))
-    return redirect(url_for('main.index'))
+    return _after_action()
 
 
 @todo_bp.route('/postpone/<int:line_index>/<string:target>', methods=['POST'])
@@ -62,7 +74,7 @@ def postpone(line_index, target):
     content = read_content()
     push_undo(content, 'postpone')
     postpone_todo(line_index, target, request.form.get('marker'))
-    return redirect(url_for('main.index'))
+    return _after_action()
 
 
 @todo_bp.route('/edit/<int:line_index>', methods=['GET', 'POST'])
@@ -219,7 +231,7 @@ def delete(line_index):
     content = read_content()
     push_undo(content, 'delete')
     delete_todo(line_index, request.form.get('marker'))
-    return redirect(url_for('main.index'))
+    return _after_action()
 
 
 @todo_bp.route('/add', methods=['POST'])

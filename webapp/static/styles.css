@@ -1761,6 +1761,12 @@ a.bottom-nav-btn {
     pointer-events: none;
 }
 
+/* Changed on screen, not yet stored (see todo-actions.js). */
+.todo-item.is-pending {
+    opacity: 0.5;
+    transition: opacity var(--transition-fast);
+}
+
 /* ==========================================================================
    Bulk select mode (multi-select mass actions, issue #8)
    ========================================================================== */

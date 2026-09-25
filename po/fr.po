@@ -882,3 +882,9 @@ msgstr "Le fichier change sans cesse pendant sa lecture. Veuillez réessayer."
 
 msgid "The change could not be applied. Please try again after reloading."
 msgstr "La modification n'a pas pu être appliquée. Réessayez après avoir rechargé."
+
+msgid "Saving {} changes from the last session"
+msgstr "Enregistrement de {} modifications de la dernière session"
+
+msgid "{} changes from the last session could not be restored"
+msgstr "{} modifications de la dernière session n'ont pas pu être restaurées"

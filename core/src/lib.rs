@@ -4,6 +4,7 @@ pub mod data;
 pub mod embeddings;
 pub mod i18n;
 pub mod parser;
+pub mod pending;
 pub mod preferences;
 pub mod reminders;
 pub mod renderer;

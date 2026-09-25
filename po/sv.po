@@ -882,3 +882,9 @@ msgstr "Filen ändras hela tiden medan den läses. Försök igen."
 
 msgid "The change could not be applied. Please try again after reloading."
 msgstr "Ändringen kunde inte tillämpas. Försök igen efter omladdning."
+
+msgid "Saving {} changes from the last session"
+msgstr "Sparar {} ändringar från förra sessionen"
+
+msgid "{} changes from the last session could not be restored"
+msgstr "{} ändringar från förra sessionen kunde inte återställas"

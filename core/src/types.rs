@@ -1,7 +1,7 @@
 //! Core data types for todo items.
 
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Default time component for due dates (midnight).
 pub const DEFAULT_DUE_TIME: NaiveTime = match NaiveTime::from_hms_opt(0, 0, 0) {
@@ -10,14 +10,14 @@ pub const DEFAULT_DUE_TIME: NaiveTime = match NaiveTime::from_hms_opt(0, 0, 0) {
 };
 
 /// Unique identifier for a todo item.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TodoKey {
     pub line_index: usize,
     pub marker: Option<String>,
 }
 
 /// A parsed todo item with all its metadata.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TodoItem {
     pub key: TodoKey,
     pub title: String,

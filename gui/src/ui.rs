@@ -25,8 +25,9 @@ use serde::Deserialize;
 use tokio::runtime::Runtime;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use reinschrift_core::embeddings;
+use reinschrift_core::parser::parse_line;
 use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
 use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, tc, Preferences, load_preferences, write_preferences};
 
@@ -43,6 +44,127 @@ enum ListEntry {
     Item(TodoItem),
     /// Kandidat im "Mein Tag"-Planungs-Picker (noch nicht für heute geplant).
     PickerItem(TodoItem),
+}
+
+/// Ein Auftrag der Hintergrund-Schreibwarteschlange (siehe `AppState::submit`).
+#[derive(Clone)]
+enum WriteJob {
+    /// `id` ist der Journal-Eintrag; fehlt nur, wenn das Journal nicht
+    /// geschrieben werden konnte.
+    Op {
+        id: Option<u64>,
+        op: data::PendingOp,
+        mode: data::ApplyMode,
+    },
+    Undo,
+    /// „Überschreiben" nach einem Konflikt: genau diesen Inhalt schreiben.
+    Overwrite(String),
+}
+
+enum WriteResult {
+    Op(Result<Option<String>>),
+    Undo(Result<Option<String>>),
+    Overwrite(Result<()>),
+}
+
+impl WriteJob {
+    /// Läuft im Hintergrund-Thread.
+    fn run(&self) -> WriteResult {
+        match self {
+            WriteJob::Op { op, mode, .. } => WriteResult::Op(op.apply(*mode)),
+            WriteJob::Undo => WriteResult::Undo(data::undo()),
+            WriteJob::Overwrite(content) => {
+                WriteResult::Overwrite(data::force_write_content(content.clone()))
+            }
+        }
+    }
+
+    fn failed(&self, err: anyhow::Error) -> WriteResult {
+        match self {
+            WriteJob::Op { .. } => WriteResult::Op(Err(err)),
+            WriteJob::Undo => WriteResult::Undo(Err(err)),
+            WriteJob::Overwrite(_) => WriteResult::Overwrite(Err(err)),
+        }
+    }
+}
+
+thread_local! {
+    /// Ein Journal pro Prozess. Öffnet man direkt nach dem Schließen wieder
+    /// ein Fenster, während das alte noch speichert, landet es im selben
+    /// Prozess (GApplication ist einzelinstanzig) — beide teilen sich dann die
+    /// Datei, statt sich gegenseitig ihre Einträge zu überschreiben.
+    static JOURNAL: Rc<RefCell<data::Journal>> = Rc::new(RefCell::new(data::Journal::open({
+        let mut path = glib::user_data_dir();
+        path.push("reinschrift_todo");
+        path.push("pending-writes.json");
+        path
+    })));
+    /// Übrig gebliebene Einträge nur einmal pro Prozess nachholen.
+    static JOURNAL_REPLAYED: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Eine noch nicht gespeicherte Änderung auf die angezeigte Liste anwenden.
+///
+/// Das ist eine Vorschau, keine zweite Implementierung: sobald alles
+/// gespeichert ist, ersetzt der echte Dateistand sie (samt Details wie der
+/// nächsten Instanz einer wiederkehrenden Aufgabe).
+fn apply_optimistic(items: &mut Vec<TodoItem>, op: &data::PendingOp) {
+    use data::PendingOp as Op;
+    fn hits(item: &TodoItem, keys: &[data::TodoKey]) -> bool {
+        keys.iter().any(|key| match key.marker.as_deref() {
+            Some(marker) if !marker.is_empty() => item.key.marker.as_deref() == Some(marker),
+            _ => item.key.line_index == key.line_index,
+        })
+    }
+    fn add_missing(tags: &mut Vec<String>, new: &[String]) {
+        for tag in new {
+            let tag = tag.trim_start_matches(['+', '@']).trim();
+            if !tag.is_empty() && !tags.iter().any(|t| t.eq_ignore_ascii_case(tag)) {
+                tags.push(tag.to_string());
+            }
+        }
+    }
+    match op {
+        Op::SetDone { keys, done } => items
+            .iter_mut()
+            .filter(|item| hits(item, keys))
+            .for_each(|item| item.done = *done),
+        Op::SetDue { keys, target } => items
+            .iter_mut()
+            .filter(|item| hits(item, keys))
+            .for_each(|item| item.due = Some(data::due_for_target(*target, item.due))),
+        Op::SetMyday { key, on } => {
+            let today = Local::now().date_naive();
+            items
+                .iter_mut()
+                .filter(|item| hits(item, std::slice::from_ref(key)))
+                .for_each(|item| item.myday = on.then_some(today));
+        }
+        Op::Update { item: updated } => {
+            for item in items.iter_mut().filter(|item| hits(item, std::slice::from_ref(&updated.key))) {
+                let line_index = item.key.line_index;
+                *item = updated.clone();
+                item.key.line_index = line_index;
+            }
+        }
+        Op::Delete { keys } => items.retain(|item| !hits(item, keys)),
+        Op::Add { line, marker } => {
+            let exists = items.iter().any(|i| i.key.marker.as_deref() == Some(marker.as_str()));
+            if !exists && let Some(item) = parse_line(line, usize::MAX) {
+                items.push(item);
+            }
+        }
+        Op::Assign {
+            keys,
+            projects,
+            contexts,
+        } => {
+            for item in items.iter_mut().filter(|item| hits(item, keys)) {
+                add_missing(&mut item.projects, projects);
+                add_missing(&mut item.contexts, contexts);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -104,22 +226,29 @@ fn xml_escape(s: &str) -> String {
 }
 
 fn schedule_poll(state: Rc<AppState>, interval: u32) {
-    glib::timeout_add_seconds_local(interval, clone!(#[weak] state, #[upgrade_or] glib::ControlFlow::Break, move || {
-        let next_interval = match state.check_for_updates() {
-            Ok(changed) => {
-                if changed {
-                    state.warm_semantic_index();
-                }
-                10
-            }
-            Err(e) => {
-                eprintln!("{}", t("Auto-reload failed: {}").replace("{}", &e.to_string()));
-                std::cmp::min(interval * 2, 300)
-            }
+    let weak = Rc::downgrade(&state);
+    glib::timeout_add_seconds_local_once(interval, move || {
+        let Some(state) = weak.upgrade() else {
+            return;
         };
-        schedule_poll(state, next_interval);
-        glib::ControlFlow::Break
-    }));
+        // Die Abfrage läuft im Hintergrund: ein langsamer oder hängender
+        // Server lässt so nicht mehr alle zehn Sekunden das Fenster stocken.
+        glib::spawn_future_local(async move {
+            let next_interval = match state.check_for_updates().await {
+                Ok(changed) => {
+                    if changed {
+                        state.warm_semantic_index();
+                    }
+                    10
+                }
+                Err(e) => {
+                    eprintln!("{}", t("Auto-reload failed: {}").replace("{}", &e.to_string()));
+                    std::cmp::min(interval * 2, 300)
+                }
+            };
+            schedule_poll(state, next_interval);
+        });
+    });
 }
 
 /// Creates an Entry with a dropdown button for suggestions.
@@ -1168,21 +1297,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
             search_btn_esc.set_active(!search_btn_esc.is_active());
             glib::Propagation::Stop
         } else if has_ctrl && (key == gdk::Key::z || key == gdk::Key::Z) {
-            match data::undo() {
-                Ok(Some(desc)) => {
-                    if let Err(e) = state_for_keys.reload() {
-                        state_for_keys.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
-                    } else {
-                        state_for_keys.show_info(&t("Undone: {}").replace("{}", &desc));
-                    }
-                }
-                Ok(None) => {
-                    state_for_keys.show_info(&t("Nothing to undo"));
-                }
-                Err(e) => {
-                    state_for_keys.show_error(&e.to_string());
-                }
-            }
+            state_for_keys.enqueue(WriteJob::Undo);
             glib::Propagation::Stop
         } else {
             glib::Propagation::Proceed
@@ -1203,9 +1318,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
 
     let refresh_action = gio::SimpleAction::new("reload", None);
     refresh_action.connect_activate(clone!(#[weak] state, move |_, _| {
-        if let Err(err) = state.reload() {
-            state.show_error(&t("Could not load To-dos: {}").replace("{}", &err.to_string()));
-        }
+        state.refresh_in_background();
     }));
     app.add_action(&refresh_action);
     app.set_accels_for_action("app.reload", &["<Primary>r"]);
@@ -1307,6 +1420,8 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
             state.show_settings_dialog(None);
         }
     }
+
+    state.replay_journal();
 
     // Embedding-Index im Hintergrund vorwärmen, damit die ersten
     // semantischen Vorschläge nicht den vollen Index-Aufbau abwarten müssen.
@@ -1620,7 +1735,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             let unicode = keyval.to_unicode();
             match keyval {
                 gdk::Key::space => {
-                    let _ = state.toggle_item(&todo, !todo.done);
+                    state.toggle_item(&todo, !todo.done);
                     glib::Propagation::Stop
                 }
                 gdk::Key::Delete | gdk::Key::KP_Delete => {
@@ -1628,23 +1743,23 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('h') || unicode == Some('H') => {
-                    let _ = state.set_due_today(&todo);
+                    state.set_due_today(&todo);
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('m') || unicode == Some('M') => {
-                    let _ = state.set_due_tomorrow(&todo);
+                    state.set_due_tomorrow(&todo);
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('w') || unicode == Some('W') => {
-                    let _ = state.set_due_weekend(&todo);
+                    state.set_due_weekend(&todo);
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('l') || unicode == Some('L') => {
-                    let _ = state.set_due_in_days(&todo, 7);
+                    state.set_due_in_days(&todo, 7);
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('s') || unicode == Some('S') => {
-                    let _ = state.set_due_sometimes(&todo);
+                    state.set_due_sometimes(&todo);
                     glib::Propagation::Stop
                 }
                 _ => glib::Propagation::Proceed,
@@ -1742,9 +1857,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 if state.selection_mode.get() {
                     return;
                 }
-                if let Err(err) = state.toggle_item(&todo, btn.is_active()) {
-                    state.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
-                }
+                state.toggle_item(&todo, btn.is_active());
             }
         });
 
@@ -1766,10 +1879,9 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = myday_state.upgrade()
-                && let Err(err) = state.toggle_myday(&todo) {
-                    state.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
-                }
+            if let Some(state) = myday_state.upgrade() {
+                state.toggle_myday(&todo);
+            }
         });
 
         let tomorrow_list = list_item.downgrade();
@@ -1790,10 +1902,9 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = tomorrow_state.upgrade()
-                && let Err(err) = state.set_due_tomorrow(&todo) {
-                    state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
-                }
+            if let Some(state) = tomorrow_state.upgrade() {
+                state.set_due_tomorrow(&todo);
+            }
         });
 
         let weekend_list = list_item.downgrade();
@@ -1814,10 +1925,9 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = weekend_state.upgrade()
-                && let Err(err) = state.set_due_weekend(&todo) {
-                    state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
-                }
+            if let Some(state) = weekend_state.upgrade() {
+                state.set_due_weekend(&todo);
+            }
         });
 
         let today_list = list_item.downgrade();
@@ -1838,10 +1948,9 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = today_state.upgrade()
-                && let Err(err) = state.set_due_today(&todo) {
-                    state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
-                }
+            if let Some(state) = today_state.upgrade() {
+                state.set_due_today(&todo);
+            }
         });
 
         let sometimes_list = list_item.downgrade();
@@ -1862,36 +1971,25 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = sometimes_state.upgrade()
-                && let Err(err) = state.set_due_sometimes(&todo) {
-                    state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
-                }
+            if let Some(state) = sometimes_state.upgrade() {
+                state.set_due_sometimes(&todo);
+            }
         });
 
         wire_row_action(&menu_myday_btn, list_item, &factory_state, |state, todo| {
-            if let Err(err) = state.toggle_myday(todo) {
-                state.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
-            }
+            state.toggle_myday(todo);
         });
         wire_row_action(&menu_today_btn, list_item, &factory_state, |state, todo| {
-            if let Err(err) = state.set_due_today(todo) {
-                state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
-            }
+            state.set_due_today(todo);
         });
         wire_row_action(&menu_tomorrow_btn, list_item, &factory_state, |state, todo| {
-            if let Err(err) = state.set_due_tomorrow(todo) {
-                state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
-            }
+            state.set_due_tomorrow(todo);
         });
         wire_row_action(&menu_weekend_btn, list_item, &factory_state, |state, todo| {
-            if let Err(err) = state.set_due_weekend(todo) {
-                state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
-            }
+            state.set_due_weekend(todo);
         });
         wire_row_action(&menu_sometimes_btn, list_item, &factory_state, |state, todo| {
-            if let Err(err) = state.set_due_sometimes(todo) {
-                state.show_error(&t("Could not set due date: {}").replace("{}", &err.to_string()));
-            }
+            state.set_due_sometimes(todo);
         });
 
         let picker_list = list_item.downgrade();
@@ -1912,10 +2010,9 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                 _ => return,
             };
 
-            if let Some(state) = picker_state.upgrade()
-                && let Err(err) = state.toggle_myday(&todo) {
-                    state.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
-                }
+            if let Some(state) = picker_state.upgrade() {
+                state.toggle_myday(&todo);
+            }
         });
 
     });
@@ -2116,8 +2213,25 @@ struct AppState {
     store: gio::ListStore,
     overlay: adw::ToastOverlay,
     monitor: RefCell<Option<gio::FileMonitor>>,
+    /// Was die Liste anzeigt: `confirmed_items` plus alle noch nicht
+    /// gespeicherten Änderungen (siehe `rebuild_view`).
     cached_items: RefCell<Vec<TodoItem>>,
+    /// Zuletzt gelesener Dateistand, fortgeschrieben um erfolgreich
+    /// gespeicherte Änderungen bis zum nächsten Reload.
+    confirmed_items: RefCell<Vec<TodoItem>>,
     last_fingerprint: RefCell<Option<String>>,
+    /// Wartende Schreibaufträge, in Klick-Reihenfolge.
+    write_queue: RefCell<VecDeque<WriteJob>>,
+    /// Der Auftrag, der gerade im Hintergrund geschrieben wird.
+    write_in_flight: RefCell<Option<WriteJob>>,
+    /// Zählt fertige Schreibaufträge; ein Reload, der einen davon verpasst
+    /// haben kann, wird verworfen.
+    writes_completed: Cell<u64>,
+    /// Hält die Anwendung am Leben, solange geschrieben wird.
+    write_hold: RefCell<Option<gio::ApplicationHoldGuard>>,
+    journal: Rc<RefCell<data::Journal>>,
+    /// Marker neuer Aufgaben, die beim Speichern ausgetauscht werden mussten.
+    marker_renames: RefCell<HashMap<String, String>>,
     sort_mode: RefCell<SortMode>,
     window: glib::WeakRef<adw::ApplicationWindow>,
     preferences: RefCell<Preferences>,
@@ -2225,6 +2339,13 @@ impl AppState {
             embedding_index_building: Cell::new(false),
             query_embed_cache: RefCell::new(HashMap::new()),
             last_fingerprint: RefCell::new(None),
+            confirmed_items: RefCell::new(Vec::new()),
+            write_queue: RefCell::new(VecDeque::new()),
+            write_in_flight: RefCell::new(None),
+            writes_completed: Cell::new(0),
+            write_hold: RefCell::new(None),
+            journal: JOURNAL.with(Rc::clone),
+            marker_renames: RefCell::new(HashMap::new()),
         }
     }
 
@@ -2621,147 +2742,345 @@ impl AppState {
         dir
     }
 
+    /// Synchron neu laden — nur dort, wo ohnehin gewartet werden muss (Start,
+    /// Wechsel der Datenbank). Alles andere nutzt `reload_async`.
     fn reload(&self) -> Result<()> {
-        let items = data::load_todos()?;
-        *self.cached_items.borrow_mut() = items;
-        if let Ok(fp) = data::get_fingerprint() {
-            *self.last_fingerprint.borrow_mut() = Some(fp);
-        }
-        self.repopulate_store();
+        let (items, fingerprint) = data::load_todos_with_fingerprint()?;
+        self.adopt_loaded(items, fingerprint);
         Ok(())
+    }
+
+    /// Frisch gelesenen Dateistand übernehmen. Noch nicht gespeicherte
+    /// Änderungen bleiben darüber sichtbar.
+    fn adopt_loaded(&self, items: Vec<TodoItem>, fingerprint: String) {
+        *self.confirmed_items.borrow_mut() = items;
+        *self.last_fingerprint.borrow_mut() = Some(fingerprint);
+        self.rebuild_view();
+    }
+
+    /// Anzeige = bestätigter Dateistand + alle Änderungen, die noch in der
+    /// Schreibwarteschlange stehen oder gerade gespeichert werden.
+    fn rebuild_view(&self) {
+        let mut items = self.confirmed_items.borrow().clone();
+        let in_flight = self.write_in_flight.borrow();
+        let queue = self.write_queue.borrow();
+        for job in in_flight.iter().chain(queue.iter()) {
+            if let WriteJob::Op { op, .. } = job {
+                apply_optimistic(&mut items, op);
+            }
+        }
+        *self.cached_items.borrow_mut() = items;
+        drop(in_flight);
+        drop(queue);
+        self.repopulate_store();
+    }
+
+    /// Die Datei im Hintergrund lesen, ohne das Fenster zu blockieren.
+    ///
+    /// `Ok(false)`: Während des Lesens wurde ein eigener Schreibvorgang fertig,
+    /// das Ergebnis kann ihn also noch nicht enthalten und wird verworfen —
+    /// sonst flackerte die gerade gemachte Änderung kurz weg. Nach dem letzten
+    /// Schreibvorgang wird ohnehin neu geladen.
+    async fn reload_async(&self) -> Result<bool> {
+        let completed = self.writes_completed.get();
+        let (items, fingerprint) = gio::spawn_blocking(data::load_todos_with_fingerprint)
+            .await
+            .map_err(|_| anyhow!("reload thread panicked"))??;
+        if self.writes_completed.get() != completed {
+            return Ok(false);
+        }
+        self.adopt_loaded(items, fingerprint);
+        Ok(true)
+    }
+
+    /// `reload_async` ohne Rückmeldung an den Aufrufer; Fehler als Toast.
+    fn refresh_in_background(self: &Rc<Self>) {
+        let state = Rc::clone(self);
+        glib::spawn_future_local(async move {
+            if let Err(err) = state.reload_async().await {
+                state.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
+            }
+        });
     }
 
     /// Liefert `true`, wenn sich die Datenbank geändert hat und neu
     /// geladen wurde (Aufrufer wärmt dann den Embedding-Index nach).
-    fn check_for_updates(&self) -> Result<bool> {
-        let current_fp = data::get_fingerprint()?;
-        let last_fp = self.last_fingerprint.borrow().clone();
-
-        if Some(current_fp) != last_fp {
-            self.reload()?;
-            return Ok(true);
+    ///
+    /// Solange eigene Schreibvorgänge laufen, wird nicht nachgesehen: die
+    /// ändern den Fingerprint ja gerade selbst, und danach lädt die
+    /// Warteschlange ohnehin neu.
+    async fn check_for_updates(&self) -> Result<bool> {
+        if self.writes_pending() {
+            return Ok(false);
         }
-        Ok(false)
+        let current_fp = gio::spawn_blocking(data::get_fingerprint)
+            .await
+            .map_err(|_| anyhow!("fingerprint thread panicked"))??;
+        if self.last_fingerprint.borrow().as_deref() == Some(current_fp.as_str()) {
+            return Ok(false);
+        }
+        self.reload_async().await
     }
 
-    fn toggle_item(self: &Rc<Self>, todo: &TodoItem, done: bool) -> Result<()> {
-        let now = Local::now().naive_local();
-        let is_historic = todo.due.map(|d| d < now).unwrap_or(false);
-        let is_recurring = todo.recurrence.is_some();
+    fn writes_pending(&self) -> bool {
+        self.write_in_flight.borrow().is_some() || !self.write_queue.borrow().is_empty()
+    }
 
-        let result = if done && is_historic && is_recurring {
-            let mut updated = todo.clone();
-            let time = todo.due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
-            let today = Local::now().date_naive();
-            updated.due = Some(NaiveDateTime::new(today, time));
-            updated.done = true;
-            data::update_todo_details(&updated)
-        } else {
-            data::toggle_todo(&todo.key, done)
-        };
-
-        if let Err(ref err) = result {
-            if self.handle_conflict(err) {
-                return Ok(());
-            }
-            return result;
+    /// Änderung sofort anzeigen und im Hintergrund speichern.
+    ///
+    /// Vorher wurde jede Aktion im Hauptthread gespeichert und danach neu
+    /// geladen — bei WebDAV drei bis vier Netzwerkrunden, in denen das Fenster
+    /// stand. Jetzt landet die Änderung zuerst im Journal (damit sie Beenden,
+    /// Absturz oder Abmelden übersteht), dann in der Anzeige, und wird danach
+    /// der Reihe nach geschrieben.
+    fn submit(self: &Rc<Self>, mut op: data::PendingOp) {
+        for (from, to) in self.marker_renames.borrow().iter() {
+            op.rename_marker(from, to);
         }
+        let backend = data::backend_identity(&data::get_backend_config());
+        let id = match self.journal.borrow_mut().push(&backend, op.clone()) {
+            Ok(id) => Some(id),
+            Err(err) => {
+                // Speichern geht trotzdem; nur ein Absturz davor wäre nicht abgesichert.
+                eprintln!("Could not record pending write: {err:#}");
+                None
+            }
+        };
+        self.enqueue(WriteJob::Op {
+            id,
+            op,
+            mode: data::ApplyMode::Live,
+        });
+        self.rebuild_view();
+    }
 
-        if done
-            && let Some(rule) = todo.recurrence.as_deref()
-                && let Some(next_due) = data::next_due_date(todo.due, rule) {
-                    let mut next_item = todo.clone();
-                    next_item.key = data::TodoKey { line_index: 0, marker: None };
-                    next_item.done = false;
-                    next_item.due = Some(next_due);
-                    // Die neue Instanz plant sich nicht von selbst für "Mein Tag" —
-                    // sonst taucht sie sofort wieder unerledigt neben der gerade
-                    // abgehakten Aufgabe auf.
-                    next_item.myday = None;
-                    if let Err(err) = data::add_todo_full(&next_item) {
-                        eprintln!("Failed to add recurring task: {err}");
+    fn enqueue(self: &Rc<Self>, job: WriteJob) {
+        self.write_queue.borrow_mut().push_back(job);
+        self.hold_app();
+        self.run_next_write();
+    }
+
+    /// Die Anwendung am Leben halten, bis alles gespeichert ist — auch wenn
+    /// das Fenster inzwischen geschlossen wurde. `run_next_write` gibt sie
+    /// wieder frei, sobald die Warteschlange leer ist.
+    fn hold_app(&self) {
+        if self.write_hold.borrow().is_none()
+            && let Some(app) = self.window.upgrade().and_then(|w| w.application())
+        {
+            *self.write_hold.borrow_mut() = Some(app.hold());
+        }
+    }
+
+    /// Nicht gespeicherte Änderungen aus einer früheren Sitzung nachholen
+    /// (App beendet, abgestürzt oder abgemeldet, bevor alles geschrieben war).
+    /// Nur einmal pro Prozess: ein zweites Fenster teilt sich das Journal.
+    fn replay_journal(self: &Rc<Self>) {
+        if JOURNAL_REPLAYED.with(|done| done.replace(true)) {
+            return;
+        }
+        let backend = data::backend_identity(&data::get_backend_config());
+        let leftovers = self.journal.borrow().leftovers(&backend);
+        if leftovers.is_empty() {
+            return;
+        }
+        let mut dropped = 0;
+        for entry in leftovers {
+            match entry.op.for_replay() {
+                Some(op) => self.write_queue.borrow_mut().push_back(WriteJob::Op {
+                    id: Some(entry.id),
+                    op,
+                    mode: data::ApplyMode::Replay,
+                }),
+                None => {
+                    dropped += 1;
+                    self.forget_journal_entry(Some(entry.id));
+                }
+            }
+        }
+        let queued = self.write_queue.borrow().len();
+        if queued > 0 {
+            self.show_info(
+                &t("Saving {} changes from the last session").replace("{}", &queued.to_string()),
+            );
+            self.hold_app();
+            self.run_next_write();
+            self.rebuild_view();
+        }
+        if dropped > 0 {
+            self.show_error(
+                &t("{} changes from the last session could not be restored")
+                    .replace("{}", &dropped.to_string()),
+            );
+        }
+    }
+
+    /// Den nächsten Schreibvorgang starten. Immer nur einer zur Zeit, in der
+    /// Reihenfolge der Klicks — jeder liest die Datei frisch und wendet seine
+    /// Änderung darauf an.
+    fn run_next_write(self: &Rc<Self>) {
+        if self.write_in_flight.borrow().is_some() {
+            return;
+        }
+        let Some(job) = self.write_queue.borrow_mut().pop_front() else {
+            // Alles gespeichert: Anwendung freigeben (sie darf jetzt enden)
+            // und den echten Dateistand holen, etwa die nächste Instanz einer
+            // wiederkehrenden Aufgabe.
+            self.write_hold.borrow_mut().take();
+            if self.window.upgrade().is_some() {
+                self.refresh_in_background();
+            }
+            return;
+        };
+        *self.write_in_flight.borrow_mut() = Some(job.clone());
+        let state = Rc::clone(self);
+        glib::spawn_future_local(async move {
+            let result = gio::spawn_blocking(move || job.run()).await;
+            let job = state
+                .write_in_flight
+                .borrow_mut()
+                .take()
+                .expect("write in flight");
+            state.writes_completed.set(state.writes_completed.get() + 1);
+            let result = result.unwrap_or_else(|_| job.failed(anyhow!("write thread panicked")));
+            state.finish_write(job, result);
+            state.run_next_write();
+        });
+    }
+
+    fn finish_write(self: &Rc<Self>, job: WriteJob, result: WriteResult) {
+        match (job, result) {
+            (WriteJob::Op { id, op, .. }, WriteResult::Op(Ok(stored))) => {
+                self.forget_journal_entry(id);
+                // Bis zum nächsten Reload gilt die Änderung als Dateistand.
+                apply_optimistic(&mut self.confirmed_items.borrow_mut(), &op);
+                if let data::PendingOp::Add { marker, .. } = &op
+                    && let Some(stored) = stored
+                    && &stored != marker
+                {
+                    self.rename_marker(marker, &stored);
+                }
+            }
+            (WriteJob::Op { id, .. }, WriteResult::Op(Err(err))) => {
+                if self.window.upgrade().is_none() {
+                    // Das Fenster ist zu, niemand sieht eine Meldung. Im
+                    // Journal lassen: der nächste Start versucht es erneut
+                    // und meldet dann, falls es wieder scheitert.
+                    eprintln!("Could not save change: {err:#}");
+                    return;
+                }
+                self.forget_journal_entry(id);
+                // Ohne diese Änderung neu aufbauen, damit nichts angezeigt
+                // bleibt, was nie gespeichert wurde.
+                self.rebuild_view();
+                if !self.handle_conflict(&err) {
+                    self.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
+                }
+            }
+            (WriteJob::Undo, WriteResult::Undo(result)) => match result {
+                Ok(Some(desc)) => self.show_info(&t("Undone: {}").replace("{}", &desc)),
+                Ok(None) => self.show_info(&t("Nothing to undo")),
+                Err(err) => {
+                    if !self.handle_conflict(&err) {
+                        self.show_error(&err.to_string());
                     }
                 }
+            },
+            (WriteJob::Overwrite(_), WriteResult::Overwrite(Err(err))) => {
+                self.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
+            }
+            _ => {}
+        }
+    }
 
-        self.reload()?;
+    fn forget_journal_entry(&self, id: Option<u64>) {
+        if let Some(id) = id
+            && let Err(err) = self.journal.borrow_mut().remove(id)
+        {
+            eprintln!("Could not update pending-write journal: {err:#}");
+        }
+    }
+
+    /// Eine neue Aufgabe hat in der Datei einen anderen Marker bekommen, weil
+    /// ein anderes Gerät ihren schon vergeben hatte. Alles, was danach an ihr
+    /// geändert wird, muss dem neuen Marker folgen.
+    fn rename_marker(&self, from: &str, to: &str) {
+        self.marker_renames
+            .borrow_mut()
+            .insert(from.to_string(), to.to_string());
+        let mut journal = self.journal.borrow_mut();
+        for job in self.write_queue.borrow_mut().iter_mut() {
+            if let WriteJob::Op { id, op, .. } = job {
+                op.rename_marker(from, to);
+                if let Some(id) = id
+                    && let Err(err) = journal.replace(*id, op.clone())
+                {
+                    eprintln!("Could not update pending-write journal: {err:#}");
+                }
+            }
+        }
+        drop(journal);
+        for item in self.confirmed_items.borrow_mut().iter_mut() {
+            if item.key.marker.as_deref() == Some(from) {
+                item.key.marker = Some(to.to_string());
+            }
+        }
+        self.rebuild_view();
+    }
+
+    fn toggle_item(self: &Rc<Self>, todo: &TodoItem, done: bool) {
+        // toggle_todos erledigt auch den Sonderfall wiederkehrender Aufgaben
+        // (überfällige erst auf heute setzen, nächste Instanz anlegen) — in
+        // einem einzigen Schreibvorgang statt zweien.
+        self.submit(data::PendingOp::SetDone {
+            keys: vec![todo.key.clone()],
+            done,
+        });
         let message = if done {
             format!("Erledigt: {}", todo.title)
         } else {
             format!("Reaktiviert: {}", todo.title)
         };
         self.show_undo_toast(&message);
-        Ok(())
     }
 
-    fn toggle_myday(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
+    fn toggle_myday(self: &Rc<Self>, todo: &TodoItem) {
         let today = Local::now().date_naive();
         let currently_in = todo.myday == Some(today);
-        let result = if currently_in {
-            data::unset_myday(&todo.key)
+        self.submit(data::PendingOp::SetMyday {
+            key: todo.key.clone(),
+            on: !currently_in,
+        });
+        let message = if currently_in {
+            t("Remove from My Day")
         } else {
-            data::set_myday_today(&todo.key)
+            t("Add to My Day")
         };
-        match result {
-            Ok(()) => {
-                self.reload()?;
-                let message = if currently_in {
-                    t("Remove from My Day")
-                } else {
-                    t("Add to My Day")
-                };
-                self.show_undo_toast(&format!("{message}: {}", todo.title));
-                Ok(())
-            }
-            Err(err) => {
-                if self.handle_conflict(&err) { return Ok(()); }
-                Err(err)
-            }
-        }
+        self.show_undo_toast(&format!("{message}: {}", todo.title));
     }
 
-    fn set_due_today(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
-        match data::set_due_today(&todo.key, todo.due) {
-            Ok(today) => {
-                self.reload()?;
-                self.show_undo_toast(&format!("Fällig heute ({})", today.format("%Y-%m-%dT%H:%M")));
-                Ok(())
-            }
-            Err(err) => {
-                if self.handle_conflict(&err) { return Ok(()); }
-                Err(err)
-            }
-        }
+    /// Fälligkeit setzen; `label` ist der Toast-Text mit `{}` für das Datum.
+    fn set_due(self: &Rc<Self>, todo: &TodoItem, target: data::DueTarget, label: &str) {
+        let due = data::due_for_target(target, todo.due);
+        self.submit(data::PendingOp::SetDue {
+            keys: vec![todo.key.clone()],
+            target,
+        });
+        self.show_undo_toast(&label.replace("{}", &due.format("%Y-%m-%dT%H:%M").to_string()));
     }
 
-    fn set_due_tomorrow(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
-        match data::set_due_tomorrow(&todo.key) {
-            Ok(tomorrow) => {
-                self.reload()?;
-                self.show_undo_toast(&format!("Fällig morgen ({})", tomorrow.format("%Y-%m-%dT%H:%M")));
-                Ok(())
-            }
-            Err(err) => {
-                if self.handle_conflict(&err) { return Ok(()); }
-                Err(err)
-            }
-        }
+    fn set_due_today(self: &Rc<Self>, todo: &TodoItem) {
+        self.set_due(todo, data::DueTarget::Today, "Fällig heute ({})");
     }
 
-    fn set_due_weekend(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
-        match data::set_due_weekend(&todo.key) {
-            Ok(weekend) => {
-                self.reload()?;
-                self.show_undo_toast(&format!("Fällig am Wochenende ({})", weekend.format("%Y-%m-%dT%H:%M")));
-                Ok(())
-            }
-            Err(err) => {
-                if self.handle_conflict(&err) { return Ok(()); }
-                Err(err)
-            }
-        }
+    fn set_due_tomorrow(self: &Rc<Self>, todo: &TodoItem) {
+        self.set_due(todo, data::DueTarget::Tomorrow, "Fällig morgen ({})");
     }
 
-    fn set_due_in_days(self: &Rc<Self>, todo: &TodoItem, days: i64) -> Result<()> {
+    fn set_due_weekend(self: &Rc<Self>, todo: &TodoItem) {
+        self.set_due(todo, data::DueTarget::Weekend, "Fällig am Wochenende ({})");
+    }
+
+    fn set_due_in_days(self: &Rc<Self>, todo: &TodoItem, days: i64) {
         let mut updated = todo.clone();
         let base_time = todo.due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
         let target_date = Local::now().date_naive() + Duration::days(days);
@@ -2769,21 +3088,9 @@ impl AppState {
         self.save_item(&updated)
     }
 
-    fn set_due_sometimes(self: &Rc<Self>, todo: &TodoItem) -> Result<()> {
-        match data::set_due_sometime(&todo.key) {
-            Ok(sometime) => {
-                self.reload()?;
-                self.show_undo_toast(&format!("Fällig irgendwann ({})", sometime.format("%Y-%m-%dT%H:%M")));
-                Ok(())
-            }
-            Err(err) => {
-                if self.handle_conflict(&err) { return Ok(()); }
-                Err(err)
-            }
-        }
+    fn set_due_sometimes(self: &Rc<Self>, todo: &TodoItem) {
+        self.set_due(todo, data::DueTarget::Sometime, "Fällig irgendwann ({})");
     }
-
-
 
     /// Tastenkürzel-Fenster (GtkShortcutsWindow), gruppiert nach Bereich.
     /// Mit gtk4 v4_12 gibt es noch keine programmatische Add-API
@@ -3751,25 +4058,20 @@ impl AppState {
         // In the "Mein Tag" view, new todos land directly in today's plan.
         let add_to_myday = self.myday_view();
 
-        let add_key = match data::add_todo(&title_text) {
-            Ok(key) => key,
+        let (line, marker) = match data::title_line(&title_text, add_to_myday) {
+            Ok(rendered) => rendered,
             Err(err) => {
                 self.show_error(&t("Could not create To-do: {}").replace("{}", &err.to_string()));
                 return;
             }
         };
-
-        if add_to_myday
-            && let Err(err) = data::set_myday_today(&add_key) {
-                self.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
-            }
+        self.submit(data::PendingOp::Add {
+            line,
+            marker: marker.clone(),
+        });
 
         entry.set_text("");
-        if let Err(err) = self.reload() {
-            self.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
-        } else {
-            self.show_info(&t("Task added"));
-        }
+        self.show_info(&t("Task added"));
 
         if !use_ai {
             return;
@@ -3777,7 +4079,7 @@ impl AppState {
 
         let runtime = self.ai_runtime.clone();
         let original = title_text.clone();
-        let marker_for_update = add_key.marker.clone();
+        let marker_for_update = Some(marker);
 
         glib::spawn_future_local(clone!(#[weak(rename_to = state)] self, async move {
             let Some(marker) = marker_for_update.clone() else {
@@ -3810,8 +4112,10 @@ impl AppState {
             match outcome {
                 Ok(Ok(parsed)) => {
                     let mut todo = build_todo_from_ai(&parsed, &original);
+                    // Nur über den Marker auflösen: die Zeilennummer einer eben
+                    // angelegten Aufgabe ist noch unbekannt.
                     todo.key = data::TodoKey {
-                        line_index: 0,
+                        line_index: usize::MAX,
                         marker: Some(marker.clone()),
                     };
                     // Keep the just-set myday plan; the AI rewrite would
@@ -3820,19 +4124,9 @@ impl AppState {
                         todo.myday = Some(Local::now().date_naive());
                     }
 
-                    match data::update_todo_details(&todo) {
-                        Ok(_) => {
-                            if let Err(err) = state.reload() {
-                                state.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
-                            } else {
-                                state.mark_recently_updated(marker.clone());
-                                state.show_info(&t("Changes from file applied"));
-                            }
-                        }
-                        Err(err) => {
-                            state.show_error(&t("Could not create To-do: {}").replace("{}", &err.to_string()));
-                        }
-                    }
+                    state.submit(data::PendingOp::Update { item: todo });
+                    state.mark_recently_updated(marker.clone());
+                    state.show_info(&t("Changes from file applied"));
                 }
                 Ok(Err(err)) => {
                     state.show_error(&t("AI parsing failed: {}").replace("{}", &err.to_string()));
@@ -4376,18 +4670,11 @@ impl AppState {
         }
     }
 
-    fn save_item(self: &Rc<Self>, updated: &TodoItem) -> Result<()> {
-        match data::update_todo_details(updated) {
-            Ok(()) => {
-                self.reload()?;
-                self.show_undo_toast(&t("Updated: {}").replace("{}", &updated.title));
-                Ok(())
-            }
-            Err(err) => {
-                if self.handle_conflict(&err) { return Ok(()); }
-                Err(err)
-            }
-        }
+    fn save_item(self: &Rc<Self>, updated: &TodoItem) {
+        self.submit(data::PendingOp::Update {
+            item: updated.clone(),
+        });
+        self.show_undo_toast(&t("Updated: {}").replace("{}", &updated.title));
     }
 
     fn toggle_recording(self: &Rc<Self>, voice_btn: &gtk::Button, entry: &gtk::Entry) {
@@ -4606,9 +4893,7 @@ impl AppState {
         // Aktivieren (Enter/Klick) im Planungs-Picker übernimmt die
         // Aufgabe in „Mein Tag" — so ist der Picker tastaturbedienbar.
         if let Some(todo) = picker {
-            if let Err(err) = self.toggle_myday(&todo) {
-                self.show_error(&t("Could not update entry: {}").replace("{}", &err.to_string()));
-            }
+            self.toggle_myday(&todo);
             return;
         }
 
@@ -4655,15 +4940,11 @@ impl AppState {
         let perform_delete = Rc::new({
             let state = Rc::clone(self);
             let todo = todo.clone();
-            move || match data::delete_todo(&todo) {
-                Ok(_) => {
-                    if let Err(err) = state.reload() {
-                        state.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
-                    } else {
-                        state.show_undo_toast(&t("Deleted: {}").replace("{}", &todo.title));
-                    }
-                }
-                Err(e) => state.show_error(&t("Could not delete task: {}").replace("{}", &e.to_string())),
+            move || {
+                state.submit(data::PendingOp::Delete {
+                    keys: vec![todo.key.clone()],
+                });
+                state.show_undo_toast(&t("Deleted: {}").replace("{}", &todo.title));
             }
         });
 
@@ -4723,23 +5004,16 @@ impl AppState {
             marker: None,
         };
 
-        match data::add_todo_full(&copy) {
-            Ok(key) => {
-                if let Err(err) = self.reload() {
-                    self.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
-                    return;
-                }
-                if let Some(marker) = key.marker {
-                    self.mark_recently_updated(marker);
-                }
+        match data::item_line(&copy) {
+            Ok((line, marker)) => {
+                self.submit(data::PendingOp::Add {
+                    line,
+                    marker: marker.clone(),
+                });
+                self.mark_recently_updated(marker);
                 self.show_undo_toast(&t("Duplicated: {}").replace("{}", title));
             }
-            Err(err) => {
-                if self.handle_conflict(&err) {
-                    return;
-                }
-                self.show_error(&err.to_string());
-            }
+            Err(err) => self.show_error(&err.to_string()),
         }
     }
 
@@ -4876,24 +5150,11 @@ impl AppState {
     }
 
     /// Gemeinsamer Abschluss aller Massenaktionen: Modus verlassen,
-    /// Liste neu laden, Undo-Toast mit Anzahl zeigen.
-    fn finish_bulk_action(self: &Rc<Self>, result: Result<usize>, message: &str) {
-        match result {
-            Ok(count) => {
-                self.set_selection_mode(false);
-                if let Err(err) = self.reload() {
-                    self.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
-                    return;
-                }
-                self.show_undo_toast(&message.replace("{}", &count.to_string()));
-            }
-            Err(err) => {
-                if self.handle_conflict(&err) {
-                    return;
-                }
-                self.show_error(&err.to_string());
-            }
-        }
+    /// Änderung einreihen, Undo-Toast mit Anzahl zeigen.
+    fn submit_bulk_action(self: &Rc<Self>, op: data::PendingOp, count: usize, message: &str) {
+        self.set_selection_mode(false);
+        self.submit(op);
+        self.show_undo_toast(&message.replace("{}", &count.to_string()));
     }
 
     fn bulk_complete(self: &Rc<Self>, done: bool) {
@@ -4906,7 +5167,8 @@ impl AppState {
         } else {
             t("{} items reopened")
         };
-        self.finish_bulk_action(data::toggle_todos(&keys, done), &message);
+        let count = keys.len();
+        self.submit_bulk_action(data::PendingOp::SetDone { keys, done }, count, &message);
     }
 
     fn bulk_set_due(self: &Rc<Self>, target: data::DueTarget) {
@@ -4914,7 +5176,12 @@ impl AppState {
         if keys.is_empty() {
             return;
         }
-        self.finish_bulk_action(data::set_due_batch(&keys, target), &t("Due date set for {} items"));
+        let count = keys.len();
+        self.submit_bulk_action(
+            data::PendingOp::SetDue { keys, target },
+            count,
+            &t("Due date set for {} items"),
+        );
     }
 
     fn bulk_delete(self: &Rc<Self>) {
@@ -4926,7 +5193,11 @@ impl AppState {
         let perform_delete = Rc::new({
             let state = Rc::clone(self);
             move || {
-                state.finish_bulk_action(data::delete_todos(&keys), &t("{} items deleted"));
+                state.submit_bulk_action(
+                    data::PendingOp::Delete { keys: keys.clone() },
+                    keys.len(),
+                    &t("{} items deleted"),
+                );
             }
         });
 
@@ -5039,9 +5310,16 @@ impl AppState {
                 dialog_assign.close();
                 return;
             }
-            let result = data::assign_project_context_batch(&keys, &projects, &contexts);
             dialog_assign.close();
-            state.finish_bulk_action(result, &t("{} items updated"));
+            state.submit_bulk_action(
+                data::PendingOp::Assign {
+                    keys: keys.clone(),
+                    projects,
+                    contexts,
+                },
+                keys.len(),
+                &t("{} items updated"),
+            );
         });
 
         dialog.present();
@@ -5250,14 +5528,9 @@ impl AppState {
                 let todo_delete = todo_delete.clone();
                 let dialog_delete = dialog_delete.clone();
                 move || {
-                    match data::delete_todo(&todo_delete) {
-                        Ok(_) => {
-                            if let Err(err) = state_delete.reload() {
-                                state_delete.show_error(&t("Could not reload To-dos: {}").replace("{}", &err.to_string()));
-                            }
-                        }
-                        Err(e) => state_delete.show_error(&t("Could not delete task: {}").replace("{}", &e.to_string())),
-                    }
+                    state_delete.submit(data::PendingOp::Delete {
+                        keys: vec![todo_delete.key.clone()],
+                    });
                     dialog_delete.close();
                 }
             });
@@ -5369,11 +5642,8 @@ impl AppState {
             updated.note = note_value;
             updated.done = done_check_save.is_active();
 
-            if let Err(err) = state_for_save.save_item(&updated) {
-                state_for_save.show_error(&t("Could not save task: {}").replace("{}", &err.to_string()));
-            } else {
-                dialog_save.close();
-            }
+            state_for_save.save_item(&updated);
+            dialog_save.close();
         });
 
         let comment_entry_close = comment_entry.clone();
@@ -5491,9 +5761,7 @@ impl AppState {
                 match result {
                     Ok(0) => {
                         // Reload — drop our change and take the remote state.
-                        if let Err(e) = state.reload() {
-                            state.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
-                        }
+                        state.refresh_in_background();
                     }
                     Ok(1) => {
                         // Overwrite — force our own change through. Restoring
@@ -5501,17 +5769,11 @@ impl AppState {
                         // uploaded the *old* file and undid everything the
                         // other writer had stored in the meantime.
                         match pending.clone() {
-                            Some(content) => {
-                                if let Err(e) = data::force_write_content(content) {
-                                    state.show_error(&t("Could not update entry: {}").replace("{}", &e.to_string()));
-                                }
-                            }
+                            Some(content) => state.enqueue(WriteJob::Overwrite(content)),
                             None => {
                                 state.show_error(&t("The change could not be applied. Please try again after reloading."));
+                                state.refresh_in_background();
                             }
-                        }
-                        if let Err(e) = state.reload() {
-                            state.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
                         }
                     }
                     _ => {}
@@ -5530,23 +5792,9 @@ impl AppState {
             .build();
         let state = Rc::clone(self);
         toast.connect_button_clicked(move |_| {
-            match data::undo() {
-                Ok(Some(desc)) => {
-                    if let Err(e) = state.reload() {
-                        state.show_error(&t("Could not reload To-dos: {}").replace("{}", &e.to_string()));
-                    } else {
-                        state.show_info(&t("Undone: {}").replace("{}", &desc));
-                    }
-                }
-                Ok(None) => {
-                    state.show_info(&t("Nothing to undo"));
-                }
-                Err(e) => {
-                    if !state.handle_conflict(&e) {
-                        state.show_error(&e.to_string());
-                    }
-                }
-            }
+            // Hinter den noch offenen Schreibaufträgen einreihen: rückgängig
+            // gemacht wird erst, was auch gespeichert wurde.
+            state.enqueue(WriteJob::Undo);
         });
         self.overlay.add_toast(toast);
     }
@@ -5615,16 +5863,21 @@ impl AppState {
                 return;
             }
 
-            match state.reload() {
-                Ok(_) => {
-                    if matches!(event, Event::ChangesDoneHint | Event::Changed | Event::Created) {
-                        state.show_info(&t("Changes from file applied"));
+            // Über den Fingerprint gehen: so lösen die eigenen Schreibvorgänge
+            // weder einen weiteren Reload noch den Hinweis unten aus.
+            glib::spawn_future_local(clone!(#[weak] state, async move {
+                match state.check_for_updates().await {
+                    Ok(true) => {
+                        if matches!(event, Event::ChangesDoneHint | Event::Changed | Event::Created) {
+                            state.show_info(&t("Changes from file applied"));
+                        }
+                    }
+                    Ok(false) => {}
+                    Err(err) => {
+                        state.show_error(&t("Update failed: {}").replace("{}", &err.to_string()));
                     }
                 }
-                Err(err) => {
-                    state.show_error(&t("Update failed: {}").replace("{}", &err.to_string()));
-                }
-            }
+            }));
         }));
         *self.monitor.borrow_mut() = Some(monitor);
         Ok(())

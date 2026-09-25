@@ -2,6 +2,8 @@
  * Auto-reload functionality for background refresh.
  */
 
+import { hasPendingWrites } from './todo-actions.js';
+
 let isRefreshing = false;
 let autoReloadInterval = null;
 let onReloadComplete = null;
@@ -57,7 +59,10 @@ export function startAutoReload(intervalMs = 30000, callback = null) {
         const modalOpen = document.getElementById('editModal')?.style.display === 'block';
         const settingsOpen = document.getElementById('settingsModal')?.style.display === 'block';
 
-        if (!document.hidden && !modalOpen && !settingsOpen) {
+        // While clicks are still being stored, the file does not show them
+        // yet; reloading would make them flicker back. The queue reloads
+        // itself once it is empty.
+        if (!document.hidden && !modalOpen && !settingsOpen && !hasPendingWrites()) {
             autoReload();
         }
     }, intervalMs);

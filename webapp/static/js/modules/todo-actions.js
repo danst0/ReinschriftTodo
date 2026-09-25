@@ -49,33 +49,39 @@ function reportFailure(response) {
 }
 
 /**
- * POST a single-todo action and report it if it fails.
+ * Writes that are already on screen but not yet sent, in click order.
  *
- * The marker travels with the line index because the index describes the page
- * as it was rendered. If the file changed since, the index points at whatever
- * moved into that slot; the marker still points at the todo that was clicked.
+ * A click used to wait for the server and then for a reload before the list
+ * changed at all. Now the row changes right away and the request goes into
+ * this queue. Requests leave one at a time: two at once would race on the same
+ * file, and the second would come back as a conflict.
+ */
+const queue = [];
+let sending = false;
+let outstanding = 0;
+
+/**
+ * Whether changes are queued or still on their way to the server.
+ * A reload in that window would show the file without them.
+ * @returns {boolean}
+ */
+export function hasPendingWrites() {
+    return queue.length > 0 || outstanding > 0;
+}
+
+/**
+ * Send one queued request.
  *
- * @param {string} url - Action URL
- * @param {string} marker - Marker ID of the todo, may be empty
+ * `keepalive` lets the browser finish the request even when the page is
+ * closed or left while it is under way.
+ *
+ * @param {{url: string, init: object}} job
  * @returns {Promise<void>}
  */
-async function submitAction(url, marker) {
-    const body = new URLSearchParams();
-    if (marker) {
-        body.set('marker', marker);
-    }
-
+async function send(job) {
+    outstanding += 1;
     try {
-        const res = await fetchWithCsrf(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                // Makes an expired login answer 401 instead of quietly
-                // redirecting to the login page with a 200.
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: body.toString()
-        });
+        const res = await fetchWithCsrf(job.url, { ...job.init, keepalive: true });
         if (!res.ok) {
             reportFailure(res);
         }
@@ -83,12 +89,108 @@ async function submitAction(url, marker) {
         console.error('Todo action failed', err);
         reportFailure(null);
     } finally {
-        // Reload either way: on success it shows the new state, on failure the
-        // state that actually stands.
-        if (onReloadCallback) {
+        outstanding -= 1;
+    }
+}
+
+async function pump() {
+    if (sending) return;
+    const job = queue.shift();
+    if (!job) {
+        // Everything is stored: show the state that actually stands — on
+        // failure the unchanged one, on success e.g. a recurring task's next
+        // occurrence.
+        if (outstanding === 0 && onReloadCallback) {
             onReloadCallback();
         }
+        return;
     }
+    sending = true;
+    try {
+        await send(job);
+    } finally {
+        sending = false;
+        pump();
+    }
+}
+
+/**
+ * Queue a write and start sending if idle.
+ * @param {string} url
+ * @param {object} init - fetch options
+ */
+function enqueue(url, init) {
+    queue.push({ url, init });
+    pump();
+}
+
+/**
+ * Send everything still queued, right now and in parallel.
+ *
+ * On a closed tab or a phone switching apps the queue would never get another
+ * turn. Requests already under way finish on their own thanks to keepalive.
+ */
+function flush() {
+    const jobs = queue.splice(0);
+    if (jobs.length === 0) return;
+    Promise.all(jobs.map(send)).then(() => {
+        if (onReloadCallback && !document.hidden) onReloadCallback();
+    });
+}
+
+window.addEventListener('pagehide', flush);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flush();
+});
+window.addEventListener('beforeunload', (event) => {
+    // Only unsent changes are at risk; those already under way complete.
+    if (queue.length > 0) {
+        event.preventDefault();
+        event.returnValue = '';
+    }
+});
+
+/**
+ * Find the row a click was about, marker first like the server does.
+ * @param {number|string} lineIndex
+ * @param {string} marker
+ * @returns {HTMLElement|null}
+ */
+function findRow(lineIndex, marker) {
+    if (marker) {
+        const row = document.querySelector(`.todo-item[data-marker="${CSS.escape(marker)}"]`);
+        if (row) return row;
+    }
+    return document.querySelector(`.todo-item[data-line-index="${lineIndex}"]`);
+}
+
+/**
+ * Queue a single-todo action.
+ *
+ * The marker travels with the line index because the index describes the page
+ * as it was rendered. If the file changed since, the index points at whatever
+ * moved into that slot; the marker still points at the todo that was clicked.
+ *
+ * @param {string} url - Action URL
+ * @param {string} marker - Marker ID of the todo, may be empty
+ */
+function submitAction(url, marker) {
+    const body = new URLSearchParams();
+    if (marker) {
+        body.set('marker', marker);
+    }
+
+    enqueue(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            // Makes an expired login answer 401 instead of quietly
+            // redirecting to the login page with a 200, and gets a bare 204
+            // instead of a redirect to the full index page.
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: body.toString()
+    });
 }
 
 /**
@@ -102,7 +204,17 @@ export async function toggleTodo(event, lineIndex, marker = '') {
     if (event && event.stopPropagation) {
         event.stopPropagation();
     }
-    await submitAction('/toggle/' + lineIndex, marker);
+    const row = findRow(lineIndex, marker);
+    if (row) {
+        const done = !row.classList.contains('done');
+        row.classList.toggle('done', done);
+        const box = row.querySelector('.checkbox');
+        if (box) {
+            box.classList.toggle('unchecked', !done);
+            box.textContent = done ? '☑' : '☐';
+        }
+    }
+    submitAction('/toggle/' + lineIndex, marker);
 }
 
 /**
@@ -117,7 +229,10 @@ export async function postponeTodo(event, lineIndex, target, marker = '') {
     if (event && event.stopPropagation) {
         event.stopPropagation();
     }
-    await submitAction('/postpone/' + lineIndex + '/' + target, marker);
+    // The row's new place depends on the sort order; fade it until the
+    // reload after the write puts it there.
+    findRow(lineIndex, marker)?.classList.add('is-pending');
+    submitAction('/postpone/' + lineIndex + '/' + target, marker);
 }
 
 /**
@@ -148,39 +263,18 @@ export async function postponeGroup(event, target, groupKey, groupMode) {
         return;
     }
 
-    const btn = event && event.currentTarget ? event.currentTarget : null;
-    if (btn) {
-        btn.style.opacity = '0.6';
-        btn.style.pointerEvents = 'none';
-    }
-
     const selected = matches.filter(item => item.dataset.lineIndex);
     const lineIndexes = selected.map(item => parseInt(item.dataset.lineIndex, 10));
     const markers = selected.map(item => item.dataset.marker || '');
+    selected.forEach(item => item.classList.add('is-pending'));
 
-    try {
-        const res = await fetchWithCsrf('/api/postpone-batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                line_indexes: lineIndexes,
-                markers: markers,
-                target: target
-            })
-        });
-        if (!res.ok) {
-            reportFailure(res);
-        }
-    } catch (err) {
-        console.error('Postpone group failed', err);
-        reportFailure(null);
-    } finally {
-        if (btn) {
-            btn.style.opacity = '';
-            btn.style.pointerEvents = '';
-        }
-        if (onReloadCallback) {
-            onReloadCallback();
-        }
-    }
+    enqueue('/api/postpone-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            line_indexes: lineIndexes,
+            markers: markers,
+            target: target
+        })
+    });
 }

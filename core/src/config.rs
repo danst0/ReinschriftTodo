@@ -56,3 +56,32 @@ pub fn set_todo_path(new_path: PathBuf) {
     }
     set_backend_config(BackendConfig::Local(new_path));
 }
+
+/// A stable name for the database a configuration points at.
+///
+/// Used to tie queued writes to their database: a write recorded against one
+/// file must never be replayed into another. For WebDAV only the host, the
+/// path and the user count — the base URL itself can change at runtime when
+/// the Nextcloud fallback kicks in, and still means the same file.
+pub fn backend_identity(config: &BackendConfig) -> String {
+    match config {
+        BackendConfig::Local(path) => format!("file:{}", path.display()),
+        BackendConfig::WebDav {
+            url,
+            path,
+            username,
+            ..
+        } => {
+            let host = reqwest::Url::parse(url)
+                .ok()
+                .and_then(|u| u.host_str().map(str::to_string))
+                .unwrap_or_else(|| url.clone());
+            format!(
+                "webdav:{}|{}|{}",
+                host,
+                path.as_deref().unwrap_or("").trim_matches('/'),
+                username.as_deref().unwrap_or("")
+            )
+        }
+    }
+}

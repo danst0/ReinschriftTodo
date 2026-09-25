@@ -882,3 +882,9 @@ msgstr "Die Datei ändert sich fortlaufend, während sie gelesen wird. Bitte ern
 
 msgid "The change could not be applied. Please try again after reloading."
 msgstr "Die Änderung konnte nicht angewendet werden. Bitte nach dem Neuladen erneut versuchen."
+
+msgid "Saving {} changes from the last session"
+msgstr "{} Änderungen aus der letzten Sitzung werden gespeichert"
+
+msgid "{} changes from the last session could not be restored"
+msgstr "{} Änderungen aus der letzten Sitzung konnten nicht wiederhergestellt werden"

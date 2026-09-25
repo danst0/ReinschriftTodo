@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.0.5" date="2026-09-25">
+      <description>
+        <ul>
+          <li>Changes appear instantly: they are saved in the background instead of freezing the window while the file is written, and changes still being saved survive closing the app or a crash</li>
+          <li>Web app: ticking off and postponing tasks responds immediately</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.4" date="2026-09-20">
       <description>
         <ul>
