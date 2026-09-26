@@ -63,11 +63,22 @@ export async function initPush(options = {}) {
     }
 }
 
+let updated = null;
+
 async function registration() {
     // register() returns the existing registration when there is one. The
     // worker's scope is /static/, so navigator.serviceWorker.ready would never
     // resolve for this page — push does not need the page to be controlled.
-    return navigator.serviceWorker.register(SW_URL);
+    const reg = await navigator.serviceWorker.register(SW_URL);
+    // No page ever navigates inside /static/, so the browser never checks the
+    // worker for updates on its own, and register() with an unchanged URL does
+    // not either. Without this a device keeps a worker from before push existed:
+    // it subscribes fine, but has no push handler and shows nothing.
+    if (!updated) {
+        updated = reg.update().catch((err) => console.warn('SW update failed:', err));
+    }
+    await updated;
+    return reg;
 }
 
 async function currentSubscription() {

@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.0.8" date="2026-09-26">
+      <description>
+        <ul>
+          <li>Web app: push reminders now arrive on devices that had the app open before</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.7" date="2026-09-26">
       <description>
         <ul>

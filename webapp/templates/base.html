@@ -25,6 +25,9 @@
                 navigator.serviceWorker.register('/static/sw.js')
                     .then(registration => {
                         console.log('ServiceWorker registered:', registration.scope);
+                        // Scope is /static/, which no page navigates to, so the
+                        // browser would never look for a new worker by itself.
+                        return registration.update();
                     })
                     .catch(error => {
                         console.log('ServiceWorker registration failed:', error);
