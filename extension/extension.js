@@ -6,7 +6,7 @@ import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 import Pango from 'gi://Pango';
 
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension, gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -17,63 +17,9 @@ import * as Format from './lib/format.js';
 /** How long a freshly ticked row stays in place before the list re-sorts. */
 const SETTLE_MS = 450;
 
-// ------------------------------------------------------------------ strings
-
-// The applet ships without a gettext catalog yet; German and English cover
-// the current users, everything else falls back to English.
-const STRINGS = {
-    en: {
-        myDay: 'My Day',
-        progress: (done, total) => `${done} of ${total} done`,
-        completed: 'Completed',
-        open: 'Open Reinschrift',
-        emptyTitle: 'Nothing planned for today',
-        emptyHint: 'Add tasks to My Day in Reinschrift.',
-        allDone: 'All done for today',
-        noDb: 'No to-do file found',
-        noDbHint: 'Create one in the Reinschrift app.',
-        today: 'Today',
-        tomorrow: 'Tomorrow',
-        yesterday: 'Yesterday',
-        overdue: n => `${n} days overdue`,
-        someday: 'Someday',
-        dateFmt: '%A, %e %B',
-        shortFmt: '%e %b',
-        readErr: 'Could not read the to-do file',
-        saveErr: 'Could not save',
-        launchErr: 'Could not open the app',
-    },
-    de: {
-        myDay: 'Mein Tag',
-        progress: (done, total) => `${done} von ${total} erledigt`,
-        completed: 'Erledigt',
-        open: 'Reinschrift öffnen',
-        emptyTitle: 'Für heute ist nichts geplant',
-        emptyHint: 'Aufgaben in Reinschrift zu „Mein Tag“ hinzufügen.',
-        allDone: 'Alles erledigt für heute',
-        noDb: 'Keine Aufgabendatei gefunden',
-        noDbHint: 'Lege eine in der Reinschrift-App an.',
-        today: 'Heute',
-        tomorrow: 'Morgen',
-        yesterday: 'Gestern',
-        overdue: n => `${n} Tage überfällig`,
-        someday: 'Irgendwann',
-        dateFmt: '%A, %e. %B',
-        shortFmt: '%e. %b',
-        readErr: 'Aufgabendatei konnte nicht gelesen werden',
-        saveErr: 'Speichern fehlgeschlagen',
-        launchErr: 'App konnte nicht geöffnet werden',
-    },
-};
-
-const _ = (() => {
-    for (const lang of GLib.get_language_names()) {
-        const code = lang.split(/[_.@]/)[0];
-        if (STRINGS[code])
-            return STRINGS[code];
-    }
-    return STRINGS.en;
-})();
+Gio._promisify(Gio.File.prototype, 'load_contents_async');
+Gio._promisify(Gio.File.prototype, 'replace_contents_bytes_async', 'replace_contents_finish');
+Gio._promisify(Gio.File.prototype, 'query_info_async');
 
 // ---------------------------------------------------------------- helpers
 
@@ -102,22 +48,28 @@ function toDateTime(d) {
 /** Human due label plus its urgency class, relative to today. */
 function describeDue(due) {
     if (isSomeday(due))
-        return [_.someday, 'rs-due-later'];
+        return [_('Someday'), 'rs-due-later'];
 
     const days = Math.round(
         (startOfDay(due).getTime() - startOfDay(new Date()).getTime()) / 86400000);
     const hasTime = due.getHours() !== 0 || due.getMinutes() !== 0;
     const time = hasTime ? ` ${toDateTime(due).format('%H:%M')}` : '';
 
-    if (days < -1)
-        return [_.overdue(-days), 'rs-due-overdue'];
+    if (days < -1) {
+        const text = ngettext('{n} day overdue', '{n} days overdue', -days)
+            .replace('{n}', String(-days));
+        return [text, 'rs-due-overdue'];
+    }
     if (days === -1)
-        return [_.yesterday + time, 'rs-due-overdue'];
+        return [_('Yesterday') + time, 'rs-due-overdue'];
     if (days === 0)
-        return [_.today + time, 'rs-due-today'];
+        return [_('Today') + time, 'rs-due-today'];
     if (days === 1)
-        return [_.tomorrow + time, 'rs-due-later'];
-    const fmt = days < 7 ? '%A' : _.shortFmt;
+        return [_('Tomorrow') + time, 'rs-due-later'];
+    // Translators: short due date within the next weeks, a GLib.DateTime
+    // format (like strftime); e.g. "%-d. %b" for German.
+    // xgettext:no-javascript-format
+    const fmt = days < 7 ? '%A' : _('%b %-d');
     return [toDateTime(due).format(fmt).trim() + time, 'rs-due-later'];
 }
 
@@ -132,6 +84,28 @@ function sortKey(item, mode) {
 function markUpTitle(text, done) {
     const escaped = GLib.markup_escape_text(text, -1);
     return done ? `<s>${escaped}</s>` : escaped;
+}
+
+function isCancelled(e) {
+    return e instanceof GLib.Error &&
+        e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED);
+}
+
+async function readText(path, cancellable) {
+    const [bytes] = await Gio.File.new_for_path(path).load_contents_async(cancellable);
+    return new TextDecoder().decode(bytes);
+}
+
+async function exists(path, cancellable) {
+    try {
+        await Gio.File.new_for_path(path).query_info_async('standard::type',
+            Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, cancellable);
+        return true;
+    } catch (e) {
+        if (isCancelled(e))
+            throw e;
+        return false;
+    }
 }
 
 // ---------------------------------------------------------------- widgets
@@ -231,16 +205,23 @@ class HeaderItem extends PopupMenu.PopupBaseMenuItem {
 
         const top = new St.BoxLayout({style_class: 'rs-header-top'});
         const text = new St.BoxLayout({vertical: true, x_expand: true});
-        text.add_child(new St.Label({text: _.myDay, style_class: 'rs-header-title'}));
-        const date = GLib.DateTime.new_now_local().format(_.dateFmt).replace(/\s+/g, ' ');
-        const subtitle = total > 0 ? `${date} · ${_.progress(done, total)}` : date;
+        text.add_child(new St.Label({text: _('My Day'), style_class: 'rs-header-title'}));
+        // Translators: today's date in the menu header, a GLib.DateTime
+        // format (like strftime); e.g. "%A, %-d. %B" for German.
+        // xgettext:no-javascript-format
+        const date = GLib.DateTime.new_now_local().format(_('%A, %B %-d'));
+        // Translators: progress in the menu header, e.g. "4 of 13 done".
+        const progress = _('{done} of {total} done')
+            .replace('{done}', String(done))
+            .replace('{total}', String(total));
+        const subtitle = total > 0 ? `${date} · ${progress}` : date;
         text.add_child(new St.Label({text: subtitle, style_class: 'rs-header-subtitle'}));
         top.add_child(text);
 
         const btn = new St.Button({
             style_class: 'rs-icon-button',
             child: new St.Icon({icon_name: 'window-new-symbolic', icon_size: 16}),
-            accessible_name: _.open,
+            accessible_name: _('Open Reinschrift'),
             y_align: Clutter.ActorAlign.CENTER,
             can_focus: true,
         });
@@ -280,7 +261,7 @@ class CompletedToggle extends PopupMenu.PopupBaseMenuItem {
             style_class: 'rs-expander',
         }));
         this.add_child(new St.Label({
-            text: _.completed,
+            text: _('Completed'),
             style_class: 'rs-completed-label',
             y_align: Clutter.ActorAlign.CENTER,
         }));
@@ -339,7 +320,7 @@ class OpenItem extends PopupMenu.PopupBaseMenuItem {
     _init(onOpen) {
         super._init({style_class: 'rs-open-row'});
         this.add_child(new St.Label({
-            text: _.open,
+            text: _('Open Reinschrift'),
             x_expand: true,
             x_align: Clutter.ActorAlign.CENTER,
         }));
@@ -435,7 +416,7 @@ export default class ReinschriftExtension extends Extension {
 
         this._menu.connect('open-state-changed', (_menu, open) => {
             if (open) {
-                this._rebuild();
+                this._scheduleRebuild();
             } else if (this._showCompleted) {
                 // Start collapsed again next time.
                 this._showCompleted = false;
@@ -443,15 +424,23 @@ export default class ReinschriftExtension extends Extension {
             }
         });
 
+        this._cancellable = new Gio.Cancellable();
         this._monitor = null;
+        this._monitoredPath = null;
+        this._dbPath = null;
+        this._prefs = {};
+        this._items = undefined;
+        this._loading = null;
+        this._reloadQueued = false;
         this._rebuildId = 0;
         this._settleId = 0;
         this._scroll = null;
         this._showCompleted = false;
         // PopupMenu.open() refuses to open an empty menu, so it has to be
-        // populated up front — rebuilding only on open would never fire.
-        this._rebuild();
-        this._watch();
+        // populated up front (a loading state) — rendering only on open
+        // would never fire.
+        this._render();
+        this._scheduleRebuild();
 
         Main.panel.addToStatusArea(this.uuid, this._indicator);
     }
@@ -463,6 +452,8 @@ export default class ReinschriftExtension extends Extension {
         }
         this._rebuildId = 0;
         this._settleId = 0;
+        this._cancellable?.cancel();
+        this._cancellable = null;
         if (this._monitor) {
             this._monitor.cancel();
             this._monitor = null;
@@ -505,84 +496,84 @@ export default class ReinschriftExtension extends Extension {
         ];
     }
 
-    _readPrefs() {
-        // Last file wins per key: the Flatpak config is the one the app
-        // actually uses when both exist.
+    /** Both preference files merged; last file wins per key. */
+    async _readPrefs(cancellable) {
+        // The Flatpak config is the one the app actually uses when both exist.
         let merged = {};
+        const candidates = [];
         for (const path of this._prefsFiles()) {
+            let prefs;
             try {
-                const [ok, bytes] = Gio.File.new_for_path(path).load_contents(null);
-                if (ok)
-                    merged = {...merged, ...JSON.parse(new TextDecoder().decode(bytes))};
-            } catch {
-                // fall through
+                prefs = JSON.parse(await readText(path, cancellable));
+            } catch (e) {
+                if (isCancelled(e))
+                    throw e;
+                continue;
+            }
+            merged = {...merged, ...prefs};
+            if (prefs.db_path)
+                candidates.push(prefs.db_path);
+            if (prefs.use_webdav && prefs.webdav_path) {
+                // WebDAV backend: use the Nextcloud sync mirror of the
+                // remote file so the menu stays instant and offline-capable.
+                candidates.push(GLib.build_filenamev(
+                    [GLib.get_home_dir(), 'Nextcloud', prefs.webdav_path]));
             }
         }
-        return merged;
+        return [merged, candidates];
     }
 
-    _resolveDbPath() {
+    async _resolveDbPath(candidates, cancellable) {
         const env = GLib.getenv('TODOS_DB_PATH');
         if (env)
             return env;
 
-        const candidates = [];
-        for (const path of this._prefsFiles()) {
-            try {
-                const [ok, bytes] = Gio.File.new_for_path(path).load_contents(null);
-                if (!ok)
-                    continue;
-                const prefs = JSON.parse(new TextDecoder().decode(bytes));
-                if (prefs.db_path)
-                    candidates.push(prefs.db_path);
-                if (prefs.use_webdav && prefs.webdav_path) {
-                    // WebDAV backend: use the Nextcloud sync mirror of the
-                    // remote file so the menu stays instant and offline-capable.
-                    candidates.push(GLib.build_filenamev(
-                        [GLib.get_home_dir(), 'Nextcloud', prefs.webdav_path]));
-                }
-            } catch {
-                // fall through
-            }
-        }
-
-        candidates.push(GLib.build_filenamev(
-            [GLib.get_user_data_dir(), 'reinschrift_todo', 'todos.md']));
-
+        candidates = [...candidates, GLib.build_filenamev(
+            [GLib.get_user_data_dir(), 'reinschrift_todo', 'todos.md'])];
         for (const candidate of candidates) {
-            if (GLib.file_test(candidate, GLib.FileTest.EXISTS))
+            if (await exists(candidate, cancellable))
                 return candidate;
         }
         return candidates[candidates.length - 1];
     }
 
-    _loadTodos() {
-        const path = this._resolveDbPath();
-        this._dbPath = path;
+    /**
+     * Re-read preferences and the to-do file; null items when unreadable.
+     * State is only touched at the end, so a disable() in between (which
+     * cancels) leaves nothing half-applied.
+     */
+    async _load() {
+        const cancellable = this._cancellable;
+        const [prefs, candidates] = await this._readPrefs(cancellable);
+        const dbPath = await this._resolveDbPath(candidates, cancellable);
 
-        let content = null;
+        let items = null;
         try {
-            const [ok, bytes] = Gio.File.new_for_path(path).load_contents(null);
-            if (ok)
-                content = new TextDecoder().decode(bytes);
-        } catch {
-            content = null;
+            const content = await readText(dbPath, cancellable);
+            items = Format.splitLines(content)
+                .map((line, i) => Format.parseLine(line, i))
+                .filter(Boolean);
+        } catch (e) {
+            if (isCancelled(e))
+                throw e;
         }
+        cancellable.set_error_if_cancelled();
 
-        if (content === null) {
-            this._items = null;
-            this._indicator.setBadge(0);
-            return;
-        }
-
-        this._items = Format.splitLines(content)
-            .map((line, i) => Format.parseLine(line, i))
-            .filter(Boolean);
+        this._prefs = prefs;
+        this._dbPath = dbPath;
+        this._watch();
+        this._items = items;
         this._indicator.setBadge(
-            this._items.filter(item => !item.done && isMyDay(item)).length);
+            items ? items.filter(item => !item.done && isMyDay(item)).length : 0);
     }
 
+    /** (Re)attach the file monitor when the resolved path changed. */
     _watch() {
+        if (this._monitoredPath === this._dbPath)
+            return;
+        this._monitor?.cancel();
+        this._monitor = null;
+        this._monitoredPath = this._dbPath;
         try {
             this._monitor = Gio.File.new_for_path(this._dbPath)
                 .monitor_file(Gio.FileMonitorFlags.NONE, null);
@@ -600,28 +591,58 @@ export default class ReinschriftExtension extends Extension {
             return;
         this._rebuildId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this._rebuildId = 0;
-            this._rebuild();
+            this._reload();
             return GLib.SOURCE_REMOVE;
         });
     }
 
-    _rebuild() {
-        this._loadTodos();
+    /** Load in the background, then render; coalesces overlapping requests. */
+    async _reload() {
+        if (this._loading) {
+            this._reloadQueued = true;
+            return;
+        }
+        do {
+            this._reloadQueued = false;
+            this._loading = this._load();
+            try {
+                await this._loading;
+            } catch (e) {
+                if (isCancelled(e))
+                    return;
+                logError(e, 'Reinschrift: loading failed');
+            } finally {
+                this._loading = null;
+            }
+            if (!this._menu)
+                return;
+            this._render();
+        } while (this._reloadQueued);
+    }
 
+    _render() {
         const scrollPos = this._scroll?.vadjustment.value ?? 0;
         this._menu.removeAll();
         this._scroll = null;
 
-        if (!this._items) {
+        if (this._items === undefined) {
+            // First load still running.
             this._menu.addMenuItem(new HeaderItem(0, 0, () => this._openApp()));
-            this._menu.addMenuItem(new StateItem('dialog-warning-symbolic', _.noDb, _.noDbHint));
+            this._menu.addMenuItem(new OpenItem(() => this._openApp()));
+            return;
+        }
+
+        if (this._items === null) {
+            this._menu.addMenuItem(new HeaderItem(0, 0, () => this._openApp()));
+            this._menu.addMenuItem(new StateItem('dialog-warning-symbolic',
+                _('No to-do file found'), _('Create one in the Reinschrift app.')));
             this._menu.addMenuItem(new OpenItem(() => this._openApp()));
             return;
         }
 
         // Mirrors the app's "My Day" view (gui/src/ui.rs populate_myday_view):
         // today's planned tasks, open ones first, completed below.
-        const mode = this._readPrefs().sort_mode ?? 'topic';
+        const mode = this._prefs.sort_mode ?? 'topic';
         const byMode = (a, b) =>
             sortKey(a, mode).localeCompare(sortKey(b, mode)) ||
             a.key.lineIndex - b.key.lineIndex;
@@ -634,14 +655,14 @@ export default class ReinschriftExtension extends Extension {
 
         if (planned.length === 0) {
             this._menu.addMenuItem(new StateItem('weather-clear-symbolic',
-                _.emptyTitle, _.emptyHint));
+                _('Nothing planned for today'), _('Add tasks to My Day in Reinschrift.')));
             this._menu.addMenuItem(new OpenItem(() => this._openApp()));
             return;
         }
 
         const section = this._addScrollSection();
         if (active.length === 0)
-            section.addMenuItem(new StateItem('object-select-symbolic', _.allDone, null));
+            section.addMenuItem(new StateItem('object-select-symbolic', _('All done for today'), null));
         for (const item of active)
             section.addMenuItem(new TodoRow(item, row => this._toggle(row)));
 
@@ -687,18 +708,19 @@ export default class ReinschriftExtension extends Extension {
 
     // ---------------------------------------------------------- actions
 
-    _toggle(row) {
+    async _toggle(row) {
         const item = row.item;
         const keys = [{lineIndex: item.key.lineIndex, marker: item.key.marker}];
+        const file = Gio.File.new_for_path(this._dbPath);
+        const cancellable = this._cancellable;
 
+        // Read-modify-write against the current file content, like the app.
         let content;
         try {
-            const [ok, bytes] = Gio.File.new_for_path(this._dbPath).load_contents(null);
-            if (!ok)
-                throw new Error('read failed');
-            content = new TextDecoder().decode(bytes);
+            content = await readText(this._dbPath, cancellable);
         } catch (e) {
-            Main.notifyError('Reinschrift', `${_.readErr}: ${e.message}`);
+            if (!isCancelled(e))
+                Main.notifyError('Reinschrift', `${_('Could not read the to-do file')}: ${e.message}`);
             return;
         }
 
@@ -708,16 +730,19 @@ export default class ReinschriftExtension extends Extension {
         const output = Format.joinLines(lines, hadTrailing);
 
         try {
-            Gio.File.new_for_path(this._dbPath).replace_contents(
-                new TextEncoder().encode(output),
+            await file.replace_contents_bytes_async(
+                new GLib.Bytes(new TextEncoder().encode(output)),
                 null,
                 false,
                 Gio.FileCreateFlags.REPLACE_DESTINATION,
-                null);
+                cancellable);
         } catch (e) {
-            Main.notifyError('Reinschrift', `${_.saveErr}: ${e.message}`);
+            if (!isCancelled(e))
+                Main.notifyError('Reinschrift', `${_('Could not save')}: ${e.message}`);
             return;
         }
+        if (cancellable.is_cancelled())
+            return;
 
         // Let the tick register visually before the row moves to "Completed";
         // file-monitor rebuilds are held back until then.
@@ -755,7 +780,7 @@ export default class ReinschriftExtension extends Extension {
                 ['flatpak', 'run', 'me.dumke.Reinschrift'],
                 Gio.SubprocessFlags.NONE);
         } catch (e) {
-            Main.notifyError('Reinschrift', `${_.launchErr}: ${e.message}`);
+            Main.notifyError('Reinschrift', `${_('Could not open the app')}: ${e.message}`);
         }
     }
 }

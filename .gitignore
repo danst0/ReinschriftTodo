@@ -23,3 +23,5 @@ webapp/config.json
 results.json
 site/
 packaging/
+
+extension/build/

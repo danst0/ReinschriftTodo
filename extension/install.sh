@@ -1,39 +1,45 @@
 #!/usr/bin/env bash
-# Install the Reinschrift GNOME Shell menu applet for the current user.
+# Build the Reinschrift GNOME Shell extension package and install it for the
+# current user. The same zip (build/reinschrift@dumke.me.shell-extension.zip)
+# is what gets uploaded to extensions.gnome.org.
+#
+#   ./install.sh           build + install + enable
+#   ./install.sh --pack    build only
 set -euo pipefail
 
 UUID="reinschrift@dumke.me"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEST="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$UUID"
+OUT="$SRC/build"
+ZIP="$OUT/$UUID.shell-extension.zip"
 
-if ! command -v gnome-shell >/dev/null 2>&1; then
-    echo "gnome-shell not found — this applet only runs on GNOME." >&2
+if ! command -v gnome-extensions >/dev/null 2>&1; then
+    echo "gnome-extensions not found — this applet only runs on GNOME." >&2
     exit 1
 fi
 
-mkdir -p "$DEST"
-rsync -a --delete \
-    --exclude 'install.sh' \
-    --exclude 'tests/' \
-    --exclude '.git/' \
-    "$SRC/" "$DEST/"
+mkdir -p "$OUT"
+# pack compiles po/*.po into locale/ and leaves out install.sh and tests/.
+gnome-extensions pack "$SRC" \
+    --force \
+    --out-dir="$OUT" \
+    --podir=po \
+    --extra-source=lib \
+    --extra-source=icons
+echo "Built $ZIP"
 
-echo "Installed to $DEST"
+if [[ "${1:-}" == "--pack" ]]; then
+    exit 0
+fi
 
-if command -v gnome-extensions >/dev/null 2>&1; then
-    gnome-extensions enable "$UUID" 2>/dev/null && echo "Extension enabled." || {
-        echo "Could not enable automatically. Enable it manually:"
-        echo "  gnome-extensions enable $UUID"
-    }
-    echo
-    echo "Note: on Wayland, log out and back in (or restart GNOME Shell on X11)"
-    echo "if the applet does not appear in the top bar right away."
-else
+gnome-extensions install --force "$ZIP"
+echo "Installed $UUID"
+
+gnome-extensions enable "$UUID" 2>/dev/null && echo "Extension enabled." || {
     echo "Enable it after your next login with:"
     echo "  gnome-extensions enable $UUID"
-fi
-
-if command -v gjs >/dev/null 2>&1; then
-    echo
-    echo "Run parity tests with: gjs -m $SRC/tests/run.js"
-fi
+}
+echo
+echo "Note: GNOME Shell loads extension code at login — log out and back in"
+echo "(Wayland) to run the new version."
+echo
+echo "Run parity tests with: gjs -m $SRC/tests/run.js"

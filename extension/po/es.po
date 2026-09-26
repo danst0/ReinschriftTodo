@@ -1,0 +1,103 @@
+# es translation of the Reinschrift GNOME Shell extension.
+# Copyright (C) YEAR Daniel Dumke
+# This file is distributed under the same license as the reinschrift-shell package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: reinschrift-shell\n"
+"Report-Msgid-Bugs-To: https://github.com/danst0/ReinschriftTodo/issues\n"
+"POT-Creation-Date: 2026-09-26 22:06+0200\n"
+"PO-Revision-Date: 2026-09-26 22:15+0200\n"
+"Last-Translator: Daniel Dumke\n"
+"Language-Team: es\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: extension.js:51
+msgid "Someday"
+msgstr "Algún momento"
+
+#: extension.js:59
+msgid "{n} day overdue"
+msgid_plural "{n} days overdue"
+msgstr[0] "{n} día de retraso"
+msgstr[1] "{n} días de retraso"
+
+#: extension.js:64
+msgid "Yesterday"
+msgstr "Ayer"
+
+#: extension.js:66
+msgid "Today"
+msgstr "Hoy"
+
+#: extension.js:68
+msgid "Tomorrow"
+msgstr "Mañana"
+
+#. Translators: short due date within the next weeks, a GLib.DateTime
+#. format (like strftime); e.g. "%-d. %b" for German.
+#: extension.js:72
+#, no-javascript-format
+msgid "%b %-d"
+msgstr "%-d %b"
+
+#: extension.js:208
+msgid "My Day"
+msgstr "Mi día"
+
+#. Translators: today's date in the menu header, a GLib.DateTime
+#. format (like strftime); e.g. "%A, %-d. %B" for German.
+#: extension.js:212
+#, no-javascript-format
+msgid "%A, %B %-d"
+msgstr "%A, %-d de %B"
+
+#. Translators: progress in the menu header, e.g. "4 of 13 done".
+#: extension.js:214
+msgid "{done} of {total} done"
+msgstr "{done} de {total} completadas"
+
+#: extension.js:224 extension.js:323
+msgid "Open Reinschrift"
+msgstr "Abrir Reinschrift"
+
+#: extension.js:264
+msgid "Completed"
+msgstr "Completadas"
+
+#: extension.js:638
+msgid "No to-do file found"
+msgstr "No se encontró ningún archivo de tareas"
+
+#: extension.js:638
+msgid "Create one in the Reinschrift app."
+msgstr "Crea uno en la aplicación Reinschrift."
+
+#: extension.js:658
+msgid "Nothing planned for today"
+msgstr "No hay nada planeado para hoy"
+
+#: extension.js:658
+msgid "Add tasks to My Day in Reinschrift."
+msgstr "Añade tareas a Mi día en Reinschrift."
+
+#: extension.js:665
+msgid "All done for today"
+msgstr "Todo hecho por hoy"
+
+#: extension.js:723
+msgid "Could not read the to-do file"
+msgstr "No se pudo leer el archivo de tareas"
+
+#: extension.js:741
+msgid "Could not save"
+msgstr "No se pudo guardar"
+
+#: extension.js:783
+msgid "Could not open the app"
+msgstr "No se pudo abrir la aplicación"

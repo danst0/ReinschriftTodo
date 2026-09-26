@@ -1,0 +1,104 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Daniel Dumke
+# This file is distributed under the same license as the reinschrift-shell package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: reinschrift-shell\n"
+"Report-Msgid-Bugs-To: https://github.com/danst0/ReinschriftTodo/issues\n"
+"POT-Creation-Date: 2026-09-26 22:06+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: extension.js:51
+msgid "Someday"
+msgstr ""
+
+#: extension.js:59
+msgid "{n} day overdue"
+msgid_plural "{n} days overdue"
+msgstr[0] ""
+msgstr[1] ""
+
+#: extension.js:64
+msgid "Yesterday"
+msgstr ""
+
+#: extension.js:66
+msgid "Today"
+msgstr ""
+
+#: extension.js:68
+msgid "Tomorrow"
+msgstr ""
+
+#. Translators: short due date within the next weeks, a GLib.DateTime
+#. format (like strftime); e.g. "%-d. %b" for German.
+#: extension.js:72
+#, no-javascript-format
+msgid "%b %-d"
+msgstr ""
+
+#: extension.js:208
+msgid "My Day"
+msgstr ""
+
+#. Translators: today's date in the menu header, a GLib.DateTime
+#. format (like strftime); e.g. "%A, %-d. %B" for German.
+#: extension.js:212
+#, no-javascript-format
+msgid "%A, %B %-d"
+msgstr ""
+
+#. Translators: progress in the menu header, e.g. "4 of 13 done".
+#: extension.js:214
+msgid "{done} of {total} done"
+msgstr ""
+
+#: extension.js:224 extension.js:323
+msgid "Open Reinschrift"
+msgstr ""
+
+#: extension.js:264
+msgid "Completed"
+msgstr ""
+
+#: extension.js:638
+msgid "No to-do file found"
+msgstr ""
+
+#: extension.js:638
+msgid "Create one in the Reinschrift app."
+msgstr ""
+
+#: extension.js:658
+msgid "Nothing planned for today"
+msgstr ""
+
+#: extension.js:658
+msgid "Add tasks to My Day in Reinschrift."
+msgstr ""
+
+#: extension.js:665
+msgid "All done for today"
+msgstr ""
+
+#: extension.js:723
+msgid "Could not read the to-do file"
+msgstr ""
+
+#: extension.js:741
+msgid "Could not save"
+msgstr ""
+
+#: extension.js:783
+msgid "Could not open the app"
+msgstr ""
