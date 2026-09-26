@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.0.7" date="2026-09-26">
+      <description>
+        <ul>
+          <li>Web app: push reminders for due tasks, even when the app is closed</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.6" date="2026-09-25">
       <description>
         <ul>

@@ -28,7 +28,7 @@ import { autoReload, startAutoReload, manualReload, setReloadCallback } from './
 import { applyFilter, updateFilterUI } from './modules/filters.js';
 import { initDragDrop, setDragReloadCallback } from './modules/drag-drop.js';
 import { showUndoToast, setUndoReloadCallback } from './modules/undo-toast.js';
-import { startNotificationCheck } from './modules/notifications.js';
+import { initPush } from './modules/push.js';
 import { initTitleAutocomplete, invalidateTitleCache } from './modules/autocomplete.js';
 import { openShareDialog, configureShare } from './modules/share.js';
 import { addToMyDay, removeFromMyDay, setMydayReloadCallback } from './modules/myday.js';
@@ -112,8 +112,8 @@ function initApp(config = {}) {
     // Set up "My Day" actions
     setMydayReloadCallback(handleReload);
 
-    // Start browser notifications for due reminders
-    startNotificationCheck();
+    // Push reminders for due todos (settings toggle)
+    initPush({ translations: appConfig.translations || {}, onTodosChanged: handleReload });
 
     // Start auto-reload (every 30 seconds)
     startAutoReload(30000, handleReloadComplete);

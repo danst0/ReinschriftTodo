@@ -149,6 +149,118 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
+// ---------------------------------------------------------------------------
+// Push reminders (see app/services/push_service.py)
+// ---------------------------------------------------------------------------
+
+self.addEventListener('push', (event) => {
+    let data = {};
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch (err) {
+        data = { title: 'Reinschrift', body: event.data ? event.data.text() : '' };
+    }
+
+    event.waitUntil(self.registration.showNotification(data.title || 'Reinschrift', {
+        body: data.body || '',
+        tag: data.tag,
+        icon: '/static/icons/icon-192.png',
+        actions: data.actions || [],
+        data: { marker: data.marker || null }
+    }));
+});
+
+// Complete or postpone right from the notification. The request carries the
+// session cookie like any page request; if it fails (logged out, todo gone),
+// open the app so the user can see what happened.
+async function runNotificationAction(action, marker) {
+    const endpoint = action === 'done' ? '/api/toggle-batch' : '/api/postpone-batch';
+    const body = { line_indexes: [-1], markers: [marker] };
+    if (action === 'done') {
+        body.done = true;
+    } else {
+        body.target = 'tomorrow';
+    }
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const result = response.ok ? await response.json() : null;
+        return Boolean(result && result.updated > 0);
+    } catch (err) {
+        return false;
+    }
+}
+
+async function focusOrOpenApp() {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
+        if (new URL(client.url).origin === location.origin && 'focus' in client) {
+            return client.focus();
+        }
+    }
+    return self.clients.openWindow('/');
+}
+
+async function notifyPagesChanged() {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    windows.forEach((client) => client.postMessage({ type: 'todos-changed' }));
+}
+
+self.addEventListener('notificationclick', (event) => {
+    const notification = event.notification;
+    const marker = notification.data && notification.data.marker;
+    notification.close();
+
+    if ((event.action === 'done' || event.action === 'tomorrow') && marker) {
+        event.waitUntil(runNotificationAction(event.action, marker).then((ok) => (
+            ok ? notifyPagesChanged() : focusOrOpenApp()
+        )));
+        return;
+    }
+    event.waitUntil(focusOrOpenApp());
+});
+
+// The push service rotated the subscription: tell the server about the new
+// one, or reminders stop arriving without anyone noticing.
+self.addEventListener('pushsubscriptionchange', (event) => {
+    event.waitUntil((async () => {
+        const oldEndpoint = event.oldSubscription && event.oldSubscription.endpoint;
+        let subscription = event.newSubscription;
+        if (!subscription) {
+            const keyResponse = await fetch('/api/push/public-key');
+            if (!keyResponse.ok) return;
+            const { publicKey } = await keyResponse.json();
+            subscription = await self.registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey)
+            });
+        }
+        const tokenResponse = await fetch('/api/csrf-token', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!tokenResponse.ok) return;
+        const { csrf_token: csrfToken } = await tokenResponse.json();
+        const headers = { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken };
+        await fetch('/api/push/subscribe', {
+            method: 'POST', headers, body: JSON.stringify(subscription.toJSON())
+        });
+        if (oldEndpoint && oldEndpoint !== subscription.endpoint) {
+            await fetch('/api/push/unsubscribe', {
+                method: 'POST', headers, body: JSON.stringify({ endpoint: oldEndpoint })
+            });
+        }
+    })().catch((err) => console.log('[SW] Resubscribe failed:', err)));
+});
+
+function urlBase64ToUint8Array(base64) {
+    const padded = (base64 + '='.repeat((4 - base64.length % 4) % 4))
+        .replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+}
+
 // Handle messages from the main thread
 self.addEventListener('message', (event) => {
     if (event.data === 'skipWaiting') {

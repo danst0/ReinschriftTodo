@@ -77,6 +77,16 @@ class Config:
         os.path.join(os.path.dirname(CONFIG_PATH) or '.', 'embeddings.json'),
     )
 
+    # Web Push reminders. Due dates are read in the server's local time, so
+    # the container needs TZ set to the timezone the todo file means.
+    PUSH_ENABLED = os.environ.get('PUSH_ENABLED', 'true').lower() == 'true'
+    PUSH_LEAD_MINUTES = int(os.environ.get('PUSH_LEAD_MINUTES', '15'))
+    PUSH_ALL_DAY_TIME = os.environ.get('PUSH_ALL_DAY_TIME', '08:00')
+    # Optional; otherwise generated once and kept next to CONFIG_PATH.
+    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY')
+    # Contact for push services (mailto: or https:). Defaults to the site URL.
+    VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT')
+
     # Logging
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
 
@@ -101,6 +111,7 @@ class TestingConfig(Config):
 
     TESTING = True
     WTF_CSRF_ENABLED = False
+    PUSH_ENABLED = False
     SESSION_COOKIE_SECURE = False
     SESSION_DIR = os.path.join(tempfile.gettempdir(), 'reinschrift_test_sessions')
 

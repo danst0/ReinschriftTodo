@@ -633,3 +633,92 @@ def api_duplicate():
         return jsonify({'error': 'Todo not found'}), 404
 
     return jsonify({'ok': True, **result})
+
+
+# ---------------------------------------------------------------------------
+# Web Push reminders
+# ---------------------------------------------------------------------------
+
+def _push_lang() -> str:
+    """The language this device's notifications should be written in."""
+    from translations import TRANSLATIONS
+
+    lang = session.get('lang') or request.accept_languages.best_match(TRANSLATIONS.keys())
+    return str(lang) if lang in TRANSLATIONS else 'en'
+
+
+def _push_unavailable():
+    if not current_app.config.get('PUSH_ENABLED'):
+        return jsonify({'error': 'Push reminders are disabled on this server'}), 503
+    return None
+
+
+@api_bp.route('/push/public-key')
+@require_login_json
+def api_push_public_key():
+    """The VAPID key a browser needs to subscribe. Returns {"publicKey": "..."}"""
+    from app.services.push_service import public_key
+
+    unavailable = _push_unavailable()
+    if unavailable:
+        return unavailable
+    return jsonify({'publicKey': public_key()})
+
+
+@api_bp.route('/push/subscribe', methods=['POST'])
+@require_login_json
+def api_push_subscribe():
+    """Store this device's subscription. Expects PushSubscription.toJSON()."""
+    from app.services.push_service import add_subscription, valid_subscription
+
+    unavailable = _push_unavailable()
+    if unavailable:
+        return unavailable
+    data = request.get_json(silent=True) or {}
+    if not valid_subscription(data):
+        return jsonify({'error': 'Invalid subscription'}), 400
+    add_subscription(data, _push_lang(), request.host_url.rstrip('/'))
+    return jsonify({'ok': True})
+
+
+@api_bp.route('/push/unsubscribe', methods=['POST'])
+@require_login_json
+def api_push_unsubscribe():
+    """Forget a device. Expects {"endpoint": "..."}."""
+    from app.services.push_service import remove_subscription
+
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get('endpoint')
+    if not isinstance(endpoint, str) or not endpoint:
+        return jsonify({'error': 'Endpoint required'}), 400
+    return jsonify({'ok': True, 'removed': remove_subscription(endpoint)})
+
+
+@api_bp.route('/push/test', methods=['POST'])
+@require_login_json
+def api_push_test():
+    """Send a test notification to one subscribed device. Expects {"endpoint"}."""
+    from app.services.push_service import (
+        SubscriptionGone,
+        list_subscriptions,
+        remove_subscription,
+        send,
+        test_payload,
+    )
+
+    unavailable = _push_unavailable()
+    if unavailable:
+        return unavailable
+    endpoint = (request.get_json(silent=True) or {}).get('endpoint')
+    sub = next((s for s in list_subscriptions() if s.get('endpoint') == endpoint), None)
+    if sub is None:
+        return jsonify({'error': 'Not subscribed'}), 404
+    try:
+        send(sub, test_payload(sub.get('lang') or 'en'))
+    except SubscriptionGone:
+        remove_subscription(sub['endpoint'])
+        return jsonify({'error': 'Subscription expired'}), 410
+    except Exception as e:  # noqa: BLE001 - report push service errors to the user
+        current_app.logger.warning('Test push failed: %s', e)
+        return jsonify({'error': 'Push service rejected the message'}), 502
+    return jsonify({'ok': True})

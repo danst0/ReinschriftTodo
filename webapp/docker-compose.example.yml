@@ -15,6 +15,13 @@ services:
       - CONFIG_PATH=/config/settings.json
       - APP_USER=admin
       - APP_PASSWORD=secret
+      # Due dates in the todo file are local time; reminders need to know which
+      - TZ=Europe/Berlin
+
+      # Push reminders (Optional; on by default, VAPID key is kept in /config)
+      # - PUSH_LEAD_MINUTES=15
+      # - PUSH_ALL_DAY_TIME=08:00
+      # - VAPID_SUBJECT=mailto:you@example.com
 
       # OIDC Configuration (Optional)
       - OIDC_ISSUER=https://your-oidc-provider.com/.well-known/openid-configuration

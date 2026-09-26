@@ -60,7 +60,23 @@ def create_app(config_name: str | None = None) -> Flask:
     # Register error handlers
     register_error_handlers(app)
 
+    start_push_reminders(app)
+
     return app
+
+
+def start_push_reminders(app: Flask) -> None:
+    """Start the background loop that sends due-date push reminders."""
+    if not app.config.get('PUSH_ENABLED'):
+        return
+    try:
+        import pywebpush  # noqa: F401
+    except ImportError:
+        logging.getLogger(__name__).warning('pywebpush not installed, push reminders disabled')
+        app.config['PUSH_ENABLED'] = False
+        return
+    from app.services.push_service import start_reminder_loop
+    start_reminder_loop(app)
 
 
 def register_token_refresh(app: Flask) -> None:

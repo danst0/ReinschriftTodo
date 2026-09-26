@@ -240,12 +240,14 @@ webapp/
 - **filters.js**: Filter UI state management
 - **keyboard.js**: Keyboard shortcuts
 - **voice.js**: Web Speech API voice input
+- **push.js**: Settings toggle for Web Push reminders (subscribes via /static/sw.js)
 
 **Key Services:**
 - **parser.py**: Regex patterns matching Rust core, parse_line, extract_title
 - **storage.py**: Unified storage abstraction (local + WebDAV)
 - **todo_service.py**: load_todos, toggle_todo, add_todo, delete_todo
 - **ai_service.py**: Ollama/LLM integration for natural language parsing
+- **push_service.py**: Web Push reminders — VAPID key, subscriptions, background loop (one gunicorn worker sends, chosen by file lock)
 
 **Routes (Blueprints):**
 - `main_bp`: Index view, language selection
@@ -297,4 +299,4 @@ repo's manifest because it only comes into existence with the release commit.
 
 Desktop/CLI: `TODOS_DB_PATH`
 
-Web: `TODOS_DB_PATH`, `SECRET_KEY`, `APP_USER`, `APP_PASSWORD`, `OIDC_*`, `WEBDAV_*`, `AI_TIMEOUT_SECS`
+Web: `TODOS_DB_PATH`, `SECRET_KEY`, `APP_USER`, `APP_PASSWORD`, `OIDC_*`, `WEBDAV_*`, `AI_TIMEOUT_SECS`, `TZ` (due dates are local time), `PUSH_ENABLED`, `PUSH_LEAD_MINUTES`, `PUSH_ALL_DAY_TIME`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`

@@ -288,6 +288,17 @@
 
                 <button type="submit" class="btn-primary" style="width: 100%;">{{ t.save }}</button>
             </form>
+            {% if config.PUSH_ENABLED %}
+            <div class="form-group" id="push-settings" style="margin-top: 1.5rem;">
+                <label style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="checkbox" id="push-toggle">
+                    {{ t.push_label }}
+                </label>
+                <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.push_help }}</p>
+                <p id="push-status" style="font-size: 0.9rem; margin-top: 0.35rem;" hidden></p>
+                <button type="button" id="push-test" class="btn-secondary" style="margin-top: 0.5rem;" hidden>{{ t.push_test }}</button>
+            </div>
+            {% endif %}
             {% if ai_debug_enabled %}
             <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #ddd;">
             <button type="button" class="btn-secondary" style="width: 100%; background: #6c5ce7; color: white;" onclick="openAiDebug()">
@@ -448,7 +459,12 @@
                 bulkDeleteConfirm: {{ t.bulk_delete_confirm | tojson }},
                 duplicate: {{ t.duplicate | tojson }},
                 semanticSection: {{ t.semantic_section | tojson }},
-                duplicateWarning: {{ t.duplicate_warning | tojson }}
+                duplicateWarning: {{ t.duplicate_warning | tojson }},
+                pushUnsupported: {{ t.push_unsupported | tojson }},
+                pushIosHint: {{ t.push_ios_hint | tojson }},
+                pushDenied: {{ t.push_denied | tojson }},
+                pushError: {{ t.push_error | tojson }},
+                pushTestSent: {{ t.push_test_sent | tojson }}
             }
         };
 

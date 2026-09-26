@@ -6,3 +6,4 @@ Flask-WTF<2.0.0
 Flask-Session<1.0.0
 Authlib<2.0.0
 gunicorn
+pywebpush<3.0.0
