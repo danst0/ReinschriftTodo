@@ -1,0 +1,8 @@
+{
+    "uuid": "reinschrift@dumke.me",
+    "name": "Reinschrift",
+    "description": "Menu applet for Reinschrift to-dos — glance at open tasks, tick them off, and jump into the app, all from the top bar.",
+    "shell-version": ["45", "46", "47", "48", "49", "50"],
+    "url": "https://reinschrift.dumke.me",
+    "version-name": "1.0.9"
+}

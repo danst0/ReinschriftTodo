@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.0.9" date="2026-09-26">
+      <description>
+        <ul>
+          <li>GNOME Shell extension: "My Day" menu in the top bar to tick off today's tasks</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.8" date="2026-09-26">
       <description>
         <ul>

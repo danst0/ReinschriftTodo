@@ -1,0 +1,312 @@
+/* Reinschrift menu applet — "My Day" at a glance.
+ *
+ * Primary text inherits the shell theme's popup colors so it always matches
+ * the desktop; only secondary tones and urgency colors are set here, in a
+ * light (.rs-light) and dark (.rs-dark) variant chosen by extension.js.
+ * Checkbox and progress use the system accent color.
+ */
+
+/* ------------------------------------------------------------- menu frame */
+
+.rs-menu {
+    min-width: 360px;
+    max-width: 400px;
+}
+
+.rs-menu .popup-menu-content {
+    padding: 8px;
+}
+
+.rs-scroll {
+    max-height: 480px;
+}
+
+.rs-scroll StScrollBar {
+    padding-left: 4px;
+}
+
+/* ------------------------------------------------------------------ header */
+
+.rs-header {
+    padding: 6px 10px 12px 10px;
+}
+
+.rs-header-top {
+    spacing: 12px;
+}
+
+.rs-header-title {
+    font-size: 1.4em;
+    font-weight: 800;
+}
+
+.rs-header-subtitle {
+    font-size: 0.9em;
+    padding-top: 2px;
+}
+
+.rs-dark .rs-header-subtitle {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.rs-light .rs-header-subtitle {
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.rs-progress {
+    height: 4px;
+    margin-top: 10px;
+    border-radius: 2px;
+}
+
+.rs-dark .rs-progress {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.rs-light .rs-progress {
+    background-color: rgba(0, 0, 0, 0.08);
+}
+
+.rs-progress-fill {
+    border-radius: 2px;
+    background-color: -st-accent-color;
+}
+
+.rs-icon-button {
+    border-radius: 99px;
+    padding: 8px;
+    color: inherit;
+    background-color: transparent;
+}
+
+.rs-dark .rs-icon-button:hover,
+.rs-dark .rs-icon-button:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.rs-light .rs-icon-button:hover,
+.rs-light .rs-icon-button:focus {
+    background-color: rgba(0, 0, 0, 0.07);
+}
+
+.rs-dark .rs-icon-button:active {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.rs-light .rs-icon-button:active {
+    background-color: rgba(0, 0, 0, 0.12);
+}
+
+/* ------------------------------------------------------------------- rows */
+
+.rs-row {
+    padding: 8px 10px;
+    spacing: 12px;
+    border-radius: 10px;
+}
+
+.rs-text {
+    spacing: 2px;
+}
+
+.rs-title {
+    font-weight: 600;
+}
+
+.rs-meta {
+    spacing: 5px;
+    font-size: 0.85em;
+}
+
+.rs-dark .rs-meta-tag,
+.rs-dark .rs-sep,
+.rs-dark .rs-due-later {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.rs-light .rs-meta-tag,
+.rs-light .rs-sep,
+.rs-light .rs-due-later {
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.rs-dark .rs-due-overdue {
+    color: #ff938c;
+    font-weight: bold;
+}
+
+.rs-light .rs-due-overdue {
+    color: #c01c28;
+    font-weight: bold;
+}
+
+.rs-dark .rs-due-today {
+    color: #f8e45c;
+    font-weight: bold;
+}
+
+.rs-light .rs-due-today {
+    color: #9c6e03;
+    font-weight: bold;
+}
+
+/* Completed rows fade back; the strike-through comes from the markup. */
+.rs-dark .rs-row-done .rs-title {
+    color: rgba(255, 255, 255, 0.45);
+    font-weight: normal;
+}
+
+.rs-light .rs-row-done .rs-title {
+    color: rgba(0, 0, 0, 0.4);
+    font-weight: normal;
+}
+
+/* ---------------------------------------------------------------- checkbox */
+
+.rs-checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 99px;
+    border-width: 2px;
+    border-style: solid;
+    background-color: transparent;
+    transition-duration: 150ms;
+}
+
+.rs-dark .rs-checkbox {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.rs-light .rs-checkbox {
+    border-color: rgba(0, 0, 0, 0.3);
+}
+
+.rs-row:hover .rs-checkbox,
+.rs-row:focus .rs-checkbox {
+    border-color: -st-accent-color;
+}
+
+.rs-checkbox-done,
+.rs-row:hover .rs-checkbox-done {
+    background-color: -st-accent-color;
+    border-color: -st-accent-color;
+}
+
+.rs-check {
+    icon-size: 14px;
+    color: -st-accent-fg-color;
+}
+
+/* --------------------------------------------------------- completed group */
+
+.rs-completed-toggle {
+    padding: 10px 10px 8px 10px;
+    margin-top: 4px;
+    spacing: 8px;
+    border-radius: 10px;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.rs-expander {
+    icon-size: 16px;
+}
+
+.rs-dark .rs-completed-toggle {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.rs-light .rs-completed-toggle {
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.rs-count {
+    border-radius: 99px;
+    padding: 0 7px;
+    font-size: 0.9em;
+}
+
+.rs-dark .rs-count {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.rs-light .rs-count {
+    background-color: rgba(0, 0, 0, 0.07);
+}
+
+/* ------------------------------------------------------------ empty states */
+
+.rs-state {
+    padding: 22px 12px 18px 12px;
+}
+
+.rs-state-box {
+    spacing: 6px;
+}
+
+.rs-state-icon {
+    icon-size: 32px;
+    margin-bottom: 4px;
+}
+
+.rs-state-title {
+    font-weight: bold;
+}
+
+.rs-dark .rs-state-icon,
+.rs-dark .rs-state-hint {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.rs-light .rs-state-icon,
+.rs-light .rs-state-hint {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.rs-state-hint {
+    font-size: 0.9em;
+}
+
+/* ------------------------------------------------------------- open button */
+
+.rs-open-row {
+    margin-top: 6px;
+    padding: 9px 12px;
+    border-radius: 99px;
+    font-weight: bold;
+}
+
+.rs-dark .rs-open-row {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.rs-light .rs-open-row {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.rs-dark .rs-open-row:hover,
+.rs-dark .rs-open-row:focus {
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+.rs-light .rs-open-row:hover,
+.rs-light .rs-open-row:focus {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* -------------------------------------------------------------- panel pill */
+
+.rs-indicator {
+    spacing: 4px;
+}
+
+.rs-badge {
+    font-size: 0.8em;
+    font-weight: bold;
+    color: -st-accent-fg-color;
+    background-color: -st-accent-color;
+    border-radius: 99px;
+    padding: 0 6px;
+    min-width: 8px;
+    text-align: center;
+}
