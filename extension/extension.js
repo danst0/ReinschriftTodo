@@ -427,7 +427,7 @@ export default class ReinschriftExtension extends Extension {
         this._settingsChangedId =
             this._settings.connect('changed::todo-file', () => this._scheduleRebuild());
 
-        this._menu.connect('open-state-changed', (_menu, open) => {
+        this._openStateChangedId = this._menu.connect('open-state-changed', (_menu, open) => {
             if (open) {
                 this._scheduleRebuild();
             } else if (this._showCompleted) {
@@ -436,9 +436,16 @@ export default class ReinschriftExtension extends Extension {
                 this._scheduleRebuild();
             }
         });
+        // Keep keyboard focus visible while arrowing through a long list.
+        // Items also turn active on hover; only follow the keyboard.
+        this._activeChangedId = this._menu.connect('active-changed', (_menu, item) => {
+            if (item && this._scroll?.contains(item) && item.has_key_focus())
+                ensureActorVisibleInScrollView(this._scroll, item);
+        });
 
         this._cancellable = new Gio.Cancellable();
         this._monitor = null;
+        this._monitorChangedId = 0;
         this._monitoredPath = null;
         this._dbPath = null;
         this._prefs = {};
@@ -462,17 +469,22 @@ export default class ReinschriftExtension extends Extension {
     }
 
     disable() {
-        for (const id of [this._rebuildId, this._settleId]) {
-            if (id)
-                GLib.source_remove(id);
+        if (this._rebuildId) {
+            GLib.source_remove(this._rebuildId);
+            this._rebuildId = 0;
         }
-        this._rebuildId = 0;
-        this._settleId = 0;
+        if (this._settleId) {
+            GLib.source_remove(this._settleId);
+            this._settleId = 0;
+        }
         this._cancellable?.cancel();
         this._cancellable = null;
-        if (this._monitor) {
-            this._monitor.cancel();
-            this._monitor = null;
+        this._unwatch();
+        if (this._menu) {
+            this._menu.disconnect(this._openStateChangedId);
+            this._menu.disconnect(this._activeChangedId);
+            this._openStateChangedId = 0;
+            this._activeChangedId = 0;
         }
         if (this._stSettings && this._colorSchemeChangedId) {
             this._stSettings.disconnect(this._colorSchemeChangedId);
@@ -490,6 +502,7 @@ export default class ReinschriftExtension extends Extension {
         }
         this._settings = null;
         this._scroll = null;
+        this._addItem?.destroy();
         this._addItem = null;
         this._menu = null;
         this._indicator?.destroy();
@@ -547,16 +560,25 @@ export default class ReinschriftExtension extends Extension {
     _watch() {
         if (this._monitoredPath === this._dbPath)
             return;
-        this._monitor?.cancel();
-        this._monitor = null;
+        this._unwatch();
         this._monitoredPath = this._dbPath;
         try {
             this._monitor = Gio.File.new_for_path(this._dbPath)
                 .monitor_file(Gio.FileMonitorFlags.NONE, null);
-            this._monitor.connect('changed', () => this._scheduleRebuild());
+            this._monitorChangedId =
+                this._monitor.connect('changed', () => this._scheduleRebuild());
         } catch {
             this._monitor = null;
         }
+    }
+
+    _unwatch() {
+        if (!this._monitor)
+            return;
+        this._monitor.disconnect(this._monitorChangedId);
+        this._monitorChangedId = 0;
+        this._monitor.cancel();
+        this._monitor = null;
     }
 
     // ------------------------------------------------------------ menu
@@ -697,15 +719,7 @@ export default class ReinschriftExtension extends Extension {
         const section = new ScrollSection();
         this._menu.addMenuItem(section);
         section.mount(this._menu.box);
-        const scroll = section.scroll;
-
-        // Keep keyboard focus visible while arrowing through a long list.
-        section.actor.connect('child-added', (_box, child) => {
-            child.connect('key-focus-in', () =>
-                ensureActorVisibleInScrollView(scroll, child));
-        });
-
-        this._scroll = scroll;
+        this._scroll = section.scroll;
         return section;
     }
 
