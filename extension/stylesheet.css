@@ -72,29 +72,20 @@
     background-color: -st-accent-color;
 }
 
-.rs-icon-button {
-    border-radius: 99px;
-    padding: 8px;
-    color: inherit;
-    background-color: transparent;
+/* -------------------------------------------------------------- add entry */
+
+.rs-add {
+    padding: 0 2px 8px 2px;
 }
 
-.rs-dark .rs-icon-button:hover,
-.rs-dark .rs-icon-button:focus {
-    background-color: rgba(255, 255, 255, 0.1);
+.rs-add-entry {
+    border-radius: 10px;
+    padding: 8px 10px;
 }
 
-.rs-light .rs-icon-button:hover,
-.rs-light .rs-icon-button:focus {
-    background-color: rgba(0, 0, 0, 0.07);
-}
-
-.rs-dark .rs-icon-button:active {
-    background-color: rgba(255, 255, 255, 0.18);
-}
-
-.rs-light .rs-icon-button:active {
-    background-color: rgba(0, 0, 0, 0.12);
+.rs-add-icon {
+    icon-size: 16px;
+    padding-right: 6px;
 }
 
 /* ------------------------------------------------------------------- rows */

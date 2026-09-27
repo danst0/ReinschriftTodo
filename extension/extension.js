@@ -14,6 +14,8 @@ import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/a
 
 import * as Format from './lib/format.js';
 
+const APP_ID = 'me.dumke.Reinschrift.desktop';
+
 /** How long a freshly ticked row stays in place before the list re-sorts. */
 const SETTLE_MS = 450;
 
@@ -187,10 +189,10 @@ class TodoRow extends PopupMenu.PopupBaseMenuItem {
     }
 });
 
-/** Title, date, progress and the open-app button. Not activatable. */
+/** Title, date and progress. Not activatable. */
 const HeaderItem = GObject.registerClass(
 class HeaderItem extends PopupMenu.PopupBaseMenuItem {
-    _init(done, total, onOpen) {
+    _init(done, total) {
         super._init({
             style_class: 'rs-header',
             // Non-reactive items get the shell's dimmed insensitive color;
@@ -217,16 +219,6 @@ class HeaderItem extends PopupMenu.PopupBaseMenuItem {
         const subtitle = total > 0 ? `${date} · ${progress}` : date;
         text.add_child(new St.Label({text: subtitle, style_class: 'rs-header-subtitle'}));
         top.add_child(text);
-
-        const btn = new St.Button({
-            style_class: 'rs-icon-button',
-            child: new St.Icon({icon_name: 'window-new-symbolic', icon_size: 16}),
-            accessible_name: _('Open Reinschrift'),
-            y_align: Clutter.ActorAlign.CENTER,
-            can_focus: true,
-        });
-        btn.connect('clicked', () => onOpen());
-        top.add_child(btn);
         column.add_child(top);
 
         if (total > 0) {
@@ -246,6 +238,35 @@ class HeaderItem extends PopupMenu.PopupBaseMenuItem {
         }
 
         this.add_child(column);
+    }
+});
+
+/** Entry for a new task; it lands in today's plan, like adding in the app's "My Day". */
+const AddItem = GObject.registerClass(
+class AddItem extends PopupMenu.PopupBaseMenuItem {
+    _init(draft, onSubmit, onChange) {
+        super._init({
+            style_class: 'rs-add',
+            activate: false,
+            hover: false,
+            can_focus: false,
+        });
+        this.track_hover = false;
+
+        this.entry = new St.Entry({
+            style_class: 'rs-add-entry',
+            hint_text: _('Add a task'),
+            primary_icon: new St.Icon({
+                icon_name: 'list-add-symbolic',
+                style_class: 'rs-add-icon',
+            }),
+            can_focus: true,
+            x_expand: true,
+        });
+        this.entry.text = draft;
+        this.entry.clutter_text.connect('activate', () => onSubmit(this.entry.text));
+        this.entry.clutter_text.connect('text-changed', () => onChange(this.entry.text));
+        this.add_child(this.entry);
     }
 });
 
@@ -305,11 +326,16 @@ class StateItem extends PopupMenu.PopupBaseMenuItem {
             x_align: Clutter.ActorAlign.CENTER,
         }));
         if (hint) {
-            box.add_child(new St.Label({
+            const label = new St.Label({
                 text: hint,
                 style_class: 'rs-state-hint',
                 x_align: Clutter.ActorAlign.CENTER,
-            }));
+            });
+            // Hints can be long (translations, file paths); wrap instead of cutting off.
+            label.clutter_text.line_wrap = true;
+            label.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+            label.clutter_text.line_alignment = Pango.Alignment.CENTER;
+            box.add_child(label);
         }
         this.add_child(box);
     }
@@ -414,6 +440,12 @@ export default class ReinschriftExtension extends Extension {
             this._stSettings.connect('notify::color-scheme', () => this._applyTheme());
         this._applyTheme();
 
+        // The extension also works without the app (web app, Nextcloud,
+        // Obsidian); everything pointing to the app follows its install state.
+        this._appSystem = Shell.AppSystem.get_default();
+        this._installedChangedId =
+            this._appSystem.connect('installed-changed', () => this._scheduleRebuild());
+
         this._menu.connect('open-state-changed', (_menu, open) => {
             if (open) {
                 this._scheduleRebuild();
@@ -436,6 +468,9 @@ export default class ReinschriftExtension extends Extension {
         this._settleId = 0;
         this._scroll = null;
         this._showCompleted = false;
+        this._addItem = null;
+        this._draft = '';
+        this._adding = false;
         // PopupMenu.open() refuses to open an empty menu, so it has to be
         // populated up front (a loading state) — rendering only on open
         // would never fire.
@@ -463,7 +498,13 @@ export default class ReinschriftExtension extends Extension {
             this._colorSchemeChangedId = 0;
         }
         this._stSettings = null;
+        if (this._appSystem && this._installedChangedId) {
+            this._appSystem.disconnect(this._installedChangedId);
+            this._installedChangedId = 0;
+        }
+        this._appSystem = null;
         this._scroll = null;
+        this._addItem = null;
         this._menu = null;
         this._indicator?.destroy();
         this._indicator = null;
@@ -622,21 +663,36 @@ export default class ReinschriftExtension extends Extension {
 
     _render() {
         const scrollPos = this._scroll?.vadjustment.value ?? 0;
+        // Rebuilds come from the file monitor too, often while typing or right
+        // after adding; the entry gets its focus back so tasks can be added in a row.
+        const entryFocused = this._addItem !== null &&
+            global.stage.key_focus === this._addItem.entry.clutter_text;
         this._menu.removeAll();
         this._scroll = null;
+        this._addItem = null;
+
+        const app = this._app();
+        const addOpenItem = () => {
+            if (app)
+                this._menu.addMenuItem(new OpenItem(() => this._openApp()));
+        };
 
         if (this._items === undefined) {
             // First load still running.
-            this._menu.addMenuItem(new HeaderItem(0, 0, () => this._openApp()));
-            this._menu.addMenuItem(new OpenItem(() => this._openApp()));
+            this._menu.addMenuItem(new HeaderItem(0, 0));
+            addOpenItem();
             return;
         }
 
         if (this._items === null) {
-            this._menu.addMenuItem(new HeaderItem(0, 0, () => this._openApp()));
+            this._menu.addMenuItem(new HeaderItem(0, 0));
+            const hint = app
+                ? _('Create one in the Reinschrift app.')
+                // Translators: {path} is where the to-do file was looked for.
+                : _('Expected at {path}').replace('{path}', this._displayPath());
             this._menu.addMenuItem(new StateItem('dialog-warning-symbolic',
-                _('No to-do file found'), _('Create one in the Reinschrift app.')));
-            this._menu.addMenuItem(new OpenItem(() => this._openApp()));
+                _('No to-do file found'), hint));
+            addOpenItem();
             return;
         }
 
@@ -650,13 +706,21 @@ export default class ReinschriftExtension extends Extension {
         const active = planned.filter(item => !item.done).sort(byMode);
         const done = planned.filter(item => item.done).sort(byMode);
 
-        this._menu.addMenuItem(new HeaderItem(done.length, planned.length,
-            () => this._openApp()));
+        this._menu.addMenuItem(new HeaderItem(done.length, planned.length));
+        this._addItem = new AddItem(this._draft,
+            text => this._add(text),
+            text => {
+                this._draft = text;
+            });
+        this._menu.addMenuItem(this._addItem);
+        if (entryFocused && this._menu.isOpen)
+            this._addItem.entry.grab_key_focus();
 
         if (planned.length === 0) {
             this._menu.addMenuItem(new StateItem('weather-clear-symbolic',
-                _('Nothing planned for today'), _('Add tasks to My Day in Reinschrift.')));
-            this._menu.addMenuItem(new OpenItem(() => this._openApp()));
+                _('Nothing planned for today'),
+                app ? _('Add a task above or plan some in Reinschrift.') : _('Add a task above.')));
+            addOpenItem();
             return;
         }
 
@@ -677,7 +741,7 @@ export default class ReinschriftExtension extends Extension {
             }
         }
 
-        this._menu.addMenuItem(new OpenItem(() => this._openApp()));
+        addOpenItem();
 
         if (scrollPos > 0 && this._menu.isOpen) {
             // Restore once the new content has been allocated.
@@ -755,32 +819,66 @@ export default class ReinschriftExtension extends Extension {
         });
     }
 
-    _openApp() {
-        this._menu.close();
-        const desktopId = 'me.dumke.Reinschrift.desktop';
-
-        const app = Shell.AppSystem.get_default().lookup_app(desktopId);
-        if (app) {
-            app.activate();
+    /** Append a new task planned for today; read-modify-write like _toggle. */
+    async _add(text) {
+        const title = text.trim();
+        if (title === '' || this._adding)
             return;
-        }
+        this._adding = true;
+        const cancellable = this._cancellable;
 
         try {
-            const info = Gio.DesktopAppInfo.new(desktopId);
-            if (info) {
-                info.launch([], null);
+            let content;
+            try {
+                content = await readText(this._dbPath, cancellable);
+            } catch (e) {
+                if (!isCancelled(e))
+                    Main.notifyError('Reinschrift', `${_('Could not read the to-do file')}: ${e.message}`);
                 return;
             }
-        } catch {
-            // fall through
-        }
 
-        try {
-            Gio.Subprocess.new(
-                ['flatpak', 'run', 'me.dumke.Reinschrift'],
-                Gio.SubprocessFlags.NONE);
-        } catch (e) {
-            Main.notifyError('Reinschrift', `${_('Could not open the app')}: ${e.message}`);
+            const hadTrailing = content.endsWith('\n');
+            const lines = Format.splitLines(content);
+            Format.addToLines(lines, title);
+            const output = Format.joinLines(lines, hadTrailing);
+
+            try {
+                await Gio.File.new_for_path(this._dbPath).replace_contents_bytes_async(
+                    new GLib.Bytes(new TextEncoder().encode(output)),
+                    null,
+                    false,
+                    Gio.FileCreateFlags.REPLACE_DESTINATION,
+                    cancellable);
+            } catch (e) {
+                if (!isCancelled(e))
+                    Main.notifyError('Reinschrift', `${_('Could not save')}: ${e.message}`);
+                return;
+            }
+            if (cancellable.is_cancelled())
+                return;
+
+            this._draft = '';
+            this._addItem?.entry.set_text('');
+            this._scheduleRebuild();
+        } finally {
+            this._adding = false;
         }
+    }
+
+    /** The installed Reinschrift app (native or Flatpak), or null. */
+    _app() {
+        return this._appSystem?.lookup_app(APP_ID) ?? null;
+    }
+
+    /** The to-do file path, with the home directory shortened to ~. */
+    _displayPath() {
+        const home = GLib.get_home_dir();
+        const path = this._dbPath ?? '';
+        return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
+    }
+
+    _openApp() {
+        this._menu.close();
+        this._app()?.activate();
     }
 }

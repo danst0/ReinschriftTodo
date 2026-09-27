@@ -7,6 +7,7 @@ import System from 'system';
 
 import {
     addMonths,
+    addToLines,
     applyCompletionMarker,
     extractTitle,
     findLineByMarker,
@@ -18,6 +19,8 @@ import {
     renderLine,
     rewriteDue,
     rewriteLine,
+    rewriteMyday,
+    titleLine,
     splitLines,
     joinLines,
     toggleInLines,
@@ -237,6 +240,41 @@ assertEq(extractTitle('Buy groceries myday:2026-06-04'),
     assertEq(formatDue(new Date(2026, 8, 19, 18, 0)), '2026-09-19T18:00', 'formatDue');
     assertEq(applyCompletionMarker(`- [x] T ✅ ${today} ^a1`, false),
         '- [x] T ^a1', 'applyCompletionMarker_remove');
+}
+
+// ------------------------------------------------------------ adding todos
+
+{
+    assertEq(titleLine('  Buy milk +groceries  ', 'abc12345'),
+        `- [ ] Buy milk +groceries due:${today}T00:00 myday:${today} ^abc12345`,
+        'title_line_myday');
+    let threw = false;
+    try {
+        titleLine('   ', 'abc12345');
+    } catch {
+        threw = true;
+    }
+    assertTrue(threw, 'title_line_rejects_empty');
+    assertEq(rewriteMyday('- [ ] T myday:2020-01-01 ^a1'),
+        `- [ ] T myday:${today} ^a1`, 'rewriteMyday_replaces');
+    assertEq(rewriteMyday('- [ ] T +p ^a1'),
+        `- [ ] T myday:${today} +p ^a1`, 'rewriteMyday_before_fields');
+}
+{
+    const lines = ['- [ ] A ^a1', '---', '- [x] B ^b1'];
+    const marker = addToLines(lines, 'New');
+    assertEq(lines.length, 4, 'addToLines_inserts');
+    assertEq(lines[1], `- [ ] New due:${today}T00:00 myday:${today} ^${marker}`,
+        'addToLines_before_separator');
+    const item = parseLine(lines[1], 1);
+    assertEq([item.title, item.done, item.key.marker], ['New', false, marker],
+        'addToLines_parses_back');
+    assertEq(ymd(item.myday), today, 'addToLines_is_my_day');
+}
+{
+    const lines = ['- [ ] A ^a1'];
+    addToLines(lines, 'B');
+    assertEq(parseLine(lines[1], 1).title, 'B', 'addToLines_appends_without_separator');
 }
 
 print(`\n${passed} passed, ${failed} failed`);

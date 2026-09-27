@@ -65,6 +65,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.1.1" date="2026-09-27">
+      <description>
+        <ul>
+          <li>GNOME Shell extension: add tasks to My Day directly from the top bar menu</li>
+          <li>GNOME Shell extension: "Open Reinschrift" only appears when the app is installed</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-09-26">
       <description>
         <ul>

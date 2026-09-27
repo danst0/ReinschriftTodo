@@ -389,6 +389,35 @@ export function rewriteDue(line, newDue) {
     return insertDueSegment(line, segment);
 }
 
+/** Plan a line for today — mirrors core/src/renderer.rs `rewrite_myday`. */
+export function rewriteMyday(line) {
+    const segment = `myday:${todayString()}`;
+    if (MYDAY_RE.test(line))
+        return line.replace(MYDAY_RE, segment);
+
+    // Directly after the due token when present, otherwise before the first
+    // field marker (same placement rule as due dates).
+    const m = DUE_RE.exec(line);
+    if (m) {
+        const end = m.index + m[0].length;
+        return `${line.slice(0, end)} ${segment}${line.slice(end)}`;
+    }
+    return insertDueSegment(line, segment);
+}
+
+/**
+ * Line for a new todo typed as a bare title, planned for today — mirrors
+ * core/src/todo.rs `title_line(title, true)`. Inline tokens in the title
+ * (`+project`, `@context`) stay where the user typed them.
+ */
+export function titleLine(title, marker) {
+    title = title.trim();
+    if (title === '')
+        throw new Error('Title must not be empty');
+    const line = rewriteMyday(`- [ ] ${title} due:${todayString()}T00:00`);
+    return `${line} ^${marker}`;
+}
+
 /** Apply or remove the completion marker (✅ date). */
 export function applyCompletionMarker(line, done) {
     if (!done)
@@ -572,4 +601,20 @@ export function toggleInLines(lines, keys, done) {
         lines.splice(insertIndex, 0, ...spawned);
     }
     return lines;
+}
+
+/**
+ * Add a todo planned for today — mirrors core/src/todo.rs `insert_line`:
+ * the new line goes before the first `---`, or at the end.
+ *
+ * Returns the marker of the new todo.
+ */
+export function addToLines(lines, title) {
+    const marker = uniqueMarker(lines, []);
+    const line = titleLine(title, marker);
+    let insertIndex = lines.findIndex(l => l.trim() === '---');
+    if (insertIndex === -1)
+        insertIndex = lines.length;
+    lines.splice(insertIndex, 0, line);
+    return marker;
 }
