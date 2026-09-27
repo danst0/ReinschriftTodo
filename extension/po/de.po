@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: reinschrift-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/danst0/ReinschriftTodo/issues\n"
-"POT-Creation-Date: 2026-09-27 06:58+0200\n"
+"POT-Creation-Date: 2026-09-27 07:02+0200\n"
 "PO-Revision-Date: 2026-09-26 22:15+0200\n"
 "Last-Translator: Daniel Dumke\n"
 "Language-Team: de\n"
@@ -17,97 +17,144 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: extension.js:53
+#: extension.js:52
 msgid "Someday"
 msgstr "Irgendwann"
 
-#: extension.js:61
+#: extension.js:60
 msgid "{n} day overdue"
 msgid_plural "{n} days overdue"
 msgstr[0] "{n} Tag überfällig"
 msgstr[1] "{n} Tage überfällig"
 
-#: extension.js:66
+#: extension.js:65
 msgid "Yesterday"
 msgstr "Gestern"
 
-#: extension.js:68
+#: extension.js:67
 msgid "Today"
 msgstr "Heute"
 
-#: extension.js:70
+#: extension.js:69
 msgid "Tomorrow"
 msgstr "Morgen"
 
 #. Translators: short due date within the next weeks, a GLib.DateTime
 #. format (like strftime); e.g. "%-d. %b" for German.
-#: extension.js:74
+#: extension.js:73
 #, no-javascript-format
 msgid "%b %-d"
 msgstr "%-d. %b"
 
-#: extension.js:210
+#: extension.js:187
 msgid "My Day"
 msgstr "Mein Tag"
 
 #. Translators: today's date in the menu header, a GLib.DateTime
 #. format (like strftime); e.g. "%A, %-d. %B" for German.
-#: extension.js:214
+#: extension.js:191
 #, no-javascript-format
 msgid "%A, %B %-d"
 msgstr "%A, %-d. %B"
 
 #. Translators: progress in the menu header, e.g. "4 of 13 done".
-#: extension.js:216
+#: extension.js:193
 msgid "{done} of {total} done"
 msgstr "{done} von {total} erledigt"
 
-#: extension.js:258
+#: extension.js:235
 msgid "Add a task"
 msgstr "Aufgabe hinzufügen"
 
-#: extension.js:285
+#: extension.js:262
 msgid "Completed"
 msgstr "Erledigt"
 
-#: extension.js:349
+#: extension.js:612
 msgid "Open Reinschrift"
 msgstr "Reinschrift öffnen"
 
-#: extension.js:690
+#: extension.js:625
 msgid "Create one in the Reinschrift app."
 msgstr "Lege eine in der Reinschrift-App an."
 
 #. Translators: {path} is where the to-do file was looked for.
-#: extension.js:692
+#: extension.js:627
 msgid "Expected at {path}"
 msgstr "Erwartet unter {path}"
 
-#: extension.js:694
+#: extension.js:629
 msgid "No to-do file found"
 msgstr "Keine Aufgabendatei gefunden"
 
-#: extension.js:721
+#: extension.js:630
+msgid "Choose To-do File…"
+msgstr "Aufgabendatei wählen …"
+
+#: extension.js:660
 msgid "Nothing planned for today"
 msgstr "Für heute ist nichts geplant"
 
-#: extension.js:722
+#: extension.js:661
 msgid "Add a task above or plan some in Reinschrift."
 msgstr "Füge oben eine Aufgabe hinzu oder plane welche in Reinschrift."
 
-#: extension.js:722
+#: extension.js:661
 msgid "Add a task above."
 msgstr "Füge oben eine Aufgabe hinzu."
 
-#: extension.js:729
+#: extension.js:668
 msgid "All done for today"
 msgstr "Alles erledigt für heute"
 
-#: extension.js:787 extension.js:836
+#: extension.js:726 extension.js:775
 msgid "Could not read the to-do file"
 msgstr "Aufgabendatei konnte nicht gelesen werden"
 
-#: extension.js:805 extension.js:854
+#: extension.js:744 extension.js:793
 msgid "Could not save"
 msgstr "Speichern fehlgeschlagen"
 
+#: prefs.js:19
+msgid "To-do File"
+msgstr "Aufgabendatei"
+
+#: prefs.js:20
+msgid ""
+"Without a choice, the extension uses the file set in the Reinschrift app."
+msgstr ""
+"Ohne Auswahl nutzt die Erweiterung die in der Reinschrift-App eingestellte "
+"Datei."
+
+#: prefs.js:25
+msgid "Markdown File"
+msgstr "Markdown-Datei"
+
+#: prefs.js:32
+msgid "Use the Reinschrift App’s File"
+msgstr "Datei der Reinschrift-App verwenden"
+
+#: prefs.js:40
+msgid "Choose…"
+msgstr "Wählen …"
+
+#: prefs.js:56
+msgid "Automatic"
+msgstr "Automatisch"
+
+#. Translators: {path} is the file the Reinschrift app points to.
+#: prefs.js:62
+msgid "Automatic: {path}"
+msgstr "Automatisch: {path}"
+
+#: prefs.js:75
+msgid "Markdown Files"
+msgstr "Markdown-Dateien"
+
+#: prefs.js:78
+msgid "All Files"
+msgstr "Alle Dateien"
+
+#: prefs.js:85
+msgid "Choose To-do File"
+msgstr "Aufgabendatei wählen"

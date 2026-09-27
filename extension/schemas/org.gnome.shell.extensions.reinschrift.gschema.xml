@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.reinschrift"
+          path="/org/gnome/shell/extensions/reinschrift/">
+    <key name="todo-file" type="s">
+      <default>''</default>
+      <summary>To-do file</summary>
+      <description>Markdown file to show and edit. Empty: the file configured in the Reinschrift app, or its default location.</description>
+    </key>
+  </schema>
+</schemalist>

@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.1.2" date="2026-09-27">
+      <description>
+        <ul>
+          <li>GNOME Shell extension: preferences window to choose the to-do file, also usable without the app</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.1" date="2026-09-27">
       <description>
         <ul>

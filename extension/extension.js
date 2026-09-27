@@ -13,15 +13,14 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 
 import * as Format from './lib/format.js';
+import {displayPath, isCancelled, readAppPrefs, readText, resolveDbPath} from './lib/paths.js';
 
 const APP_ID = 'me.dumke.Reinschrift.desktop';
 
 /** How long a freshly ticked row stays in place before the list re-sorts. */
 const SETTLE_MS = 450;
 
-Gio._promisify(Gio.File.prototype, 'load_contents_async');
 Gio._promisify(Gio.File.prototype, 'replace_contents_bytes_async', 'replace_contents_finish');
-Gio._promisify(Gio.File.prototype, 'query_info_async');
 
 // ---------------------------------------------------------------- helpers
 
@@ -86,28 +85,6 @@ function sortKey(item, mode) {
 function markUpTitle(text, done) {
     const escaped = GLib.markup_escape_text(text, -1);
     return done ? `<s>${escaped}</s>` : escaped;
-}
-
-function isCancelled(e) {
-    return e instanceof GLib.Error &&
-        e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED);
-}
-
-async function readText(path, cancellable) {
-    const [bytes] = await Gio.File.new_for_path(path).load_contents_async(cancellable);
-    return new TextDecoder().decode(bytes);
-}
-
-async function exists(path, cancellable) {
-    try {
-        await Gio.File.new_for_path(path).query_info_async('standard::type',
-            Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, cancellable);
-        return true;
-    } catch (e) {
-        if (isCancelled(e))
-            throw e;
-        return false;
-    }
 }
 
 // ---------------------------------------------------------------- widgets
@@ -343,10 +320,10 @@ class StateItem extends PopupMenu.PopupBaseMenuItem {
 
 const OpenItem = GObject.registerClass(
 class OpenItem extends PopupMenu.PopupBaseMenuItem {
-    _init(onOpen) {
+    _init(text, onOpen) {
         super._init({style_class: 'rs-open-row'});
         this.add_child(new St.Label({
-            text: _('Open Reinschrift'),
+            text,
             x_expand: true,
             x_align: Clutter.ActorAlign.CENTER,
         }));
@@ -446,6 +423,10 @@ export default class ReinschriftExtension extends Extension {
         this._installedChangedId =
             this._appSystem.connect('installed-changed', () => this._scheduleRebuild());
 
+        this._settings = this.getSettings();
+        this._settingsChangedId =
+            this._settings.connect('changed::todo-file', () => this._scheduleRebuild());
+
         this._menu.connect('open-state-changed', (_menu, open) => {
             if (open) {
                 this._scheduleRebuild();
@@ -503,6 +484,11 @@ export default class ReinschriftExtension extends Extension {
             this._installedChangedId = 0;
         }
         this._appSystem = null;
+        if (this._settings && this._settingsChangedId) {
+            this._settings.disconnect(this._settingsChangedId);
+            this._settingsChangedId = 0;
+        }
+        this._settings = null;
         this._scroll = null;
         this._addItem = null;
         this._menu = null;
@@ -526,58 +512,6 @@ export default class ReinschriftExtension extends Extension {
 
     // ------------------------------------------------------------ data
 
-    _prefsFiles() {
-        const config = GLib.getenv('XDG_CONFIG_HOME') ||
-            GLib.build_filenamev([GLib.get_home_dir(), '.config']);
-        // Native install and Flatpak install each keep their own config.
-        return [
-            GLib.build_filenamev([config, 'reinschrift_todo', 'preferences.json']),
-            GLib.build_filenamev([GLib.get_home_dir(), '.var', 'app',
-                'me.dumke.Reinschrift', 'config', 'reinschrift_todo', 'preferences.json']),
-        ];
-    }
-
-    /** Both preference files merged; last file wins per key. */
-    async _readPrefs(cancellable) {
-        // The Flatpak config is the one the app actually uses when both exist.
-        let merged = {};
-        const candidates = [];
-        for (const path of this._prefsFiles()) {
-            let prefs;
-            try {
-                prefs = JSON.parse(await readText(path, cancellable));
-            } catch (e) {
-                if (isCancelled(e))
-                    throw e;
-                continue;
-            }
-            merged = {...merged, ...prefs};
-            if (prefs.db_path)
-                candidates.push(prefs.db_path);
-            if (prefs.use_webdav && prefs.webdav_path) {
-                // WebDAV backend: use the Nextcloud sync mirror of the
-                // remote file so the menu stays instant and offline-capable.
-                candidates.push(GLib.build_filenamev(
-                    [GLib.get_home_dir(), 'Nextcloud', prefs.webdav_path]));
-            }
-        }
-        return [merged, candidates];
-    }
-
-    async _resolveDbPath(candidates, cancellable) {
-        const env = GLib.getenv('TODOS_DB_PATH');
-        if (env)
-            return env;
-
-        candidates = [...candidates, GLib.build_filenamev(
-            [GLib.get_user_data_dir(), 'reinschrift_todo', 'todos.md'])];
-        for (const candidate of candidates) {
-            if (await exists(candidate, cancellable))
-                return candidate;
-        }
-        return candidates[candidates.length - 1];
-    }
-
     /**
      * Re-read preferences and the to-do file; null items when unreadable.
      * State is only touched at the end, so a disable() in between (which
@@ -585,8 +519,9 @@ export default class ReinschriftExtension extends Extension {
      */
     async _load() {
         const cancellable = this._cancellable;
-        const [prefs, candidates] = await this._readPrefs(cancellable);
-        const dbPath = await this._resolveDbPath(candidates, cancellable);
+        const [prefs, candidates] = await readAppPrefs(cancellable);
+        const dbPath = await resolveDbPath(
+            this._settings.get_string('todo-file'), candidates, cancellable);
 
         let items = null;
         try {
@@ -674,7 +609,7 @@ export default class ReinschriftExtension extends Extension {
         const app = this._app();
         const addOpenItem = () => {
             if (app)
-                this._menu.addMenuItem(new OpenItem(() => this._openApp()));
+                this._menu.addMenuItem(new OpenItem(_('Open Reinschrift'), () => this._openApp()));
         };
 
         if (this._items === undefined) {
@@ -689,9 +624,13 @@ export default class ReinschriftExtension extends Extension {
             const hint = app
                 ? _('Create one in the Reinschrift app.')
                 // Translators: {path} is where the to-do file was looked for.
-                : _('Expected at {path}').replace('{path}', this._displayPath());
+                : _('Expected at {path}').replace('{path}', displayPath(this._dbPath));
             this._menu.addMenuItem(new StateItem('dialog-warning-symbolic',
                 _('No to-do file found'), hint));
+            this._menu.addMenuItem(new OpenItem(_('Choose To-do File…'), () => {
+                this._menu.close();
+                this.openPreferences();
+            }));
             addOpenItem();
             return;
         }
@@ -868,13 +807,6 @@ export default class ReinschriftExtension extends Extension {
     /** The installed Reinschrift app (native or Flatpak), or null. */
     _app() {
         return this._appSystem?.lookup_app(APP_ID) ?? null;
-    }
-
-    /** The to-do file path, with the home directory shortened to ~. */
-    _displayPath() {
-        const home = GLib.get_home_dir();
-        const path = this._dbPath ?? '';
-        return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
     }
 
     _openApp() {

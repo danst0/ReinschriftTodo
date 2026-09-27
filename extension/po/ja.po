@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: reinschrift-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/danst0/ReinschriftTodo/issues\n"
-"POT-Creation-Date: 2026-09-27 06:58+0200\n"
+"POT-Creation-Date: 2026-09-27 07:02+0200\n"
 "PO-Revision-Date: 2026-09-26 22:15+0200\n"
 "Last-Translator: Daniel Dumke\n"
 "Language-Team: ja\n"
@@ -17,96 +17,143 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: extension.js:53
+#: extension.js:52
 msgid "Someday"
 msgstr "いつか"
 
-#: extension.js:61
+#: extension.js:60
 msgid "{n} day overdue"
 msgid_plural "{n} days overdue"
 msgstr[0] "{n}日超過"
 
-#: extension.js:66
+#: extension.js:65
 msgid "Yesterday"
 msgstr "昨日"
 
-#: extension.js:68
+#: extension.js:67
 msgid "Today"
 msgstr "今日"
 
-#: extension.js:70
+#: extension.js:69
 msgid "Tomorrow"
 msgstr "明日"
 
 #. Translators: short due date within the next weeks, a GLib.DateTime
 #. format (like strftime); e.g. "%-d. %b" for German.
-#: extension.js:74
+#: extension.js:73
 #, no-javascript-format
 msgid "%b %-d"
 msgstr "%-m月%-d日"
 
-#: extension.js:210
+#: extension.js:187
 msgid "My Day"
 msgstr "今日の予定"
 
 #. Translators: today's date in the menu header, a GLib.DateTime
 #. format (like strftime); e.g. "%A, %-d. %B" for German.
-#: extension.js:214
+#: extension.js:191
 #, no-javascript-format
 msgid "%A, %B %-d"
 msgstr "%-m月%-d日 %A"
 
 #. Translators: progress in the menu header, e.g. "4 of 13 done".
-#: extension.js:216
+#: extension.js:193
 msgid "{done} of {total} done"
 msgstr "{total}件中{done}件完了"
 
-#: extension.js:258
+#: extension.js:235
 msgid "Add a task"
 msgstr "タスクを追加"
 
-#: extension.js:285
+#: extension.js:262
 msgid "Completed"
 msgstr "完了"
 
-#: extension.js:349
+#: extension.js:612
 msgid "Open Reinschrift"
 msgstr "Reinschriftを開く"
 
-#: extension.js:690
+#: extension.js:625
 msgid "Create one in the Reinschrift app."
 msgstr "Reinschriftアプリで作成してください。"
 
 #. Translators: {path} is where the to-do file was looked for.
-#: extension.js:692
+#: extension.js:627
 msgid "Expected at {path}"
 msgstr "{path} にあるはずです"
 
-#: extension.js:694
+#: extension.js:629
 msgid "No to-do file found"
 msgstr "タスクファイルが見つかりません"
 
-#: extension.js:721
+#: extension.js:630
+msgid "Choose To-do File…"
+msgstr "タスクファイルを選択…"
+
+#: extension.js:660
 msgid "Nothing planned for today"
 msgstr "今日の予定はまだありません"
 
-#: extension.js:722
+#: extension.js:661
 msgid "Add a task above or plan some in Reinschrift."
 msgstr "上でタスクを追加するか、Reinschrift で計画してください。"
 
-#: extension.js:722
+#: extension.js:661
 msgid "Add a task above."
 msgstr "上でタスクを追加してください。"
 
-#: extension.js:729
+#: extension.js:668
 msgid "All done for today"
 msgstr "今日のタスクはすべて完了"
 
-#: extension.js:787 extension.js:836
+#: extension.js:726 extension.js:775
 msgid "Could not read the to-do file"
 msgstr "タスクファイルを読み込めませんでした"
 
-#: extension.js:805 extension.js:854
+#: extension.js:744 extension.js:793
 msgid "Could not save"
 msgstr "保存できませんでした"
 
+#: prefs.js:19
+msgid "To-do File"
+msgstr "タスクファイル"
+
+#: prefs.js:20
+msgid ""
+"Without a choice, the extension uses the file set in the Reinschrift app."
+msgstr ""
+"選択しない場合、拡張機能は Reinschrift アプリで設定されたファイルを使用しま"
+"す。"
+
+#: prefs.js:25
+msgid "Markdown File"
+msgstr "Markdown ファイル"
+
+#: prefs.js:32
+msgid "Use the Reinschrift App’s File"
+msgstr "Reinschrift アプリのファイルを使用"
+
+#: prefs.js:40
+msgid "Choose…"
+msgstr "選択…"
+
+#: prefs.js:56
+msgid "Automatic"
+msgstr "自動"
+
+#. Translators: {path} is the file the Reinschrift app points to.
+#: prefs.js:62
+msgid "Automatic: {path}"
+msgstr "自動: {path}"
+
+#: prefs.js:75
+msgid "Markdown Files"
+msgstr "Markdown ファイル"
+
+#: prefs.js:78
+msgid "All Files"
+msgstr "すべてのファイル"
+
+#: prefs.js:85
+msgid "Choose To-do File"
+msgstr "タスクファイルを選択"
