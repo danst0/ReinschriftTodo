@@ -418,6 +418,11 @@ export function titleLine(title, marker) {
     return `${line} ^${marker}`;
 }
 
+/** Take a line off today's plan — mirrors `rewrite_myday(line, false)`. */
+export function removeMyday(line) {
+    return line.replace(new RegExp(MYDAY_STRIP_RE.source, 'g'), '');
+}
+
 /** Apply or remove the completion marker (✅ date). */
 export function applyCompletionMarker(line, done) {
     if (!done)
@@ -511,6 +516,32 @@ export function nextDueDate(currentDue, rule) {
             break;
     }
     return new Date(next.getFullYear(), next.getMonth(), next.getDate(), hours, minutes);
+}
+
+/**
+ * Due date for a postpone target — mirrors core/src/todo.rs `due_for_target`
+ * (tomorrow and weekend at noon, someday as 9999-12-31) and the app's
+ * "in a week" shortcut, which keeps the current time of day.
+ */
+export function dueForTarget(target, currentDue, now = new Date()) {
+    const day = n => new Date(now.getFullYear(), now.getMonth(), now.getDate() + n);
+    const at = (d, h, m) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+
+    if (target === 'tomorrow')
+        return at(day(1), 12, 0);
+    if (target === 'weekend') {
+        // Next Saturday; a week ahead when today already is Saturday.
+        const weekday = (now.getDay() + 6) % 7; // 0=Mon … 5=Sat, 6=Sun
+        const days = weekday === 5 ? 7 : weekday === 6 ? 6 : 5 - weekday;
+        return at(day(days), 12, 0);
+    }
+    if (target === 'nextweek') {
+        return at(day(7), currentDue ? currentDue.getHours() : 0,
+            currentDue ? currentDue.getMinutes() : 0);
+    }
+    if (target === 'someday')
+        return new Date(9999, 11, 31, 0, 0);
+    throw new Error(`Unknown due target: ${target}`);
 }
 
 // ---------------------------------------------------------------- file ops
@@ -617,4 +648,19 @@ export function addToLines(lines, title) {
         insertIndex = lines.length;
     lines.splice(insertIndex, 0, line);
     return marker;
+}
+
+/**
+ * Rewrite the line of one todo in place. Returns false when the todo is no
+ * longer in the file.
+ */
+export function updateInLines(lines, key, rewrite) {
+    let index;
+    try {
+        index = resolveKey(lines, key);
+    } catch {
+        return false;
+    }
+    lines[index] = rewrite(lines[index]);
+    return true;
 }

@@ -152,6 +152,79 @@
     font-weight: normal;
 }
 
+/* ----------------------------------------------------------------- details */
+
+/* The opened row and its details read as one card. */
+.rs-dark .rs-row-expanded,
+.rs-dark .rs-detail {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.rs-light .rs-row-expanded,
+.rs-light .rs-detail {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.rs-row-expanded {
+    border-radius: 10px 10px 0 0;
+}
+
+.rs-detail {
+    padding: 2px 10px 10px 42px;
+    margin-bottom: 4px;
+    border-radius: 0 0 10px 10px;
+}
+
+.rs-detail-box {
+    spacing: 8px;
+}
+
+.rs-detail-note {
+    font-size: 0.9em;
+}
+
+.rs-dark .rs-detail-note {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.rs-light .rs-detail-note {
+    color: rgba(0, 0, 0, 0.65);
+}
+
+.rs-chip {
+    padding: 6px 10px;
+    border-radius: 99px;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: inherit;
+}
+
+.rs-dark .rs-chip {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.rs-light .rs-chip {
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+.rs-dark .rs-chip:hover,
+.rs-dark .rs-chip:focus {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.rs-light .rs-chip:hover,
+.rs-light .rs-chip:focus {
+    background-color: rgba(0, 0, 0, 0.12);
+}
+
+.rs-dark .rs-chip:active {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.rs-light .rs-chip:active {
+    background-color: rgba(0, 0, 0, 0.16);
+}
+
 /* ---------------------------------------------------------------- checkbox */
 
 .rs-checkbox {

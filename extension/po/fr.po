@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: reinschrift-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/danst0/ReinschriftTodo/issues\n"
-"POT-Creation-Date: 2026-09-27 07:02+0200\n"
+"POT-Creation-Date: 2026-09-27 08:02+0200\n"
 "PO-Revision-Date: 2026-09-26 22:15+0200\n"
 "Last-Translator: Daniel Dumke\n"
 "Language-Team: fr\n"
@@ -17,101 +17,113 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: extension.js:52
+#: extension.js:57 extension.js:224
 msgid "Someday"
 msgstr "Un jour"
 
-#: extension.js:60
+#: extension.js:65
 msgid "{n} day overdue"
 msgid_plural "{n} days overdue"
 msgstr[0] "En retard de {n} jour"
 msgstr[1] "En retard de {n} jours"
 
-#: extension.js:65
+#: extension.js:70
 msgid "Yesterday"
 msgstr "Hier"
 
-#: extension.js:67
+#: extension.js:72
 msgid "Today"
 msgstr "Aujourd'hui"
 
-#: extension.js:69
+#: extension.js:74 extension.js:221
 msgid "Tomorrow"
 msgstr "Demain"
 
 #. Translators: short due date within the next weeks, a GLib.DateTime
 #. format (like strftime); e.g. "%-d. %b" for German.
-#: extension.js:73
+#: extension.js:78
 #, no-javascript-format
 msgid "%b %-d"
 msgstr "%-d %b"
 
-#: extension.js:187
+#: extension.js:222
+msgid "Weekend"
+msgstr "Week-end"
+
+#: extension.js:223
+msgid "Next Week"
+msgstr "Semaine prochaine"
+
+#: extension.js:231
+msgid "Remove from My Day"
+msgstr "Retirer de Ma journée"
+
+#: extension.js:256
 msgid "My Day"
 msgstr "Ma journée"
 
 #. Translators: today's date in the menu header, a GLib.DateTime
 #. format (like strftime); e.g. "%A, %-d. %B" for German.
-#: extension.js:191
+#: extension.js:260
 #, no-javascript-format
 msgid "%A, %B %-d"
 msgstr "%A %-d %B"
 
 #. Translators: progress in the menu header, e.g. "4 of 13 done".
-#: extension.js:193
+#: extension.js:262
 msgid "{done} of {total} done"
 msgstr "{done} sur {total} terminées"
 
-#: extension.js:235
+#: extension.js:304
 msgid "Add a task"
 msgstr "Ajouter une tâche"
 
-#: extension.js:262
+#: extension.js:331
 msgid "Completed"
 msgstr "Terminées"
 
-#: extension.js:612
+#: extension.js:706
 msgid "Open Reinschrift"
 msgstr "Ouvrir Reinschrift"
 
-#: extension.js:625
+#: extension.js:719
 msgid "Create one in the Reinschrift app."
 msgstr "Créez-en un dans l'application Reinschrift."
 
 #. Translators: {path} is where the to-do file was looked for.
-#: extension.js:627
+#: extension.js:721
 msgid "Expected at {path}"
 msgstr "Attendu à l’emplacement {path}"
 
-#: extension.js:629
+#: extension.js:723
 msgid "No to-do file found"
 msgstr "Aucun fichier de tâches trouvé"
 
-#: extension.js:630
+#: extension.js:724
 msgid "Choose To-do File…"
 msgstr "Choisir le fichier de tâches…"
 
-#: extension.js:660
+#: extension.js:754
 msgid "Nothing planned for today"
 msgstr "Rien de prévu pour aujourd'hui"
 
-#: extension.js:661
+#: extension.js:755
 msgid "Add a task above or plan some in Reinschrift."
 msgstr "Ajoutez une tâche ci-dessus ou planifiez-en dans Reinschrift."
 
-#: extension.js:661
+#: extension.js:755
 msgid "Add a task above."
 msgstr "Ajoutez une tâche ci-dessus."
 
-#: extension.js:668
+#: extension.js:777
 msgid "All done for today"
 msgstr "Tout est fait pour aujourd'hui"
 
-#: extension.js:726 extension.js:775
+#: extension.js:833
 msgid "Could not read the to-do file"
 msgstr "Impossible de lire le fichier de tâches"
 
-#: extension.js:744 extension.js:793
+#: extension.js:852
 msgid "Could not save"
 msgstr "Impossible d'enregistrer"
 

@@ -29,23 +29,37 @@ async function exists(path, cancellable) {
     }
 }
 
+/** The app's preference files, the one it uses when both exist first. */
 function prefsFiles() {
     const config = GLib.getenv('XDG_CONFIG_HOME') ||
         GLib.build_filenamev([GLib.get_home_dir(), '.config']);
-    // Native install and Flatpak install each keep their own config.
+    // Flatpak and native install each keep their own config; the Flatpak
+    // one is what the published app reads.
     return [
-        GLib.build_filenamev([config, 'reinschrift_todo', 'preferences.json']),
         GLib.build_filenamev([GLib.get_home_dir(), '.var', 'app',
             'me.dumke.Reinschrift', 'config', 'reinschrift_todo', 'preferences.json']),
+        GLib.build_filenamev([config, 'reinschrift_todo', 'preferences.json']),
     ];
 }
 
+/** The to-do file one app config points to, or null. */
+function configuredFile(prefs) {
+    if (prefs.use_webdav) {
+        // The app then ignores db_path and talks to the server; read the
+        // Nextcloud sync mirror of that file so the menu stays instant
+        // and offline-capable.
+        return prefs.webdav_path
+            ? GLib.build_filenamev([GLib.get_home_dir(), 'Nextcloud', prefs.webdav_path])
+            : null;
+    }
+    return prefs.db_path || null;
+}
+
 /**
- * The app's preference files merged (last file wins per key) and the to-do
- * files they point to.
+ * The app's preferences (the preferred config wins per key) and the to-do
+ * files they point to, in order of preference.
  */
 export async function readAppPrefs(cancellable) {
-    // The Flatpak config is the one the app actually uses when both exist.
     let merged = {};
     const candidates = [];
     for (const path of prefsFiles()) {
@@ -57,15 +71,10 @@ export async function readAppPrefs(cancellable) {
                 throw e;
             continue;
         }
-        merged = {...merged, ...prefs};
-        if (prefs.db_path)
-            candidates.push(prefs.db_path);
-        if (prefs.use_webdav && prefs.webdav_path) {
-            // WebDAV backend: use the Nextcloud sync mirror of the
-            // remote file so the menu stays instant and offline-capable.
-            candidates.push(GLib.build_filenamev(
-                [GLib.get_home_dir(), 'Nextcloud', prefs.webdav_path]));
-        }
+        merged = {...prefs, ...merged};
+        const file = configuredFile(prefs);
+        if (file)
+            candidates.push(file);
     }
     return [merged, candidates];
 }

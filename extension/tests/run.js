@@ -8,6 +8,9 @@ import System from 'system';
 import {
     addMonths,
     addToLines,
+    dueForTarget,
+    removeMyday,
+    updateInLines,
     applyCompletionMarker,
     extractTitle,
     findLineByMarker,
@@ -275,6 +278,35 @@ assertEq(extractTitle('Buy groceries myday:2026-06-04'),
     const lines = ['- [ ] A ^a1'];
     addToLines(lines, 'B');
     assertEq(parseLine(lines[1], 1).title, 'B', 'addToLines_appends_without_separator');
+}
+
+// ------------------------------------------------------------- postponing
+
+{
+    // 2026-09-23 is a Wednesday.
+    const wed = new Date(2026, 8, 23, 9, 30);
+    assertEq(formatDue(dueForTarget('tomorrow', null, wed)), '2026-09-24T12:00', 'due_tomorrow_noon');
+    assertEq(formatDue(dueForTarget('weekend', null, wed)), '2026-09-26T12:00', 'due_weekend_this_saturday');
+    assertEq(formatDue(dueForTarget('weekend', null, new Date(2026, 8, 26, 9, 0))),
+        '2026-10-03T12:00', 'due_weekend_from_saturday');
+    assertEq(formatDue(dueForTarget('weekend', null, new Date(2026, 8, 27, 9, 0))),
+        '2026-10-03T12:00', 'due_weekend_from_sunday');
+    assertEq(formatDue(dueForTarget('nextweek', new Date(2026, 8, 20, 14, 15), wed)),
+        '2026-09-30T14:15', 'due_nextweek_keeps_time');
+    assertEq(formatDue(dueForTarget('nextweek', null, wed)), '2026-09-30T00:00', 'due_nextweek_default_time');
+    assertEq(formatDue(dueForTarget('someday', null, wed)), '9999-12-31T00:00', 'due_someday');
+}
+{
+    assertEq(removeMyday('- [ ] T due:2026-01-01T00:00 myday:2026-01-01 ^a1'),
+        '- [ ] T due:2026-01-01T00:00 ^a1', 'removeMyday');
+    assertEq(removeMyday('- [ ] T ^a1'), '- [ ] T ^a1', 'removeMyday_noop');
+
+    const lines = ['- [ ] A ^a1', '- [ ] B due:2026-01-01T00:00 myday:2026-01-01 ^b1'];
+    const ok = updateInLines(lines, {lineIndex: 0, marker: 'b1'},
+        line => removeMyday(rewriteDue(line, new Date(2026, 0, 2, 12, 0))));
+    assertTrue(ok, 'updateInLines_found');
+    assertEq(lines[1], '- [ ] B due:2026-01-02T12:00 ^b1', 'updateInLines_by_marker');
+    assertTrue(!updateInLines(lines, {lineIndex: 9, marker: 'zz'}, l => l), 'updateInLines_missing');
 }
 
 print(`\n${passed} passed, ${failed} failed`);

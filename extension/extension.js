@@ -41,6 +41,11 @@ function isMyDay(item) {
     return item.myday !== null && ymd(item.myday) === ymd(new Date());
 }
 
+/** Identifies a task across re-reads for the opened-details state. */
+function rowId(item) {
+    return item.key.marker ?? `line:${item.key.lineIndex}`;
+}
+
 function toDateTime(d) {
     return GLib.DateTime.new_local(d.getFullYear(), d.getMonth() + 1,
         d.getDate(), d.getHours(), d.getMinutes(), 0);
@@ -91,11 +96,14 @@ function markUpTitle(text, done) {
 
 const TodoRow = GObject.registerClass(
 class TodoRow extends PopupMenu.PopupBaseMenuItem {
-    _init(item, onToggle) {
+    _init(item, expanded, onToggle, onExpand) {
         super._init({style_class: 'rs-row'});
 
         this._item = item;
         this._onToggle = onToggle;
+        this._onExpand = onExpand;
+        if (expanded)
+            this.add_style_class_name('rs-row-expanded');
 
         this._checkbox = new St.Bin({
             style_class: 'rs-checkbox',
@@ -108,7 +116,7 @@ class TodoRow extends PopupMenu.PopupBaseMenuItem {
         this._checkbox.set_child(this._check);
         this.add_child(this._checkbox);
 
-        const box = new St.BoxLayout({
+        const box = this._textBox = new St.BoxLayout({
             vertical: true,
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
@@ -155,14 +163,96 @@ class TodoRow extends PopupMenu.PopupBaseMenuItem {
         this._title.clutter_text.set_markup(markUpTitle(this._item.title, done));
     }
 
-    // Ticking off keeps the menu open so several tasks can be done in a row.
-    activate(_event) {
-        this._setDone(!this._item.done);
-        this._onToggle(this);
+    /**
+     * The circle (and the margin left of the text) ticks the task off,
+     * anywhere else opens its details. From the keyboard, Space ticks off
+     * and Enter opens. The menu stays open either way.
+     */
+    activate(event) {
+        if (this._hitsCheckbox(event)) {
+            this._setDone(!this._item.done);
+            this._onToggle(this);
+        } else {
+            this._onExpand(this, event?.type() === Clutter.EventType.KEY_PRESS);
+        }
+    }
+
+    _hitsCheckbox(event) {
+        if (!event)
+            return false;
+        if (event.type() === Clutter.EventType.KEY_PRESS)
+            return event.get_key_symbol() === Clutter.KEY_space;
+        const [x] = event.get_coords();
+        const [textLeft] = this._textBox.get_transformed_position();
+        return x < textLeft;
     }
 
     get item() {
         return this._item;
+    }
+});
+
+/** Note and actions of the task opened below its row. */
+const DetailItem = GObject.registerClass(
+class DetailItem extends PopupMenu.PopupBaseMenuItem {
+    _init(item, onPostpone, onRemove) {
+        super._init({
+            style_class: 'rs-detail',
+            activate: false,
+            hover: false,
+            can_focus: false,
+        });
+        this.track_hover = false;
+
+        const box = new St.BoxLayout({
+            vertical: true,
+            x_expand: true,
+            style_class: 'rs-detail-box',
+        });
+
+        if (item.note) {
+            const note = new St.Label({text: item.note, style_class: 'rs-detail-note'});
+            note.clutter_text.line_wrap = true;
+            note.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+            box.add_child(note);
+        }
+
+        const layout = new Clutter.GridLayout({
+            column_homogeneous: true,
+            column_spacing: 6,
+            row_spacing: 6,
+        });
+        const grid = new St.Widget({layout_manager: layout, x_expand: true});
+        const button = (label, onClicked) => {
+            const btn = new St.Button({
+                label,
+                style_class: 'rs-chip',
+                can_focus: true,
+                x_expand: true,
+            });
+            btn.connect('clicked', onClicked);
+            return btn;
+        };
+
+        let row = 0;
+        if (!item.done) {
+            // Postponing also takes the task off today's plan, otherwise it
+            // would stay right here.
+            const targets = [
+                ['tomorrow', _('Tomorrow')],
+                ['weekend', _('Weekend')],
+                ['nextweek', _('Next Week')],
+                ['someday', _('Someday')],
+            ];
+            targets.forEach(([target, label], i) => {
+                layout.attach(button(label, () => onPostpone(target)), i % 2, Math.floor(i / 2), 1, 1);
+            });
+            row = 2;
+        }
+        layout.attach(button(_('Remove from My Day'), () => onRemove()), 0, row, 2, 1);
+        box.add_child(grid);
+
+        this.add_child(box);
     }
 });
 
@@ -430,9 +520,10 @@ export default class ReinschriftExtension extends Extension {
         this._openStateChangedId = this._menu.connect('open-state-changed', (_menu, open) => {
             if (open) {
                 this._scheduleRebuild();
-            } else if (this._showCompleted) {
+            } else if (this._showCompleted || this._expanded) {
                 // Start collapsed again next time.
                 this._showCompleted = false;
+                this._expanded = null;
                 this._scheduleRebuild();
             }
         });
@@ -456,6 +547,8 @@ export default class ReinschriftExtension extends Extension {
         this._settleId = 0;
         this._scroll = null;
         this._showCompleted = false;
+        this._expanded = null;
+        this._focusExpanded = false;
         this._addItem = null;
         this._draft = '';
         this._adding = false;
@@ -686,10 +779,25 @@ export default class ReinschriftExtension extends Extension {
         }
 
         const section = this._addScrollSection();
+        let focusRow = null;
+        const addRow = item => {
+            const expanded = rowId(item) === this._expanded;
+            const row = new TodoRow(item, expanded,
+                r => this._toggle(r),
+                (r, fromKeyboard) => this._expand(r.item, fromKeyboard));
+            section.addMenuItem(row);
+            if (expanded) {
+                section.addMenuItem(new DetailItem(item,
+                    target => this._postpone(item, target),
+                    () => this._removeFromMyDay(item)));
+                focusRow = row;
+            }
+        };
+
         if (active.length === 0)
             section.addMenuItem(new StateItem('object-select-symbolic', _('All done for today'), null));
         for (const item of active)
-            section.addMenuItem(new TodoRow(item, row => this._toggle(row)));
+            addRow(item);
 
         if (done.length) {
             section.addMenuItem(new CompletedToggle(done.length, this._showCompleted, () => {
@@ -698,11 +806,16 @@ export default class ReinschriftExtension extends Extension {
             }));
             if (this._showCompleted) {
                 for (const item of done)
-                    section.addMenuItem(new TodoRow(item, row => this._toggle(row)));
+                    addRow(item);
             }
         }
 
         addOpenItem();
+
+        // Opened from the keyboard: stay on the row so arrowing continues there.
+        if (focusRow && this._focusExpanded && this._menu.isOpen)
+            focusRow.grab_key_focus();
+        this._focusExpanded = false;
 
         if (scrollPos > 0 && this._menu.isOpen) {
             // Restore once the new content has been allocated.
@@ -725,29 +838,31 @@ export default class ReinschriftExtension extends Extension {
 
     // ---------------------------------------------------------- actions
 
-    async _toggle(row) {
-        const item = row.item;
-        const keys = [{lineIndex: item.key.lineIndex, marker: item.key.marker}];
-        const file = Gio.File.new_for_path(this._dbPath);
+    /**
+     * Read-modify-write against the current file content, like the app.
+     * `edit` changes the lines in place and returns false to skip saving.
+     * Returns whether the file was written.
+     */
+    async _modifyFile(edit) {
         const cancellable = this._cancellable;
 
-        // Read-modify-write against the current file content, like the app.
         let content;
         try {
             content = await readText(this._dbPath, cancellable);
         } catch (e) {
             if (!isCancelled(e))
                 Main.notifyError('Reinschrift', `${_('Could not read the to-do file')}: ${e.message}`);
-            return;
+            return false;
         }
 
         const hadTrailing = content.endsWith('\n');
         const lines = Format.splitLines(content);
-        Format.toggleInLines(lines, keys, !item.done);
+        if (edit(lines) === false)
+            return false;
         const output = Format.joinLines(lines, hadTrailing);
 
         try {
-            await file.replace_contents_bytes_async(
+            await Gio.File.new_for_path(this._dbPath).replace_contents_bytes_async(
                 new GLib.Bytes(new TextEncoder().encode(output)),
                 null,
                 false,
@@ -756,9 +871,15 @@ export default class ReinschriftExtension extends Extension {
         } catch (e) {
             if (!isCancelled(e))
                 Main.notifyError('Reinschrift', `${_('Could not save')}: ${e.message}`);
-            return;
+            return false;
         }
-        if (cancellable.is_cancelled())
+        return !cancellable.is_cancelled();
+    }
+
+    async _toggle(row) {
+        const item = row.item;
+        const keys = [{lineIndex: item.key.lineIndex, marker: item.key.marker}];
+        if (!await this._modifyFile(lines => Format.toggleInLines(lines, keys, !item.done)))
             return;
 
         // Let the tick register visually before the row moves to "Completed";
@@ -772,44 +893,45 @@ export default class ReinschriftExtension extends Extension {
         });
     }
 
-    /** Append a new task planned for today; read-modify-write like _toggle. */
+    /** Open or close the details below a task; one at a time. */
+    _expand(item, fromKeyboard) {
+        const id = rowId(item);
+        this._expanded = this._expanded === id ? null : id;
+        this._focusExpanded = fromKeyboard;
+        this._scheduleRebuild();
+    }
+
+    /** Move a task to a later day, off today's plan. */
+    async _postpone(item, target) {
+        const due = Format.dueForTarget(target, item.due);
+        await this._editTask(item,
+            line => Format.removeMyday(Format.rewriteDue(line, due)));
+    }
+
+    async _removeFromMyDay(item) {
+        await this._editTask(item, line => Format.removeMyday(line));
+    }
+
+    async _editTask(item, rewrite) {
+        const saved = await this._modifyFile(lines =>
+            Format.updateInLines(lines, item.key, rewrite));
+        if (!saved)
+            return;
+        this._expanded = null;
+        this._scheduleRebuild();
+    }
+
+    /** Append a new task planned for today. */
     async _add(text) {
         const title = text.trim();
         if (title === '' || this._adding)
             return;
         this._adding = true;
-        const cancellable = this._cancellable;
-
         try {
-            let content;
-            try {
-                content = await readText(this._dbPath, cancellable);
-            } catch (e) {
-                if (!isCancelled(e))
-                    Main.notifyError('Reinschrift', `${_('Could not read the to-do file')}: ${e.message}`);
+            if (!await this._modifyFile(lines => {
+                Format.addToLines(lines, title);
+            }))
                 return;
-            }
-
-            const hadTrailing = content.endsWith('\n');
-            const lines = Format.splitLines(content);
-            Format.addToLines(lines, title);
-            const output = Format.joinLines(lines, hadTrailing);
-
-            try {
-                await Gio.File.new_for_path(this._dbPath).replace_contents_bytes_async(
-                    new GLib.Bytes(new TextEncoder().encode(output)),
-                    null,
-                    false,
-                    Gio.FileCreateFlags.REPLACE_DESTINATION,
-                    cancellable);
-            } catch (e) {
-                if (!isCancelled(e))
-                    Main.notifyError('Reinschrift', `${_('Could not save')}: ${e.message}`);
-                return;
-            }
-            if (cancellable.is_cancelled())
-                return;
-
             this._draft = '';
             this._addItem?.entry.set_text('');
             this._scheduleRebuild();
