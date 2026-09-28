@@ -232,7 +232,9 @@ def send(subscription: dict[str, Any], payload: dict[str, Any]) -> None:
 
 def _translations(lang: str) -> dict[str, str]:
     from translations import TRANSLATIONS
-    return TRANSLATIONS.get(lang) or TRANSLATIONS['en']
+    table = TRANSLATIONS.get(lang) or TRANSLATIONS['en']
+    # Only the texts; the table also holds lists such as weekday names.
+    return {k: v for k, v in table.items() if isinstance(v, str)}
 
 
 def test_payload(lang: str) -> dict[str, Any]:

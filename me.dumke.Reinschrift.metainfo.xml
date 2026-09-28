@@ -65,6 +65,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.1.6" date="2026-09-28">
+      <description>
+        <ul>
+          <li>Maintenance release: fixes an automated check of the web app, no visible changes</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.5" date="2026-09-28">
       <description>
         <ul>
