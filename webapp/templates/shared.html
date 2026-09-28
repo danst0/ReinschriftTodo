@@ -1,136 +1,51 @@
 {% extends 'base.html' %}
 {% from '_icons.html' import icon %}
+{% from '_todo_meta.html' import todo_title %}
 
 {% block title %}{{ scope_name }} — {{ t.todos }}{% endblock %}
 
 {% block head %}
 <meta name="robots" content="noindex,nofollow">
-<style>
-    .share-container {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 1rem;
-    }
-    .share-header {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        margin: 0.5rem 0 1.25rem;
-    }
-    .share-header h1 {
-        font-size: 1.4rem;
-        margin: 0;
-    }
-    .share-scope-tag {
-        color: #e66100;
-        font-weight: 600;
-    }
-    .share-scope-tag.context {
-        color: #1a5fb4;
-    }
-    .share-empty {
-        text-align: center;
-        color: #666;
-        padding: 2rem 1rem;
-        font-style: italic;
-    }
-    .share-add-form {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1.5rem;
-    }
-    .share-add-form input[type="text"] {
-        flex: 1;
-        padding: 0.6rem 0.75rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 1rem;
-    }
-    .share-add-form button {
-        padding: 0.6rem 1rem;
-        background: #3584e4;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 1rem;
-    }
-    .share-add-form button:hover { background: #1c71d8; }
-    .share-add-form button:disabled { background: #aaa; cursor: not-allowed; }
-    .share-footer {
-        margin-top: 2rem;
-        text-align: center;
-        font-size: 0.8rem;
-        color: #999;
-    }
-    .share-todo {
-        display: flex;
-        align-items: center;
-        padding: 0.6rem 0.5rem;
-        border-bottom: 1px solid #eee;
-        gap: 0.6rem;
-    }
-    .share-todo.completing { opacity: 0.4; transition: opacity 0.3s; }
-    .share-todo .title { flex: 1; }
-    .share-todo .due {
-        font-size: 0.85rem;
-        color: #666;
-        margin-left: 0.5rem;
-    }
-    .share-todo .checkbox {
-        font-size: 1.4rem;
-        cursor: pointer;
-        user-select: none;
-        background: none;
-        border: none;
-        padding: 0 0.25rem;
-    }
-    .share-error {
-        background: #fff3cd;
-        border: 1px solid #ffeaa7;
-        color: #856404;
-        padding: 0.5rem 0.75rem;
-        border-radius: 4px;
-        margin: 0.5rem 0;
-        display: none;
-    }
-</style>
 {% endblock %}
 
 {% block content %}
 <div class="share-container" data-token="{{ token }}" data-scope="{{ scope_type }}" data-scope-name="{{ scope_name }}"
      data-error-add-failed="{{ t.share_add_failed }}" data-error-invalid-title="{{ t.share_invalid_title }}">
-    <div class="share-header">
-        <h1>{{ t.shared_list }}: <span class="share-scope-tag {{ scope_type }}">{{ scope_sigil }}{{ scope_name }}</span></h1>
-    </div>
+    <header class="page-header">
+        <h1><span class="share-scope-tag {{ scope_type }}">{{ scope_sigil }}{{ scope_name }}</span></h1>
+        <p class="page-sub">{{ t.shared_list }}</p>
+    </header>
+
+    <form id="share-add-form" class="add-line share-add-form" autocomplete="off">
+        <label for="share-add-input" class="visually-hidden">{{ t.new_task }}</label>
+        <input type="text" id="share-add-input" name="title" placeholder="{{ t.new_task }}" required>
+        <button type="submit" class="icon-btn submit-btn" title="{{ t.add }}" aria-label="{{ t.add }}">{{ icon('plus', size=22) }}</button>
+    </form>
 
     <div id="share-error" class="share-error" role="alert"></div>
 
-    <div id="share-todo-list">
+    <div id="share-todo-list" class="todo-rows">
         {% if todos %}
             {% for todo in todos %}
-                <div class="share-todo" data-marker="{{ todo.marker or '' }}">
-                    <button type="button" class="checkbox" aria-label="{{ t.done }}">☐</button>
-                    <span class="title">{{ todo.title }}</span>
-                    {% if todo.due and not todo.due_is_sometime %}
-                        <span class="due">{{ t.due }} {{ todo.due_display or todo.due }}</span>
-                    {% endif %}
+                {% set dv = due_view(todo) %}
+                <div class="todo-item share-todo" data-marker="{{ todo.marker or '' }}">
+                    <button type="button" class="checkbox" role="checkbox" aria-checked="false" aria-label="{{ t.done }}: {{ todo.title }}">
+                        <span class="box">{{ icon('check', size=14) }}</span>
+                    </button>
+                    <div class="content">
+                        {{ todo_title(todo, dv) }}{% if dv.label %} <span class="tok due{% if dv.late %} is-late{% elif dv.horizon == 'today' %} is-today{% endif %}">{{ dv.label }}</span>{% endif %}
+                    </div>
                 </div>
             {% endfor %}
         {% else %}
-            <div class="share-empty">{{ t.shared_empty }}</div>
+            <p class="list-empty">{{ t.shared_empty }}</p>
         {% endif %}
     </div>
 
-    <form id="share-add-form" class="share-add-form" autocomplete="off">
-        <input type="text" name="title" placeholder="{{ t.new_task }}" required>
-        <button type="submit">{{ t.add }}</button>
-    </form>
-
-    <div class="share-footer">Reinschrift{% if app_version %} · v{{ app_version }}{% endif %}</div>
+    <p class="share-footer">Reinschrift{% if app_version %} {{ app_version }}{% endif %}</p>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/modules/shared-view.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/modules/shared-view.js', v=app_version) }}" defer></script>
 {% endblock %}

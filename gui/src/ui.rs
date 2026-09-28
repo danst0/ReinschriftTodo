@@ -30,6 +30,7 @@ use reinschrift_core::embeddings;
 use reinschrift_core::parser::parse_line;
 use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
 use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, tc, Preferences, load_preferences, write_preferences};
+use reinschrift_core::{DueRange, TodoFilter, NO_TAG};
 
 enum VoiceMsg {
     Error(String),
@@ -986,10 +987,21 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     set_a11y_label(&sort_selector, &t("Sort by:"));
     controls.append(&sort_selector);
 
-    let due_filter = gtk::CheckButton::with_label(&t("Show only due"));
-    due_filter.set_valign(gtk::Align::Center);
-    due_filter.set_active(state.show_due_only());
-    controls.append(&due_filter);
+    let filter_button = gtk::MenuButton::builder()
+        .label(t("Filter"))
+        .tooltip_text(t("Filter"))
+        .valign(gtk::Align::Center)
+        .build();
+    set_a11y_label(&filter_button, &t("Filter"));
+    let filter_popover = gtk::Popover::new();
+    filter_button.set_popover(Some(&filter_popover));
+    // Neu aufbauen bei jedem Öffnen: die Projekt-/Ortsliste folgt der Datei.
+    filter_popover.connect_show(clone!(#[weak] state, move |popover| {
+        popover.set_child(Some(&build_filter_panel(&state)));
+    }));
+    controls.append(&filter_button);
+    state.filter_button.replace(Some(filter_button));
+    state.update_filter_button();
 
     let myday_filter = gtk::ToggleButton::builder()
         .label(t("My Day"))
@@ -1430,10 +1442,6 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     sort_selector.connect_selected_notify(clone!(#[weak] state, move |dropdown| {
         let mode = SortMode::from_index(dropdown.selected());
         state.set_sort_mode(mode);
-    }));
-
-    due_filter.connect_toggled(clone!(#[weak] state, move |btn| {
-        state.set_show_due_only(btn.is_active());
     }));
 
     myday_filter.connect_toggled(clone!(#[weak] state, move |btn| {
@@ -2252,6 +2260,8 @@ struct AppState {
     selection_bar: RefCell<Option<gtk::Revealer>>,
     selection_count_label: RefCell<Option<gtk::Label>>,
     selection_toggle: RefCell<Option<gtk::ToggleButton>>,
+    /// Filter-Knopf in der Kopfzeile; sein Label zeigt die Zahl aktiver Filter.
+    filter_button: RefCell<Option<gtk::MenuButton>>,
     /// Lazy geladener Embedding-Index (semantische Vorschläge); wird bei
     /// Fingerprint- oder Modellwechsel transparent neu aufgebaut.
     embedding_cache: RefCell<Option<Rc<embeddings::EmbeddingCache>>>,
@@ -2335,6 +2345,7 @@ impl AppState {
             selection_bar: RefCell::new(None),
             selection_count_label: RefCell::new(None),
             selection_toggle: RefCell::new(None),
+            filter_button: RefCell::new(None),
             embedding_cache: RefCell::new(None),
             embedding_index_building: Cell::new(false),
             query_embed_cache: RefCell::new(HashMap::new()),
@@ -2462,8 +2473,8 @@ impl AppState {
         self.preferences.borrow().show_done
     }
 
-    fn show_due_only(&self) -> bool {
-        self.preferences.borrow().show_due_only
+    fn filter(&self) -> TodoFilter {
+        self.preferences.borrow().effective_filter()
     }
 
     fn myday_view(&self) -> bool {
@@ -3338,17 +3349,6 @@ impl AppState {
         });
         general_group.add(&show_done_row);
 
-        let show_due_row = adw::SwitchRow::builder()
-            .title(t("Show only due (until today)"))
-            .active(self.show_due_only())
-            .build();
-        show_due_row.add_prefix(&gtk::Image::from_icon_name("appointment-soon-symbolic"));
-        let state_due = Rc::clone(self);
-        show_due_row.connect_active_notify(move |row| {
-            state_due.set_show_due_only(row.is_active());
-        });
-        general_group.add(&show_due_row);
-
         let delete_confirm_row = adw::SwitchRow::builder()
             .title(t("Delete without confirmation"))
             .subtitle(t("Skip the delete dialog and remove entries immediately."))
@@ -3921,17 +3921,67 @@ impl AppState {
         self.repopulate_store();
     }
 
-    fn set_show_due_only(&self, show: bool) {
+    fn set_filter(&self, filter: TodoFilter) {
         {
             let mut prefs = self.preferences.borrow_mut();
-            if prefs.show_due_only == show {
+            if prefs.effective_filter() == filter && prefs.filter.is_some() {
                 return;
             }
-            prefs.show_due_only = show;
+            prefs.set_filter(filter);
         }
 
         self.persist_preferences();
+        self.update_filter_button();
         self.repopulate_store();
+    }
+
+    /// Change the filter through a closure on a copy of the current one.
+    fn update_filter(&self, change: impl FnOnce(&mut TodoFilter)) {
+        let mut filter = self.filter();
+        change(&mut filter);
+        self.set_filter(filter);
+    }
+
+    fn update_filter_button(&self) {
+        let Some(button) = self.filter_button.borrow().clone() else {
+            return;
+        };
+        let count = self.filter().active_count();
+        if count == 0 {
+            button.set_label(&t("Filter"));
+            button.remove_css_class("accent");
+        } else {
+            button.set_label(&t("Filter ({})").replace("{}", &count.to_string()));
+            button.add_css_class("accent");
+        }
+    }
+
+    /// Projects and places of the open tasks, in their most used casing,
+    /// alphabetically — the choices in the filter popover. Tags that are
+    /// in the filter stay listed even when no open task carries them.
+    fn filter_tag_choices(&self) -> (Vec<String>, Vec<String>) {
+        let (canon_projects, canon_contexts) = self.canonical_tag_maps();
+        let items = self.cached_items.borrow();
+        let filter = self.filter();
+        fn collect<'a>(
+            tags: impl Iterator<Item = &'a String>,
+            kept: &'a [String],
+            canon: &HashMap<String, String>,
+        ) -> Vec<String> {
+            let mut seen: HashMap<String, String> = HashMap::new();
+            for tag in tags.chain(kept.iter().filter(|k| !k.is_empty())) {
+                seen.entry(tag.to_lowercase())
+                    .or_insert_with(|| canonicalize_token(canon, tag));
+            }
+            let mut names: Vec<String> = seen.into_values().collect();
+            names.sort_by_key(|n| n.to_lowercase());
+            names
+        }
+        let open = || items.iter().filter(|i| !i.done);
+        (
+            collect(open().flat_map(|i| i.projects.iter()), &filter.projects, &canon_projects),
+            collect(open().flat_map(|i| i.contexts.iter()), &filter.contexts, &canon_contexts),
+        )
     }
 
     fn set_myday_view(&self, show: bool) {
@@ -4469,12 +4519,12 @@ impl AppState {
             }
         }
 
-        let due_only = self.show_due_only();
-        let (suggestions, other_open) = split_picker_candidates(rest, today, due_only);
+        let filter = self.filter();
+        let (suggestions, other_open) = split_picker_candidates(rest, today, &filter);
 
         if suggestions.is_empty() && other_open.is_empty() {
-            self.store.append(&BoxedAnyObject::new(ListEntry::Header(if due_only {
-                t("No due tasks left to plan.")
+            self.store.append(&BoxedAnyObject::new(ListEntry::Header(if filter.is_active() {
+                t("No tasks match the filter.")
             } else {
                 t("No open tasks left to plan.")
             })));
@@ -4539,10 +4589,9 @@ impl AppState {
         self.store.remove_all();
         
         let include_done = self.show_completed();
-        let due_only = self.show_due_only();
+        let filter = self.filter();
         let myday_only = self.myday_view();
-        let now = Local::now().naive_local();
-        let today = now.date();
+        let today = Local::now().date_naive();
 
         if search_term.is_empty() {
             if myday_only {
@@ -4552,13 +4601,7 @@ impl AppState {
                 let (canon_projects, canon_contexts) = self.canonical_tag_maps();
                 let mut last_group: Option<String> = None;
                 for item in items.into_iter().filter(|todo| {
-                    let status_ok = include_done || !todo.done;
-                    let due_ok = if !due_only {
-                        true
-                    } else {
-                        todo.due.map(|d| d <= now).unwrap_or(true)
-                    };
-                    status_ok && due_ok
+                    (include_done || !todo.done) && filter.matches(todo, today)
                 }) {
                     if let Some(label) =
                         self.group_label(mode, &item, &canon_projects, &canon_contexts)
@@ -4569,17 +4612,16 @@ impl AppState {
                         }
                     self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
                 }
+                if self.store.n_items() == 0 && filter.is_active() {
+                    self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("No tasks match the filter."))));
+                }
             }
         } else {
             // 1. Suchergebnisse in aktueller Liste
             let current_list_results: Vec<_> = items.iter().filter(|todo| {
-                let status_ok = include_done || !todo.done;
-                let due_ok = if !due_only {
-                    true
-                } else {
-                    todo.due.map(|d| d <= now).unwrap_or(true)
-                };
-                status_ok && due_ok && todo.title.to_lowercase().contains(&search_term)
+                (include_done || !todo.done)
+                    && filter.matches(todo, today)
+                    && todo.title.to_lowercase().contains(&search_term)
             }).cloned().collect();
 
             if !current_list_results.is_empty() {
@@ -5887,6 +5929,129 @@ impl AppState {
 /// Ist die Aufgabe am Stichtag fällig? Fällig wird kalendertagweise
 /// beurteilt, nicht nach Uhrzeit: was heute später fällig ist, zählt bereits
 /// als fällig. Das "Irgendwann"-Sentinel-Jahr 9999 zählt nie als fällig.
+fn due_range_label(range: DueRange) -> String {
+    match range {
+        DueRange::Any => t("Any time"),
+        DueRange::Overdue => t("Overdue"),
+        DueRange::Today => t("Due by today"),
+        DueRange::Tomorrow => t("Due by tomorrow"),
+        DueRange::Week => t("Due within 7 days"),
+        DueRange::Month => t("Due within 30 days"),
+        DueRange::Undated => t("No date"),
+    }
+}
+
+/// Inhalt des Filter-Popovers: Fälligkeitszeitraum, Projekte, Orte (als
+/// Häkchenlisten, mehrere wählbar). Jede
+/// Änderung wirkt sofort auf die Liste und wird in den Einstellungen gemerkt.
+fn build_filter_panel(state: &Rc<AppState>) -> gtk::Widget {
+    let filter = state.filter();
+    let panel = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(12)
+        .margin_top(6)
+        .margin_bottom(6)
+        .margin_start(6)
+        .margin_end(6)
+        .width_request(300)
+        .build();
+
+    let heading = |text: String| {
+        let label = gtk::Label::builder().label(text).xalign(0.0).build();
+        label.add_css_class("heading");
+        label
+    };
+
+    // Früh angelegt, damit jede Änderung ihn (de)aktivieren kann.
+    let reset = gtk::Button::with_label(&t("Reset filters"));
+    reset.set_sensitive(filter.is_active());
+
+    // Fälligkeit
+    let due_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
+    due_box.append(&heading(t("Due date")));
+    let labels: Vec<String> = DueRange::ALL.iter().map(|r| due_range_label(*r)).collect();
+    let label_refs: Vec<&str> = labels.iter().map(String::as_str).collect();
+    let due_dropdown = gtk::DropDown::from_strings(&label_refs);
+    due_dropdown.set_selected(
+        DueRange::ALL.iter().position(|r| *r == filter.due).unwrap_or(0) as u32,
+    );
+    set_a11y_label(&due_dropdown, &t("Due date"));
+    due_box.append(&due_dropdown);
+    let undated = gtk::CheckButton::with_label(&t("Also tasks without a date"));
+    undated.set_active(filter.include_undated);
+    undated.set_sensitive(filter.due.is_bounded());
+    due_box.append(&undated);
+    due_dropdown.connect_selected_notify(clone!(#[weak] state, #[weak] undated, #[weak] reset, move |dropdown| {
+        let range = DueRange::ALL
+            .get(dropdown.selected() as usize)
+            .copied()
+            .unwrap_or_default();
+        undated.set_sensitive(range.is_bounded());
+        state.update_filter(|f| f.due = range);
+        reset.set_sensitive(state.filter().is_active());
+    }));
+    undated.connect_toggled(clone!(#[weak] state, move |check| {
+        let on = check.is_active();
+        state.update_filter(|f| f.include_undated = on);
+    }));
+    panel.append(&due_box);
+
+    // Projekte und Orte
+    let (projects, contexts) = state.filter_tag_choices();
+    let tag_section = |title: String, sigil: &str, none_label: String, names: Vec<String>,
+                       selected: &[String], is_project: bool| {
+        let section = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        section.append(&heading(title));
+        let list = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let is_selected = |name: &str| {
+            let lower = name.to_lowercase();
+            selected.iter().any(|s| s.to_lowercase() == lower)
+        };
+        let entries = names
+            .into_iter()
+            .map(|name| (format!("{sigil}{name}"), name))
+            .chain(std::iter::once((none_label, NO_TAG.to_string())));
+        for (label, name) in entries {
+            let toggle = gtk::CheckButton::with_label(&label);
+            toggle.set_active(is_selected(&name));
+            toggle.connect_toggled(clone!(#[weak] state, #[weak] reset, move |_| {
+                state.update_filter(|f| {
+                    if is_project {
+                        f.toggle_project(&name);
+                    } else {
+                        f.toggle_context(&name);
+                    }
+                });
+                reset.set_sensitive(state.filter().is_active());
+            }));
+            list.append(&toggle);
+        }
+        let scroller = gtk::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk::PolicyType::Never)
+            .max_content_height(200)
+            .propagate_natural_height(true)
+            .child(&list)
+            .build();
+        section.append(&scroller);
+        section
+    };
+    panel.append(&tag_section(t("Projects"), "+", t("No project"), projects, &filter.projects, true));
+    panel.append(&tag_section(t("Places"), "@", t("No location"), contexts, &filter.contexts, false));
+
+    reset.connect_clicked(clone!(#[weak] state, move |button| {
+        state.set_filter(TodoFilter::default());
+        // Panel neu aufbauen, damit alle Schalter den leeren Filter zeigen.
+        if let Some(popover) = button.ancestor(gtk::Popover::static_type())
+            .and_then(|w| w.downcast::<gtk::Popover>().ok())
+        {
+            popover.set_child(Some(&build_filter_panel(&state)));
+        }
+    }));
+    panel.append(&reset);
+
+    panel.upcast()
+}
+
 fn is_due_by(todo: &TodoItem, today: NaiveDate) -> bool {
     todo.due
         .map(|d| d.date() <= today && d.date().year() != 9999)
@@ -5895,20 +6060,16 @@ fn is_due_by(todo: &TodoItem, today: NaiveDate) -> bool {
 
 /// Teilt die noch nicht für heute geplanten Aufgaben in die beiden
 /// Picker-Abschnitte "Vorschläge (fällig)" und "Weitere offene Aufgaben",
-/// fällige zuerst. `due_only` ist der Filter "Nur fällige anzeigen": er wirkt
-/// hier nur auf den Picker — was bewusst für heute geplant wurde, bleibt in
-/// "Mein Tag" immer sichtbar. Gefiltert wird nach derselben Regel wie in der
-/// Hauptliste, undatierte Aufgaben bleiben also stehen.
+/// fällige zuerst. Der Listenfilter wirkt hier nur auf den Picker — was
+/// bewusst für heute geplant wurde, bleibt in "Mein Tag" immer sichtbar.
 fn split_picker_candidates(
     rest: Vec<TodoItem>,
     today: NaiveDate,
-    due_only: bool,
+    filter: &TodoFilter,
 ) -> (Vec<TodoItem>, Vec<TodoItem>) {
     let mut candidates: Vec<TodoItem> = rest
         .into_iter()
-        .filter(|todo| {
-            !todo.done && (!due_only || todo.due.is_none() || is_due_by(todo, today))
-        })
+        .filter(|todo| !todo.done && filter.matches(todo, today))
         .collect();
     candidates.sort_by_key(|todo| todo.due.unwrap_or(NaiveDateTime::MAX));
     candidates
@@ -6193,6 +6354,30 @@ mod tests {
             .collect()
     }
 
+    /// What the old "show only due" switch meant.
+    fn due_by_today() -> TodoFilter {
+        TodoFilter { due: DueRange::Today, include_undated: true, ..Default::default() }
+    }
+
+    #[test]
+    fn week_filter_narrows_picker() {
+        let today = NaiveDate::from_ymd_opt(2026, 9, 10).unwrap();
+        let filter = TodoFilter { due: DueRange::Week, ..Default::default() };
+        let (suggestions, other_open) = split_picker_candidates(
+            items(&[
+                "- [ ] Fenster putzen due:2026-09-01T12:00 ^aaa1",
+                "- [ ] Nächste Woche due:2026-09-16T12:00 ^aaa2",
+                "- [ ] Viel später due:2026-10-20T12:00 ^aaa3",
+                "- [ ] Ohne Datum ^aaa4",
+            ]),
+            today,
+            &filter,
+        );
+
+        assert_eq!(titles(&suggestions), ["Fenster putzen"]);
+        assert_eq!(titles(&other_open), ["Nächste Woche"]);
+    }
+
     fn titles(items: &[TodoItem]) -> Vec<&str> {
         items.iter().map(|todo| todo.title.as_str()).collect()
     }
@@ -6209,7 +6394,7 @@ mod tests {
                 "- [x] Schon erledigt due:2026-09-01T12:00 ^aaa5",
             ]),
             today,
-            false,
+            &TodoFilter::default(),
         );
 
         assert_eq!(titles(&suggestions), ["Fenster putzen"]);
@@ -6227,7 +6412,7 @@ mod tests {
                 "- [ ] Ohne Datum ^aaa4",
             ]),
             today,
-            true,
+            &due_by_today(),
         );
 
         assert_eq!(titles(&suggestions), ["Fenster putzen"]);
@@ -6240,7 +6425,7 @@ mod tests {
         let (suggestions, other_open) = split_picker_candidates(
             items(&["- [ ] Heute Abend due:2026-09-10T23:00 ^aaa1"]),
             today,
-            true,
+            &due_by_today(),
         );
 
         assert_eq!(titles(&suggestions), ["Heute Abend"]);

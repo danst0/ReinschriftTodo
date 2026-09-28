@@ -1,14 +1,34 @@
 /**
- * Filter and sort UI functionality.
+ * View tabs and the filter panel (due range, projects, places, done).
+ *
+ * Every change reloads the list as a partial and puts the state into the
+ * URL; the server stores it in the settings, so the filter survives reloads
+ * and other devices pick it up.
  */
+
+const FILTER_PARAMS = [
+    'filter_set', 'filter_reset', 'filter_due', 'filter_undated',
+    'filter_project', 'filter_context', 'show_done', 'show_due_only',
+];
+const BOUNDED_RANGES = ['overdue', 'today', 'tomorrow', 'week', 'month'];
+
+let onApplied = null;
+
+/**
+ * Run after a filter or tab change has swapped in the new list.
+ * @param {function} callback
+ */
+export function setFilterAppliedCallback(callback) {
+    onApplied = callback;
+}
 
 /**
  * Apply a filter by fetching partial content.
- * @param {Event} event - Click event
+ * @param {Event|null} event - Click event (default is prevented)
  * @param {string} url - Filter URL
  */
 export function applyFilter(event, url) {
-    event.preventDefault();
+    event?.preventDefault();
 
     // Update URL without reload
     window.history.pushState({}, '', url);
@@ -31,66 +51,132 @@ export function applyFilter(event, url) {
                 list.innerHTML = html;
                 list.removeAttribute('aria-busy');
             }
+            if (onApplied) onApplied();
         });
 }
 
 /**
- * Swap the leading ☐/☑ checkbox glyph on a toggle link, keeping its label.
- * @param {HTMLElement} link - The toggle filter link
- * @param {boolean} checked - Whether the toggle is on
- */
-function setToggleGlyph(link, checked) {
-    const glyph = checked ? '☑' : '☐';
-    // Strip any existing leading glyph + spacing, then re-prepend the right one.
-    const label = link.textContent.replace(/^\s*[☐☑]\s*/, '').trim();
-    link.textContent = `${glyph} ${label}`;
-}
-
-/**
- * Update filter UI to reflect current state.
+ * Update tabs and the Add form to reflect the current state.
  * @param {string} currentUrl - Current URL
  */
 export function updateFilterUI(currentUrl) {
     const url = new URL(currentUrl);
     const showDone = url.searchParams.get('show_done') === '1';
-    const showDueOnly = url.searchParams.get('show_due_only') === '1';
-    const sortMode = url.searchParams.get('sort_mode') || 'topic';
+    const sortMode = url.searchParams.get('sort_mode') || currentSortMode() || 'topic';
 
-    document.querySelectorAll('.filter-link').forEach(link => {
-        const filter = link.dataset.filter;
-        const newHref = new URL(link.href);
-
-        if (filter === 'sort') {
-            // Sort link: active when its sort_mode matches the current one.
-            const linkSort = newHref.searchParams.get('sort_mode');
-            link.classList.toggle('active', linkSort === sortMode);
-            newHref.searchParams.set('show_done', showDone ? '1' : '0');
-            newHref.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
-        } else if (filter === 'show_done') {
-            // Toggle link: active (and ☑) when the filter is on; href toggles it.
-            link.classList.toggle('active', showDone);
-            setToggleGlyph(link, showDone);
-            newHref.searchParams.set('show_done', showDone ? '0' : '1');
-            newHref.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
-            newHref.searchParams.set('sort_mode', sortMode);
-        } else if (filter === 'show_due_only') {
-            link.classList.toggle('active', showDueOnly);
-            setToggleGlyph(link, showDueOnly);
-            newHref.searchParams.set('show_done', showDone ? '1' : '0');
-            newHref.searchParams.set('show_due_only', showDueOnly ? '0' : '1');
-            newHref.searchParams.set('sort_mode', sortMode);
-        }
-
-        link.href = newHref.toString();
+    document.querySelectorAll('.filter-link[data-filter="sort"]').forEach(link => {
+        const href = new URL(link.href);
+        link.classList.toggle('active', href.searchParams.get('sort_mode') === sortMode);
+        href.searchParams.set('show_done', showDone ? '1' : '0');
+        link.href = href.toString();
     });
 
-    // Update the Add form action to preserve filters
     const addForm = document.getElementById('addForm');
     if (addForm) {
         const addUrl = new URL(addForm.action);
         addUrl.searchParams.set('show_done', showDone ? '1' : '0');
-        addUrl.searchParams.set('show_due_only', showDueOnly ? '1' : '0');
         addUrl.searchParams.set('sort_mode', sortMode);
         addForm.action = addUrl.toString();
     }
+}
+
+function currentSortMode() {
+    const active = document.querySelector('.view-tab.filter-link.active');
+    return active ? new URL(active.href).searchParams.get('sort_mode') : null;
+}
+
+function updateBadge(form) {
+    const data = new FormData(form);
+    const count = Number((data.get('filter_due') || 'any') !== 'any')
+        + Number(data.has('filter_project'))
+        + Number(data.has('filter_context'));
+    const menu = document.getElementById('filter-menu');
+    const badge = menu?.querySelector('.filter-count');
+    if (badge) {
+        badge.textContent = String(count);
+        badge.hidden = count === 0;
+    }
+    menu?.classList.toggle('has-active', count > 0 || data.has('show_done'));
+}
+
+function submitFilter(form) {
+    const url = new URL(window.location.href);
+    FILTER_PARAMS.forEach(key => url.searchParams.delete(key));
+
+    const data = new FormData(form);
+    url.searchParams.set('filter_set', '1');
+    for (const [key, value] of data) {
+        if (key !== 'filter_set' && key !== 'show_done') url.searchParams.append(key, value);
+    }
+    url.searchParams.set('show_done', data.has('show_done') ? '1' : '0');
+    const sort = currentSortMode();
+    if (sort) url.searchParams.set('sort_mode', sort);
+
+    applyFilter(null, url.toString());
+}
+
+function syncUndated(form) {
+    const due = form.querySelector('#filter-due');
+    const undated = form.querySelector('#filter-undated');
+    if (due && undated) undated.disabled = !BOUNDED_RANGES.includes(due.value);
+}
+
+function resetForm(form) {
+    const due = form.querySelector('#filter-due');
+    if (due) due.value = 'any';
+    form.querySelectorAll('input[name="filter_project"], input[name="filter_context"], #filter-undated')
+        .forEach(box => { box.checked = false; });
+}
+
+/**
+ * Remove the filter a chip stands for.
+ * @param {HTMLFormElement} form
+ * @param {HTMLElement} chip - .filter-chip with data-remove (and data-value)
+ */
+function removeChip(form, chip) {
+    const kind = chip.dataset.remove;
+    if (kind === 'due') {
+        const due = form.querySelector('#filter-due');
+        if (due) due.value = 'any';
+        const undated = form.querySelector('#filter-undated');
+        if (undated) undated.checked = false;
+        return;
+    }
+    const name = kind === 'project' ? 'filter_project' : 'filter_context';
+    const value = (chip.dataset.value || '').toLowerCase();
+    form.querySelectorAll(`input[name="${name}"]`).forEach(box => {
+        if (box.value.toLowerCase() === value) box.checked = false;
+    });
+}
+
+/**
+ * Wire up the filter panel and the chips above the list. Call once.
+ */
+export function initFilterForm() {
+    const form = document.getElementById('filter-form');
+    if (!form) return;
+
+    form.addEventListener('submit', e => e.preventDefault());
+    form.addEventListener('change', () => {
+        syncUndated(form);
+        updateBadge(form);
+        submitFilter(form);
+    });
+
+    // Reset buttons live in the panel and in the "nothing matches" message;
+    // chips are re-rendered with each partial reload, hence delegation.
+    document.addEventListener('click', e => {
+        const reset = e.target.closest('[data-filter-reset]');
+        const chip = e.target.closest('.filter-chip');
+        if (!reset && !chip) return;
+        e.preventDefault();
+        if (reset) {
+            resetForm(form);
+        } else {
+            removeChip(form, chip);
+        }
+        syncUndated(form);
+        updateBadge(form);
+        submitFilter(form);
+    });
 }

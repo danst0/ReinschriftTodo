@@ -25,13 +25,15 @@ import { initVoice } from './modules/voice.js';
 import { initSwipeGestures } from './modules/swipe.js';
 import { initPullToRefresh } from './modules/pull-refresh.js';
 import { autoReload, startAutoReload, manualReload, setReloadCallback } from './modules/auto-reload.js';
-import { applyFilter, updateFilterUI } from './modules/filters.js';
+import { applyFilter, updateFilterUI, initFilterForm, setFilterAppliedCallback } from './modules/filters.js';
 import { initDragDrop, setDragReloadCallback } from './modules/drag-drop.js';
 import { showUndoToast, setUndoReloadCallback } from './modules/undo-toast.js';
 import { initPush } from './modules/push.js';
 import { initTitleAutocomplete, invalidateTitleCache } from './modules/autocomplete.js';
 import { openShareDialog, configureShare } from './modules/share.js';
 import { addToMyDay, removeFromMyDay, setMydayReloadCallback } from './modules/myday.js';
+import { initMenus, toggleTodoDetails, restoreTodoDetails } from './modules/menus.js';
+import { initAddPreview } from './modules/add-preview.js';
 import {
     initBulkSelect, toggleSelectMode, exitSelectMode, reattachSelectState,
     bulkComplete, bulkSetDue, bulkDelete,
@@ -120,6 +122,15 @@ function initApp(config = {}) {
 
     // Set up add form
     setupAddForm();
+    initAddPreview({ language: appConfig.language, aiOnAdd: appConfig.autoAiOnAdd });
+
+    // Popup menus and expandable rows
+    initMenus();
+
+    // Filter panel; after a filter or tab change the new rows need their
+    // gestures and open state like after any other reload.
+    initFilterForm();
+    setFilterAppliedCallback(handleReloadComplete);
 
     // Bind title autocomplete to Add and Edit inputs; the Add input's
     // suggestions get a copy button that duplicates the matched task and,
@@ -170,10 +181,10 @@ function handleReloadComplete() {
     initSwipeGestures();
     initDragDrop();
     reattachSelectState();
+    restoreTodoDetails();
     if (lastImprovedMarker) {
         highlightMarker(lastImprovedMarker);
     }
-    updateBottomNavState();
 }
 
 /**
@@ -184,17 +195,13 @@ function highlightMarker(marker) {
     const el = document.querySelector(`.todo-item[data-marker="${marker}"]`);
     if (el) {
         el.classList.add('pulse');
-        el.style.outline = '2px solid #6c5ce7';
-        setTimeout(() => {
-            el.classList.remove('pulse');
-            el.style.outline = '';
-        }, 1800);
+        setTimeout(() => el.classList.remove('pulse'), 1800);
         lastImprovedMarker = null;
 
         const rect = el.getBoundingClientRect();
         const inViewport = rect.top >= 0 && rect.bottom <= window.innerHeight;
         if (!inViewport) {
-            showAddConfirmation(el.querySelector('.todo-title')?.textContent || 'Todo hinzugefügt');
+            showAddConfirmation(el.querySelector('.title')?.textContent || 'Todo hinzugefügt');
         }
     }
 }
@@ -355,29 +362,23 @@ function toggleSearch() {
     btn.classList.toggle('active', isVisible || hasSearchQuery());
     if (isVisible) {
         input.focus();
-        document.getElementById('addForm').classList.remove('visible');
-        document.getElementById('toggle-add').classList.remove('active');
     }
-    updateBottomNavState();
 }
 
 /**
- * Toggle add form visibility.
+ * Focus the add line (always visible) and put the search line away.
  */
 function toggleAdd() {
-    const form = document.getElementById('addForm');
-    const btn = document.getElementById('toggle-add');
     const input = document.getElementById('add-input');
-    const isVisible = form.classList.toggle('visible');
-    btn.classList.toggle('active', isVisible);
-    if (isVisible) {
-        input.focus();
-        document.getElementById('search-form').classList.remove('visible');
-        if (!hasSearchQuery()) {
-            document.getElementById('toggle-search').classList.remove('active');
-        }
+    const searchForm = document.getElementById('search-form');
+    if (searchForm && !hasSearchQuery()) {
+        searchForm.classList.remove('visible');
+        document.getElementById('toggle-search')?.classList.remove('active');
     }
-    updateBottomNavState();
+    if (input) {
+        input.focus();
+        input.scrollIntoView({ block: 'nearest' });
+    }
 }
 
 function hasSearchQuery() {
@@ -422,24 +423,6 @@ function closeCheatsheet() {
     const modal = document.getElementById('cheatsheetModal');
     if (modal) {
         modal.style.display = 'none';
-    }
-}
-
-/**
- * Update bottom navigation active states.
- */
-function updateBottomNavState() {
-    const addForm = document.getElementById('addForm');
-    const searchForm = document.getElementById('search-form');
-
-    const addBtn = document.getElementById('bottom-nav-add');
-    const searchBtn = document.getElementById('bottom-nav-search');
-
-    if (addBtn) {
-        addBtn.classList.toggle('active', addForm?.classList.contains('visible'));
-    }
-    if (searchBtn) {
-        searchBtn.classList.toggle('active', searchForm?.classList.contains('visible') || hasSearchQuery());
     }
 }
 
@@ -506,6 +489,7 @@ window.applyFilter = window.ReinschriftApp.applyFilter;
 window.autoReload = window.ReinschriftApp.autoReload;
 window.manualReload = window.ReinschriftApp.manualReload;
 window.openShareDialog = openShareDialog;
+window.toggleTodoDetails = toggleTodoDetails;
 window.ReinschriftApp.openShareDialog = openShareDialog;
 window.addToMyDay = addToMyDay;
 window.removeFromMyDay = removeFromMyDay;

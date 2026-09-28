@@ -275,7 +275,7 @@ class TestMydayView:
         response = client.get('/?view=myday&partial=1')
         html = response.get_data(as_text=True)
         assert (html.index('Active planned task')
-                < html.index('Erledigt')
+                < html.index('class="section-title">Erledigt')
                 < html.index('Done planned task'))
 
     def test_myday_picker_suggests_later_today(self, client, monkeypatch):

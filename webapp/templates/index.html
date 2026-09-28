@@ -1,24 +1,27 @@
 {% from '_icons.html' import icon %}<!DOCTYPE html>
 <html lang="{{ current_lang or 'en' }}">
 <head>
+    <meta charset="utf-8">
     <title>{{ t.todos }}</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#3584e4">
+    <meta name="theme-color" content="#f5f7f8" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#12161d" media="(prefers-color-scheme: dark)">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Reinschrift">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <link rel="preload" href="{{ url_for('static', filename='fonts/hanken-grotesk-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v=app_version) }}">
+    <script type="module" src="{{ url_for('static', filename='js/app.js', v=app_version) }}"></script>
 </head>
 <body>
-    <!-- Modal -->
+    <!-- Edit modal -->
     <div id="editModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>{{ t.edit_todo }}</h2>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+            <button type="button" class="icon-btn close" onclick="closeModal()" aria-label="{{ t.cancel }}">{{ icon('x') }}</button>
+            <h2 id="edit-modal-title">{{ t.edit_todo }}</h2>
             <form id="editForm" method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {# The line index can go stale while the list sits open; the
@@ -42,21 +45,21 @@
                 </div>
                 <div class="form-group">
                     <label for="edit-note">{{ t.note }}</label>
-                    <textarea id="edit-note" name="note" rows="4" placeholder="{{ t.note }}"></textarea>
+                    <textarea id="edit-note" name="note" rows="4"></textarea>
                 </div>
                 <div class="form-group">
                     <label for="edit-due">{{ t.due_date }}</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="datetime-local" id="edit-due" name="due">
-                        <button type="button" class="btn-action" onclick="setModalDate(0)" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar') }}</button>
-                        <button type="button" class="btn-action" onclick="setModalDate(1)" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right') }}</button>
-                        <button type="button" class="btn-action" onclick="setModalNextWeekend()" title="{{ t.next_weekend }}" aria-label="{{ t.next_weekend }}">{{ icon('umbrella') }}</button>
-                        <button type="button" class="btn-action" onclick="setModalSometime()" title="{{ t.sometime }}" aria-label="{{ t.sometime }}">{{ icon('clock') }}</button>
+                    <input type="datetime-local" id="edit-due" name="due">
+                    <div class="quick-dates">
+                        <button type="button" class="chip" onclick="setModalDate(0)">{{ t.today }}</button>
+                        <button type="button" class="chip" onclick="setModalDate(1)">{{ t.tomorrow }}</button>
+                        <button type="button" class="chip" onclick="setModalNextWeekend()">{{ t.next_weekend }}</button>
+                        <button type="button" class="chip" onclick="setModalSometime()">{{ t.sometime }}</button>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="edit-recurrence">{{ t.recurrence }}</label>
-                    <select id="edit-recurrence" name="recurrence" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <select id="edit-recurrence" name="recurrence">
                         <option value="">{{ t.recurrence_none }}</option>
                         <option value="daily">{{ t.recurrence_daily }}</option>
                         <option value="weekly">{{ t.recurrence_weekly }}</option>
@@ -67,78 +70,144 @@
                     <label for="edit-reference">{{ t.reference }}</label>
                     <input type="text" id="edit-reference" name="reference">
                 </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="edit-done" name="done">
-                        {{ t.done }}
-                    </label>
-                </div>
+                <label class="check-row">
+                    <input type="checkbox" id="edit-done" name="done">
+                    <span class="check-label">{{ t.done }}</span>
+                </label>
 
                 <div id="comment-section">
                     <div class="form-group">
                         <label for="edit-comment">{{ t.comment }}</label>
-                        <input type="text" id="edit-comment" name="comment" placeholder="...">
+                        <input type="text" id="edit-comment" name="comment">
                     </div>
-                    <button type="button" class="btn-primary" style="width: 100%;" onclick="submitWithComment()">{{ t.save }}</button>
+                    <button type="button" class="btn-primary btn-block" onclick="submitWithComment()">{{ t.save }}</button>
                 </div>
-                
+
                 <div class="buttons">
                     <button type="submit" id="btn-save-main" class="btn-primary">{{ t.save }}</button>
                     <button type="button" id="btn-close-comment" class="btn-secondary" onclick="showCommentField()">{{ t.close_with_comment }}</button>
-                    <button type="button" id="btn-delete" class="btn-secondary" style="color: var(--color-danger);" onclick="deleteTodoFromModal()" title="{{ t.delete }}" aria-label="{{ t.delete }}">{{ icon('trash') }}</button>
-                    <button type="button" class="btn-secondary" onclick="closeModal()">{{ t.cancel }}</button>
+                    <button type="button" id="btn-delete" class="btn-danger push-end" onclick="deleteTodoFromModal()">{{ icon('trash', size=18) }} {{ t.delete }}</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="header-container">
-        <h1>{{ t.todos }}</h1>
+    <header class="app-header">
+        <h1 class="app-date" id="app-date" data-lang="{{ current_lang or 'de' }}">
+            <span class="app-date-day">{{ t.todos }}</span>
+            <span class="app-date-rest"></span>
+        </h1>
+        <script>
+            // Fill in today's date before first paint (localized by the browser).
+            (function () {
+                var el = document.getElementById('app-date');
+                try {
+                    var now = new Date(), lang = el.dataset.lang;
+                    el.children[0].textContent = new Intl.DateTimeFormat(lang, { weekday: 'long' }).format(now);
+                    el.children[1].textContent = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long' }).format(now);
+                } catch (e) { /* keep the app name */ }
+            })();
+        </script>
         <div class="header-icons">
-            <button type="button" id="toggle-select" class="icon-btn" onclick="toggleSelectMode()" title="{{ t.select_mode }}" aria-label="{{ t.select_mode }}">{{ icon('check-square', size=22) }}</button>
-            <button type="button" id="toggle-settings" class="icon-btn" onclick="openSettings()" title="{{ t.settings }}" aria-label="{{ t.settings }}">{{ icon('settings', size=22) }}</button>
-            <button type="button" id="toggle-search" class="icon-btn {% if q %}active{% endif %}" onclick="toggleSearch()" title="{{ t.search_placeholder }}" aria-label="{{ t.search_placeholder }}">{{ icon('search', size=22) }}</button>
-            <button type="button" id="toggle-add" class="icon-btn" onclick="toggleAdd()" title="{{ t.add }}" aria-label="{{ t.add }}">{{ icon('plus', size=22) }}</button>
+            <button type="button" id="toggle-search" class="icon-btn {% if q %}active{% endif %}" onclick="toggleSearch()" title="{{ t.search_placeholder }}" aria-label="{{ t.search_placeholder }}">{{ icon('search') }}</button>
+            <button type="button" id="toggle-select" class="icon-btn" onclick="toggleSelectMode()" title="{{ t.select_mode }}" aria-label="{{ t.select_mode }}">{{ icon('check-square') }}</button>
+            <button type="button" class="icon-btn" onclick="manualReload()" title="{{ t.reload }}" aria-label="{{ t.reload }}">{{ icon('refresh', size=18) }}</button>
+            <button type="button" id="toggle-settings" class="icon-btn" onclick="openSettings()" title="{{ t.settings }}" aria-label="{{ t.settings }}">{{ icon('settings') }}</button>
         </div>
-    </div>
-    
-    <div class="filters">
-          <a href="{{ url_for('main.index', view='all' if view == 'myday' else 'myday') }}"
-              class="filter-link myday-link {% if view == 'myday' %}active{% endif %}" data-filter="view">
-              {{ icon('sun', size=14) }} {{ t.my_day }}
-          </a>
+    </header>
 
-          {% if view != 'myday' %}
-          <span style="color: #ccc;">|</span>
-
-          <a href="{{ url_for('main.index', show_done=0 if show_done else 1, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}"
-              class="filter-link {% if show_done %}active{% endif %}" data-filter="show_done" onclick="applyFilter(event, this.href)">
-              {% if show_done %}☑ {{ t.show_done }}{% else %}☐ {{ t.show_done }}{% endif %}
-          </a>
-
-          <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=0 if show_due_only else 1, sort_mode=sort_mode) }}"
-              class="filter-link {% if show_due_only %}active{% endif %}" data-filter="show_due_only" onclick="applyFilter(event, this.href)">
-              {% if show_due_only %}☑ {{ t.hide_future }}{% else %}☐ {{ t.hide_future }}{% endif %}
-          </a>
-
-          <span style="color: #ccc;">|</span>
-
-        <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='topic') }}"
-           class="filter-link {% if sort_mode == 'topic' %}active{% endif %}" data-filter="sort" onclick="applyFilter(event, this.href)">
-           {{ t.topic }}
-        </a>
-        <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='location') }}"
-           class="filter-link {% if sort_mode == 'location' %}active{% endif %}" data-filter="sort" onclick="applyFilter(event, this.href)">
-           {{ t.location }}
-        </a>
-        <a href="{{ url_for('main.index', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode='date') }}"
-           class="filter-link {% if sort_mode == 'date' %}active{% endif %}" data-filter="sort" onclick="applyFilter(event, this.href)">
-           {{ t.date }}
-        </a>
+    <form id="addForm" class="add-line" action="{{ url_for('todo.add', show_done=1 if show_done else 0, sort_mode=sort_mode) }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if view == 'myday' %}<input type="hidden" name="myday" value="1">{% endif %}
+        <label for="add-input" class="visually-hidden">{{ t.new_task }}</label>
+        <input type="text" id="add-input" name="title" placeholder="{{ t.new_task }}" autocomplete="off" required>
+        <button type="button" id="voice-btn" class="icon-btn voice-btn" title="{{ t.voice_input }}" aria-label="{{ t.voice_input }}" style="display: none;">{{ icon('mic') }}</button>
+        {% if not auto_ai_on_add %}
+        <button type="button" id="smart-btn" class="icon-btn smart-btn" onclick="handleSmartAdd(this)" title="Smart Add (AI)" aria-label="Smart Add (AI)">
+            <span class="smart-icon" aria-hidden="true">{{ icon('sparkles') }}</span>
+            <span class="spinner" aria-hidden="true"></span>
+        </button>
         {% endif %}
+        <button type="submit" class="icon-btn submit-btn" title="{{ t.add }}" aria-label="{{ t.add }}">{{ icon('plus', size=22) }}</button>
+    </form>
+    <p id="add-preview" class="add-preview" aria-live="polite"
+       data-hint="{{ t.add_hint }}" data-recognized="{{ t.recognized }}" data-due="{{ t.due_label }}"
+       data-today="{{ t.today }}" data-sometime="{{ t.sometime }}">{{ t.add_hint }}</p>
 
-          <button type="button" class="refresh-button" onclick="manualReload()" aria-label="{{ t.reload }}">{{ icon('refresh', size=16) }} <span>{{ t.reload }}</span></button>
-    </div>
+    <form id="search-form" action="{{ url_for('main.index') }}" method="get" class="search-line collapsible-form {% if q %}visible{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="search-input" class="visually-hidden">{{ t.search_placeholder }}</label>
+        <input type="text" id="search-input" name="q" value="{{ q or '' }}" placeholder="{{ t.search_placeholder }}">
+        <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
+        <input type="hidden" name="sort_mode" value="{{ sort_mode }}">
+        <input type="hidden" name="auto_ai_on_add" value="{{ '1' if auto_ai_on_add else '0' }}">
+        <button type="submit" class="icon-btn" aria-label="{{ t.search_placeholder }}">{{ icon('search') }}</button>
+        {% if q %}
+            <a href="{{ url_for('main.index', show_done='1' if show_done else '0', sort_mode=sort_mode) }}"
+               class="icon-btn search-clear" aria-label="{{ t.cancel }}">{{ icon('x') }}</a>
+        {% endif %}
+    </form>
+
+    <nav class="view-bar" aria-label="{{ t.filter }}">
+        <div class="view-tabs">
+            <a href="{{ url_for('main.index', view='myday') }}"
+               class="view-tab {% if view == 'myday' %}active{% endif %}"
+               {% if view == 'myday' %}aria-current="page"{% endif %}>{{ t.my_day }}</a>
+            {% for mode, label in [('date', t.schedule), ('topic', t.topics), ('location', t.locations)] %}
+                {% if view == 'myday' %}
+                <a href="{{ url_for('main.index', view='all', sort_mode=mode) }}" class="view-tab">{{ label }}</a>
+                {% else %}
+                <a href="{{ url_for('main.index', show_done=1 if show_done else 0, sort_mode=mode) }}"
+                   class="view-tab filter-link {% if sort_mode == mode %}active{% endif %}" data-filter="sort"
+                   onclick="applyFilter(event, this.href)">{{ label }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% set filter_count = todo_filter.active_count if todo_filter else 0 %}
+        <details class="menu filter-menu {% if show_done or filter_count %}has-active{% endif %}" id="filter-menu">
+            <summary class="icon-btn" title="{{ t.filter }}" aria-label="{{ t.filter }}">{{ icon('filter') }}<span class="filter-count" {% if not filter_count %}hidden{% endif %}>{{ filter_count }}</span></summary>
+            <form class="menu-panel filter-panel" id="filter-form" aria-label="{{ t.filter }}">
+                <input type="hidden" name="filter_set" value="1">
+                <div class="form-group">
+                    <label for="filter-due">{{ t.filter_due_label }}</label>
+                    <select id="filter-due" name="filter_due">
+                        {% for key, label in [('any', t.due_any), ('overdue', t.overdue), ('today', t.due_today_range), ('tomorrow', t.due_tomorrow_range), ('week', t.due_week_range), ('month', t.due_month_range), ('undated', t.no_due)] %}
+                        <option value="{{ key }}" {% if todo_filter and todo_filter.due == key %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <label class="check-row is-compact">
+                    <input type="checkbox" id="filter-undated" name="filter_undated" value="1" {% if todo_filter and todo_filter.include_undated %}checked{% endif %} {% if not (todo_filter and todo_filter.is_bounded) %}disabled{% endif %}>
+                    <span class="check-label">{{ t.filter_undated }}</span>
+                </label>
+                {% for field, legend, sigil, none_label, names, selected in [
+                    ('filter_project', t.projects, '+', t.no_project, filter_choices.projects if filter_choices else [], todo_filter.projects if todo_filter else []),
+                    ('filter_context', t.locations, '@', t.no_location, filter_choices.contexts if filter_choices else [], todo_filter.contexts if todo_filter else [])] %}
+                {% set selected_lower = selected|map('lower')|list %}
+                <fieldset class="filter-group">
+                    <legend class="field-label">{{ legend }}</legend>
+                    <div class="filter-options">
+                        {% for name in names %}
+                        <label class="check-row is-compact">
+                            <input type="checkbox" name="{{ field }}" value="{{ name }}" {% if name|lower in selected_lower %}checked{% endif %}>
+                            <span class="check-label">{{ sigil }}{{ name }}</span>
+                        </label>
+                        {% endfor %}
+                        <label class="check-row is-compact">
+                            <input type="checkbox" name="{{ field }}" value="" {% if '' in selected_lower %}checked{% endif %}>
+                            <span class="check-label">{{ none_label }}</span>
+                        </label>
+                    </div>
+                </fieldset>
+                {% endfor %}
+                <label class="check-row is-compact">
+                    <input type="checkbox" id="filter-show-done" name="show_done" value="1" {% if show_done %}checked{% endif %}>
+                    <span class="check-label">{{ t.show_done }}</span>
+                </label>
+                <button type="button" class="btn-secondary btn-block" data-filter-reset>{{ t.filter_reset }}</button>
+            </form>
+        </details>
+    </nav>
 
     <!-- Bulk action bar (multi-select mode) -->
     <div id="bulk-action-bar" class="bulk-bar" hidden>
@@ -160,9 +229,9 @@
 
     <!-- Bulk assign modal -->
     <div id="bulkAssignModal" class="modal">
-        <div class="modal-content" style="max-width: 380px;">
-            <span class="close" onclick="closeBulkAssign()">&times;</span>
-            <h2>{{ t.bulk_assign_title }}</h2>
+        <div class="modal-content is-narrow" role="dialog" aria-modal="true" aria-labelledby="bulk-assign-title">
+            <button type="button" class="icon-btn close" onclick="closeBulkAssign()" aria-label="{{ t.cancel }}">{{ icon('x') }}</button>
+            <h2 id="bulk-assign-title">{{ t.bulk_assign_title }}</h2>
             <div class="form-group">
                 <label for="bulk-assign-project">{{ t.project }}</label>
                 <input type="text" id="bulk-assign-project" autocomplete="off">
@@ -178,179 +247,120 @@
         </div>
     </div>
 
-    <form id="search-form" action="{{ url_for('main.index') }}" method="get" class="collapsible-form {% if q %}visible{% endif %}" style="gap: 0.5rem;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="text" id="search-input" name="q" value="{{ q or '' }}" placeholder="{{ t.search_placeholder }}" style="flex-grow: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; outline: none;">
-        <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
-        <input type="hidden" name="show_due_only" value="{{ '1' if show_due_only else '0' }}">
-        <input type="hidden" name="sort_mode" value="{{ sort_mode }}">
-        <input type="hidden" name="auto_ai_on_add" value="{{ '1' if auto_ai_on_add else '0' }}">
-        <button type="submit" style="padding: 0.5rem 1rem; background: #3584e4; color: white; border: none; border-radius: 6px; cursor: pointer;">{{ t.search_placeholder.strip('…') }}</button>
-        {% if q %}
-            <a href="{{ url_for('main.index', show_done='1' if show_done else '0', show_due_only='1' if show_due_only else '0', sort_mode=sort_mode) }}"
-               class="search-clear"
-               aria-label="{{ t.cancel }}">{{ icon('x', size=18) }}</a>
-        {% endif %}
-    </form>
-
-    <form id="addForm" class="add-form collapsible-form" action="{{ url_for('todo.add', show_done=1 if show_done else 0, show_due_only=1 if show_due_only else 0, sort_mode=sort_mode) }}" method="post" style="gap: 0;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        {% if view == 'myday' %}<input type="hidden" name="myday" value="1">{% endif %}
-        <input type="text" id="add-input" name="title" placeholder="{{ t.new_task }}" required>
-        {% if not auto_ai_on_add %}
-        <button type="button" id="smart-btn" class="smart-btn" onclick="handleSmartAdd(this)" title="Smart Add (AI)" aria-label="Smart Add (AI)" style="background: var(--color-accent); color: white; border: none; padding: 0.5rem; cursor: pointer;">
-            <span class="smart-icon" aria-hidden="true">{{ icon('sparkles') }}</span>
-            <span class="spinner" aria-hidden="true"></span>
-        </button>
-        {% endif %}
-        <button type="button" id="voice-btn" class="voice-btn" title="{{ t.voice_input }}" aria-label="{{ t.voice_input }}" style="display: none;">{{ icon('mic') }}</button>
-        <button type="submit">{{ t.add }}</button>
-    </form>
-
-    <div class="todo-list">
+    <main class="todo-list">
         {% if q %}
             {% include '_search_results.html' %}
         {% elif view == 'myday' %}
             {% include '_myday_view.html' %}
         {% else %}
-            {% include '_todo_list.html' %}
+            {% include '_list_view.html' %}
         {% endif %}
-    </div>
+    </main>
 
     <!-- Pull to Refresh Indicator -->
     <div id="pull-to-refresh" class="pull-to-refresh">
-        <span class="spinner-icon" aria-hidden="true">{{ icon('refresh', size=22) }}</span>
+        <span class="spinner-icon" aria-hidden="true">{{ icon('refresh', size=20) }}</span>
         <span class="pull-text">{{ t.reload }}</span>
     </div>
 
-    <!-- Bottom Navigation (Mobile) -->
-    <nav class="bottom-nav" id="bottom-nav">
-        <a href="{{ url_for('main.index', view='all' if view == 'myday' else 'myday') }}" class="bottom-nav-btn {% if view == 'myday' %}active{% endif %}" id="bottom-nav-myday" aria-label="{{ t.my_day }}">
-            <span class="nav-icon">{{ icon('sun', size=24) }}</span>
-            <span class="label">{{ t.my_day }}</span>
-        </a>
-        <button type="button" class="bottom-nav-btn" onclick="toggleAdd()" id="bottom-nav-add" aria-label="{{ t.add }}">
-            <span class="nav-icon">{{ icon('plus', size=24) }}</span>
-            <span class="label">{{ t.add }}</span>
-        </button>
-        <button type="button" class="bottom-nav-btn" onclick="toggleSearch()" id="bottom-nav-search" aria-label="{{ t.search_placeholder }}">
-            <span class="nav-icon">{{ icon('search', size=24) }}</span>
-            <span class="label">{{ t.search_placeholder.split('…')[0] }}</span>
-        </button>
-        <button type="button" class="bottom-nav-btn" onclick="openSettings()" id="bottom-nav-settings" aria-label="{{ t.settings }}">
-            <span class="nav-icon">{{ icon('settings', size=24) }}</span>
-            <span class="label">{{ t.settings }}</span>
-        </button>
-    </nav>
-
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeSettings()">&times;</span>
-            <h2>{{ t.settings }}</h2>
-            <form id="settingsForm" method="get" action="{{ url_for('main.index') }}">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <button type="button" class="icon-btn close" onclick="closeSettings()" aria-label="{{ t.cancel }}">{{ icon('x') }}</button>
+            <h2 id="settings-title">{{ t.settings }}</h2>
+            <form id="settingsForm" class="settings-section" method="get" action="{{ url_for('main.index') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="show_done" value="{{ '1' if show_done else '0' }}">
-                <input type="hidden" name="show_due_only" value="{{ '1' if show_due_only else '0' }}">
                 <input type="hidden" name="sort_mode" value="{{ sort_mode }}">
 
-                <div class="form-group">
-                    <label style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="hidden" name="auto_ai_on_add" value="0">
-                        <input type="checkbox" name="auto_ai_on_add" value="1" {% if auto_ai_on_add %}checked{% endif %}>
-                        {{ t.auto_ai_on_add }}
-                    </label>
-                </div>
+                <label class="check-row">
+                    <input type="hidden" name="auto_ai_on_add" value="0">
+                    <input type="checkbox" name="auto_ai_on_add" value="1" {% if auto_ai_on_add %}checked{% endif %}>
+                    <span class="check-label">{{ t.auto_ai_on_add }}</span>
+                </label>
 
-                <div class="form-group">
-                    <label style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="hidden" name="skip_delete_confirm" value="0">
-                        <input type="checkbox" name="skip_delete_confirm" value="1" {% if skip_delete_confirm %}checked{% endif %}>
-                        {{ t.skip_delete_confirm_label }}
-                    </label>
-                    <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.skip_delete_confirm_help }}</p>
-                </div>
+                <label class="check-row">
+                    <input type="hidden" name="skip_delete_confirm" value="0">
+                    <input type="checkbox" name="skip_delete_confirm" value="1" {% if skip_delete_confirm %}checked{% endif %}>
+                    <span class="check-label">{{ t.skip_delete_confirm_label }}</span>
+                    <span class="help">{{ t.skip_delete_confirm_help }}</span>
+                </label>
 
-                <div class="form-group">
-                    <label style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="hidden" name="title_autocomplete" value="0">
-                        <input type="checkbox" name="title_autocomplete" value="1" {% if title_autocomplete %}checked{% endif %}>
-                        {{ t.title_autocomplete_label }}
-                    </label>
-                    <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.title_autocomplete_help }}</p>
-                </div>
+                <label class="check-row">
+                    <input type="hidden" name="title_autocomplete" value="0">
+                    <input type="checkbox" name="title_autocomplete" value="1" {% if title_autocomplete %}checked{% endif %}>
+                    <span class="check-label">{{ t.title_autocomplete_label }}</span>
+                    <span class="help">{{ t.title_autocomplete_help }}</span>
+                </label>
 
                 <div class="form-group">
                     <label for="ai-timeout">{{ t.ai_timeout_label }}</label>
-                    <input type="number" id="ai-timeout" name="ai_timeout_secs" min="5" max="120" step="1" value="{{ ai_timeout_secs }}" style="width: 100%; padding: 0.6rem;">
-                    <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.ai_timeout_help }}</p>
+                    <input type="number" id="ai-timeout" name="ai_timeout_secs" min="5" max="120" step="1" value="{{ ai_timeout_secs }}">
+                    <p class="help">{{ t.ai_timeout_help }}</p>
                 </div>
 
-                <button type="submit" class="btn-primary" style="width: 100%;">{{ t.save }}</button>
+                <button type="submit" class="btn-primary btn-block">{{ t.save }}</button>
             </form>
             {% if config.PUSH_ENABLED %}
-            <div class="form-group" id="push-settings" style="margin-top: 1.5rem;">
-                <label style="display: flex; gap: 0.5rem; align-items: center;">
+            <div class="settings-section" id="push-settings">
+                <label class="check-row">
                     <input type="checkbox" id="push-toggle">
-                    {{ t.push_label }}
+                    <span class="check-label">{{ t.push_label }}</span>
+                    <span class="help">{{ t.push_help }}</span>
                 </label>
-                <p style="color: #777; font-size: 0.9rem; margin-top: 0.35rem;">{{ t.push_help }}</p>
-                <p id="push-status" style="font-size: 0.9rem; margin-top: 0.35rem;" hidden></p>
-                <button type="button" id="push-test" class="btn-secondary" style="margin-top: 0.5rem;" hidden>{{ t.push_test }}</button>
+                <p id="push-status" class="help" hidden></p>
+                <button type="button" id="push-test" class="btn-secondary" hidden>{{ t.push_test }}</button>
             </div>
             {% endif %}
-            {% if ai_debug_enabled %}
-            <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #ddd;">
-            <button type="button" class="btn-secondary" style="width: 100%; background: #6c5ce7; color: white;" onclick="openAiDebug()">
-                {{ t.ai_debug }}
-            </button>
-            {% endif %}
+            <div class="settings-section">
+                <div class="form-group">
+                    <span class="field-label">{{ t.language }}</span>
+                    <div class="lang-selector">
+                        {% for code, name in [('de', 'Deutsch'), ('en', 'English'), ('es', 'Español'), ('fr', 'Français'), ('sv', 'Svenska'), ('ja', '日本語')] %}
+                        <a href="{{ url_for('main.set_language', lang=code) }}" lang="{{ code }}" class="chip lang-link {% if current_lang == code %}active{% endif %}" {% if current_lang == code %}aria-current="true"{% endif %}>{{ name }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% if ai_debug_enabled %}
+                <button type="button" class="btn-secondary" onclick="openAiDebug()">{{ t.ai_debug }}</button>
+                {% endif %}
+            </div>
+            <div class="settings-section">
+                <p class="app-info"><strong>Reinschrift</strong> {{ app_version }}. {{ t.developer }}: Dr. Daniel Dumke. <a href="https://github.com/danst0/ReinschriftTodo" target="_blank" rel="noopener">{{ t.website }}</a>, GPL-3.0-or-later.</p>
+            </div>
         </div>
     </div>
 
-    <div class="footer">
-        <div class="lang-selector">
-            <a href="{{ url_for('main.set_language', lang='de') }}" title="Deutsch" class="lang-link {% if current_lang == 'de' %}active{% endif %}">🇩🇪</a>
-            <a href="{{ url_for('main.set_language', lang='en') }}" title="English" class="lang-link {% if current_lang == 'en' %}active{% endif %}">🇺🇸</a>
-            <a href="{{ url_for('main.set_language', lang='es') }}" title="Español" class="lang-link {% if current_lang == 'es' %}active{% endif %}">🇪🇸</a>
-            <a href="{{ url_for('main.set_language', lang='fr') }}" title="Français" class="lang-link {% if current_lang == 'fr' %}active{% endif %}">🇫🇷</a>
-            <a href="{{ url_for('main.set_language', lang='sv') }}" title="Svenska" class="lang-link {% if current_lang == 'sv' %}active{% endif %}">🇸🇪</a>
-            <a href="{{ url_for('main.set_language', lang='ja') }}" title="日本語" class="lang-link {% if current_lang == 'ja' %}active{% endif %}">🇯🇵</a>
-        </div>
-        <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ t.logout }}</a>
-        
-        <div class="app-info">
-            <p><strong>Reinschrift</strong> v{{ app_version }}</p>
-            <p>{{ t.developer }}: Dr. Daniel Dumke</p>
-            <p><a href="https://github.com/danst0/ReinschriftTodo" target="_blank">{{ t.website }}</a> | GPL-3.0-or-later</p>
-        </div>
-    </div>
+    <footer class="footer">
+        <span>Reinschrift {{ app_version }}</span>
+        <a href="{{ url_for('auth.logout') }}">{{ t.logout }}</a>
+    </footer>
 
-    <!-- Cheatsheet Modal -->
+    <!-- Keyboard shortcuts -->
     <div id="cheatsheetModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeCheatsheet()">&times;</span>
-            <h2>{{ t.cheatsheet }}</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999; width: 40%;"><strong>?</strong></td><td style="padding: 4px 8px;">{{ t.key_help }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>n</strong></td><td style="padding: 4px 8px;">{{ t.key_new }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>f / /</strong></td><td style="padding: 4px 8px;">{{ t.key_search }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>j / k / ↓ / ↑</strong></td><td style="padding: 4px 8px;">{{ t.key_nav }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Space</strong></td><td style="padding: 4px 8px;">{{ t.key_toggle }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>Enter</strong></td><td style="padding: 4px 8px;">{{ t.key_edit }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>t</strong></td><td style="padding: 4px 8px;">{{ t.key_today }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>+</strong></td><td style="padding: 4px 8px;">{{ t.key_tomorrow }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>w</strong></td><td style="padding: 4px 8px;">{{ t.key_weekend }}</td></tr>
-                <tr><td style="padding: 4px 8px; text-align: right; color: #999;"><strong>s</strong></td><td style="padding: 4px 8px;">{{ t.key_sometime }}</td></tr>
-            </table>
+        <div class="modal-content is-narrow" role="dialog" aria-modal="true" aria-labelledby="cheatsheet-title">
+            <button type="button" class="icon-btn close" onclick="closeCheatsheet()" aria-label="{{ t.cancel }}">{{ icon('x') }}</button>
+            <h2 id="cheatsheet-title">{{ t.cheatsheet }}</h2>
+            <dl class="shortcut-list">
+                <dt><kbd>?</kbd></dt><dd>{{ t.key_help }}</dd>
+                <dt><kbd>n</kbd></dt><dd>{{ t.key_new }}</dd>
+                <dt><kbd>f</kbd> <kbd>/</kbd></dt><dd>{{ t.key_search }}</dd>
+                <dt><kbd>j</kbd> <kbd>k</kbd> <kbd>↓</kbd> <kbd>↑</kbd></dt><dd>{{ t.key_nav }}</dd>
+                <dt><kbd>Space</kbd></dt><dd>{{ t.key_toggle }}</dd>
+                <dt><kbd>Enter</kbd></dt><dd>{{ t.key_edit }}</dd>
+                <dt><kbd>t</kbd></dt><dd>{{ t.key_today }}</dd>
+                <dt><kbd>+</kbd></dt><dd>{{ t.key_tomorrow }}</dd>
+                <dt><kbd>w</kbd></dt><dd>{{ t.key_weekend }}</dd>
+                <dt><kbd>s</kbd></dt><dd>{{ t.key_sometime }}</dd>
+            </dl>
         </div>
     </div>
 
     {% if ai_debug_enabled %}
     <!-- AI Debug Modal -->
     <div id="aiDebugModal" class="modal">
-        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
-            <span class="close" onclick="closeAiDebug()">&times;</span>
+        <div class="modal-content is-wide" role="dialog" aria-modal="true">
+            <button type="button" class="icon-btn close" onclick="closeAiDebug()" aria-label="{{ t.cancel }}">{{ icon('x') }}</button>
             <h2>{{ t.ai_debug_title }}</h2>
 
             <div class="form-group">
@@ -358,12 +368,12 @@
                 <input type="text" id="ai-debug-input" placeholder="{{ t.new_task }}">
             </div>
 
-            <button type="button" id="ai-debug-run-btn" class="btn-primary" style="width: 100%; margin-bottom: 1.5rem;" onclick="runAiDebug()">
+            <button type="button" id="ai-debug-run-btn" class="btn-primary btn-block" onclick="runAiDebug()">
                 <span class="btn-text">{{ t.ai_debug_run }}</span>
                 <span class="btn-spinner" style="display: none;">...</span>
             </button>
 
-            <div id="ai-debug-results" style="display: none;">
+            <div id="ai-debug-results" style="display: none; margin-top: 20px;">
                 <!-- Timing & Model Info -->
                 <div class="ai-debug-info-bar">
                     <div><strong>{{ t.ai_debug_timing }}:</strong> <span id="ai-debug-timing">-</span></div>
@@ -386,7 +396,7 @@
                 <!-- System Prompt -->
                 <details class="ai-debug-details">
                     <summary>{{ t.ai_debug_system_prompt }}</summary>
-                    <pre id="ai-debug-system-prompt" class="ai-debug-pre" style="max-height: 300px; overflow-y: auto;">-</pre>
+                    <pre id="ai-debug-system-prompt" class="ai-debug-pre is-scroll">-</pre>
                 </details>
 
                 <!-- User Input -->
@@ -398,7 +408,7 @@
                 <!-- Raw Response -->
                 <details class="ai-debug-details">
                     <summary>{{ t.ai_debug_raw_response }}</summary>
-                    <pre id="ai-debug-raw-response" class="ai-debug-pre" style="max-height: 300px; overflow-y: auto;">-</pre>
+                    <pre id="ai-debug-raw-response" class="ai-debug-pre is-scroll">-</pre>
                 </details>
 
                 <!-- Parsed Result -->
@@ -570,8 +580,6 @@
             });
         }
 
-        // Initialize suggestions when DOM is ready
-        document.addEventListener('DOMContentLoaded', initSuggestions);
 
         {% if ai_debug_enabled %}
         // ==========================================================================

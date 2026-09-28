@@ -1,0 +1,20 @@
+{% from '_icons.html' import icon %}
+{# Inline metadata after a todo's title, written the way it reads in the
+   Markdown line: +project @place, then due date, recurrence and a note hint.
+   The grouping dimension is left out (it is the section header already), and
+   in the schedule the date lives in the gutter instead. #}
+{% macro todo_meta(todo, t, dv, sort_mode='', show_due=True) -%}
+{%- if todo.projects and sort_mode != 'topic' %}{% for project in todo.projects %} <span class="tok project">+{{ project }}</span>{% endfor %}{% endif -%}
+{%- if todo.contexts and sort_mode != 'location' %}{% for context in todo.contexts %} <span class="tok context">@{{ context }}</span>{% endfor %}{% endif -%}
+{%- if show_due and dv.label %} <span class="tok due{% if dv.late %} is-late{% elif dv.horizon == 'today' and not todo.done %} is-today{% endif %}">{{ dv.label }}</span>{% endif -%}
+{%- if todo.recurrence %} <span class="tok recurrence">{{ icon('repeat', size=13) }}
+    {%- if todo.recurrence == 'daily' %} {{ t.recurrence_daily }}
+    {%- elif todo.recurrence == 'weekly' %} {{ t.recurrence_weekly }}
+    {%- elif todo.recurrence == 'monthly' %} {{ t.recurrence_monthly }}
+    {%- else %} {{ todo.recurrence }}{% endif %}</span>{% endif -%}
+{%- if todo.note %} <span class="tok note" title="{{ todo.note }}">{{ icon('file-text', size=13) }} {{ t.note }}</span>{% endif -%}
+{%- endmacro %}
+
+{% macro todo_title(todo, dv) -%}
+<span class="title">{% if dv.marked %}<mark>{{ todo.title }}</mark>{% else %}{{ todo.title }}{% endif %}</span>
+{%- endmacro %}

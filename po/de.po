@@ -888,3 +888,45 @@ msgstr "{} Änderungen aus der letzten Sitzung werden gespeichert"
 
 msgid "{} changes from the last session could not be restored"
 msgstr "{} Änderungen aus der letzten Sitzung konnten nicht wiederhergestellt werden"
+
+msgid "Filter"
+msgstr "Filter"
+
+msgid "Filter ({})"
+msgstr "Filter ({})"
+
+msgid "Any time"
+msgstr "Beliebig"
+
+msgid "Overdue"
+msgstr "Überfällig"
+
+msgid "Due by today"
+msgstr "Fällig bis heute"
+
+msgid "Due by tomorrow"
+msgstr "Fällig bis morgen"
+
+msgid "Due within 7 days"
+msgstr "Fällig bis in 7 Tagen"
+
+msgid "Due within 30 days"
+msgstr "Fällig bis in 30 Tagen"
+
+msgid "No date"
+msgstr "Ohne Datum"
+
+msgid "Also tasks without a date"
+msgstr "Auch Aufgaben ohne Datum"
+
+msgid "Projects"
+msgstr "Projekte"
+
+msgid "Places"
+msgstr "Orte"
+
+msgid "Reset filters"
+msgstr "Filter zurücksetzen"
+
+msgid "No tasks match the filter."
+msgstr "Keine Aufgabe passt zum Filter."

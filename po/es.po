@@ -888,3 +888,45 @@ msgstr "Guardando {} cambios de la última sesión"
 
 msgid "{} changes from the last session could not be restored"
 msgstr "No se pudieron restaurar {} cambios de la última sesión"
+
+msgid "Filter"
+msgstr "Filtro"
+
+msgid "Filter ({})"
+msgstr "Filtro ({})"
+
+msgid "Any time"
+msgstr "Cualquier fecha"
+
+msgid "Overdue"
+msgstr "Vencidas"
+
+msgid "Due by today"
+msgstr "Vence hasta hoy"
+
+msgid "Due by tomorrow"
+msgstr "Vence hasta mañana"
+
+msgid "Due within 7 days"
+msgstr "Vence en 7 días"
+
+msgid "Due within 30 days"
+msgstr "Vence en 30 días"
+
+msgid "No date"
+msgstr "Sin fecha"
+
+msgid "Also tasks without a date"
+msgstr "También tareas sin fecha"
+
+msgid "Projects"
+msgstr "Proyectos"
+
+msgid "Places"
+msgstr "Lugares"
+
+msgid "Reset filters"
+msgstr "Restablecer filtros"
+
+msgid "No tasks match the filter."
+msgstr "Ninguna tarea coincide con el filtro."

@@ -1,4 +1,10 @@
 {% from '_icons.html' import icon %}
+{% from '_todo_meta.html' import todo_meta, todo_title %}
+{# schedule: the date view, grouped by time horizon; the due day and time
+   sit in the left gutter instead of after the title. #}
+{% set schedule = schedule|default(false) %}
+{% set groupable = sort_mode in ['topic', 'location'] %}
+<div class="todo-rows{% if schedule %} is-schedule{% endif %}">
 {% set current_group = namespace(value=None) %}
 {% for todo in todos %}
     {% if todo.section and todo.section != current_group.value %}
@@ -6,84 +12,62 @@
             </div>{# close previous section-items #}
         </div>{# close previous section-group #}
         {% endif %}
+        {% set group_open = todos|selectattr('section', 'equalto', todo.section)|rejectattr('done')|list|length %}
         <div class="section-group">
-        <div class="section-header" data-group-mode="{{ sort_mode }}" data-group-key="{{ todo.group_key or '' }}">
-            <span>
-                {% if sort_mode == 'topic' %}
-                    {{ t.topic }}: {{ todo.section }}
-                {% else %}
-                    {{ todo.section }}
-                {% endif %}
-            </span>
-            {% if sort_mode in ['topic', 'location'] %}
-            <div class="group-actions">
-                {% if todo.group_key %}
-                <a href="javascript:void(0)" class="btn-action" data-share-name="{{ todo.group_key }}" data-share-scope="{{ 'project' if sort_mode == 'topic' else 'context' }}" onclick="openShareDialog(event, this.dataset.shareName, this.dataset.shareScope)" title="{{ t.share }}" aria-label="{{ t.share }}">{{ icon('share') }}</a>
-                {% endif %}
-                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'today', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar') }}</a>
-                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'tomorrow', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right') }}</a>
-                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'weekend', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.next_weekend }}" aria-label="{{ t.next_weekend }}">{{ icon('umbrella') }}</a>
-                <a href="javascript:void(0)" class="btn-action" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'sometime', this.dataset.groupKey, this.dataset.groupMode)" title="{{ t.sometime }}" aria-label="{{ t.sometime }}">{{ icon('clock') }}</a>
-            </div>
+        <div class="section-header{% if todo.horizon == 'overdue' %} is-overdue{% endif %}" data-group-mode="{{ sort_mode }}" data-group-key="{{ todo.group_key or '' }}">
+            <h3 class="section-title">{{ todo.section }}{% if group_open %}<span class="section-count">{{ group_open }}</span>{% endif %}</h3>
+            {% if groupable %}
+            <details class="menu group-menu">
+                <summary class="icon-btn" title="{{ t.more_actions }}" aria-label="{{ t.more_actions }}: {{ todo.section }}">{{ icon('more') }}</summary>
+                <div class="menu-panel" role="menu">
+                    <div class="menu-heading">{{ t.postpone_all }}</div>
+                    <button type="button" class="menu-item" role="menuitem" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'today', this.dataset.groupKey, this.dataset.groupMode)">{{ icon('calendar', size=18) }} {{ t.today }}</button>
+                    <button type="button" class="menu-item" role="menuitem" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'tomorrow', this.dataset.groupKey, this.dataset.groupMode)">{{ icon('arrow-right', size=18) }} {{ t.tomorrow }}</button>
+                    <button type="button" class="menu-item" role="menuitem" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'weekend', this.dataset.groupKey, this.dataset.groupMode)">{{ icon('umbrella', size=18) }} {{ t.next_weekend }}</button>
+                    <button type="button" class="menu-item" role="menuitem" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" onclick="postponeGroup(event, 'sometime', this.dataset.groupKey, this.dataset.groupMode)">{{ icon('clock', size=18) }} {{ t.sometime }}</button>
+                    {% if todo.group_key %}
+                    <div class="menu-divider" role="separator"></div>
+                    <button type="button" class="menu-item" role="menuitem" data-share-name="{{ todo.group_key }}" data-share-scope="{{ 'project' if sort_mode == 'topic' else 'context' }}" onclick="openShareDialog(event, this.dataset.shareName, this.dataset.shareScope)">{{ icon('share', size=18) }} {{ t.share }}</button>
+                    {% endif %}
+                </div>
+            </details>
             {% endif %}
         </div>
         <div class="section-items" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}">
         {% set current_group.value = todo.section %}
     {% endif %}
 
-    <div class="todo-item {% if todo.done %}done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" data-marker="{{ todo.marker or '' }}">
-        <!-- Swipe indicators (populated by JS) -->
+    {% set dv = due_view(todo) %}
+    <div class="todo-item{% if todo.done %} done{% endif %}" data-group-key="{{ todo.group_key or '' }}" data-group-mode="{{ sort_mode }}" data-line-index="{{ todo.line_index }}" data-marker="{{ todo.marker or '' }}">
         <span class="swipe-indicator swipe-indicator-left" aria-hidden="true">{{ icon('check', size=24) }}</span>
-        <span class="swipe-indicator swipe-indicator-right" aria-hidden="true">{{ icon('calendar', size=24) }}</span>
+        <span class="swipe-indicator swipe-indicator-right" aria-hidden="true">{{ icon('arrow-right', size=24) }}</span>
 
-        {% if sort_mode in ['topic', 'location'] %}
-        <span class="drag-handle" title="Drag to move" aria-hidden="true">{{ icon('grip', size=18) }}</span>
-        {% endif %}
-        <a href="javascript:void(0)" class="checkbox {% if not todo.done %}unchecked{% endif %}" onclick="toggleTodo(event, {{ todo.line_index }}, '{{ todo.marker or '' }}')">
-            {% if todo.done %}☑{% else %}☐{% endif %}
-        </a>
-        <div class="content" onclick="openEditModal({{ todo.line_index }})">
-            <div class="title">{{ todo.title }}</div>
-            <div class="meta">
-                {% if todo.projects and sort_mode != 'topic' %}{% for project in todo.projects %}<span class="tag project">+{{ project }}</span> {% endfor %}{% endif %}
-                {% if todo.contexts %}{% for context in todo.contexts %}<span class="tag context">@{{ context }}</span> {% endfor %}{% endif %}
-                {% if todo.recurrence %}
-                    <span class="tag recurrence">
-                        ↻
-                        {% if todo.recurrence == 'daily' %}
-                            {{ t.recurrence_daily }}
-                        {% elif todo.recurrence == 'weekly' %}
-                            {{ t.recurrence_weekly }}
-                        {% elif todo.recurrence == 'monthly' %}
-                            {{ t.recurrence_monthly }}
-                        {% else %}
-                            {{ todo.recurrence }}
-                        {% endif %}
-                    </span>
-                {% endif %}
-                {% if todo.note %}
-                    <span class="tag note" title="{{ todo.note }}">📝</span>
-                {% endif %}
-                {% if todo.due %}
-                    <span class="due">
-                        {{ t.due }}
-                        {% if todo.due_is_sometime %}
-                            {{ t.sometime }}
-                        {% else %}
-                            {{ todo.due_display or todo.due }}
-                        {% endif %}
-                    </span>
-                {% endif %}
-            </div>
-        </div>
-        <div class="actions">
-            {% if view == 'myday' %}
-            <a href="javascript:void(0)" class="btn-action myday-remove-btn" onclick="removeFromMyDay(event, '{{ todo.marker or '' }}')" title="{{ t.remove_from_my_day }}" aria-label="{{ t.remove_from_my_day }}">{{ icon('x') }}</a>
+        <div class="gutter">
+            {% if groupable %}
+            <span class="drag-handle" title="Drag to move" aria-hidden="true">{{ icon('grip', size=18) }}</span>
+            {% elif schedule %}
+                {% if dv.day %}<span class="gutter-day{% if dv.horizon == 'overdue' and dv.late %} is-late{% endif %}">{{ dv.day }}</span>{% endif %}
+                {% if dv.time %}<span class="gutter-time{% if dv.late %} is-late{% endif %}">{{ dv.time }}</span>{% endif %}
             {% endif %}
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'today', '{{ todo.marker or '' }}')" title="{{ t.today }}" aria-label="{{ t.today }}">{{ icon('calendar') }}</a>
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow', '{{ todo.marker or '' }}')" title="{{ t.tomorrow }}" aria-label="{{ t.tomorrow }}">{{ icon('arrow-right') }}</a>
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'weekend', '{{ todo.marker or '' }}')" title="{{ t.next_weekend }}" aria-label="{{ t.next_weekend }}">{{ icon('umbrella') }}</a>
-            <a href="javascript:void(0)" class="btn-action" onclick="postponeTodo(event, {{ todo.line_index }}, 'sometime', '{{ todo.marker or '' }}')" title="{{ t.sometime }}" aria-label="{{ t.sometime }}">{{ icon('clock') }}</a>
+        </div>
+        <button type="button" class="checkbox" role="checkbox" aria-checked="{{ 'true' if todo.done else 'false' }}" aria-label="{{ t.done }}: {{ todo.title }}" onclick="toggleTodo(event, {{ todo.line_index }}, '{{ todo.marker or '' }}')">
+            <span class="box">{{ icon('check', size=14) }}</span>
+        </button>
+        <div class="content" role="button" tabindex="0" aria-expanded="false" aria-controls="details-{{ todo.line_index }}" onclick="toggleTodoDetails(this)">
+            {{ todo_title(todo, dv) }}{{ todo_meta(todo, t, dv, sort_mode=sort_mode, show_due=not schedule) }}
+        </div>
+        <div class="todo-details" id="details-{{ todo.line_index }}" hidden>
+            {% if todo.note %}<p class="note">{{ todo.note }}</p>{% endif %}
+            <div class="todo-actions">
+                <button type="button" class="chip" onclick="postponeTodo(event, {{ todo.line_index }}, 'today', '{{ todo.marker or '' }}')">{{ t.today }}</button>
+                <button type="button" class="chip" onclick="postponeTodo(event, {{ todo.line_index }}, 'tomorrow', '{{ todo.marker or '' }}')">{{ t.tomorrow }}</button>
+                <button type="button" class="chip" onclick="postponeTodo(event, {{ todo.line_index }}, 'weekend', '{{ todo.marker or '' }}')">{{ t.next_weekend }}</button>
+                <button type="button" class="chip" onclick="postponeTodo(event, {{ todo.line_index }}, 'sometime', '{{ todo.marker or '' }}')">{{ t.sometime }}</button>
+                {% if view == 'myday' %}
+                <button type="button" class="chip is-quiet myday-remove-btn" onclick="removeFromMyDay(event, '{{ todo.marker or '' }}')">{{ icon('x', size=16) }} {{ t.remove_from_my_day }}</button>
+                {% endif %}
+                <button type="button" class="chip is-link push-end" onclick="openEditModal({{ todo.line_index }})">{{ t.edit }}</button>
+            </div>
         </div>
     </div>
 {% endfor %}
@@ -91,3 +75,4 @@
     </div>{# close last section-items #}
 </div>{# close last section-group #}
 {% endif %}
+</div>

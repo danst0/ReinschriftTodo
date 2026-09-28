@@ -888,3 +888,45 @@ msgstr "Sparar {} ändringar från förra sessionen"
 
 msgid "{} changes from the last session could not be restored"
 msgstr "{} ändringar från förra sessionen kunde inte återställas"
+
+msgid "Filter"
+msgstr "Filter"
+
+msgid "Filter ({})"
+msgstr "Filter ({})"
+
+msgid "Any time"
+msgstr "När som helst"
+
+msgid "Overdue"
+msgstr "Försenade"
+
+msgid "Due by today"
+msgstr "Förfaller senast idag"
+
+msgid "Due by tomorrow"
+msgstr "Förfaller senast imorgon"
+
+msgid "Due within 7 days"
+msgstr "Förfaller inom 7 dagar"
+
+msgid "Due within 30 days"
+msgstr "Förfaller inom 30 dagar"
+
+msgid "No date"
+msgstr "Utan datum"
+
+msgid "Also tasks without a date"
+msgstr "Även uppgifter utan datum"
+
+msgid "Projects"
+msgstr "Projekt"
+
+msgid "Places"
+msgstr "Platser"
+
+msgid "Reset filters"
+msgstr "Återställ filter"
+
+msgid "No tasks match the filter."
+msgstr "Inga uppgifter matchar filtret."

@@ -14,8 +14,10 @@
     </div>
 {% endif %}
 
+{% from '_filter_chips.html' import filter_chips %}
 <div class="myday-picker">
     <h3 class="myday-picker-title">{{ t.plan_my_day }}</h3>
+    {{ filter_chips(todo_filter, t) }}
 
     {# Within a section, items are subdivided by topic/location depending on
        the sort mode (picker_group is None in date mode → flat list). #}
@@ -48,6 +50,6 @@
     {% endif %}
 
     {% if not suggestions and not other_open %}
-        <p class="myday-picker-empty">{{ t.myday_nothing_to_plan }}</p>
+        <p class="myday-picker-empty">{{ t.filter_no_match if todo_filter and todo_filter.is_active else t.myday_nothing_to_plan }}</p>
     {% endif %}
 </div>

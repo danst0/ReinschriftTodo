@@ -165,8 +165,12 @@ export async function handleSmartAdd(btn, config = {}) {
         }
         const input = document.getElementById('add-input');
         input.value = formatted;
-        input.style.backgroundColor = '#6c5ce733';
-        setTimeout(() => input.style.backgroundColor = '', 1000);
+        // Refresh the token preview without waking autocomplete.
+        input.dispatchEvent(new CustomEvent('valuechange'));
+        input.classList.remove('ai-filled');
+        void input.offsetWidth; // restart the animation
+        input.classList.add('ai-filled');
+        setTimeout(() => input.classList.remove('ai-filled'), 1000);
     } catch (err) {
         if (err && err.message === 'timeout') {
             alert(config.timeoutMessage || 'AI took too long');

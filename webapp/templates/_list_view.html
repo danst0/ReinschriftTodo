@@ -1,0 +1,10 @@
+{# The "all" view: active filters, then the list (also the partial-reload response). #}
+{% from '_filter_chips.html' import filter_chips %}
+{{ filter_chips(todo_filter, t) }}
+{% if not todos and todo_filter and todo_filter.is_active %}
+<div class="list-empty">
+    <p>{{ t.filter_no_match }}</p>
+    <button type="button" class="btn-secondary" data-filter-reset>{{ t.filter_reset }}</button>
+</div>
+{% endif %}
+{% include '_todo_list.html' %}

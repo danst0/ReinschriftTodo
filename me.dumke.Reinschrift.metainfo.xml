@@ -65,6 +65,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.1.5" date="2026-09-28">
+      <description>
+        <ul>
+          <li>New filter: show only tasks due by today, tomorrow, within 7 or 30 days, overdue or without a date, narrowed to chosen projects and places</li>
+          <li>The filter is remembered and replaces the "Show only due" switch; the command line gains --due and --undated</li>
+          <li>Web app: redesigned list with readable due dates, a schedule view grouped by time range and the same filters</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.4" date="2026-09-27">
       <description>
         <ul>

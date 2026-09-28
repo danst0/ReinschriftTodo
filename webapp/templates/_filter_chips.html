@@ -1,0 +1,26 @@
+{% from '_icons.html' import icon %}
+{# Active list filters as chips; clicking one removes that filter
+   (handled in static/js/modules/filters.js). #}
+{% macro due_range_label(key, t) -%}
+{{ {'any': t.due_any, 'overdue': t.overdue, 'today': t.due_today_range, 'tomorrow': t.due_tomorrow_range,
+    'week': t.due_week_range, 'month': t.due_month_range, 'undated': t.no_due}[key] }}
+{%- endmacro %}
+
+{% macro filter_chips(todo_filter, t) %}
+{% if todo_filter and todo_filter.is_active %}
+<div class="filter-chips">
+    {% if todo_filter.due != 'any' %}
+    {% set label = due_range_label(todo_filter.due, t) ~ ((' + ' ~ t.no_due) if todo_filter.is_bounded and todo_filter.include_undated else '') %}
+    <button type="button" class="chip filter-chip" data-remove="due" aria-label="{{ t.filter_remove }}: {{ label }}">{{ label }} {{ icon('x', size=14) }}</button>
+    {% endif %}
+    {% for p in todo_filter.projects %}
+    {% set label = ('+' ~ p) if p else t.no_project %}
+    <button type="button" class="chip filter-chip" data-remove="project" data-value="{{ p }}" aria-label="{{ t.filter_remove }}: {{ label }}">{{ label }} {{ icon('x', size=14) }}</button>
+    {% endfor %}
+    {% for c in todo_filter.contexts %}
+    {% set label = ('@' ~ c) if c else t.no_location %}
+    <button type="button" class="chip filter-chip" data-remove="context" data-value="{{ c }}" aria-label="{{ t.filter_remove }}: {{ label }}">{{ label }} {{ icon('x', size=14) }}</button>
+    {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}

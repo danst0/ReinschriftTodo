@@ -68,8 +68,8 @@ export function openEditModal(lineIndex, config = {}) {
             document.getElementById('edit-reference').value = data.reference || '';
             document.getElementById('edit-note').value = data.note || '';
             document.getElementById('edit-done').checked = data.done;
-            document.getElementById('btn-close-comment').style.display = data.done ? 'none' : 'inline-block';
-            document.getElementById('btn-save-main').style.display = 'inline-block';
+            document.getElementById('btn-close-comment').style.display = data.done ? 'none' : '';
+            document.getElementById('btn-save-main').style.display = '';
             document.getElementById('comment-section').style.display = 'none';
 
             // Save by marker: the index this modal was opened with can go
@@ -96,8 +96,8 @@ export function closeModal() {
         modal.style.display = 'none';
     }
     document.getElementById('comment-section').style.display = 'none';
-    document.getElementById('btn-close-comment').style.display = 'inline-block';
-    document.getElementById('btn-save-main').style.display = 'inline-block';
+    document.getElementById('btn-close-comment').style.display = '';
+    document.getElementById('btn-save-main').style.display = '';
     document.getElementById('edit-note').value = '';
     document.getElementById('edit-comment').value = '';
 }

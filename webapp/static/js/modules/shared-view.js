@@ -22,20 +22,20 @@
         const marker = item.dataset.marker;
         if (!marker || item.classList.contains('completing')) return;
         clearError();
-        item.classList.add('completing');
+        item.classList.add('completing', 'done');
         try {
             const resp = await fetch(`/s/${encodeURIComponent(token)}/toggle/${encodeURIComponent(marker)}`, {
                 method: 'POST',
                 headers: { 'Accept': 'application/json' },
             });
             if (!resp.ok) {
-                item.classList.remove('completing');
+                item.classList.remove('completing', 'done');
                 showError('Konnte nicht abhaken.');
                 return;
             }
             setTimeout(() => item.remove(), 300);
         } catch (err) {
-            item.classList.remove('completing');
+            item.classList.remove('completing', 'done');
             showError('Netzwerkfehler.');
         }
     }

@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+
+use crate::filter::{DueRange, TodoFilter};
 use std::fs;
 use std::path::PathBuf;
 
@@ -36,8 +38,11 @@ pub struct Preferences {
     pub remind_before_minutes: i64,
     #[serde(default)]
     pub db_path: Option<String>,
+    /// Replaced by `filter`; still read so older settings keep working.
     #[serde(default)]
     pub show_due_only: bool,
+    #[serde(default)]
+    pub filter: Option<TodoFilter>,
     #[serde(default)]
     pub myday_view: bool,
     #[serde(default)]
@@ -74,6 +79,28 @@ pub struct Preferences {
     pub window_height: Option<i32>,
     #[serde(default)]
     pub window_maximized: bool,
+}
+
+impl Preferences {
+    /// The list filter in effect. Settings from before the filter existed
+    /// only know "show only due": due by today, tasks without a date kept.
+    pub fn effective_filter(&self) -> TodoFilter {
+        match &self.filter {
+            Some(filter) => filter.clone(),
+            None if self.show_due_only => TodoFilter {
+                due: DueRange::Today,
+                include_undated: true,
+                ..Default::default()
+            },
+            None => TodoFilter::default(),
+        }
+    }
+
+    /// Store a filter, retiring the old "show only due" flag.
+    pub fn set_filter(&mut self, filter: TodoFilter) {
+        self.filter = Some(filter);
+        self.show_due_only = false;
+    }
 }
 
 /// Returns the path to the shared preferences file.
@@ -113,4 +140,25 @@ pub fn write_preferences(prefs: &Preferences) -> std::io::Result<()> {
     }
     let serialized = serde_json::to_string_pretty(prefs).unwrap_or_else(|_| "{}".into());
     fs::write(path, serialized)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_show_due_only_becomes_due_today_with_undated() {
+        let prefs: Preferences = serde_json::from_str(r#"{"show_due_only": true}"#).unwrap();
+        let filter = prefs.effective_filter();
+        assert_eq!(filter.due, DueRange::Today);
+        assert!(filter.include_undated);
+    }
+
+    #[test]
+    fn stored_filter_wins_and_retires_flag() {
+        let mut prefs: Preferences = serde_json::from_str(r#"{"show_due_only": true}"#).unwrap();
+        prefs.set_filter(TodoFilter { due: DueRange::Week, ..Default::default() });
+        assert!(!prefs.show_due_only);
+        assert_eq!(prefs.effective_filter().due, DueRange::Week);
+    }
 }

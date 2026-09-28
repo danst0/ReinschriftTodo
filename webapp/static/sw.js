@@ -1,7 +1,7 @@
 // Reinschrift Service Worker
 // Provides offline viewing capability for the todo list
 
-const CACHE_NAME = 'reinschrift-v1';
+const CACHE_NAME = 'reinschrift-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Static assets to cache on install

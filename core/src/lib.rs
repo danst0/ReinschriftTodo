@@ -2,6 +2,7 @@ pub mod config;
 pub mod conflict;
 pub mod data;
 pub mod embeddings;
+pub mod filter;
 pub mod i18n;
 pub mod parser;
 pub mod pending;
@@ -17,6 +18,7 @@ pub mod util;
 pub mod webdav;
 
 pub use data::*;
+pub use filter::{DueRange, TodoFilter, NO_TAG};
 pub use i18n::{t, tc};
 pub use preferences::*;
 pub use sorting::*;

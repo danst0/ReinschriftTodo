@@ -3,7 +3,7 @@ mod output;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use reinschrift_core::{data, i18n, load_preferences, set_todo_path};
+use reinschrift_core::{data, i18n, load_preferences, set_todo_path, DueRange, TodoFilter};
 
 #[derive(Parser)]
 #[command(name = "reinschrift")]
@@ -38,9 +38,19 @@ enum Commands {
         #[arg(short, long)]
         all: bool,
 
-        /// Show only todos that are due (until today)
-        #[arg(long)]
+        /// Show only todos that are due (until today); same as `--due today`
+        #[arg(long, conflicts_with = "due")]
         due_only: bool,
+
+        /// Show only todos due in this range. The bounded ranges include
+        /// overdue todos; `undated` means no date or "sometime".
+        #[arg(long, value_name = "RANGE",
+              value_parser = ["any", "overdue", "today", "tomorrow", "week", "month", "undated"])]
+        due: Option<String>,
+
+        /// With --due: also show todos without a due date
+        #[arg(long, requires = "due")]
+        undated: bool,
 
         /// Filter by project
         #[arg(short, long)]
@@ -219,8 +229,14 @@ fn main() -> Result<()> {
 
     // Dispatch commands
     match cli.command {
-        Commands::List { sort, all, due_only, project, context } => {
-            commands::list(&ctx, &sort, all, due_only, project.as_deref(), context.as_deref())
+        Commands::List { sort, all, due_only, due, undated, project, context } => {
+            let range = if due_only {
+                DueRange::Today
+            } else {
+                due.as_deref().and_then(DueRange::from_key).unwrap_or_default()
+            };
+            let filter = TodoFilter { due: range, include_undated: undated, ..Default::default() };
+            commands::list(&ctx, &sort, all, &filter, project.as_deref(), context.as_deref())
         }
         Commands::Add { title, project, context, due, recurrence, note } => {
             commands::add(&ctx, &title, project.as_deref(), context.as_deref(), due.as_deref(), recurrence.as_deref(), note.as_deref())

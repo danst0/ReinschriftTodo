@@ -885,3 +885,45 @@ msgstr ""
 
 msgid "{} changes from the last session could not be restored"
 msgstr ""
+
+msgid "Filter"
+msgstr ""
+
+msgid "Filter ({})"
+msgstr ""
+
+msgid "Any time"
+msgstr ""
+
+msgid "Overdue"
+msgstr ""
+
+msgid "Due by today"
+msgstr ""
+
+msgid "Due by tomorrow"
+msgstr ""
+
+msgid "Due within 7 days"
+msgstr ""
+
+msgid "Due within 30 days"
+msgstr ""
+
+msgid "No date"
+msgstr ""
+
+msgid "Also tasks without a date"
+msgstr ""
+
+msgid "Projects"
+msgstr ""
+
+msgid "Places"
+msgstr ""
+
+msgid "Reset filters"
+msgstr ""
+
+msgid "No tasks match the filter."
+msgstr ""

@@ -207,11 +207,18 @@ def register_context_processors(app: Flask) -> None:
     @app.context_processor
     def inject_translations():
         """Inject translation dictionary and version into templates."""
+        from datetime import datetime
+        from app.utils.due_view import describe_due
+
         lang = get_locale()
+        t = TRANSLATIONS.get(lang, TRANSLATIONS['de'])
+        # One clock reading per render, so all rows agree on "today".
+        now = datetime.now()
         return {
-            't': TRANSLATIONS.get(lang, TRANSLATIONS['de']),
+            't': t,
             'current_lang': lang,
             'app_version': app_version,
+            'due_view': lambda todo: describe_due(todo, t, now),
         }
 
     def get_locale() -> str:

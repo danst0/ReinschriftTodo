@@ -1,26 +1,26 @@
 {% if current_results %}
-    <div class="section-header">{{ t.search_results_current }}</div>
+    <div class="section-header"><h3 class="section-title">{{ t.search_results_current }}</h3></div>
     {% with todos=current_results %}
         {% include '_todo_list.html' %}
     {% endwith %}
 {% endif %}
 
 {% if open_results %}
-    <div class="section-header">{{ t.search_results_open }}</div>
+    <div class="section-header"><h3 class="section-title">{{ t.search_results_open }}</h3></div>
     {% with todos=open_results %}
         {% include '_todo_list.html' %}
     {% endwith %}
 {% endif %}
 
 {% if done_results %}
-    <div class="section-header">{{ t.search_results_done }}</div>
+    <div class="section-header"><h3 class="section-title">{{ t.search_results_done }}</h3></div>
     {% with todos=done_results %}
         {% include '_todo_list.html' %}
     {% endwith %}
 {% endif %}
 
 {% if semantic_results %}
-    <div class="section-header">{{ t.search_results_semantic }}</div>
+    <div class="section-header"><h3 class="section-title">{{ t.search_results_semantic }}</h3></div>
     {% with todos=semantic_results %}
         {% include '_todo_list.html' %}
     {% endwith %}

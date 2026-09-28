@@ -888,3 +888,45 @@ msgstr "前回のセッションの変更 {} 件を保存しています"
 
 msgid "{} changes from the last session could not be restored"
 msgstr "前回のセッションの変更 {} 件を復元できませんでした"
+
+msgid "Filter"
+msgstr "フィルター"
+
+msgid "Filter ({})"
+msgstr "フィルター ({})"
+
+msgid "Any time"
+msgstr "指定なし"
+
+msgid "Overdue"
+msgstr "期限切れ"
+
+msgid "Due by today"
+msgstr "今日まで"
+
+msgid "Due by tomorrow"
+msgstr "明日まで"
+
+msgid "Due within 7 days"
+msgstr "7日以内"
+
+msgid "Due within 30 days"
+msgstr "30日以内"
+
+msgid "No date"
+msgstr "日付なし"
+
+msgid "Also tasks without a date"
+msgstr "日付のないタスクも表示"
+
+msgid "Projects"
+msgstr "プロジェクト"
+
+msgid "Places"
+msgstr "場所"
+
+msgid "Reset filters"
+msgstr "フィルターをリセット"
+
+msgid "No tasks match the filter."
+msgstr "フィルターに一致するタスクはありません。"

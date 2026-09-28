@@ -3,7 +3,7 @@ use chrono::{Duration, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use reinschrift_core::{
     data, load_todos, toggle_todo, set_due_today, update_todo_details, delete_todo, add_todo,
     add_todo_full, get_backend_config, test_webdav_connection,
-    TodoItem, TodoKey, SortMode, sort_items, t,
+    TodoItem, TodoKey, SortMode, sort_items, t, TodoFilter,
 };
 use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
 use std::io::{self, Write};
@@ -37,7 +37,7 @@ pub fn list(
     ctx: &OutputContext,
     sort: &str,
     show_all: bool,
-    due_only: bool,
+    filter: &TodoFilter,
     project_filter: Option<&str>,
     context_filter: Option<&str>,
 ) -> Result<()> {
@@ -48,15 +48,12 @@ pub fn list(
         items.retain(|item| !item.done);
     }
 
-    // Filter by due date if due_only
-    if due_only {
-        let today = Local::now().date_naive();
-        items.retain(|item| {
-            item.due.map(|d| d.date() <= today).unwrap_or(false)
-        });
-    }
+    // Due date range (shared with the GUI)
+    let today = Local::now().date_naive();
+    items.retain(|item| filter.matches(item, today));
 
-    // Filter by project
+    // Filter by project (substring, so a partial name is enough on the
+    // command line)
     if let Some(p) = project_filter {
         let p_lower = p.to_lowercase();
         items.retain(|item| {

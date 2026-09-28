@@ -208,11 +208,7 @@ export async function toggleTodo(event, lineIndex, marker = '') {
     if (row) {
         const done = !row.classList.contains('done');
         row.classList.toggle('done', done);
-        const box = row.querySelector('.checkbox');
-        if (box) {
-            box.classList.toggle('unchecked', !done);
-            box.textContent = done ? '☑' : '☐';
-        }
+        row.querySelector('.checkbox')?.setAttribute('aria-checked', done ? 'true' : 'false');
     }
     submitAction('/toggle/' + lineIndex, marker);
 }

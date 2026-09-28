@@ -31,11 +31,10 @@ export function initKeyboard(handlers) {
 function updateSelection() {
     const items = document.querySelectorAll('.todo-item');
     items.forEach((item, index) => {
-        if (index === selectedIndex) {
-            item.style.border = '2px solid #3584e4';
+        const isSelected = index === selectedIndex;
+        item.classList.toggle('kbd-selected', isSelected);
+        if (isSelected) {
             item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-            item.style.border = '1px solid #eee';
         }
     });
 }
@@ -93,8 +92,8 @@ function handleKeydown(e) {
         const link = items[selectedIndex].querySelector('.checkbox');
         if (link) link.click();
     } else if (e.key === 'Enter' && selectedIndex !== -1) {
-        const content = items[selectedIndex].querySelector('.content');
-        if (content) content.click();
+        const idx = getSelectedLineIndex();
+        if (idx !== null && window.openEditModal) window.openEditModal(idx);
     } else if (e.key === 't' && selectedIndex !== -1) {
         const idx = getSelectedLineIndex();
         if (idx !== null) {

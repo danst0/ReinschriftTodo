@@ -10,6 +10,8 @@ from app.services import (
     save_settings,
     sort_todos,
 )
+from app.services.filters import TodoFilter, filter_choices
+from app.utils.due_view import HORIZONS, horizon_label, horizon_of, parse_due
 from app.utils.helpers import canonical_casing_map, canonicalize_token, parse_flag
 
 main_bp = Blueprint('main', __name__)
@@ -78,11 +80,22 @@ def index():
     else:
         show_done_val = settings.get('show_done', '0')
 
-    if show_due_only_val is not None:
-        new_settings['show_due_only'] = show_due_only_val
-        changed = True
+    # List filter (due range, projects, places), shared with the GNOME app's
+    # model. The filter panel submits filter_set=1 with its full state; an
+    # old-style show_due_only link maps onto "due by today, undated kept".
+    if request.args.get('filter_set') or request.args.get('filter_reset'):
+        todo_filter = (TodoFilter() if request.args.get('filter_reset')
+                       else TodoFilter.from_args(request.args))
+    elif show_due_only_val is not None:
+        todo_filter = (TodoFilter(due='today', include_undated=True)
+                       if show_due_only_val == '1' else TodoFilter())
     else:
-        show_due_only_val = settings.get('show_due_only', '0')
+        todo_filter = TodoFilter.from_settings(settings)
+    if todo_filter.to_settings() != {k: settings.get(k) for k in todo_filter.to_settings()} \
+            or settings.get('show_due_only', '0') != '0':
+        new_settings.update(todo_filter.to_settings())
+        new_settings['show_due_only'] = '0'
+        changed = True
 
     if sort_mode_val is not None:
         new_settings['sort_mode'] = sort_mode_val
@@ -138,7 +151,6 @@ def index():
 
     # Filter logic
     show_done = show_done_val == '1'
-    show_due_only = show_due_only_val == '1'
     sort_mode = sort_mode_val
     view = view_val
     auto_ai_on_add = auto_ai_on_add_val == '1'
@@ -153,9 +165,8 @@ def index():
         if not show_done and todo.done:
             continue
 
-        if show_due_only:
-            if todo.due and todo.due > now:
-                continue
+        if not todo_filter.matches(todo, now.date()):
+            continue
 
         filtered_todos.append(todo)
 
@@ -226,7 +237,8 @@ def index():
                               semantic_results=semantic_results,
                               q=q,
                               show_done=show_done,
-                              show_due_only=show_due_only,
+                              todo_filter=todo_filter,
+                              filter_choices=filter_choices(todos, todo_filter),
                               sort_mode=sort_mode,
                               auto_ai_on_add=auto_ai_on_add,
                               skip_delete_confirm=skip_delete_confirm,
@@ -238,7 +250,8 @@ def index():
 
     if view == 'myday':
         return _render_myday_view(todos, show_done=show_done,
-                                  show_due_only=show_due_only,
+                                  todo_filter=todo_filter,
+                                  filter_choices=filter_choices(todos, todo_filter),
                                   sort_mode=sort_mode,
                                   auto_ai_on_add=auto_ai_on_add,
                                   skip_delete_confirm=skip_delete_confirm,
@@ -256,6 +269,11 @@ def index():
         p for todo in sorted_todos for p in todo['projects'])
     canon_contexts = canonical_casing_map(
         c for todo in sorted_todos for c in todo['contexts'])
+    if sort_mode == 'date':
+        # The date view is a schedule: overdue first, undated last. The sort
+        # is stable, so the date order within each horizon is kept.
+        sorted_todos.sort(key=lambda d: HORIZONS.index(
+            horizon_of(parse_due(d.get('due')), now.date())))
     display_todos = []
     for todo in sorted_todos:
         display_item = todo.copy()
@@ -270,12 +288,12 @@ def index():
             display_item['section'] = first_project if first_project else t.get('no_project', 'No Project')
             display_item['group_key'] = first_project if first_project else ''
         elif sort_mode == 'location':
-            location_label = t.get('location', 'Location')
-            no_location_label = t.get('no_location', 'No Location')
-            display_item['section'] = f"{location_label}: {first_context if first_context else no_location_label}"
+            display_item['section'] = first_context if first_context else t.get('no_location', 'No Location')
             display_item['group_key'] = first_context if first_context else ''
         elif sort_mode == 'date':
-            display_item['section'] = ""
+            horizon = horizon_of(parse_due(todo.get('due')), now.date())
+            display_item['horizon'] = horizon
+            display_item['section'] = horizon_label(horizon, t)
             display_item['group_key'] = ''
         else:
             display_item['group_key'] = ''
@@ -283,18 +301,21 @@ def index():
         display_todos.append(display_item)
 
     if request.args.get('partial'):
-        return render_template('_todo_list.html',
+        return render_template('_list_view.html',
                               todos=display_todos,
                               show_done=show_done,
-                              show_due_only=show_due_only,
+                              todo_filter=todo_filter,
                               sort_mode=sort_mode,
+                              schedule=sort_mode == 'date',
                               view=view)
 
     return render_template('index.html',
                           todos=display_todos,
                           show_done=show_done,
-                          show_due_only=show_due_only,
+                          todo_filter=todo_filter,
+                          filter_choices=filter_choices(todos, todo_filter),
                           sort_mode=sort_mode,
+                          schedule=sort_mode == 'date',
                           q=q,
                           auto_ai_on_add=auto_ai_on_add,
                           skip_delete_confirm=skip_delete_confirm,
@@ -331,7 +352,10 @@ def _render_myday_view(todos, **template_args):
     myday_dicts = active + completed
 
     now = datetime.now()
-    candidates = [x for x in todos if not x.done and not x.in_myday]
+    # The list filter narrows the picker; what was planned for today stays.
+    todo_filter = template_args.get('todo_filter') or TodoFilter()
+    candidates = [x for x in todos if not x.done and not x.in_myday
+                  and todo_filter.matches(x, now.date())]
 
     # Picker sections use the most frequently used casing so case variants
     # share one group (same as the main list).
@@ -381,6 +405,7 @@ def _render_myday_view(todos, **template_args):
                               suggestions=suggestions,
                               other_open=other_open,
                               sort_mode='date',
+                              todo_filter=todo_filter,
                               view='myday')
 
     return render_template('index.html',

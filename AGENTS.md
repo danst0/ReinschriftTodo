@@ -31,6 +31,7 @@ reinschrift/
 │       ├── util.rs         # String helpers, marker generation
 │       ├── i18n.rs         # Internationalization (gettext, domain "reinschrift")
 │       ├── sorting.rs      # Sorting functions
+│       ├── filter.rs       # List filters (due range, projects, places)
 │       └── preferences.rs  # User preferences
 ├── po/                     # gettext translations (.pot template + .po files)
 ├── gui/                    # GTK application (reinschrift-gui)
@@ -98,6 +99,8 @@ OPTIONS:
 
 COMMANDS:
     list (ls)       List todos with filtering/sorting
+                    (--due any|overdue|today|tomorrow|week|month|undated, --undated,
+                     --project, --context, --all)
     add             Add a new todo
     edit            Edit an existing todo
     delete (rm)     Delete todo(s)
@@ -172,6 +175,10 @@ Modular design with focused responsibilities:
   - Environment-based language detection (LANGUAGE, LC_ALL, LANG)
 - **sorting.rs**: `SortMode` enum and sorting functions
   - Topic (+project), Location (@context), Date (due:)
+- **filter.rs**: `TodoFilter` / `DueRange` — list filter shared by GUI and CLI, mirrored in `webapp/app/services/filters.py`
+  - Ranges: any, overdue, today, tomorrow, week (7 days), month (30 days), undated; bounded ranges include overdue, never "sometime"
+  - Projects/places: any-of, case-insensitive, `NO_TAG` ("") = without project/place
+  - Stored in `Preferences.filter`; `effective_filter()` maps the old `show_due_only` to "due by today, undated kept"
 
 ### GUI App (gui/)
 
@@ -241,11 +248,15 @@ webapp/
 - **keyboard.js**: Keyboard shortcuts
 - **voice.js**: Web Speech API voice input
 - **push.js**: Settings toggle for Web Push reminders (subscribes via /static/sw.js)
+- **menus.js**: `<details class="menu">` popups (group actions, filters) and expandable todo rows (note, postpone, edit); keeps the open row across partial reloads
+- **add-preview.js**: Live preview under the add line of the +project/@place/due:/rec: tokens the server will recognize
 
 **Key Services:**
 - **parser.py**: Regex patterns matching Rust core, parse_line, extract_title
+- **utils/due_view.py**: Relative due dates for the list ("Morgen, 10:00") and the time horizons of the date view (overdue … no date)
 - **storage.py**: Unified storage abstraction (local + WebDAV)
 - **todo_service.py**: load_todos, toggle_todo, add_todo, delete_todo
+- **filters.py**: `TodoFilter` (mirror of core/src/filter.rs); persisted in settings.json as `filter_due`, `filter_undated`, `filter_projects`, `filter_contexts`
 - **ai_service.py**: Ollama/LLM integration for natural language parsing
 - **push_service.py**: Web Push reminders — VAPID key, subscriptions, background loop (one gunicorn worker sends, chosen by file lock)
 
