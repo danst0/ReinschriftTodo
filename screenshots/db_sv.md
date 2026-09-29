@@ -2,12 +2,14 @@
 
 Din uppgiftslista i markdown-format.
 
-- [ ] Slutför projektförslag +Q1-Planering @Kontor due:2025-12-26 [[https://github.com/danst0/ReinschriftTodo]]
-- [ ] Förbered mötet +Q1-Planering @Kontor due:2025-12-26
-- [ ] Åtgärda UI-bugg +Reinschrift @Hem due:2025-12-27 [[https://github.com/danst0/ReinschriftTodo/issues/1]]
-- [ ] Handla mat till middagen +Inköp @Supermarket due:2025-12-26
-- [ ] Ring tandläkaren +Hälsa @Hem due:2025-12-28
+- [ ] Slutför projektförslaget +Q4-Planering @Kontor due:2026-09-29T14:00 myday:2026-09-29 ^a1b2c3 [[https://github.com/danst0/ReinschriftTodo]]
+- [ ] Förbered bilder till genomgången +Q4-Planering @Kontor due:2026-09-30T09:30 ^a1b2c4
+- [ ] Åtgärda UI-buggen +Reinschrift @Hemma due:2026-09-28 myday:2026-09-29 ^a1b2c5 [[https://github.com/danst0/ReinschriftTodo/issues/1]]
+- [ ] Handla till middagen +Inköp @Mataffären due:2026-09-29T18:00 myday:2026-09-29 ^a1b2c6 ~note:"Havremjölk, tomater, basilika"
+- [ ] Ring tandläkaren +Hälsa @Hemma due:2026-10-02T10:00 ^a1b2c7
+- [ ] Vattna blommorna +Hushåll @Hemma due:2026-10-01 rec:weekly ^a1b2c8
+- [ ] Förnya cykelförsäkringen +Hushåll due:2026-10-15 ^a1b2c9
 
 ---
 
-- [x] Läsa en bok ✅ 2025-12-25
+- [x] Läsa en bok ✅ 2026-09-27

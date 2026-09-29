@@ -5,16 +5,51 @@
   <project_license>GPL-3.0-or-later</project_license>
   <name>Reinschrift</name>
   <summary>Manage your todos in Markdown</summary>
+  <summary xml:lang="de">Aufgaben in Markdown verwalten</summary>
+  <summary xml:lang="es">Gestiona tus tareas en Markdown</summary>
+  <summary xml:lang="fr">Gérez vos tâches en Markdown</summary>
+  <summary xml:lang="ja">Markdown でタスクを管理</summary>
+  <summary xml:lang="sv">Hantera dina uppgifter i Markdown</summary>
   <description>
     <p>
       Reinschrift combines a native GNOME interface with the simplicity of plain text.
       Your tasks remain a normal Markdown file – easy to back up, versionable via Git,
       and editable on any device with your favorite editor.
     </p>
+    <p xml:lang="de">
+      Reinschrift verbindet eine native GNOME-Oberfläche mit der Einfachheit von Klartext. Deine Aufgaben bleiben eine normale Markdown-Datei – leicht zu sichern, mit Git versionierbar und auf jedem Gerät mit deinem Lieblingseditor bearbeitbar.
+    </p>
+    <p xml:lang="es">
+      Reinschrift combina una interfaz nativa de GNOME con la sencillez del texto plano. Tus tareas siguen siendo un archivo Markdown normal: fácil de respaldar, versionable con Git y editable en cualquier dispositivo con tu editor favorito.
+    </p>
+    <p xml:lang="fr">
+      Reinschrift associe une interface GNOME native à la simplicité du texte brut. Vos tâches restent un fichier Markdown ordinaire – facile à sauvegarder, versionnable avec Git et modifiable sur n'importe quel appareil avec votre éditeur préféré.
+    </p>
+    <p xml:lang="ja">
+      Reinschrift は、ネイティブな GNOME インターフェースとプレーンテキストのシンプルさを組み合わせます。タスクは普通の Markdown ファイルのまま。バックアップが簡単で、Git でバージョン管理でき、どのデバイスでもお気に入りのエディターで編集できます。
+    </p>
+    <p xml:lang="sv">
+      Reinschrift förenar ett inbyggt GNOME-gränssnitt med enkelheten hos ren text. Dina uppgifter förblir en vanlig Markdown-fil – lätt att säkerhetskopiera, versionshanterbar med Git och redigerbar på alla enheter i din favoritredigerare.
+    </p>
     <p>
       The app syncs the file via Nextcloud/WebDAV, reads changes live, writes directly back,
       and thus makes classic to-do lists in plain text suitable for everyday use – without
       proprietary silos. The format remains open, portable, and transparent.
+    </p>
+    <p xml:lang="de">
+      Die App synchronisiert die Datei über Nextcloud/WebDAV, liest Änderungen live ein, schreibt direkt zurück und macht klassische Todo-Listen im Klartext damit alltagstauglich – ohne proprietäre Silos. Das Format bleibt offen, portabel und transparent.
+    </p>
+    <p xml:lang="es">
+      La app sincroniza el archivo mediante Nextcloud/WebDAV, lee los cambios al instante, escribe directamente en él y hace así que las listas de tareas clásicas en texto plano sean aptas para el día a día, sin silos propietarios. El formato sigue siendo abierto, portable y transparente.
+    </p>
+    <p xml:lang="fr">
+      L'application synchronise le fichier via Nextcloud/WebDAV, lit les modifications en direct, écrit directement dedans et rend ainsi les listes de tâches classiques en texte brut utilisables au quotidien – sans silos propriétaires. Le format reste ouvert, portable et transparent.
+    </p>
+    <p xml:lang="ja">
+      ファイルは Nextcloud/WebDAV で同期され、変更はすぐに読み込まれ、直接書き戻されます。これにより、昔ながらのテキストの ToDo リストを、独自形式に縛られることなく日常で使えるものにします。形式はオープンで、持ち運びやすく、透明なままです。
+    </p>
+    <p xml:lang="sv">
+      Appen synkar filen via Nextcloud/WebDAV, läser in ändringar direkt, skriver tillbaka direkt och gör på så sätt klassiska att göra-listor i ren text användbara i vardagen – utan proprietära silor. Formatet förblir öppet, portabelt och transparent.
     </p>
   </description>
   <launchable type="desktop-id">me.dumke.Reinschrift.desktop</launchable>
@@ -26,8 +61,16 @@
     <screenshot type="default">
       <caption>Tasks grouped by project, with contexts, due dates and quick add</caption>
       <caption xml:lang="de">Aufgaben nach Projekt gruppiert, mit Kontexten, Fälligkeiten und Schnelleingabe</caption>
+      <caption xml:lang="es">Tareas agrupadas por proyecto, con contextos, fechas de vencimiento y entrada rápida</caption>
+      <caption xml:lang="fr">Tâches regroupées par projet, avec contextes, échéances et ajout rapide</caption>
+      <caption xml:lang="ja">プロジェクトごとにまとめたタスク。コンテキスト、期限、クイック追加付き</caption>
+      <caption xml:lang="sv">Uppgifter grupperade efter projekt, med kontexter, förfallodatum och snabbinmatning</caption>
       <image>https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_en.png</image>
       <image xml:lang="de">https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_de.png</image>
+      <image xml:lang="es">https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_es.png</image>
+      <image xml:lang="fr">https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_fr.png</image>
+      <image xml:lang="ja">https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_ja.png</image>
+      <image xml:lang="sv">https://raw.githubusercontent.com/danst0/ReinschriftTodo/main/screenshots/main_app_sv.png</image>
     </screenshot>
   </screenshots>
   <url type="homepage">https://reinschrift.dumke.me</url>
@@ -51,6 +94,18 @@
     <keyword xml:lang="de">Aufgaben</keyword>
     <keyword xml:lang="de">Aufgabenliste</keyword>
     <keyword xml:lang="de">Klartext</keyword>
+    <keyword xml:lang="es">tareas</keyword>
+    <keyword xml:lang="es">lista de tareas</keyword>
+    <keyword xml:lang="es">texto plano</keyword>
+    <keyword xml:lang="fr">tâches</keyword>
+    <keyword xml:lang="fr">liste de tâches</keyword>
+    <keyword xml:lang="fr">texte brut</keyword>
+    <keyword xml:lang="ja">タスク</keyword>
+    <keyword xml:lang="ja">ToDo リスト</keyword>
+    <keyword xml:lang="ja">プレーンテキスト</keyword>
+    <keyword xml:lang="sv">uppgifter</keyword>
+    <keyword xml:lang="sv">att göra-lista</keyword>
+    <keyword xml:lang="sv">ren text</keyword>
   </keywords>
   <recommends>
     <display_length compare="ge">360</display_length>
@@ -65,6 +120,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.0" date="2026-09-29">
+      <description>
+        <ul>
+          <li>App description and screenshots are now available in Spanish, French, Japanese and Swedish as well as English and German</li>
+          <li>Updated sample data for the screenshots in all six languages</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.9" date="2026-09-29">
       <description>
         <ul>
