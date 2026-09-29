@@ -287,18 +287,33 @@ webapp/
 
 ## Versioning & Release
 
-Before every commit, update the version and all Flatpak manifests:
+Before every commit, update the version and all Flatpak manifests. There are two kinds of
+release — **dev versions** for day-to-day commits and **bundled releases** that reach users:
 
-1. **Increment version**: Every component counts 0–9 and then carries, like an odometer. Increase patch by 1; if patch would pass 9, reset it to 0 and increment minor; if minor would pass 9, reset it to 0 and increment major. No component ever exceeds 9. (e.g. 0.1.8 → 0.1.9 → 0.2.0, and 0.9.9 → 1.0.0)
+| | Dev version | Bundled release |
+|---|---|---|
+| Version | `1.2.1-dev.1`, `1.2.1-dev.2`, … | `1.2.1` |
+| Installed | local Flatpak (`--user`) only | local Flatpak, Flathub, AUR |
+| Tag push builds | webapp image `:1.2.1-dev.1` (not `latest`), no GitHub release | webapp image `:1.2.1` + `latest`, GitHub release with Flatpak bundle |
+
+Why: every Flathub update is a download for every active install (~250). Several updates a
+week look like churn to users; bundle a few dev versions into one patch release instead.
+
+1. **Increment version**:
+   - From a release `X.Y.Z` the next dev version is the *next patch* plus `-dev.1`: `1.2.0` → `1.2.1-dev.1`. From a dev version, count up: `1.2.1-dev.1` → `1.2.1-dev.2`.
+   - Bundling drops the suffix: `1.2.1-dev.3` → `1.2.1`.
+   - Every numeric component counts 0–9 and then carries, like an odometer: if patch would pass 9, reset it to 0 and increment minor; if minor would pass 9, reset it to 0 and increment major. No component ever exceeds 9. (e.g. 0.1.9 → 0.2.0-dev.1, and 0.9.9 → 1.0.0-dev.1)
+   - Use a bundled release directly (no dev phase) only for urgent fixes.
 2. **Update files**:
    - `Cargo.toml` — `version` field in `[workspace.package]`
-   - `webapp/pyproject.toml` — `version` field in `[project]`
+   - `webapp/pyproject.toml` — `version` field in `[project]` (same string; PEP 440 reads `1.2.1-dev.1` as `1.2.1.dev1`)
    - `me.dumke.Reinschrift.yml` — `tag:` value
-   - `me.dumke.Reinschrift.metainfo.xml` — add new `<release>` entry at top of `<releases>` with today's date
-3. **Commit message**: Prefix with `v<version>:` (e.g. `v0.18.12: Add feature X`)
+   - `me.dumke.Reinschrift.metainfo.xml` — add a new `<release>` entry at the top of `<releases>` with today's date. Dev versions get `type="development"`. When bundling, **merge all `-dev.N` entries into the one release entry and delete them** — AppStream sorts `1.2.1-dev.1` *after* `1.2.1`, so a leftover dev entry would outrank the real release on Flathub.
+3. **Commit message**: Prefix with `v<version>:` (e.g. `v1.2.1-dev.1: Add feature X`, `v1.2.1: …`)
 
 ### Publishing after the tag
 
+Only bundled releases are published (Flathub, AUR); `flathub_publish.sh` refuses dev versions.
 The Flatpak manifest in this repo is the template; the package itself lives in a
 separate checkout of `github.com/flathub/me.dumke.Reinschrift`. When copying the
 manifest over, add a `commit:` line next to `tag:` with the commit behind the tag

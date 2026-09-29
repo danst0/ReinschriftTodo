@@ -10,6 +10,12 @@ MANIFEST="me.dumke.Reinschrift.yml"
 VERSION=$(grep -m1 '^version = ' "$MAIN_REPO/Cargo.toml" | sed 's/version = "\(.*\)"/\1/')
 TAG="v$VERSION"
 
+# Dev versions (1.2.1-dev.1) are installed locally only; Flathub gets the bundled release
+if [[ "$VERSION" == *-* ]]; then
+    echo "Error: $VERSION is a dev version. Only bundled releases (X.Y.Z) go to Flathub."
+    exit 1
+fi
+
 echo "=== Flathub Publisher ==="
 echo "Version: $VERSION"
 echo "Tag: $TAG"

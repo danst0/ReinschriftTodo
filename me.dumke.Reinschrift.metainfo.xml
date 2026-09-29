@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.1-dev.1" date="2026-09-29" type="development">
+      <description>
+        <ul>
+          <li>Release process: day-to-day changes are now collected as development versions and published to Flathub bundled, so you get fewer, larger updates</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-09-29">
       <description>
         <ul>

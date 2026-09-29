@@ -24,9 +24,10 @@ jobs:
         id: meta
         with:
           images: ghcr.io/${{ github.repository_owner }}/reinschrift-web
+          # Dev tags (v1.2.1-dev.1) get their own image tag but never move latest
           tags: |
             type=semver,pattern={{version}}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
       - uses: docker/build-push-action@v6
         with:
@@ -37,6 +38,8 @@ jobs:
 
   flatpak:
     name: Flatpak bundle
+    # Dev tags are local-only builds: no GitHub release, no bundle
+    if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
