@@ -51,32 +51,45 @@ function toDateTime(d) {
         d.getDate(), d.getHours(), d.getMinutes(), 0);
 }
 
-/** Human due label plus its urgency class, relative to today. */
-function describeDue(due) {
+/**
+ * Human due label, its urgency class and the highlighter flag, relative to
+ * today — like the web app's due view: late is open and overdue (or the time
+ * has passed), marked is open and due today or earlier.
+ */
+function describeDue(due, done = false) {
     if (isSomeday(due))
-        return [_('Someday'), 'rs-due-later'];
+        return {label: _('Someday'), cls: '', marked: false};
 
+    const now = new Date();
     const days = Math.round(
-        (startOfDay(due).getTime() - startOfDay(new Date()).getTime()) / 86400000);
+        (startOfDay(due).getTime() - startOfDay(now).getTime()) / 86400000);
     const hasTime = due.getHours() !== 0 || due.getMinutes() !== 0;
     const time = hasTime ? ` ${toDateTime(due).format('%H:%M')}` : '';
 
+    let label;
     if (days < -1) {
-        const text = ngettext('{n} day overdue', '{n} days overdue', -days)
+        label = ngettext('{n} day overdue', '{n} days overdue', -days)
             .replace('{n}', String(-days));
-        return [text, 'rs-due-overdue'];
+    } else if (days === -1) {
+        label = _('Yesterday') + time;
+    } else if (days === 0) {
+        label = _('Today') + time;
+    } else if (days === 1) {
+        label = _('Tomorrow') + time;
+    } else {
+        // Translators: short due date within the next weeks, a GLib.DateTime
+        // format (like strftime); e.g. "%-d. %b" for German.
+        // xgettext:no-javascript-format
+        const fmt = days < 7 ? '%A' : _('%b %-d');
+        label = toDateTime(due).format(fmt).trim() + time;
     }
-    if (days === -1)
-        return [_('Yesterday') + time, 'rs-due-overdue'];
-    if (days === 0)
-        return [_('Today') + time, 'rs-due-today'];
-    if (days === 1)
-        return [_('Tomorrow') + time, 'rs-due-later'];
-    // Translators: short due date within the next weeks, a GLib.DateTime
-    // format (like strftime); e.g. "%-d. %b" for German.
-    // xgettext:no-javascript-format
-    const fmt = days < 7 ? '%A' : _('%b %-d');
-    return [toDateTime(due).format(fmt).trim() + time, 'rs-due-later'];
+
+    const late = !done && (days < 0 || (hasTime && due < now));
+    return {
+        label,
+        cls: late ? 'rs-due-late' : (!done && days === 0 ? 'rs-due-today' : ''),
+        marked: !done && days <= 0,
+    };
 }
 
 function sortKey(item, mode) {
@@ -123,27 +136,35 @@ class TodoRow extends PopupMenu.PopupBaseMenuItem {
             style_class: 'rs-text',
         });
 
-        this._title = new St.Label({style_class: 'rs-title', x_expand: true});
+        // The highlighter hugs the title like the web app's <mark>; the bin
+        // keeps the label's natural width, long titles ellipsize.
+        this._title = new St.Label({style_class: 'rs-title'});
         this._title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-        box.add_child(this._title);
+        this._titleBox = new St.Bin({
+            style_class: 'rs-title-box',
+            x_align: Clutter.ActorAlign.START,
+        });
+        this._titleBox.set_child(this._title);
+        box.add_child(this._titleBox);
 
+        // Meta tokens the way they read in the Markdown line: +project in
+        // ochre, @place in blue, the due date emphasized, recurrence after.
         const meta = [];
         for (const project of item.projects ?? [])
-            meta.push([`+${project}`, 'rs-meta-tag']);
+            meta.push([`+${project}`, 'rs-tok rs-tok-project']);
         for (const context of item.contexts ?? [])
-            meta.push([`@${context}`, 'rs-meta-tag']);
-        if (item.due && !item.done)
-            meta.push(describeDue(item.due));
+            meta.push([`@${context}`, 'rs-tok rs-tok-context']);
+        if (item.due) {
+            const due = describeDue(item.due, item.done);
+            meta.push([due.label, `rs-tok rs-due${due.cls ? ` ${due.cls}` : ''}`.trim()]);
+        }
         if (item.recurrence)
-            meta.push([`↻ ${item.recurrence}`, 'rs-meta-tag']);
+            meta.push([`↻ ${item.recurrence}`, 'rs-tok rs-tok-rec']);
 
         if (meta.length) {
             const line = new St.BoxLayout({style_class: 'rs-meta'});
-            meta.forEach(([text, cls], i) => {
-                if (i > 0)
-                    line.add_child(new St.Label({text: '·', style_class: 'rs-sep'}));
-                line.add_child(new St.Label({text, style_class: cls}));
-            });
+            meta.forEach(([text, cls]) =>
+                line.add_child(new St.Label({text, style_class: cls})));
             box.add_child(line);
         }
 
@@ -156,15 +177,18 @@ class TodoRow extends PopupMenu.PopupBaseMenuItem {
         if (done) {
             this._checkbox.add_style_class_name('rs-checkbox-done');
             this.add_style_class_name('rs-row-done');
+            this._titleBox.remove_style_class_name('rs-marked');
         } else {
             this._checkbox.remove_style_class_name('rs-checkbox-done');
             this.remove_style_class_name('rs-row-done');
+            if (this._item.due && describeDue(this._item.due).marked)
+                this._titleBox.add_style_class_name('rs-marked');
         }
         this._title.clutter_text.set_markup(markUpTitle(this._item.title, done));
     }
 
     /**
-     * The circle (and the margin left of the text) ticks the task off,
+     * The checkbox (and the margin left of the text) ticks the task off,
      * anywhere else opens its details. From the keyboard, Space ticks off
      * and Enter opens. The menu stays open either way.
      */
@@ -210,31 +234,38 @@ class DetailItem extends PopupMenu.PopupBaseMenuItem {
             style_class: 'rs-detail-box',
         });
 
+        // The note reads like the web app's details: a quoted block.
         if (item.note) {
-            const note = new St.Label({text: item.note, style_class: 'rs-detail-note'});
+            const quoted = new St.BoxLayout({style_class: 'rs-detail-note-row'});
+            quoted.add_child(new St.Widget({style_class: 'rs-note-rule'}));
+            const note = new St.Label({
+                text: item.note,
+                style_class: 'rs-detail-note',
+                x_expand: true,
+            });
             note.clutter_text.line_wrap = true;
             note.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
-            box.add_child(note);
+            quoted.add_child(note);
+            box.add_child(quoted);
         }
 
-        const layout = new Clutter.GridLayout({
-            column_homogeneous: true,
+        // Natural-width chips that wrap, like the web app's action row.
+        const flow = new Clutter.FlowLayout({
+            orientation: Clutter.Orientation.HORIZONTAL,
             column_spacing: 6,
             row_spacing: 6,
         });
-        const grid = new St.Widget({layout_manager: layout, x_expand: true});
-        const button = (label, onClicked) => {
+        const actions = new St.Widget({layout_manager: flow, x_expand: true});
+        const button = (label, onClicked, styleClass = 'rs-chip') => {
             const btn = new St.Button({
                 label,
-                style_class: 'rs-chip',
+                style_class: styleClass,
                 can_focus: true,
-                x_expand: true,
             });
             btn.connect('clicked', onClicked);
             return btn;
         };
 
-        let row = 0;
         if (!item.done) {
             // Postponing also takes the task off today's plan, otherwise it
             // would stay right here.
@@ -244,19 +275,17 @@ class DetailItem extends PopupMenu.PopupBaseMenuItem {
                 ['nextweek', _('Next Week')],
                 ['someday', _('Someday')],
             ];
-            targets.forEach(([target, label], i) => {
-                layout.attach(button(label, () => onPostpone(target)), i % 2, Math.floor(i / 2), 1, 1);
-            });
-            row = 2;
+            for (const [target, label] of targets)
+                actions.add_child(button(label, () => onPostpone(target)));
         }
-        layout.attach(button(_('Remove from My Day'), () => onRemove()), 0, row, 2, 1);
-        box.add_child(grid);
+        actions.add_child(button(_('Remove from My Day'), onRemove, 'rs-chip rs-chip-quiet'));
+        box.add_child(actions);
 
         this.add_child(box);
     }
 });
 
-/** Title, date and progress. Not activatable. */
+/** The web app's header: today's date, the "My Day" tab and progress. */
 const HeaderItem = GObject.registerClass(
 class HeaderItem extends PopupMenu.PopupBaseMenuItem {
     _init(done, total) {
@@ -272,21 +301,45 @@ class HeaderItem extends PopupMenu.PopupBaseMenuItem {
 
         const column = new St.BoxLayout({vertical: true, x_expand: true});
 
-        const top = new St.BoxLayout({style_class: 'rs-header-top'});
-        const text = new St.BoxLayout({vertical: true, x_expand: true});
-        text.add_child(new St.Label({text: _('My Day'), style_class: 'rs-header-title'}));
-        // Translators: today's date in the menu header, a GLib.DateTime
-        // format (like strftime); e.g. "%A, %-d. %B" for German.
+        // The weekday big, the rest of the date beside it — the web app
+        // renders its header the same way (GLib localizes the names).
+        const now = GLib.DateTime.new_now_local();
+        const dateRow = new St.BoxLayout({style_class: 'rs-header-date'});
+        dateRow.add_child(new St.Label({
+            text: now.format('%A'),
+            style_class: 'rs-date-day',
+            y_align: Clutter.ActorAlign.END,
+        }));
+        // Translators: the date next to the weekday in the menu header, a
+        // GLib.DateTime format (like strftime); e.g. "%-d. %B" for German.
         // xgettext:no-javascript-format
-        const date = GLib.DateTime.new_now_local().format(_('%A, %B %-d'));
-        // Translators: progress in the menu header, e.g. "4 of 13 done".
-        const progress = _('{done} of {total} done')
-            .replace('{done}', String(done))
-            .replace('{total}', String(total));
-        const subtitle = total > 0 ? `${date} · ${progress}` : date;
-        text.add_child(new St.Label({text: subtitle, style_class: 'rs-header-subtitle'}));
-        top.add_child(text);
-        column.add_child(top);
+        dateRow.add_child(new St.Label({
+            text: now.format(_('%B %-d')),
+            style_class: 'rs-date-rest',
+            y_align: Clutter.ActorAlign.END,
+        }));
+        column.add_child(dateRow);
+
+        // "My Day" reads like the active tab of the web app's view bar; the
+        // progress count sits at its right like a section count.
+        const tabs = new St.BoxLayout({style_class: 'rs-header-tabs', x_expand: true});
+        const tab = new St.BoxLayout({vertical: true, style_class: 'rs-tab'});
+        tab.add_child(new St.Label({text: _('My Day'), style_class: 'rs-tab-label'}));
+        tab.add_child(new St.Widget({style_class: 'rs-tab-underline', x_expand: true}));
+        tabs.add_child(tab);
+        tabs.add_child(new St.Widget({x_expand: true}));
+        if (total > 0) {
+            // Translators: progress in the menu header, e.g. "4 of 13 done".
+            const progress = _('{done} of {total} done')
+                .replace('{done}', String(done))
+                .replace('{total}', String(total));
+            tabs.add_child(new St.Label({
+                text: progress,
+                style_class: 'rs-progress-text',
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
+        }
+        column.add_child(tabs);
 
         if (total > 0) {
             const track = new St.BoxLayout({
@@ -308,7 +361,9 @@ class HeaderItem extends PopupMenu.PopupBaseMenuItem {
     }
 });
 
-/** Entry for a new task; it lands in today's plan, like adding in the app's "My Day". */
+/** Entry for a new task; it lands in today's plan, like adding in the app's "My Day".
+ *  Styled like the web app's add line: a bare input over a 2px ink underline,
+ *  with the plus as a trailing submit button. */
 const AddItem = GObject.registerClass(
 class AddItem extends PopupMenu.PopupBaseMenuItem {
     _init(draft, onSubmit, onChange) {
@@ -320,20 +375,38 @@ class AddItem extends PopupMenu.PopupBaseMenuItem {
         });
         this.track_hover = false;
 
+        const box = new St.BoxLayout({
+            vertical: true,
+            x_expand: true,
+            style_class: 'rs-add-box',
+        });
+
+        const row = new St.BoxLayout({style_class: 'rs-add-row', x_expand: true});
         this.entry = new St.Entry({
             style_class: 'rs-add-entry',
             hint_text: _('Add a task'),
-            primary_icon: new St.Icon({
-                icon_name: 'list-add-symbolic',
-                style_class: 'rs-add-icon',
-            }),
             can_focus: true,
             x_expand: true,
         });
         this.entry.text = draft;
         this.entry.clutter_text.connect('activate', () => onSubmit(this.entry.text));
         this.entry.clutter_text.connect('text-changed', () => onChange(this.entry.text));
-        this.add_child(this.entry);
+        row.add_child(this.entry);
+
+        const submit = new St.Button({
+            style_class: 'rs-add-submit',
+            can_focus: true,
+        });
+        submit.set_child(new St.Icon({
+            icon_name: 'list-add-symbolic',
+            style_class: 'rs-add-submit-icon',
+        }));
+        submit.connect('clicked', () => onSubmit(this.entry.text));
+        row.add_child(submit);
+
+        box.add_child(row);
+        box.add_child(new St.Widget({style_class: 'rs-add-underline'}));
+        this.add_child(box);
     }
 });
 
@@ -382,11 +455,17 @@ class StateItem extends PopupMenu.PopupBaseMenuItem {
             x_align: Clutter.ActorAlign.CENTER,
             style_class: 'rs-state-box',
         });
-        box.add_child(new St.Icon({
+        // Like the web app's My Day empty state: the icon sits in a
+        // highlighter-yellow circle.
+        const badge = new St.Bin({
+            style_class: 'rs-state-badge',
+            x_align: Clutter.ActorAlign.CENTER,
+        });
+        badge.set_child(new St.Icon({
             icon_name: iconName,
             style_class: 'rs-state-icon',
-            x_align: Clutter.ActorAlign.CENTER,
         }));
+        box.add_child(badge);
         box.add_child(new St.Label({
             text: title,
             style_class: 'rs-state-title',
@@ -408,10 +487,12 @@ class StateItem extends PopupMenu.PopupBaseMenuItem {
     }
 });
 
+/** Full-width footer button; like the web app's, primary is inverted ink,
+ *  secondary is a bordered button. */
 const OpenItem = GObject.registerClass(
 class OpenItem extends PopupMenu.PopupBaseMenuItem {
-    _init(text, onOpen) {
-        super._init({style_class: 'rs-open-row'});
+    _init(text, onOpen, styleClass = 'rs-btn-primary') {
+        super._init({style_class: `rs-open-row ${styleClass}`});
         this.add_child(new St.Label({
             text,
             x_expand: true,
@@ -610,8 +691,12 @@ export default class ReinschriftExtension extends Extension {
         if (!actor)
             return;
         // The shell is dark unless the system explicitly prefers light
-        // (main.js _getStylesheet); 'default' therefore means dark.
+        // (main.js _getStylesheet); 'default' therefore means dark. The
+        // indicator carries the classes too, so the panel badge can follow
+        // the same palette.
         const dark = this._stSettings.color_scheme !== St.SystemColorScheme.PREFER_LIGHT;
+        this._indicator?.remove_style_class_name(dark ? 'rs-light' : 'rs-dark');
+        this._indicator?.add_style_class_name(dark ? 'rs-dark' : 'rs-light');
         actor.remove_style_class_name(dark ? 'rs-light' : 'rs-dark');
         actor.add_style_class_name(dark ? 'rs-dark' : 'rs-light');
     }
@@ -745,7 +830,7 @@ export default class ReinschriftExtension extends Extension {
             this._menu.addMenuItem(new OpenItem(_('Choose To-do File…'), () => {
                 this._menu.close();
                 this.openPreferences();
-            }));
+            }, 'rs-btn-secondary'));
             addOpenItem();
             return;
         }

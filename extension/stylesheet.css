@@ -1,9 +1,11 @@
-/* Reinschrift menu applet — "My Day" at a glance.
+/* Reinschrift menu applet — the web app's "Textmarker" design.
  *
- * Primary text inherits the shell theme's popup colors so it always matches
- * the desktop; only secondary tones and urgency colors are set here, in a
- * light (.rs-light) and dark (.rs-dark) variant chosen by extension.js.
- * Checkbox and progress use the system accent color.
+ * The popup paints itself in the app's palette, light (.rs-light) or dark
+ * (.rs-dark) as chosen by extension.js: a surface card with navy ink, meta
+ * tokens colored like the Markdown line (+project in ochre, @place in blue)
+ * and the yellow highlighter on what is due today or earlier. The shell
+ * theme still provides the popup's shape (radius, shadow) and the base
+ * font — Hanken Grotesk is used when installed on the system.
  */
 
 /* ------------------------------------------------------------- menu frame */
@@ -11,10 +13,21 @@
 .rs-menu {
     min-width: 360px;
     max-width: 400px;
+    font-family: 'Hanken Grotesk', 'Cantarell', sans-serif;
+}
+
+.rs-dark .popup-menu-content {
+    background-color: #1b212b;  /* --surface */
+    color: #e7eaf0;             /* --ink */
+}
+
+.rs-light .popup-menu-content {
+    background-color: #ffffff;
+    color: #1b2230;
 }
 
 .rs-menu .popup-menu-content {
-    padding: 8px;
+    padding: 10px;
 }
 
 .rs-scroll {
@@ -27,210 +40,411 @@
 
 /* ------------------------------------------------------------------ header */
 
+/* The web app's header: the weekday big, the rest of the date beside it. */
 .rs-header {
-    padding: 6px 10px 12px 10px;
+    padding: 6px 8px 10px 8px;
 }
 
-.rs-header-top {
-    spacing: 12px;
+.rs-header-date {
+    spacing: 8px;
 }
 
-.rs-header-title {
-    font-size: 1.4em;
+.rs-date-day {
+    font-size: 1.9em;
     font-weight: 800;
 }
 
-.rs-header-subtitle {
+.rs-dark .rs-date-rest {
+    color: #a0a8b6;  /* --ink-2 */
+}
+
+.rs-light .rs-date-rest {
+    color: #5b6472;
+}
+
+/* "My Day" as the active tab of the view bar, the count at its right. */
+.rs-header-tabs {
+    spacing: 8px;
+    margin-top: 6px;
+}
+
+.rs-tab-label {
+    font-size: 0.95em;
+    font-weight: 600;
+}
+
+.rs-tab-underline {
+    height: 2px;
+}
+
+.rs-dark .rs-tab-underline {
+    background-color: #e7eaf0;  /* --ink */
+}
+
+.rs-light .rs-tab-underline {
+    background-color: #1b2230;
+}
+
+.rs-progress-text {
     font-size: 0.9em;
-    padding-top: 2px;
 }
 
-.rs-dark .rs-header-subtitle {
-    color: rgba(255, 255, 255, 0.6);
+.rs-dark .rs-progress-text {
+    color: #7c8594;  /* --ink-3 */
 }
 
-.rs-light .rs-header-subtitle {
-    color: rgba(0, 0, 0, 0.55);
+.rs-light .rs-progress-text {
+    color: #7d8591;
 }
 
 .rs-progress {
     height: 4px;
-    margin-top: 10px;
+    margin-top: 8px;
     border-radius: 2px;
 }
 
 .rs-dark .rs-progress {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: #232a35;  /* --sunk */
 }
 
 .rs-light .rs-progress {
-    background-color: rgba(0, 0, 0, 0.08);
+    background-color: #eaeef1;
 }
 
 .rs-progress-fill {
     border-radius: 2px;
-    background-color: -st-accent-color;
+}
+
+.rs-dark .rs-progress-fill {
+    background-color: #8aa8ff;  /* --accent */
+}
+
+.rs-light .rs-progress-fill {
+    background-color: #2f5bd3;
 }
 
 /* -------------------------------------------------------------- add entry */
 
+/* The web app's add line: a bare input over a 2px ink underline, the plus
+   as a trailing submit button. */
 .rs-add {
-    padding: 0 2px 8px 2px;
+    padding: 0 2px 6px 2px;
+}
+
+.rs-add-row {
+    spacing: 4px;
 }
 
 .rs-add-entry {
-    border-radius: 10px;
-    padding: 8px 10px;
+    padding: 8px 0;
+    font-size: 1.05em;
+    background-color: transparent;
+    border-width: 0px;
 }
 
-.rs-add-icon {
-    icon-size: 16px;
-    padding-right: 6px;
+.rs-add-submit {
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.rs-dark .rs-add-submit:hover,
+.rs-dark .rs-add-submit:focus {
+    background-color: #232a35;  /* --sunk */
+}
+
+.rs-light .rs-add-submit:hover,
+.rs-light .rs-add-submit:focus {
+    background-color: #eaeef1;
+}
+
+.rs-add-submit-icon {
+    icon-size: 22px;
+}
+
+.rs-add-underline {
+    height: 2px;
+}
+
+.rs-dark .rs-add-underline {
+    background-color: #e7eaf0;  /* --ink */
+}
+
+.rs-light .rs-add-underline {
+    background-color: #1b2230;
 }
 
 /* ------------------------------------------------------------------- rows */
 
+/* Flat rows with hairline separators, like the web app's list. */
 .rs-row {
-    padding: 8px 10px;
-    spacing: 12px;
-    border-radius: 10px;
+    padding: 6px 8px;
+    spacing: 8px;
+    border-width: 0px 0px 1px 0px;
+    border-style: solid;
+}
+
+.rs-dark .rs-row {
+    border-color: #262d38;  /* --rule */
+}
+
+.rs-light .rs-row {
+    border-color: #dde2e7;
+}
+
+/* Hovered or opened from the keyboard: the web app's selection wash. */
+.rs-dark .rs-row:hover,
+.rs-dark .rs-row:active,
+.rs-dark .rs-row:focus {
+    background-color: #1d2a45;  /* --accent-soft */
+}
+
+.rs-light .rs-row:hover,
+.rs-light .rs-row:active,
+.rs-light .rs-row:focus {
+    background-color: #e6ecfb;
+}
+
+/* The opened row hands its hairline and hover over to the details below. */
+.rs-row-expanded {
+    border-width: 0px;
+}
+
+.rs-row-expanded:hover,
+.rs-row-expanded:active,
+.rs-row-expanded:focus {
+    background-color: transparent;
 }
 
 .rs-text {
-    spacing: 2px;
+    spacing: 1px;
 }
 
 .rs-title {
+    font-weight: 400;
+}
+
+.rs-row-expanded .rs-title {
     font-weight: 600;
 }
 
-.rs-meta {
-    spacing: 5px;
-    font-size: 0.85em;
+/* The highlighter: open tasks due today or earlier. */
+.rs-title-box {
+    border-radius: 2px;
 }
 
-.rs-dark .rs-meta-tag,
-.rs-dark .rs-sep,
-.rs-dark .rs-due-later {
-    color: rgba(255, 255, 255, 0.55);
+.rs-dark .rs-marked {
+    background-color: rgba(255, 214, 10, 0.30);  /* --marker */
+    padding: 1px 3px;
 }
 
-.rs-light .rs-meta-tag,
-.rs-light .rs-sep,
-.rs-light .rs-due-later {
-    color: rgba(0, 0, 0, 0.55);
+.rs-light .rs-marked {
+    background-color: #ffe45c;
+    padding: 1px 3px;
 }
 
-.rs-dark .rs-due-overdue {
-    color: #ff938c;
-    font-weight: bold;
+.rs-dark .rs-marked .rs-title {
+    color: #fff6c7;  /* --marker-ink */
 }
 
-.rs-light .rs-due-overdue {
-    color: #c01c28;
-    font-weight: bold;
-}
-
-.rs-dark .rs-due-today {
-    color: #f8e45c;
-    font-weight: bold;
-}
-
-.rs-light .rs-due-today {
-    color: #9c6e03;
-    font-weight: bold;
+.rs-light .rs-marked .rs-title {
+    color: #1b2230;
 }
 
 /* Completed rows fade back; the strike-through comes from the markup. */
 .rs-dark .rs-row-done .rs-title {
-    color: rgba(255, 255, 255, 0.45);
-    font-weight: normal;
+    color: #7c8594;  /* --ink-3 */
+    font-weight: 400;
 }
 
 .rs-light .rs-row-done .rs-title {
-    color: rgba(0, 0, 0, 0.4);
-    font-weight: normal;
+    color: #7d8591;
+    font-weight: 400;
+}
+
+.rs-dark .rs-row-done .rs-tok {
+    color: #7c8594;
+}
+
+.rs-light .rs-row-done .rs-tok {
+    color: #7d8591;
+}
+
+/* ------------------------------------------------------------- meta tokens */
+
+/* Meta tokens read like the Markdown line: +project in ochre, @place in
+   blue, the due date emphasized when it matters. */
+.rs-meta {
+    spacing: 6px;
+    font-size: 0.87em;
+}
+
+.rs-dark .rs-tok {
+    color: #a0a8b6;  /* --ink-2 */
+}
+
+.rs-light .rs-tok {
+    color: #5b6472;
+}
+
+.rs-dark .rs-tok-project {
+    color: #f0b16a;  /* --tok-project */
+}
+
+.rs-light .rs-tok-project {
+    color: #9a4b00;
+}
+
+.rs-dark .rs-tok-context {
+    color: #8aa8ff;  /* --tok-context */
+}
+
+.rs-light .rs-tok-context {
+    color: #2f5bd3;
+}
+
+.rs-due {
+    font-weight: 600;
+}
+
+.rs-dark .rs-due-late {
+    color: #ff8a80;  /* --late */
+}
+
+.rs-light .rs-due-late {
+    color: #b42318;
+}
+
+.rs-dark .rs-due-today {
+    color: #e7eaf0;  /* --ink */
+}
+
+.rs-light .rs-due-today {
+    color: #1b2230;
 }
 
 /* ----------------------------------------------------------------- details */
 
-/* The opened row and its details read as one card. */
-.rs-dark .rs-row-expanded,
-.rs-dark .rs-detail {
-    background-color: rgba(255, 255, 255, 0.06);
-}
-
-.rs-light .rs-row-expanded,
-.rs-light .rs-detail {
-    background-color: rgba(0, 0, 0, 0.04);
-}
-
-.rs-row-expanded {
-    border-radius: 10px 10px 0 0;
-}
-
+/* The opened row reads like the web app's expanded todo: a quoted note and
+   a row of small bordered chips — no card around it. */
 .rs-detail {
-    padding: 2px 10px 10px 42px;
-    margin-bottom: 4px;
-    border-radius: 0 0 10px 10px;
+    padding: 2px 8px 8px 36px;
+    border-width: 0px 0px 1px 0px;
+    border-style: solid;
+}
+
+.rs-dark .rs-detail {
+    border-color: #262d38;  /* --rule */
+}
+
+.rs-light .rs-detail {
+    border-color: #dde2e7;
 }
 
 .rs-detail-box {
     spacing: 8px;
 }
 
+.rs-detail-note-row {
+    spacing: 10px;
+}
+
+.rs-note-rule {
+    width: 2px;
+}
+
+.rs-dark .rs-note-rule {
+    background-color: #384150;  /* --rule-strong */
+}
+
+.rs-light .rs-note-rule {
+    background-color: #c3cad3;
+}
+
 .rs-detail-note {
-    font-size: 0.9em;
+    font-size: 0.92em;
 }
 
 .rs-dark .rs-detail-note {
-    color: rgba(255, 255, 255, 0.7);
+    color: #a0a8b6;  /* --ink-2 */
 }
 
 .rs-light .rs-detail-note {
-    color: rgba(0, 0, 0, 0.65);
+    color: #5b6472;
 }
 
+/* The web app's .chip: a small bordered button; the remove action is quiet. */
 .rs-chip {
-    padding: 6px 10px;
-    border-radius: 99px;
-    font-size: 0.9em;
-    font-weight: bold;
-    color: inherit;
+    padding: 6px 11px;
+    border-radius: 8px;
+    font-size: 0.86em;
+    font-weight: 600;
+    border-width: 1px;
+    border-style: solid;
 }
 
 .rs-dark .rs-chip {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: #1b212b;  /* --surface */
+    border-color: #384150;      /* --rule-strong */
+    color: #e7eaf0;              /* --ink */
 }
 
 .rs-light .rs-chip {
-    background-color: rgba(0, 0, 0, 0.06);
+    background-color: #ffffff;
+    border-color: #c3cad3;
+    color: #1b2230;
 }
 
 .rs-dark .rs-chip:hover,
 .rs-dark .rs-chip:focus {
-    background-color: rgba(255, 255, 255, 0.16);
+    border-color: #e7eaf0;  /* --ink */
 }
 
 .rs-light .rs-chip:hover,
 .rs-light .rs-chip:focus {
-    background-color: rgba(0, 0, 0, 0.12);
+    border-color: #1b2230;
 }
 
 .rs-dark .rs-chip:active {
-    background-color: rgba(255, 255, 255, 0.22);
+    background-color: #232a35;  /* --sunk */
 }
 
 .rs-light .rs-chip:active {
-    background-color: rgba(0, 0, 0, 0.16);
+    background-color: #eaeef1;
+}
+
+.rs-chip-quiet {
+    border-width: 0px;
+}
+
+.rs-dark .rs-chip-quiet {
+    background-color: transparent;
+    color: #a0a8b6;  /* --ink-2 */
+}
+
+.rs-light .rs-chip-quiet {
+    background-color: transparent;
+    color: #5b6472;
+}
+
+.rs-dark .rs-chip-quiet:hover,
+.rs-dark .rs-chip-quiet:focus {
+    background-color: #232a35;  /* --sunk */
+    color: #e7eaf0;              /* --ink */
+}
+
+.rs-light .rs-chip-quiet:hover,
+.rs-light .rs-chip-quiet:focus {
+    background-color: #eaeef1;
+    color: #1b2230;
 }
 
 /* ---------------------------------------------------------------- checkbox */
 
+/* The web app's checkbox: a small rounded square in ink, filled when done. */
 .rs-checkbox {
     width: 20px;
     height: 20px;
-    border-radius: 99px;
+    border-radius: 5px;
     border-width: 2px;
     border-style: solid;
     background-color: transparent;
@@ -238,64 +452,94 @@
 }
 
 .rs-dark .rs-checkbox {
-    border-color: rgba(255, 255, 255, 0.4);
+    border-color: #e7eaf0;  /* --ink */
 }
 
 .rs-light .rs-checkbox {
-    border-color: rgba(0, 0, 0, 0.3);
+    border-color: #1b2230;
 }
 
-.rs-row:hover .rs-checkbox,
-.rs-row:focus .rs-checkbox {
-    border-color: -st-accent-color;
+.rs-dark .rs-row:hover .rs-checkbox {
+    background-color: #232a35;  /* --sunk */
 }
 
-.rs-checkbox-done,
-.rs-row:hover .rs-checkbox-done {
-    background-color: -st-accent-color;
-    border-color: -st-accent-color;
+.rs-light .rs-row:hover .rs-checkbox {
+    background-color: #eaeef1;
+}
+
+/* Done fills come after the hover rules so they win at equal specificity. */
+.rs-dark .rs-checkbox-done,
+.rs-dark .rs-row:hover .rs-checkbox-done {
+    background-color: #e7eaf0;  /* --ink */
+    border-color: #e7eaf0;
+}
+
+.rs-light .rs-checkbox-done,
+.rs-light .rs-row:hover .rs-checkbox-done {
+    background-color: #1b2230;
+    border-color: #1b2230;
 }
 
 .rs-check {
     icon-size: 14px;
-    color: -st-accent-fg-color;
+}
+
+.rs-dark .rs-check {
+    color: #12161d;  /* --bg */
+}
+
+.rs-light .rs-check {
+    color: #f5f7f8;
 }
 
 /* --------------------------------------------------------- completed group */
 
+/* The completed group reads like a web app section header. */
 .rs-completed-toggle {
-    padding: 10px 10px 8px 10px;
-    margin-top: 4px;
-    spacing: 8px;
-    border-radius: 10px;
-    font-size: 0.9em;
-    font-weight: bold;
+    padding: 14px 8px 6px 8px;
+    spacing: 6px;
+    border-radius: 8px;
+}
+
+.rs-dark .rs-completed-toggle:hover,
+.rs-dark .rs-completed-toggle:active,
+.rs-dark .rs-completed-toggle:focus {
+    background-color: #1d2a45;  /* --accent-soft */
+}
+
+.rs-light .rs-completed-toggle:hover,
+.rs-light .rs-completed-toggle:active,
+.rs-light .rs-completed-toggle:focus {
+    background-color: #e6ecfb;
+}
+
+.rs-completed-label {
+    font-size: 1em;
+    font-weight: 800;
 }
 
 .rs-expander {
     icon-size: 16px;
 }
 
-.rs-dark .rs-completed-toggle {
-    color: rgba(255, 255, 255, 0.6);
+.rs-dark .rs-expander {
+    color: #a0a8b6;  /* --ink-2 */
 }
 
-.rs-light .rs-completed-toggle {
-    color: rgba(0, 0, 0, 0.55);
+.rs-light .rs-expander {
+    color: #5b6472;
 }
 
 .rs-count {
-    border-radius: 99px;
-    padding: 0 7px;
-    font-size: 0.9em;
+    font-size: 0.87em;
 }
 
 .rs-dark .rs-count {
-    background-color: rgba(255, 255, 255, 0.1);
+    color: #7c8594;  /* --ink-3 */
 }
 
 .rs-light .rs-count {
-    background-color: rgba(0, 0, 0, 0.07);
+    color: #7d8591;
 }
 
 /* ------------------------------------------------------------ empty states */
@@ -305,72 +549,132 @@
 }
 
 .rs-state-box {
-    spacing: 6px;
+    spacing: 8px;
+}
+
+/* The web app's My Day empty state: the icon in a highlighter circle. */
+.rs-state-badge {
+    padding: 10px;
+    border-radius: 99px;
+}
+
+.rs-dark .rs-state-badge {
+    background-color: rgba(255, 214, 10, 0.30);  /* --marker */
+}
+
+.rs-light .rs-state-badge {
+    background-color: #ffe45c;
 }
 
 .rs-state-icon {
-    icon-size: 32px;
-    margin-bottom: 4px;
+    icon-size: 36px;
+}
+
+.rs-dark .rs-state-icon {
+    color: #fff6c7;  /* --marker-ink */
+}
+
+.rs-light .rs-state-icon {
+    color: #1b2230;
 }
 
 .rs-state-title {
-    font-weight: bold;
-}
-
-.rs-dark .rs-state-icon,
-.rs-dark .rs-state-hint {
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.rs-light .rs-state-icon,
-.rs-light .rs-state-hint {
-    color: rgba(0, 0, 0, 0.45);
+    font-size: 1em;
+    font-weight: 700;
 }
 
 .rs-state-hint {
     font-size: 0.9em;
 }
 
-/* ------------------------------------------------------------- open button */
+.rs-dark .rs-state-hint {
+    color: #a0a8b6;  /* --ink-2 */
+}
 
+.rs-light .rs-state-hint {
+    color: #5b6472;
+}
+
+/* ------------------------------------------------------------ open buttons */
+
+/* The web app's buttons: primary is inverted ink, secondary is bordered. */
 .rs-open-row {
     margin-top: 6px;
-    padding: 9px 12px;
-    border-radius: 99px;
-    font-weight: bold;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.95em;
+    font-weight: 700;
 }
 
-.rs-dark .rs-open-row {
-    background-color: rgba(255, 255, 255, 0.08);
+.rs-dark .rs-btn-primary {
+    background-color: #e7eaf0;  /* --ink */
+    color: #12161d;              /* --bg */
 }
 
-.rs-light .rs-open-row {
-    background-color: rgba(0, 0, 0, 0.05);
+.rs-light .rs-btn-primary {
+    background-color: #1b2230;
+    color: #f5f7f8;
 }
 
-.rs-dark .rs-open-row:hover,
-.rs-dark .rs-open-row:focus {
-    background-color: rgba(255, 255, 255, 0.14);
+.rs-dark .rs-btn-primary:hover,
+.rs-dark .rs-btn-primary:focus {
+    background-color: #ccd1da;  /* ink, like the web app's 0.88 hover */
 }
 
-.rs-light .rs-open-row:hover,
-.rs-light .rs-open-row:focus {
-    background-color: rgba(0, 0, 0, 0.1);
+.rs-light .rs-btn-primary:hover,
+.rs-light .rs-btn-primary:focus {
+    background-color: #323b4c;
+}
+
+.rs-dark .rs-btn-secondary {
+    background-color: #1b212b;  /* --surface */
+    border-width: 1px;
+    border-style: solid;
+    border-color: #384150;      /* --rule-strong */
+    color: #e7eaf0;              /* --ink */
+}
+
+.rs-light .rs-btn-secondary {
+    background-color: #ffffff;
+    border-width: 1px;
+    border-style: solid;
+    border-color: #c3cad3;
+    color: #1b2230;
+}
+
+.rs-dark .rs-btn-secondary:hover,
+.rs-dark .rs-btn-secondary:focus {
+    border-color: #e7eaf0;  /* --ink */
+}
+
+.rs-light .rs-btn-secondary:hover,
+.rs-light .rs-btn-secondary:focus {
+    border-color: #1b2230;
 }
 
 /* -------------------------------------------------------------- panel pill */
 
 .rs-indicator {
     spacing: 4px;
+    font-family: 'Hanken Grotesk', 'Cantarell', sans-serif;
 }
 
+/* The web app's filter count: an inverted ink pill. */
 .rs-badge {
-    font-size: 0.8em;
-    font-weight: bold;
-    color: -st-accent-fg-color;
-    background-color: -st-accent-color;
+    font-size: 0.7em;
+    font-weight: 700;
     border-radius: 99px;
-    padding: 0 6px;
+    padding: 0 5px;
     min-width: 8px;
     text-align: center;
+}
+
+.rs-dark .rs-badge {
+    background-color: #e7eaf0;  /* --ink */
+    color: #12161d;              /* --bg */
+}
+
+.rs-light .rs-badge {
+    background-color: #1b2230;
+    color: #f5f7f8;
 }
