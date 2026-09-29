@@ -1724,12 +1724,18 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             let Some(obj) = list_item.item() else { return glib::Propagation::Proceed; };
             let Ok(todo_obj) = obj.downcast::<BoxedAnyObject>() else { return glib::Propagation::Proceed; };
             let entry = todo_obj.borrow::<ListEntry>();
+            let Some(state) = state_item_key.upgrade() else { return glib::Propagation::Proceed; };
             let todo = match &*entry {
                 ListEntry::Item(todo) => todo.clone(),
+                // Im Planungs-Picker übernimmt die Leertaste in „Mein Tag"
+                // (wie das Plus); Enter öffnet den Bearbeiten-Dialog.
+                ListEntry::PickerItem(todo) if keyval == gdk::Key::space => {
+                    state.toggle_myday(todo);
+                    return glib::Propagation::Stop;
+                }
                 _ => return glib::Propagation::Proceed,
             };
-            
-            let Some(state) = state_item_key.upgrade() else { return glib::Propagation::Proceed; };
+
             // Im Auswahlmodus schaltet die Leertaste die Auswahl um;
             // andere Schnellaktionen sind dort deaktiviert.
             if state.selection_mode.get() {
@@ -3152,7 +3158,7 @@ impl AppState {
                 shortcut(&t("Toggle done"), "space"),
                 shortcut(&t("Edit"), "Return"),
                 shortcut(&t("Delete selected task"), "Delete"),
-                shortcut(&t("In the planning picker: add to My Day"), "Return"),
+                shortcut(&t("In the planning picker: add to My Day"), "space"),
             ]),
             group(&t("Set due date"), &[
                 shortcut(&t("Due today"), "h"),
@@ -4926,22 +4932,23 @@ impl AppState {
         let (item, picker) = {
             let entry = todo_obj.borrow::<ListEntry>();
             match &*entry {
-                ListEntry::Item(todo) => (Some(todo.clone()), None),
-                ListEntry::PickerItem(todo) => (None, Some(todo.clone())),
-                ListEntry::Header(_) => (None, None),
+                ListEntry::Item(todo) => (Some(todo.clone()), false),
+                ListEntry::PickerItem(todo) => (Some(todo.clone()), true),
+                ListEntry::Header(_) => (None, false),
             }
         };
-
-        // Aktivieren (Enter/Klick) im Planungs-Picker übernimmt die
-        // Aufgabe in „Mein Tag" — so ist der Picker tastaturbedienbar.
-        if let Some(todo) = picker {
-            self.toggle_myday(&todo);
-            return;
-        }
 
         let Some(todo) = item else {
             return;
         };
+
+        // Im Planungs-Picker öffnet Aktivieren (Enter/Klick) den normalen
+        // Bearbeiten-Dialog; in „Mein Tag" übernimmt nur das Plus (bzw. die
+        // Leertaste).
+        if picker {
+            self.show_details_dialog(&todo);
+            return;
+        }
 
         // Im Auswahlmodus toggelt ein Klick auf die Zeile die Auswahl
         // statt den Bearbeiten-Dialog zu öffnen.
