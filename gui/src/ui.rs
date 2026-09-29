@@ -5472,13 +5472,17 @@ impl AppState {
         note_view.set_top_margin(4);
         note_view.set_bottom_margin(4);
 
+        // The note takes all extra height when the dialog is enlarged, so the
+        // buttons stay at the bottom instead of floating mid-window (issue #13).
         let note_scrolled = gtk::ScrolledWindow::builder()
             .child(&note_view)
             .min_content_height(96)
             .hexpand(true)
+            .vexpand(true)
             .build();
 
         let note_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        note_row.set_vexpand(true);
         note_row.append(&gtk::Label::builder().label(t("Note")).xalign(0.0).build());
         note_row.append(&note_scrolled);
         content.append(&note_row);

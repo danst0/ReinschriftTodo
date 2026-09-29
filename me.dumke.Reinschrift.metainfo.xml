@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.1-dev.2" date="2026-09-29" type="development">
+      <description>
+        <ul>
+          <li>In the edit dialog, the note field grows with the window and the buttons stay at the bottom</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.1-dev.1" date="2026-09-29" type="development">
       <description>
         <ul>
