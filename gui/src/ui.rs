@@ -5969,27 +5969,89 @@ fn build_filter_panel(state: &Rc<AppState>) -> gtk::Widget {
     // Fälligkeit
     let due_box = gtk::Box::new(gtk::Orientation::Vertical, 6);
     due_box.append(&heading(t("Due date")));
-    let labels: Vec<String> = DueRange::ALL.iter().map(|r| due_range_label(*r)).collect();
-    let label_refs: Vec<&str> = labels.iter().map(String::as_str).collect();
-    let due_dropdown = gtk::DropDown::from_strings(&label_refs);
-    due_dropdown.set_selected(
-        DueRange::ALL.iter().position(|r| *r == filter.due).unwrap_or(0) as u32,
-    );
-    set_a11y_label(&due_dropdown, &t("Due date"));
-    due_box.append(&due_dropdown);
+    // Zeitraum als Untermenü im selben Popover (wie die Untermenüs von
+    // GtkPopoverMenu) statt als DropDown: dessen verschachteltes Popup nimmt
+    // dem Filter-Popover beim Schließen den Grab, danach schließt es sich bei
+    // Klicks daneben nicht mehr.
     let undated = gtk::CheckButton::with_label(&t("Also tasks without a date"));
     undated.set_active(filter.include_undated);
     undated.set_sensitive(filter.due.is_bounded());
-    due_box.append(&undated);
-    due_dropdown.connect_selected_notify(clone!(#[weak] state, #[weak] undated, #[weak] reset, move |dropdown| {
-        let range = DueRange::ALL
-            .get(dropdown.selected() as usize)
-            .copied()
-            .unwrap_or_default();
-        undated.set_sensitive(range.is_bounded());
-        state.update_filter(|f| f.due = range);
-        reset.set_sensitive(state.filter().is_active());
+
+    let stack = gtk::Stack::builder()
+        .transition_type(gtk::StackTransitionType::SlideLeftRight)
+        .vhomogeneous(false)
+        .interpolate_size(true)
+        .build();
+
+    let range_label = gtk::Label::builder()
+        .label(due_range_label(filter.due))
+        .xalign(0.0)
+        .hexpand(true)
+        .build();
+    let range_row_content = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    range_row_content.append(&range_label);
+    range_row_content.append(&gtk::Image::from_icon_name("go-next-symbolic"));
+    let range_row = gtk::Button::builder().child(&range_row_content).build();
+    set_a11y_label(&range_row, &t("Due date"));
+    range_row.connect_clicked(clone!(#[weak] stack, move |_| {
+        stack.set_visible_child_name("due");
     }));
+    due_box.append(&range_row);
+    due_box.append(&undated);
+
+    // Unterseite: Zurück-Zeile und die Zeiträume, der gewählte mit Haken.
+    let due_page = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(6)
+        .margin_top(6)
+        .margin_bottom(6)
+        .margin_start(6)
+        .margin_end(6)
+        .build();
+    let back_content = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    back_content.append(&gtk::Image::from_icon_name("go-previous-symbolic"));
+    back_content.append(&heading(t("Due date")));
+    let back = gtk::Button::builder().child(&back_content).build();
+    back.add_css_class("flat");
+    back.connect_clicked(clone!(#[weak] stack, move |_| {
+        stack.set_visible_child_name("main");
+    }));
+    due_page.append(&back);
+    due_page.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+    let options = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    let mut buttons = Vec::new();
+    let mut checks = Vec::new();
+    for range in DueRange::ALL.iter().copied() {
+        let check = gtk::Image::from_icon_name("object-select-symbolic");
+        check.set_opacity(if range == filter.due { 1.0 } else { 0.0 });
+        let content = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        content.append(&gtk::Label::builder()
+            .label(due_range_label(range))
+            .xalign(0.0)
+            .hexpand(true)
+            .build());
+        content.append(&check);
+        let option = gtk::Button::builder().child(&content).build();
+        option.add_css_class("flat");
+        options.append(&option);
+        buttons.push((range, option));
+        checks.push((range, check));
+    }
+    let checks = Rc::new(checks);
+    for (range, option) in buttons {
+        option.connect_clicked(clone!(#[weak] state, #[weak] stack, #[weak] undated, #[weak] reset,
+            #[weak] range_label, #[strong] checks, move |_| {
+            for (r, check) in checks.iter() {
+                check.set_opacity(if *r == range { 1.0 } else { 0.0 });
+            }
+            range_label.set_label(&due_range_label(range));
+            undated.set_sensitive(range.is_bounded());
+            state.update_filter(|f| f.due = range);
+            reset.set_sensitive(state.filter().is_active());
+            stack.set_visible_child_name("main");
+        }));
+    }
+    due_page.append(&options);
     undated.connect_toggled(clone!(#[weak] state, move |check| {
         let on = check.is_active();
         state.update_filter(|f| f.include_undated = on);
@@ -6049,7 +6111,9 @@ fn build_filter_panel(state: &Rc<AppState>) -> gtk::Widget {
     }));
     panel.append(&reset);
 
-    panel.upcast()
+    stack.add_named(&panel, Some("main"));
+    stack.add_named(&due_page, Some("due"));
+    stack.upcast()
 }
 
 fn is_due_by(todo: &TodoItem, today: NaiveDate) -> bool {
