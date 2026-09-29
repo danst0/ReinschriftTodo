@@ -2043,6 +2043,11 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             return;
         };
         let entry = todo_obj.borrow::<ListEntry>();
+        // Überschriften weder hervorheben noch aktivieren; ListItems werden
+        // wiederverwendet, daher bei jedem Bind neu setzen.
+        let is_header = matches!(&*entry, ListEntry::Header(_));
+        list_item.set_selectable(!is_header);
+        list_item.set_activatable(!is_header);
         let Some(stack_ref_ptr) = (unsafe { list_item.data::<glib::WeakRef<gtk::Stack>>("stack") }) else {
             return;
         };
@@ -2212,8 +2217,13 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
     let model = gtk::SingleSelection::new(Some(state.store()));
     model.set_autoselect(false);
     model.set_can_unselect(true);
-    let list_view = gtk::ListView::new(Some(model), Some(factory));
+    let list_view = gtk::ListView::new(Some(model.clone()), Some(factory));
     list_view.set_single_click_activate(true);
+    // single-click-activate wählt die Zeile unter dem Zeiger aus; ohne das
+    // bliebe die Hervorhebung stehen, nachdem die Maus die Liste verlassen hat.
+    let motion = gtk::EventControllerMotion::new();
+    motion.connect_leave(move |_| model.set_selected(gtk::INVALID_LIST_POSITION));
+    list_view.add_controller(motion);
     let activate_state = state_weak.clone();
     list_view.connect_activate(move |_, position| {
         if let Some(state) = activate_state.upgrade() {
