@@ -71,6 +71,13 @@ def by_marker(marker):
     return next(item for item in items() if item.marker == marker)
 
 
+def seen_map(todos, when):
+    """The seen map as if the loop had first noticed these todos at ``when``."""
+    stamp = when.isoformat(timespec='seconds')
+    return {push_service.reminder_key(item): stamp
+            for item in todos if push_service.reminder_time(item) is not None}
+
+
 class TestReminderTime:
     def test_timed_todo_is_announced_lead_minutes_ahead(self, ctx):
         assert push_service.reminder_time(by_marker('timed001')) == datetime(2026, 5, 16, 13, 45)
@@ -89,25 +96,38 @@ class TestReminderTime:
 
 class TestDueReminders:
     def test_before_reminder_time_nothing_is_due(self, ctx):
-        assert push_service.due_reminders(items(), datetime(2026, 5, 16, 7, 59), {}) == []
+        seen = seen_map(items(), datetime(2026, 5, 16, 7, 0))
+        assert push_service.due_reminders(items(), datetime(2026, 5, 16, 7, 59), {}, seen) == []
 
     def test_due_inside_window(self, ctx):
-        due = push_service.due_reminders(items(), datetime(2026, 5, 16, 13, 50), {})
+        seen = seen_map(items(), datetime(2026, 5, 15, 12, 0))
+        due = push_service.due_reminders(items(), datetime(2026, 5, 16, 13, 50), {}, seen)
         assert {item.title for item in due} == {'Zahnarzt', 'Müll rausbringen', 'Ohne Marker'}
 
     def test_stale_reminders_are_dropped(self, ctx):
-        assert push_service.due_reminders(items(), datetime(2026, 5, 17, 9, 0), {}) == []
+        seen = seen_map(items(), datetime(2026, 5, 15, 12, 0))
+        assert push_service.due_reminders(items(), datetime(2026, 5, 17, 9, 0), {}, seen) == []
 
     def test_already_sent_is_skipped(self, ctx):
         sent = {push_service.reminder_key(by_marker('allday01')): '2026-05-16T08:00:00'}
-        due = push_service.due_reminders(items(), datetime(2026, 5, 16, 8, 1), sent)
-        assert due == []
+        seen = seen_map(items(), datetime(2026, 5, 15, 12, 0))
+        assert push_service.due_reminders(items(), datetime(2026, 5, 16, 8, 1), sent, seen) == []
 
     def test_postponed_todo_gets_a_new_reminder(self, ctx):
         old = by_marker('allday01')
         sent = {push_service.reminder_key(old): '2026-05-15T08:00:00'}
         moved = parse_line('- [ ] Müll rausbringen due:2026-05-17 ^allday01', 0)
-        assert push_service.due_reminders([moved], datetime(2026, 5, 17, 8, 0), sent) == [moved]
+        seen = seen_map([moved], datetime(2026, 5, 16, 9, 0))
+        assert push_service.due_reminders([moved], datetime(2026, 5, 17, 8, 0), sent, seen) == [moved]
+
+    def test_todo_seen_too_late_stays_silent(self, ctx):
+        # Adding "due:today" in the afternoon: the 8 o'clock reminder had
+        # already passed when the loop first saw the todo.
+        seen = seen_map(items(), datetime(2026, 5, 16, 13, 50))
+        assert push_service.due_reminders(items(), datetime(2026, 5, 16, 13, 50), {}, seen) == []
+
+    def test_unknown_todo_stays_silent(self, ctx):
+        assert push_service.due_reminders(items(), datetime(2026, 5, 16, 13, 50), {}, {}) == []
 
 
 class TestPayloads:
@@ -145,14 +165,26 @@ class TestTick:
         push_service.add_subscription(SUBSCRIPTION, 'de', 'https://t.example')
         runner = push_service.ReminderRunner()
         with patch.object(push_service, 'send') as send:
+            # A first tick before any reminder time: the loop learns the todos.
+            assert runner.tick(datetime(2026, 5, 16, 7, 59)) == 0
             assert runner.tick(datetime(2026, 5, 16, 13, 50)) == 3
             assert runner.tick(datetime(2026, 5, 16, 13, 51)) == 0
         assert send.call_count == 3
         assert len(push_service.load_sent()) == 3
 
+    def test_todo_appearing_after_its_reminder_time_stays_silent(self, ctx):
+        push_service.add_subscription(SUBSCRIPTION, 'de', 'https://t.example')
+        runner = push_service.ReminderRunner()
+        with patch.object(push_service, 'send') as send:
+            # First sight at 13:50: the reminder times (08:00, 13:45) already passed.
+            assert runner.tick(datetime(2026, 5, 16, 13, 50)) == 0
+        send.assert_not_called()
+        assert push_service.load_sent() == {}
+
     def test_expired_subscription_is_removed(self, ctx):
         push_service.add_subscription(SUBSCRIPTION, 'de', 'https://t.example')
         runner = push_service.ReminderRunner()
+        runner.tick(datetime(2026, 5, 16, 7, 59))  # learn the todos first
         gone = push_service.SubscriptionGone(SUBSCRIPTION['endpoint'])
         with patch.object(push_service, 'send', side_effect=gone):
             runner.tick(datetime(2026, 5, 16, 13, 50))
@@ -161,6 +193,7 @@ class TestTick:
     def test_total_failure_is_retried_next_tick(self, ctx):
         push_service.add_subscription(SUBSCRIPTION, 'de', 'https://t.example')
         runner = push_service.ReminderRunner()
+        runner.tick(datetime(2026, 5, 16, 7, 59))  # learn the todos first
         with patch.object(push_service, 'send', side_effect=RuntimeError('down')):
             runner.tick(datetime(2026, 5, 16, 13, 50))
         assert push_service.load_sent() == {}

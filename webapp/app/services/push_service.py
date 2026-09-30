@@ -13,6 +13,11 @@ Where things live, all next to ``CONFIG_PATH`` on the persistent volume:
   subscription, so it must survive container rebuilds.
 - ``push_sent.json``: which reminders went out, so a restart does not repeat
   them.
+- ``push_seen.json``: when the loop first noticed each reminder. A reminder
+  only fires for a moment that arrived while the loop already knew the todo —
+  one that appears with its reminder time already past (``due:today`` added in
+  the afternoon) stays silent, while the same todo added in the morning is
+  still announced.
 - ``push_reminders.lock``: gunicorn runs several workers, each starting the
   loop; only the one holding this lock sends, the others keep trying in case
   it dies.
@@ -268,14 +273,25 @@ def reminder_key(item: TodoItem) -> str:
 
 
 def due_reminders(items: list[TodoItem], now: datetime,
-                  sent: dict[str, str]) -> list[TodoItem]:
-    """Todos whose reminder is due at ``now`` and has not been sent yet."""
+                  sent: dict[str, str], seen: dict[str, str]) -> list[TodoItem]:
+    """Todos whose reminder is due at ``now`` and has not been sent yet.
+
+    ``seen`` maps :func:`reminder_key` to when the loop first noticed the
+    todo; a reminder is only announced if that happened at or before its
+    reminder time. One that showed up too late — added with a due date
+    whose reminder already passed — never rings, no matter how the todo
+    arrived: PWA, CLI, another client, an undo.
+    """
     result = []
     for item in items:
         at = reminder_time(item)
         if at is None or not (at <= now < at + GRACE):
             continue
-        if reminder_key(item) in sent:
+        key = reminder_key(item)
+        if key in sent:
+            continue
+        known_since = _stamp_time(seen.get(key))
+        if known_since is None or known_since > at:
             continue
         result.append(item)
     return result
@@ -322,28 +338,88 @@ def build_payloads(items: list[TodoItem], lang: str) -> list[dict[str, Any]]:
 # Sent-state persistence
 # ---------------------------------------------------------------------------
 
+def _load_stamp_map(path: str) -> dict[str, str]:
+    """Read a ``{key: iso timestamp}`` file, ignoring a broken one."""
+    try:
+        with open(path, encoding='utf-8') as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {key: stamp for key, stamp in data.items()
+            if isinstance(key, str) and isinstance(stamp, str)}
+
+
+def _save_stamp_map(path: str, mapping: dict[str, str]) -> None:
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or '.', prefix='.push_stamps.')
+    with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+        json.dump(mapping, handle)
+    os.replace(tmp, path)
+
+
+def _stamp_time(stamp: Optional[str]) -> Optional[datetime]:
+    """Parse a persisted timestamp; anything unparsable counts as unknown."""
+    if not stamp:
+        return None
+    try:
+        return datetime.fromisoformat(stamp)
+    except ValueError:
+        return None
+
+
 def _sent_path() -> str:
     return os.path.join(_config_dir(), 'push_sent.json')
 
 
 def load_sent() -> dict[str, str]:
-    try:
-        with open(_sent_path(), encoding='utf-8') as handle:
-            data = json.load(handle)
-        return data if isinstance(data, dict) else {}
-    except (OSError, json.JSONDecodeError):
-        return {}
+    return _load_stamp_map(_sent_path())
 
 
 def save_sent(sent: dict[str, str], now: datetime) -> None:
     cutoff = (now - SENT_RETENTION).isoformat()
     kept = {key: stamp for key, stamp in sent.items() if stamp >= cutoff}
-    path = _sent_path()
-    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or '.', prefix='.push_sent.')
-    with os.fdopen(fd, 'w', encoding='utf-8') as handle:
-        json.dump(kept, handle)
-    os.replace(tmp, path)
+    _save_stamp_map(_sent_path(), kept)
+
+
+def _seen_path() -> str:
+    return os.path.join(_config_dir(), 'push_seen.json')
+
+
+def load_seen() -> dict[str, str]:
+    return _load_stamp_map(_seen_path())
+
+
+def record_seen(items: list[TodoItem], now: datetime) -> dict[str, str]:
+    """Note when each reminder was first noticed; forget vanished todos.
+
+    This is what tells a just-added todo from one that was there all along:
+    ``due_reminders`` only announces reminder times that arrived after the
+    stamp recorded here. Keys of todos that lost their reminder — done,
+    deleted, re-dated — are dropped, so the file stays as large as the open
+    todo list. An empty item list (unreadable file) changes nothing, so one
+    failed read cannot wipe the record.
+    """
+    seen = load_seen()
+    if not items:
+        return seen
+    current: set[str] = set()
+    changed = False
+    for item in items:
+        if reminder_time(item) is None:
+            continue
+        key = reminder_key(item)
+        current.add(key)
+        if key not in seen:
+            seen[key] = now.isoformat(timespec='seconds')
+            changed = True
+    for key in [k for k in seen if k not in current]:
+        del seen[key]
+        changed = True
+    if changed:
+        _save_stamp_map(_seen_path(), seen)
+    return seen
 
 
 # ---------------------------------------------------------------------------
@@ -375,8 +451,10 @@ class ReminderRunner:
             return 0
 
         now = now or datetime.now()
+        todos = self._todos()
+        seen = record_seen(todos, now)
         sent = load_sent()
-        items = due_reminders(self._todos(), now, sent)
+        items = due_reminders(todos, now, sent, seen)
         if not items:
             return 0
 

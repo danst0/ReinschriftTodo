@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.1-dev.4" date="2026-09-30" type="development">
+      <description>
+        <ul>
+          <li>Web: adding a task whose reminder time already passed no longer triggers an instant push notification — reminders only arrive when the due time actually comes around</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.1-dev.3" date="2026-09-29" type="development">
       <description>
         <ul>
