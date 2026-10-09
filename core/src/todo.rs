@@ -174,31 +174,47 @@ pub fn due_for_target(target: DueTarget, current_due: Option<NaiveDateTime>) -> 
     }
 }
 
+/// Move a line's due date. Postponing past today also takes it off today's
+/// plan: "later" means "not today", so it must not linger in "Mein Tag".
+fn postpone_line(line: &str, due_dt: NaiveDateTime) -> Result<String> {
+    let updated = rewrite_due(line, due_dt)?;
+    if leaves_myday(due_dt) {
+        rewrite_myday(&updated, false)
+    } else {
+        Ok(updated)
+    }
+}
+
+/// Whether moving a task to `due_dt` takes it off today's plan.
+pub fn leaves_myday(due_dt: NaiveDateTime) -> bool {
+    due_dt.date() > Local::now().date_naive()
+}
+
 /// Set a todo's due date to today (smart time selection).
 pub fn set_due_today(key: &TodoKey, current_due: Option<NaiveDateTime>) -> Result<NaiveDateTime> {
     let due_dt = due_today_dt(current_due);
-    update_line(key, "set due today", |line| rewrite_due(line, due_dt))?;
+    update_line(key, "set due today", |line| postpone_line(line, due_dt))?;
     Ok(due_dt)
 }
 
 /// Set a todo's due date to tomorrow at noon.
 pub fn set_due_tomorrow(key: &TodoKey) -> Result<NaiveDateTime> {
     let due_dt = due_tomorrow_dt();
-    update_line(key, "set due tomorrow", |line| rewrite_due(line, due_dt))?;
+    update_line(key, "set due tomorrow", |line| postpone_line(line, due_dt))?;
     Ok(due_dt)
 }
 
 /// Set a todo's due date to the next Saturday.
 pub fn set_due_weekend(key: &TodoKey) -> Result<NaiveDateTime> {
     let due_dt = due_weekend_dt();
-    update_line(key, "set due weekend", |line| rewrite_due(line, due_dt))?;
+    update_line(key, "set due weekend", |line| postpone_line(line, due_dt))?;
     Ok(due_dt)
 }
 
 /// Set a todo's due date to "sometime" (far future).
 pub fn set_due_sometime(key: &TodoKey) -> Result<NaiveDateTime> {
     let due_dt = due_sometime_dt();
-    update_line(key, "set due sometime", |line| rewrite_due(line, due_dt))?;
+    update_line(key, "set due sometime", |line| postpone_line(line, due_dt))?;
     Ok(due_dt)
 }
 
@@ -321,7 +337,7 @@ pub fn set_due_batch(keys: &[TodoKey], target: DueTarget) -> Result<usize> {
             // due date, like the single-item variant.
             let current_due = parse_line(&lines[index], index).and_then(|i| i.due);
             let due_dt = due_for_target(target, current_due);
-            let Ok(updated) = rewrite_due(&lines[index], due_dt) else { continue };
+            let Ok(updated) = postpone_line(&lines[index], due_dt) else { continue };
             lines[index] = updated;
             count += 1;
         }
@@ -1034,6 +1050,25 @@ pub(crate) mod tests {
         let count = set_due_batch(&[key("aaa1")], DueTarget::Sometime).expect("set due ok");
         assert_eq!(count, 1);
         assert!(read(&path).contains("due:9999-12-31T00:00"));
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn postponing_past_today_leaves_myday() {
+        let _guard = file_lock();
+        let today = Local::now().date_naive().format("%Y-%m-%d").to_string();
+        let path = setup(&format!(
+            "- [ ] Eins myday:{today} ^aaa1\n- [ ] Zwei due:2020-01-01T08:00 myday:{today} ^bbb2\n"
+        ));
+
+        set_due_batch(&[key("bbb2")], DueTarget::Today).expect("set due ok");
+        assert_eq!(read(&path).matches("myday:").count(), 2, "today keeps the plan");
+
+        set_due_batch(&[key("aaa1")], DueTarget::Tomorrow).expect("set due ok");
+        let content = read(&path);
+        let lines: Vec<&str> = content.lines().collect();
+        assert!(!lines[0].contains("myday:"), "{}", lines[0]);
+        assert!(lines[1].contains("myday:"), "{}", lines[1]);
         std::fs::remove_file(&path).ok();
     }
 

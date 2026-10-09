@@ -133,9 +133,14 @@ class TestMydayPreservation:
         line = [l for l in storage.content.splitlines() if '^ddd444' in l][0]
         assert 'myday:' not in line
 
-    def test_postpone_keeps_today_myday(self, storage):
+    def test_postpone_to_later_day_leaves_myday(self, storage):
         assert todo_service.postpone_todo(2, 'tomorrow') is True
         line = [l for l in storage.content.splitlines() if '^ccc333' in l][0]
+        assert 'myday:' not in line
+
+    def test_postpone_to_today_keeps_myday(self, storage):
+        assert todo_service.postpone_todo(4, 'today') is True
+        line = [l for l in storage.content.splitlines() if '^eee555' in l][0]
         assert f"myday:{TODAY}" in line
 
     def test_postpone_drops_stale_myday(self, storage):
@@ -143,11 +148,12 @@ class TestMydayPreservation:
         line = [l for l in storage.content.splitlines() if '^ddd444' in l][0]
         assert 'myday:' not in line
 
-    def test_postpone_batch_keeps_today_myday(self, storage):
-        result = todo_service.postpone_todos_batch([2], 'tomorrow')
-        assert result['updated'] == 1
-        line = [l for l in storage.content.splitlines() if '^ccc333' in l][0]
-        assert f"myday:{TODAY}" in line
+    def test_postpone_batch_to_later_day_leaves_myday(self, storage):
+        result = todo_service.postpone_todos_batch([2, 4], 'weekend')
+        assert result['updated'] == 2
+        for marker in ('^ccc333', '^eee555'):
+            line = [l for l in storage.content.splitlines() if marker in l][0]
+            assert 'myday:' not in line
 
     def test_recurrence_clone_has_no_myday(self, storage):
         # Completing the overdue recurring task creates a next occurrence.

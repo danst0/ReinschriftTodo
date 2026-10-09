@@ -491,6 +491,17 @@ def set_myday(marker: str, on: bool) -> bool:
     return True
 
 
+def _postponed(item: TodoItem, due: datetime) -> TodoItem:
+    """Take a todo moved past today off today's plan.
+
+    "Later" means "not today", so it must not linger in "Mein Tag" —
+    mirrors core/src/todo.rs `postpone_line`.
+    """
+    if due.date() > date.today():
+        return replace(item, myday=None)
+    return item
+
+
 def postpone_todo(line_index: int, target: str,
                   marker: Optional[str] = None) -> bool:
     """Postpone a todo to a new date.
@@ -517,7 +528,8 @@ def postpone_todo(line_index: int, target: str,
 
     new_datetime, new_time = calculate_postpone_date(target, item.due)
 
-    lines[index] = _render_todo_line(item, lines[index], due=new_datetime)
+    lines[index] = _render_todo_line(_postponed(item, new_datetime), lines[index],
+                                     due=new_datetime)
     write_content('\n'.join(lines) + '\n')
     return True
 
@@ -553,7 +565,8 @@ def postpone_todos_batch(line_indexes: list[int], target: str,
             continue
 
         new_datetime, _ = calculate_postpone_date(target, item.due)
-        lines[index] = _render_todo_line(item, lines[index], due=new_datetime)
+        lines[index] = _render_todo_line(_postponed(item, new_datetime), lines[index],
+                                         due=new_datetime)
         updated += 1
 
     if updated > 0:

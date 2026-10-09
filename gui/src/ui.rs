@@ -161,7 +161,13 @@ fn apply_optimistic(items: &mut Vec<TodoItem>, op: &data::PendingOp) {
         Op::SetDue { keys, target } => items
             .iter_mut()
             .filter(|item| hits(item, keys))
-            .for_each(|item| item.due = Some(data::due_for_target(*target, item.due))),
+            .for_each(|item| {
+                let due = data::due_for_target(*target, item.due);
+                if data::leaves_myday(due) {
+                    item.myday = None;
+                }
+                item.due = Some(due);
+            }),
         Op::SetMyday { key, on } => {
             let today = Local::now().date_naive();
             items

@@ -296,6 +296,8 @@ pub fn tomorrow(ctx: &OutputContext, id: &str) -> Result<()> {
     let tomorrow = Local::now().date_naive() + Duration::days(1);
     let due_dt = NaiveDateTime::new(tomorrow, DEFAULT_DUE_TIME);
     item.due = Some(due_dt);
+    // Tomorrow means "not today": take it off "Mein Tag" like every postpone.
+    item.myday = None;
 
     match update_todo_details(&item) {
         Ok(()) => {
