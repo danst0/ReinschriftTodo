@@ -48,6 +48,21 @@ enum ListEntry {
     PickerItem(TodoItem),
 }
 
+/// Was `AppState::apply_entries` am Store getan hat.
+#[derive(Clone, Copy, PartialEq)]
+enum ListUpdate {
+    Unchanged,
+    /// Nur geänderte Abschnitte ersetzt; die übrigen Zeilen bleiben.
+    /// `refocus_y`: Der Fokus lag in der Liste und wurde vorher abgenommen;
+    /// er gehört danach der Zeile an dieser y-Position.
+    Partial { refocus_y: Option<f32> },
+    /// Alles ersetzt.
+    Full,
+}
+
+/// Datenschlüssel am Zeilen-Stack für das gebundene `BoxedAnyObject`.
+const ROW_ENTRY_KEY: &str = "row-entry";
+
 /// Zustand außerhalb der `ListEntry`, den das Binden einer Zeile ausliest.
 /// `apply_entries` vergleicht ihn mit dem letzten Aufbau, um zu wissen,
 /// welche Zeilen trotz gleichem Eintrag neu gebunden werden müssen.
@@ -2068,6 +2083,9 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
             return;
         };
 
+        // Für `visible_rows`: welcher Eintrag gerade in dieser Zeile steht.
+        unsafe { stack.set_data(ROW_ENTRY_KEY, todo_obj.clone()) };
+
         let highlight_marker = highlight_state
             .upgrade()
             .and_then(|s| s.recently_updated.borrow().clone());
@@ -2244,6 +2262,56 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         }
     });
     list_view
+}
+
+/// Die Zeile der ListView fokussieren, die die y-Position `y` überdeckt.
+fn focus_row_at(list_view: &gtk::ListView, y: f32) {
+    let mut child = list_view.first_child();
+    while let Some(row) = child {
+        child = row.next_sibling();
+        if !row.is_child_visible() || !row.is_focusable() {
+            continue;
+        }
+        let Some(top) = row.compute_point(list_view, &gtk::graphene::Point::new(0.0, 0.0)) else {
+            continue;
+        };
+        if top.y() <= y && y < top.y() + row.height() as f32 {
+            row.grab_focus();
+            return;
+        }
+    }
+}
+
+/// Die gerade sichtbaren Zeilen von oben nach unten, mit ihrem Objekt aus
+/// dem Store und ihrer y-Position relativ zur ListView.
+fn visible_rows(list_view: &gtk::ListView) -> Vec<(BoxedAnyObject, f32)> {
+    if !list_view.is_mapped() {
+        return Vec::new();
+    }
+    let height = list_view.height() as f32;
+    let mut rows = Vec::new();
+    let mut child = list_view.first_child();
+    while let Some(row) = child {
+        child = row.next_sibling();
+        if !row.is_child_visible() {
+            continue;
+        }
+        let Some(stack) = row.first_child() else { continue };
+        let Some(obj) = (unsafe { stack.data::<BoxedAnyObject>(ROW_ENTRY_KEY) })
+            .map(|ptr| unsafe { ptr.as_ref() }.clone())
+        else {
+            continue;
+        };
+        let Some(top) = row.compute_point(list_view, &gtk::graphene::Point::new(0.0, 0.0)) else {
+            continue;
+        };
+        let y = top.y();
+        if y + row.height() as f32 > 0.0 && y < height {
+            rows.push((obj, y));
+        }
+    }
+    rows.sort_by(|a, b| a.1.total_cmp(&b.1));
+    rows
 }
 
 struct AppState {
@@ -4690,7 +4758,16 @@ impl AppState {
             }
         }
 
-        let full_rebuild = self.apply_entries(out);
+        let anchors = self
+            .list_view
+            .borrow()
+            .as_ref()
+            .map(visible_rows)
+            .unwrap_or_default();
+        let update = self.apply_entries(out);
+        if let ListUpdate::Partial { refocus_y } = update {
+            self.keep_rows_in_place(anchors, refocus_y);
+        }
 
         // Auswahl wiederherstellen, ohne ihr hinterherzuscrollen — sonst
         // springt die Sicht z. B. der nach „Erledigt" verschobenen Aufgabe
@@ -4712,8 +4789,8 @@ impl AppState {
                         }
                     }
 
-        // Bei einem Teilaustausch hält die ListView ihre Position selbst.
-        if full_rebuild
+        // Beim Teilaustausch übernimmt das `keep_rows_in_place`.
+        if update == ListUpdate::Full
             && let Some(pos) = scroll_pos
             && let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
                 // Nach dem Komplettaustausch kennt die ListView ihre Höhe
@@ -4735,6 +4812,76 @@ impl AppState {
             }
     }
 
+    /// Nach dem nächsten Layout, noch vor dem Zeichnen, so scrollen, dass
+    /// die oberste noch vorhandene der vorher sichtbaren Zeilen pixelgenau
+    /// dort steht, wo sie stand. Die Anpassung klemmt GtkAdjustment selbst:
+    /// rutscht unten nichts mehr nach, bewegt sich die Ansicht nach unten.
+    ///
+    /// Die ListView hält ihre Position sonst über einen eigenen Anker; der
+    /// geht verloren, wenn die Zeile verschwindet, aus der heraus geklickt
+    /// wurde (der „+“-Knopf im Picker), und die Sicht springt.
+    fn keep_rows_in_place(&self, anchors: Vec<(BoxedAnyObject, f32)>, refocus_y: Option<f32>) {
+        if anchors.is_empty() {
+            return;
+        }
+        let Some(list_view) = self.list_view.borrow().clone() else {
+            return;
+        };
+        let Some(clock) = list_view.frame_clock() else {
+            return;
+        };
+        let store = self.store.clone();
+        let handler: Rc<RefCell<Option<glib::SignalHandlerId>>> = Rc::new(RefCell::new(None));
+        let handler_inner = Rc::clone(&handler);
+        let tries = Cell::new(0u8);
+        let lv = list_view.clone();
+        let id = clock.connect_layout(move |clock| {
+            let now = visible_rows(&lv);
+            let found = anchors.iter().find_map(|(obj, before)| {
+                now.iter().find(|(o, _)| o == obj).map(|(_, after)| after - before)
+            });
+            let done = match found {
+                Some(delta) => {
+                    // Was die Adjustment nach dem Klemmen tatsächlich verschoben hat.
+                    let mut applied = 0.0;
+                    if delta.abs() >= 0.5 && let Some(adj) = lv.vadjustment() {
+                        let before = adj.value();
+                        adj.set_value(before + f64::from(delta));
+                        applied = (adj.value() - before) as f32;
+                    }
+                    // Fokus der Zeile geben, die nach der Korrektur dort
+                    // steht, wo die fokussierte stand (Tastaturbedienung).
+                    // Gemessen wird noch im Layout vor der Korrektur.
+                    if let Some(y) = refocus_y {
+                        focus_row_at(&lv, y + applied);
+                    }
+                    true
+                }
+                // Die ListView ist so weit gesprungen, dass keine der
+                // Zeilen mehr gebaut ist: erst zurückholen, dann messen.
+                None => {
+                    let target = anchors.iter().find_map(|(obj, _)| {
+                        (0..store.n_items()).find(|&i| {
+                            store.item(i).is_some_and(|o| o.as_ptr() == obj.upcast_ref::<glib::Object>().as_ptr())
+                        })
+                    });
+                    tries.set(tries.get() + 1);
+                    match target {
+                        Some(pos) if tries.get() <= 3 => {
+                            lv.scroll_to(pos, gtk::ListScrollFlags::NONE, None);
+                            false
+                        }
+                        _ => true,
+                    }
+                }
+            };
+            if done && let Some(id) = handler_inner.borrow_mut().take() {
+                clock.disconnect(id);
+            }
+        });
+        *handler.borrow_mut() = Some(id);
+    }
+
     /// Die Liste auf `entries` bringen, ohne sie erst zu leeren.
     ///
     /// Vorher wurde der Store bei jedem Neuaufbau geleert und neu befüllt:
@@ -4743,9 +4890,9 @@ impl AppState {
     /// Zeilen eingefügt oder entfernt, die sich geändert haben; alle anderen
     /// behalten Objekt, Zeile und Position.
     ///
-    /// Liefert `true`, wenn alles ersetzt wurde, weil sich Zustand geändert
-    /// hat, den jede Zeile beim Binden ausliest.
-    fn apply_entries(&self, entries: Vec<ListEntry>) -> bool {
+    /// `Full`, wenn alles ersetzt wurde, weil sich Zustand geändert hat, den
+    /// jede Zeile beim Binden ausliest.
+    fn apply_entries(&self, entries: Vec<ListEntry>) -> ListUpdate {
         let context = RowContext {
             highlight: self.recently_updated.borrow().clone(),
             selection_mode: self.selection_mode.get(),
@@ -4781,7 +4928,7 @@ impl AppState {
         if full_rebuild {
             let objects: Vec<BoxedAnyObject> = entries.into_iter().map(BoxedAnyObject::new).collect();
             self.store.splice(0, old.len() as u32, &objects);
-            return true;
+            return ListUpdate::Full;
         }
 
         let same = |obj: &BoxedAnyObject, entry: &ListEntry| {
@@ -4825,6 +4972,12 @@ impl AppState {
             hunks.push((start_i, i - start_i, start_j..j));
         }
 
+        if hunks.is_empty() {
+            return ListUpdate::Unchanged;
+        }
+
+        let refocus_y = self.release_list_focus();
+
         // … und von hinten anwenden, damit die vorderen Positionen stimmen.
         let mut entries: Vec<Option<ListEntry>> = entries.into_iter().map(Some).collect();
         for (pos, removed, range) in hunks.into_iter().rev() {
@@ -4834,7 +4987,27 @@ impl AppState {
                 .collect();
             self.store.splice(pos as u32, removed as u32, &added);
         }
-        false
+        ListUpdate::Partial { refocus_y }
+    }
+
+    /// Liegt der Fokus in der Liste, ihn abnehmen und die y-Position seiner
+    /// Zeile liefern. Verschwindet die fokussierte Zeile (der „+“-Knopf im
+    /// Picker), gibt GtkListBase den Fokus sonst einer Ersatzzeile und
+    /// scrollt zu ihr — bis an den Anfang der Liste.
+    fn release_list_focus(&self) -> Option<f32> {
+        let window = self.window.upgrade()?;
+        let list_view = self.list_view.borrow().clone()?;
+        let focus = gtk::prelude::GtkWindowExt::focus(&window)?;
+        if !focus.is_ancestor(&list_view) {
+            return None;
+        }
+        let mut row = focus;
+        while row.parent().as_ref() != Some(list_view.upcast_ref()) {
+            row = row.parent()?;
+        }
+        let y = row.compute_point(&list_view, &gtk::graphene::Point::new(0.0, 0.0))?.y();
+        gtk::prelude::GtkWindowExt::set_focus(&window, None::<&gtk::Widget>);
+        Some(y + row.height() as f32 / 2.0)
     }
 
     fn persist_preferences(&self) {
