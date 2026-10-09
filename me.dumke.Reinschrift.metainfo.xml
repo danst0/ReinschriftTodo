@@ -120,52 +120,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
-    <release version="1.2.1-dev.7" date="2026-10-09" type="development">
+    <release version="1.2.1" date="2026-10-09">
       <description>
         <ul>
-          <li>Desktop: adding tasks to My Day from further down the list keeps the top visible row exactly where it was instead of jumping to the top</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.1-dev.6" date="2026-10-09" type="development">
-      <description>
-        <ul>
-          <li>Desktop: the list no longer jumps up when you add tasks to My Day from far down the list</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.1-dev.5" date="2026-10-09" type="development">
-      <description>
-        <ul>
-          <li>Desktop: the task list no longer flickers when it updates, e.g. after moving a task to My Day — only the changed rows are replaced and the scroll position stays put</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.1-dev.4" date="2026-09-30" type="development">
-      <description>
-        <ul>
-          <li>Web: adding a task whose reminder time already passed no longer triggers an instant push notification — reminders only arrive when the due time actually comes around</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.1-dev.3" date="2026-09-29" type="development">
-      <description>
-        <ul>
-          <li>GNOME Shell extension: the menu now follows the web app's design — today's date as the header, a yellow highlighter on tasks due today, and +project and @place shown as colored tokens</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.1-dev.2" date="2026-09-29" type="development">
-      <description>
-        <ul>
+          <li>The task list no longer flickers or jumps when it updates — e.g. adding tasks to My Day from far down the list keeps the top visible row exactly where it was</li>
           <li>In the edit dialog, the note field grows with the window and the buttons stay at the bottom</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.1-dev.1" date="2026-09-29" type="development">
-      <description>
-        <ul>
-          <li>Release process: day-to-day changes are now collected as development versions and published to Flathub bundled, so you get fewer, larger updates</li>
+          <li>GNOME Shell extension: the menu now follows the web app's design — today's date as the header, a yellow highlighter on tasks due today, and +project and @place shown as colored tokens</li>
+          <li>Web: adding a task whose reminder time already passed no longer triggers an instant push notification</li>
+          <li>Updates now arrive bundled, so you get fewer, larger updates</li>
         </ul>
       </description>
     </release>
