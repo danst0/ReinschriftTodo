@@ -40,11 +40,24 @@ enum VoiceMsg {
 }
 
 #[derive(Clone)]
+#[derive(PartialEq)]
 enum ListEntry {
     Header(String),
     Item(TodoItem),
     /// Kandidat im "Mein Tag"-Planungs-Picker (noch nicht für heute geplant).
     PickerItem(TodoItem),
+}
+
+/// Zustand außerhalb der `ListEntry`, den das Binden einer Zeile ausliest.
+/// `apply_entries` vergleicht ihn mit dem letzten Aufbau, um zu wissen,
+/// welche Zeilen trotz gleichem Eintrag neu gebunden werden müssen.
+#[derive(Clone, PartialEq)]
+struct RowContext {
+    highlight: Option<String>,
+    selection_mode: bool,
+    selected: HashSet<String>,
+    compact: bool,
+    myday: bool,
 }
 
 /// Ein Auftrag der Hintergrund-Schreibwarteschlange (siehe `AppState::submit`).
@@ -2273,6 +2286,8 @@ struct AppState {
     compact: Cell<bool>,
     /// Auswahl per Marker — line_index verschiebt sich bei jedem Reload.
     selected_markers: RefCell<HashSet<String>>,
+    /// Stand von `RowContext` beim letzten `apply_entries`.
+    row_context: RefCell<Option<RowContext>>,
     selection_bar: RefCell<Option<gtk::Revealer>>,
     selection_count_label: RefCell<Option<gtk::Label>>,
     selection_toggle: RefCell<Option<gtk::ToggleButton>>,
@@ -2358,6 +2373,7 @@ impl AppState {
             selection_mode: Cell::new(false),
             compact: Cell::new(false),
             selected_markers: RefCell::new(HashSet::new()),
+            row_context: RefCell::new(None),
             selection_bar: RefCell::new(None),
             selection_count_label: RefCell::new(None),
             selection_toggle: RefCell::new(None),
@@ -4509,7 +4525,7 @@ impl AppState {
     /// (erledigte bleiben durchgestrichen sichtbar, unter "Erledigt" ans Ende
     /// sortiert), darunter der Planungs-Picker mit fälligen Vorschlägen
     /// zuerst, je nach Sortiermodus nach Thema/Ort untergliedert.
-    fn populate_myday_view(&self, items: Vec<TodoItem>, today: NaiveDate) {
+    fn populate_myday_view(&self, out: &mut Vec<ListEntry>, items: Vec<TodoItem>, today: NaiveDate) {
         let mode = *self.sort_mode.borrow();
         let (canon_projects, canon_contexts) = self.canonical_tag_maps();
 
@@ -4517,20 +4533,18 @@ impl AppState {
             items.into_iter().partition(|todo| todo.myday == Some(today));
 
         if planned.is_empty() {
-            self.store
-                .append(&BoxedAnyObject::new(ListEntry::Header(t("Nothing planned yet — add tasks for today."))));
+            out.push(ListEntry::Header(t("Nothing planned yet — add tasks for today.")));
         } else {
             // Flache Liste ohne Themen-Header: aktive oben, erledigte darunter.
             let (active, done): (Vec<TodoItem>, Vec<TodoItem>) =
                 planned.into_iter().partition(|todo| !todo.done);
             for item in active {
-                self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                out.push(ListEntry::Item(item));
             }
             if !done.is_empty() {
-                self.store
-                    .append(&BoxedAnyObject::new(ListEntry::Header(t("Completed"))));
+                out.push(ListEntry::Header(t("Completed")));
                 for item in done {
-                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                    out.push(ListEntry::Item(item));
                 }
             }
         }
@@ -4539,22 +4553,21 @@ impl AppState {
         let (suggestions, other_open) = split_picker_candidates(rest, today, &filter);
 
         if suggestions.is_empty() && other_open.is_empty() {
-            self.store.append(&BoxedAnyObject::new(ListEntry::Header(if filter.is_active() {
+            out.push(ListEntry::Header(if filter.is_active() {
                 t("No tasks match the filter.")
             } else {
                 t("No open tasks left to plan.")
-            })));
+            }));
             return;
         }
 
         // Innerhalb eines Picker-Abschnitts nach Thema/Ort untergliedern
         // (im Datums-Modus liefert group_label None → flache Liste).
-        let append_picker_section = |title: String, mut items: Vec<TodoItem>| {
+        let mut append_picker_section = |title: String, mut items: Vec<TodoItem>| {
             if items.is_empty() {
                 return;
             }
-            self.store
-                .append(&BoxedAnyObject::new(ListEntry::Header(title)));
+            out.push(ListEntry::Header(title));
             if mode != SortMode::Date {
                 sort_items(&mut items, mode);
             }
@@ -4563,12 +4576,10 @@ impl AppState {
                 if let Some(label) =
                     self.group_label(mode, &item, &canon_projects, &canon_contexts)
                     && last_group.as_ref() != Some(&label) {
-                        self.store
-                            .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
+                        out.push(ListEntry::Header(label.clone()));
                         last_group = Some(label);
                     }
-                self.store
-                    .append(&BoxedAnyObject::new(ListEntry::PickerItem(item)));
+                out.push(ListEntry::PickerItem(item));
             }
         };
 
@@ -4602,8 +4613,8 @@ impl AppState {
         let search_term = self.search_term.borrow().to_lowercase();
         let mut items = self.cached_items.borrow().clone();
         self.sort_items(&mut items);
-        self.store.remove_all();
-        
+        let mut out: Vec<ListEntry> = Vec::new();
+
         let include_done = self.show_completed();
         let filter = self.filter();
         let myday_only = self.myday_view();
@@ -4611,7 +4622,7 @@ impl AppState {
 
         if search_term.is_empty() {
             if myday_only {
-                self.populate_myday_view(items, today);
+                self.populate_myday_view(&mut out, items, today);
             } else {
                 let mode = *self.sort_mode.borrow();
                 let (canon_projects, canon_contexts) = self.canonical_tag_maps();
@@ -4622,14 +4633,13 @@ impl AppState {
                     if let Some(label) =
                         self.group_label(mode, &item, &canon_projects, &canon_contexts)
                         && last_group.as_ref() != Some(&label) {
-                            self.store
-                                .append(&BoxedAnyObject::new(ListEntry::Header(label.clone())));
+                            out.push(ListEntry::Header(label.clone()));
                             last_group = Some(label);
                         }
-                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                    out.push(ListEntry::Item(item));
                 }
-                if self.store.n_items() == 0 && filter.is_active() {
-                    self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("No tasks match the filter."))));
+                if out.is_empty() && filter.is_active() {
+                    out.push(ListEntry::Header(t("No tasks match the filter.")));
                 }
             }
         } else {
@@ -4641,9 +4651,9 @@ impl AppState {
             }).cloned().collect();
 
             if !current_list_results.is_empty() {
-                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("Search results in current list"))));
+                out.push(ListEntry::Header(t("Search results in current list")));
                 for item in current_list_results.clone() {
-                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                    out.push(ListEntry::Item(item));
                 }
             }
 
@@ -4657,9 +4667,9 @@ impl AppState {
             }).collect();
 
             if !open_results_filtered.is_empty() {
-                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("Search results in all open To-dos"))));
+                out.push(ListEntry::Header(t("Search results in all open To-dos")));
                 for item in open_results_filtered {
-                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                    out.push(ListEntry::Item(item));
                 }
             }
 
@@ -4673,12 +4683,14 @@ impl AppState {
             }).collect();
 
             if !done_results_filtered.is_empty() {
-                self.store.append(&BoxedAnyObject::new(ListEntry::Header(t("Search results in completed To-dos"))));
+                out.push(ListEntry::Header(t("Search results in completed To-dos")));
                 for item in done_results_filtered {
-                    self.store.append(&BoxedAnyObject::new(ListEntry::Item(item)));
+                    out.push(ListEntry::Item(item));
                 }
             }
         }
+
+        let full_rebuild = self.apply_entries(out);
 
         // Auswahl wiederherstellen, ohne ihr hinterherzuscrollen — sonst
         // springt die Sicht z. B. der nach „Erledigt" verschobenen Aufgabe
@@ -4700,9 +4712,11 @@ impl AppState {
                         }
                     }
 
-        if let Some(pos) = scroll_pos
+        // Bei einem Teilaustausch hält die ListView ihre Position selbst.
+        if full_rebuild
+            && let Some(pos) = scroll_pos
             && let Some(scrolled) = self.scrolled_window.borrow().as_ref() {
-                // Nach remove_all + Neubefüllung kennt die ListView ihre Höhe
+                // Nach dem Komplettaustausch kennt die ListView ihre Höhe
                 // zunächst nur geschätzt; ein einzelner Idle-Restore klemmt die
                 // Position dann auf einen zu kleinen Wert. Daher über einige
                 // Frames erneut anwenden, bis die Zeilen vermessen sind.
@@ -4719,6 +4733,95 @@ impl AppState {
                     }
                 });
             }
+    }
+
+    /// Die Liste auf `entries` bringen, ohne sie erst zu leeren.
+    ///
+    /// Vorher wurde der Store bei jedem Neuaufbau geleert und neu befüllt:
+    /// die ListView sprang dabei an den Anfang, baute jede Zeile neu und
+    /// wurde dann zurückgescrollt — die Liste blinkte. Jetzt wird nur der
+    /// Bereich zwischen gleichem Anfang und gleichem Ende in einem einzigen
+    /// `splice` ersetzt, und darin bekommen unveränderte Einträge ihr altes
+    /// Objekt zurück, damit GTK ihre Zeilen behält statt sie neu zu binden.
+    ///
+    /// Liefert `true`, wenn alles ersetzt wurde, weil sich Zustand geändert
+    /// hat, den jede Zeile beim Binden ausliest.
+    fn apply_entries(&self, entries: Vec<ListEntry>) -> bool {
+        let context = RowContext {
+            highlight: self.recently_updated.borrow().clone(),
+            selection_mode: self.selection_mode.get(),
+            selected: self.selected_markers.borrow().clone(),
+            compact: self.compact.get(),
+            myday: self.myday_view(),
+        };
+        let previous = self.row_context.replace(Some(context.clone()));
+        let full_rebuild = previous.as_ref().is_none_or(|prev| {
+            prev.selection_mode != context.selection_mode
+                || prev.compact != context.compact
+                || prev.myday != context.myday
+        });
+
+        // Marker, deren Hervorhebung oder Auswahl sich geändert hat: deren
+        // Zeilen müssen neu gebunden werden, auch wenn der Eintrag gleich ist.
+        let mut dirty: HashSet<String> = HashSet::new();
+        if let Some(prev) = previous.as_ref() {
+            if prev.highlight != context.highlight {
+                dirty.extend(prev.highlight.iter().cloned());
+                dirty.extend(context.highlight.iter().cloned());
+            }
+            dirty.extend(prev.selected.symmetric_difference(&context.selected).cloned());
+        }
+        let reusable = |entry: &ListEntry| match entry {
+            ListEntry::Item(todo) => todo.key.marker.as_ref().is_none_or(|m| !dirty.contains(m)),
+            _ => true,
+        };
+
+        let old: Vec<BoxedAnyObject> = (0..self.store.n_items())
+            .filter_map(|i| self.store.item(i).and_downcast::<BoxedAnyObject>())
+            .collect();
+        if full_rebuild {
+            let objects: Vec<BoxedAnyObject> = entries.into_iter().map(BoxedAnyObject::new).collect();
+            self.store.splice(0, old.len() as u32, &objects);
+            return true;
+        }
+
+        let same = |obj: &BoxedAnyObject, entry: &ListEntry| {
+            reusable(entry) && *obj.borrow::<ListEntry>() == *entry
+        };
+        let mut prefix = 0;
+        while prefix < old.len() && prefix < entries.len() && same(&old[prefix], &entries[prefix]) {
+            prefix += 1;
+        }
+        let mut suffix = 0;
+        while suffix < old.len() - prefix
+            && suffix < entries.len() - prefix
+            && same(&old[old.len() - 1 - suffix], &entries[entries.len() - 1 - suffix])
+        {
+            suffix += 1;
+        }
+
+        let removed = &old[prefix..old.len() - suffix];
+        let mut taken = vec![false; removed.len()];
+        let middle = entries.len() - prefix - suffix;
+        let added: Vec<BoxedAnyObject> = entries
+            .into_iter()
+            .skip(prefix)
+            .take(middle)
+            .map(|entry| {
+                let hit = (0..removed.len()).find(|&i| !taken[i] && same(&removed[i], &entry));
+                match hit {
+                    Some(i) => {
+                        taken[i] = true;
+                        removed[i].clone()
+                    }
+                    None => BoxedAnyObject::new(entry),
+                }
+            })
+            .collect();
+        if !removed.is_empty() || !added.is_empty() {
+            self.store.splice(prefix as u32, removed.len() as u32, &added);
+        }
+        false
     }
 
     fn persist_preferences(&self) {
