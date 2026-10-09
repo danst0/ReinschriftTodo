@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.2" date="2026-10-09" type="development">
+      <description>
+        <ul>
+          <li>Command line: --database again opens a different task file for a single call, without changing the saved settings</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.1" date="2026-10-09" type="development">
       <description>
         <ul>

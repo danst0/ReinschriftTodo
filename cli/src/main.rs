@@ -1,6 +1,8 @@
 mod commands;
 mod output;
 
+use std::path::PathBuf;
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use reinschrift_core::{data, i18n, load_preferences, set_todo_path, DueRange, TodoFilter};
@@ -9,6 +11,11 @@ use reinschrift_core::{data, i18n, load_preferences, set_todo_path, DueRange, To
 #[command(name = "reinschrift")]
 #[command(author, version, about = "A todo application with markdown storage")]
 struct Cli {
+    /// Path to a markdown database, for this call only (overrides the saved
+    /// path and WebDAV; not saved). No short form: -d is --due in add/edit.
+    #[arg(long, global = true, value_name = "PATH")]
+    database: Option<PathBuf>,
+
     /// Language (de, en, es, fr, ja, sv)
     #[arg(short, long, global = true)]
     language: Option<String>,
@@ -208,6 +215,10 @@ fn main() -> Result<()> {
         }
     } else if let Some(db_path) = prefs.db_path.clone() {
         set_todo_path(db_path.into());
+    }
+
+    if let Some(db_path) = cli.database {
+        set_todo_path(std::fs::canonicalize(&db_path).unwrap_or(db_path));
     }
 
     // Set language if provided

@@ -92,7 +92,7 @@ cargo run -p reinschrift-cli -- done ^marker
 reinschrift [OPTIONS] <COMMAND>
 
 OPTIONS:
-    -d, --database <PATH>    Path to markdown database
+        --database <PATH>    Markdown database for this call (overrides saved path/WebDAV, not saved)
     -l, --language <LANG>    Language (de, en, es, fr, ja, sv)
     -j, --json               JSON output for scripting
         --no-color           Disable colored output
@@ -323,6 +323,6 @@ repo's manifest because it only comes into existence with the release commit.
 
 ## Environment Variables
 
-Desktop/CLI: `TODOS_DB_PATH`
+Desktop/CLI: `TODOS_DB_PATH` (only used while no database path is saved in the preferences; `--database` always wins)
 
 Web: `TODOS_DB_PATH`, `SECRET_KEY`, `APP_USER`, `APP_PASSWORD`, `OIDC_*`, `WEBDAV_*`, `AI_TIMEOUT_SECS`, `TZ` (due dates are local time), `PUSH_ENABLED`, `PUSH_LEAD_MINUTES`, `PUSH_ALL_DAY_TIME`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`

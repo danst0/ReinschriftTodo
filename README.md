@@ -87,7 +87,7 @@ This repository is a Cargo workspace plus a Python web app:
 reinschrift [OPTIONS] <COMMAND>
 
 OPTIONS:
-    -d, --database <PATH>    Path to the Markdown database
+        --database <PATH>    Markdown database for this call (overrides saved path/WebDAV, not saved)
     -l, --language <LANG>    Language (de, en, es, fr, ja, sv)
     -j, --json               JSON output for scripting
         --no-color           Disable colored output
