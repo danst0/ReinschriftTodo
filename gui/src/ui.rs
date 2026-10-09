@@ -4739,10 +4739,9 @@ impl AppState {
     ///
     /// Vorher wurde der Store bei jedem Neuaufbau geleert und neu befüllt:
     /// die ListView sprang dabei an den Anfang, baute jede Zeile neu und
-    /// wurde dann zurückgescrollt — die Liste blinkte. Jetzt wird nur der
-    /// Bereich zwischen gleichem Anfang und gleichem Ende in einem einzigen
-    /// `splice` ersetzt, und darin bekommen unveränderte Einträge ihr altes
-    /// Objekt zurück, damit GTK ihre Zeilen behält statt sie neu zu binden.
+    /// wurde dann zurückgescrollt — die Liste blinkte. Jetzt werden nur die
+    /// Zeilen eingefügt oder entfernt, die sich geändert haben; alle anderen
+    /// behalten Objekt, Zeile und Position.
     ///
     /// Liefert `true`, wenn alles ersetzt wurde, weil sich Zustand geändert
     /// hat, den jede Zeile beim Binden ausliest.
@@ -4788,38 +4787,52 @@ impl AppState {
         let same = |obj: &BoxedAnyObject, entry: &ListEntry| {
             reusable(entry) && *obj.borrow::<ListEntry>() == *entry
         };
-        let mut prefix = 0;
-        while prefix < old.len() && prefix < entries.len() && same(&old[prefix], &entries[prefix]) {
-            prefix += 1;
-        }
-        let mut suffix = 0;
-        while suffix < old.len() - prefix
-            && suffix < entries.len() - prefix
-            && same(&old[old.len() - 1 - suffix], &entries[entries.len() - 1 - suffix])
-        {
-            suffix += 1;
+
+        // Längste gemeinsame Teilfolge: alles darin bleibt mit seinem Objekt
+        // an Ort und Stelle. Ein einziger splice über den ganzen geänderten
+        // Bereich reicht nicht — wandert eine Aufgabe von unten (Picker)
+        // nach oben, umfasst er fast die ganze Liste, und die ListView rät
+        // dann nur noch, wo sie stand.
+        let (n, m) = (old.len(), entries.len());
+        let mut lcs = vec![0u32; (n + 1) * (m + 1)];
+        for i in (0..n).rev() {
+            for j in (0..m).rev() {
+                lcs[i * (m + 1) + j] = if same(&old[i], &entries[j]) {
+                    lcs[(i + 1) * (m + 1) + j + 1] + 1
+                } else {
+                    lcs[(i + 1) * (m + 1) + j].max(lcs[i * (m + 1) + j + 1])
+                };
+            }
         }
 
-        let removed = &old[prefix..old.len() - suffix];
-        let mut taken = vec![false; removed.len()];
-        let middle = entries.len() - prefix - suffix;
-        let added: Vec<BoxedAnyObject> = entries
-            .into_iter()
-            .skip(prefix)
-            .take(middle)
-            .map(|entry| {
-                let hit = (0..removed.len()).find(|&i| !taken[i] && same(&removed[i], &entry));
-                match hit {
-                    Some(i) => {
-                        taken[i] = true;
-                        removed[i].clone()
-                    }
-                    None => BoxedAnyObject::new(entry),
+        // Abschnitte (alte Position, Anzahl entfernt, Bereich neu) sammeln …
+        let mut hunks: Vec<(usize, usize, std::ops::Range<usize>)> = Vec::new();
+        let (mut i, mut j) = (0, 0);
+        while i < n || j < m {
+            if i < n && j < m && same(&old[i], &entries[j]) {
+                i += 1;
+                j += 1;
+                continue;
+            }
+            let (start_i, start_j) = (i, j);
+            while (i < n || j < m) && !(i < n && j < m && same(&old[i], &entries[j])) {
+                if j >= m || (i < n && lcs[(i + 1) * (m + 1) + j] >= lcs[i * (m + 1) + j + 1]) {
+                    i += 1;
+                } else {
+                    j += 1;
                 }
-            })
-            .collect();
-        if !removed.is_empty() || !added.is_empty() {
-            self.store.splice(prefix as u32, removed.len() as u32, &added);
+            }
+            hunks.push((start_i, i - start_i, start_j..j));
+        }
+
+        // … und von hinten anwenden, damit die vorderen Positionen stimmen.
+        let mut entries: Vec<Option<ListEntry>> = entries.into_iter().map(Some).collect();
+        for (pos, removed, range) in hunks.into_iter().rev() {
+            let added: Vec<BoxedAnyObject> = range
+                .filter_map(|k| entries[k].take())
+                .map(BoxedAnyObject::new)
+                .collect();
+            self.store.splice(pos as u32, removed as u32, &added);
         }
         false
     }

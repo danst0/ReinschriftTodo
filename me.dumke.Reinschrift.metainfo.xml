@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.1-dev.6" date="2026-10-09" type="development">
+      <description>
+        <ul>
+          <li>Desktop: the list no longer jumps up when you add tasks to My Day from far down the list</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.1-dev.5" date="2026-10-09" type="development">
       <description>
         <ul>
