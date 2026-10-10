@@ -279,6 +279,20 @@ if (( do_install )); then
     elif [[ -n "$installed" ]]; then
         warn "installed version is $installed, expected $CARGO_VERSION"
     fi
+
+    # The origin remote of a bundle install can still point at an older local
+    # repo (e.g. .flatpak-builder/cache); GNOME Software then offers that
+    # repo's stale build as an "update". Keep it on the repo built here.
+    origin=$(flatpak info --user --show-origin "$APP_ID//$BRANCH" 2>/dev/null || true)
+    repo_url="file://$PWD/$REPO_DIR"
+    if [[ -n "$origin" ]]; then
+        origin_url=$(flatpak remotes --user --columns=name,url 2>/dev/null \
+            | awk -v r="$origin" '$1 == r {print $2; exit}')
+        if [[ "$origin_url" != "$repo_url" ]]; then
+            flatpak remote-modify --user --url="$repo_url" "$origin"
+            ok "remote $origin now points at $repo_url (was ${origin_url:-unset})"
+        fi
+    fi
 fi
 
 step "Done"
