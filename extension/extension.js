@@ -216,6 +216,75 @@ class TodoRow extends PopupMenu.PopupBaseMenuItem {
     }
 });
 
+/**
+ * Natural-width children left to right, wrapping into new lines. Stands in
+ * for Clutter.FlowLayout, which reserved the height but left the chips
+ * unallocated, so the detail area stayed empty.
+ */
+const WrapLayout = GObject.registerClass(
+class WrapLayout extends Clutter.LayoutManager {
+    _init(spacing) {
+        super._init();
+        this._spacing = spacing;
+    }
+
+    _children(container) {
+        return container.get_children().filter(child => child.visible);
+    }
+
+    vfunc_get_preferred_width(container, _forHeight) {
+        let min = 0, nat = 0;
+        for (const child of this._children(container)) {
+            const [childMin, childNat] = child.get_preferred_width(-1);
+            min = Math.max(min, childMin);
+            nat += (nat > 0 ? this._spacing : 0) + childNat;
+        }
+        return [min, nat];
+    }
+
+    vfunc_get_preferred_height(container, forWidth) {
+        const height = this._lines(container, forWidth).reduce(
+            (sum, line, i) => sum + (i > 0 ? this._spacing : 0) + line.height, 0);
+        return [height, height];
+    }
+
+    vfunc_allocate(container, box) {
+        let y = box.y1;
+        for (const line of this._lines(container, box.get_width())) {
+            let x = box.x1;
+            for (const [child, width] of line.children) {
+                const childBox = new Clutter.ActorBox();
+                childBox.set_origin(x, y);
+                childBox.set_size(width, line.height);
+                child.allocate(childBox);
+                x += width + this._spacing;
+            }
+            y += line.height + this._spacing;
+        }
+    }
+
+    /** Children grouped into lines that fit `width` (< 0: one line). */
+    _lines(container, width) {
+        const lines = [];
+        let line = null, x = 0;
+        for (const child of this._children(container)) {
+            const [, childWidth] = child.get_preferred_width(-1);
+            const w = width >= 0 ? Math.min(childWidth, width) : childWidth;
+            if (!line || (width >= 0 && x + this._spacing + w > width)) {
+                line = {children: [], height: 0};
+                lines.push(line);
+                x = w;
+            } else {
+                x += this._spacing + w;
+            }
+            const [, childHeight] = child.get_preferred_height(w);
+            line.children.push([child, w]);
+            line.height = Math.max(line.height, childHeight);
+        }
+        return lines;
+    }
+});
+
 /** Note and actions of the task opened below its row. */
 const DetailItem = GObject.registerClass(
 class DetailItem extends PopupMenu.PopupBaseMenuItem {
@@ -250,12 +319,7 @@ class DetailItem extends PopupMenu.PopupBaseMenuItem {
         }
 
         // Natural-width chips that wrap, like the web app's action row.
-        const flow = new Clutter.FlowLayout({
-            orientation: Clutter.Orientation.HORIZONTAL,
-            column_spacing: 6,
-            row_spacing: 6,
-        });
-        const actions = new St.Widget({layout_manager: flow, x_expand: true});
+        const actions = new St.Widget({layout_manager: new WrapLayout(6), x_expand: true});
         const button = (label, onClicked, styleClass = 'rs-chip') => {
             const btn = new St.Button({
                 label,
