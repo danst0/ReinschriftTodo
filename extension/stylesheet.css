@@ -4,8 +4,7 @@
  * (.rs-dark) as chosen by extension.js: a surface card with navy ink, meta
  * tokens colored like the Markdown line (+project in ochre, @place in blue)
  * and the yellow highlighter on what is due today or earlier. The shell
- * theme still provides the popup's shape (radius, shadow) and the base
- * font — Hanken Grotesk is used when installed on the system.
+ * theme still provides the popup's shape (radius, shadow) and the font.
  */
 
 /* ------------------------------------------------------------- menu frame */
@@ -13,7 +12,6 @@
 .rs-menu {
     min-width: 360px;
     max-width: 400px;
-    font-family: 'Hanken Grotesk', 'Cantarell', sans-serif;
 }
 
 .rs-dark .popup-menu-content {
@@ -656,7 +654,6 @@
 
 .rs-indicator {
     spacing: 4px;
-    font-family: 'Hanken Grotesk', 'Cantarell', sans-serif;
 }
 
 /* The web app's filter count: an inverted ink pill. */

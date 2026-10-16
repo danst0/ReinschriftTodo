@@ -9,7 +9,7 @@
         "51"
     ],
     "url": "https://reinschrift.dumke.me",
-    "version-name": "1.1.7",
+    "version-name": "1.1.8",
     "gettext-domain": "reinschrift-shell",
     "settings-schema": "org.gnome.shell.extensions.reinschrift"
 }

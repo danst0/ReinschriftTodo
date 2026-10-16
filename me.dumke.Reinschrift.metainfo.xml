@@ -120,6 +120,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.7" date="2026-10-16" type="development">
+      <description>
+        <ul>
+          <li>Web app: Inter for text and Inter Tight for headings</li>
+          <li>Shell extension: uses the system font</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.6" date="2026-10-16" type="development">
       <description>
         <ul>
