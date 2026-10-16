@@ -3,13 +3,13 @@
     "name": "Reinschrift",
     "description": "Your Reinschrift “My Day” in the top bar: see the tasks planned for today and tick them off without opening the app. Reads and writes the same Markdown file as the Reinschrift app (local or Nextcloud-synced).",
     "shell-version": [
-        "47",
         "48",
         "49",
-        "50"
+        "50",
+        "51"
     ],
     "url": "https://reinschrift.dumke.me",
-    "version-name": "1.1.5",
+    "version-name": "1.1.6",
     "gettext-domain": "reinschrift-shell",
     "settings-schema": "org.gnome.shell.extensions.reinschrift"
 }

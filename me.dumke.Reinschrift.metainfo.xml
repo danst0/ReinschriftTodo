@@ -120,6 +120,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.5" date="2026-10-16" type="development">
+      <description>
+        <ul>
+          <li>Shell extension: support for GNOME 51 (GNOME 47 is no longer supported)</li>
+          <li>Shell extension: clicking anywhere on the add line puts the cursor in it</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.4" date="2026-10-10" type="development">
       <description>
         <ul>

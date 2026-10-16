@@ -130,7 +130,7 @@ class TodoRow extends PopupMenu.PopupBaseMenuItem {
         this.add_child(this._checkbox);
 
         const box = this._textBox = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             style_class: 'rs-text',
@@ -229,7 +229,7 @@ class DetailItem extends PopupMenu.PopupBaseMenuItem {
         this.track_hover = false;
 
         const box = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             style_class: 'rs-detail-box',
         });
@@ -299,7 +299,10 @@ class HeaderItem extends PopupMenu.PopupBaseMenuItem {
         });
         this.track_hover = false;
 
-        const column = new St.BoxLayout({vertical: true, x_expand: true});
+        const column = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            x_expand: true,
+        });
 
         // The weekday big, the rest of the date beside it — the web app
         // renders its header the same way (GLib localizes the names).
@@ -323,7 +326,10 @@ class HeaderItem extends PopupMenu.PopupBaseMenuItem {
         // "My Day" reads like the active tab of the web app's view bar; the
         // progress count sits at its right like a section count.
         const tabs = new St.BoxLayout({style_class: 'rs-header-tabs', x_expand: true});
-        const tab = new St.BoxLayout({vertical: true, style_class: 'rs-tab'});
+        const tab = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'rs-tab',
+        });
         tab.add_child(new St.Label({text: _('My Day'), style_class: 'rs-tab-label'}));
         tab.add_child(new St.Widget({style_class: 'rs-tab-underline', x_expand: true}));
         tabs.add_child(tab);
@@ -376,7 +382,7 @@ class AddItem extends PopupMenu.PopupBaseMenuItem {
         this.track_hover = false;
 
         const box = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             style_class: 'rs-add-box',
         });
@@ -407,6 +413,19 @@ class AddItem extends PopupMenu.PopupBaseMenuItem {
         box.add_child(row);
         box.add_child(new St.Widget({style_class: 'rs-add-underline'}));
         this.add_child(box);
+    }
+
+    // Only the text line itself takes focus on click; presses on the entry's
+    // padding or around it bubble up here and would otherwise be lost.
+    vfunc_button_press_event() {
+        this.entry.grab_key_focus();
+        return Clutter.EVENT_STOP;
+    }
+
+    vfunc_touch_event(event) {
+        if (event.type() === Clutter.EventType.TOUCH_BEGIN)
+            this.entry.grab_key_focus();
+        return Clutter.EVENT_STOP;
     }
 });
 
@@ -450,7 +469,7 @@ class StateItem extends PopupMenu.PopupBaseMenuItem {
         });
         this.track_hover = false;
         const box = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             x_align: Clutter.ActorAlign.CENTER,
             style_class: 'rs-state-box',
