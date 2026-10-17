@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.10" date="2026-10-17" type="development">
+      <description>
+        <ul>
+          <li>Internal: AGENTS.md now asks agents to git pull at the start of a session and to commit and push regularly</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.9" date="2026-10-17" type="development">
       <description>
         <ul>

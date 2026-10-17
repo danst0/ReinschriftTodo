@@ -2,6 +2,11 @@
 
 This file provides guidance to coding agents (Claude Code, Codex, …) when working with code in this repository.
 
+## Session Workflow
+
+- **Start of every session**: run `git pull` first so the work starts from the latest state of `main`.
+- **During the work**: commit and push regularly in small, coherent steps — do not wait until the end (see "Versioning & Release" for the version bump rules).
+
 ## Project Overview
 
 Reinschrift is a multi-platform todo application:
