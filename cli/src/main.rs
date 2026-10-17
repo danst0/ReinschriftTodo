@@ -172,6 +172,9 @@ enum Commands {
         all: bool,
     },
 
+    /// Send feedback: prints prefilled links for a GitHub issue and an email
+    Feedback,
+
     /// Configuration management
     Config {
         #[command(subcommand)]
@@ -275,6 +278,9 @@ fn main() -> Result<()> {
         }
         Commands::Search { query, all } => {
             commands::search(&ctx, &query, all)
+        }
+        Commands::Feedback => {
+            commands::feedback(&ctx)
         }
         Commands::Config { action } => {
             match action {

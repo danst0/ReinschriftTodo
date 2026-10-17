@@ -930,3 +930,21 @@ msgstr "Restablecer filtros"
 
 msgid "No tasks match the filter."
 msgstr "Ninguna tarea coincide con el filtro."
+
+msgid "Send Feedback"
+msgstr "Enviar comentarios"
+
+msgid "Feedback on GitHub"
+msgstr "Comentarios en GitHub"
+
+msgid "Feedback by Email"
+msgstr "Comentarios por correo"
+
+msgid "Email"
+msgstr "Correo"
+
+msgid "Report a problem or suggest an idea – on GitHub or by email. Version and system details are filled in; nothing is sent until you send it yourself."
+msgstr "Informa de un problema o sugiere una idea, en GitHub o por correo. La versión y los datos del sistema ya están rellenados; no se envía nada hasta que lo envíes tú."
+
+msgid "Report a problem or suggest an idea – on GitHub or by email:"
+msgstr "Informa de un problema o sugiere una idea, en GitHub o por correo:"

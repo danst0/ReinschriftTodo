@@ -930,3 +930,21 @@ msgstr "Återställ filter"
 
 msgid "No tasks match the filter."
 msgstr "Inga uppgifter matchar filtret."
+
+msgid "Send Feedback"
+msgstr "Skicka feedback"
+
+msgid "Feedback on GitHub"
+msgstr "Feedback på GitHub"
+
+msgid "Feedback by Email"
+msgstr "Feedback via e-post"
+
+msgid "Email"
+msgstr "E-post"
+
+msgid "Report a problem or suggest an idea – on GitHub or by email. Version and system details are filled in; nothing is sent until you send it yourself."
+msgstr "Rapportera ett problem eller föreslå en idé – på GitHub eller via e-post. Version och systemuppgifter är redan ifyllda; inget skickas förrän du skickar själv."
+
+msgid "Report a problem or suggest an idea – on GitHub or by email:"
+msgstr "Rapportera ett problem eller föreslå en idé – på GitHub eller via e-post:"

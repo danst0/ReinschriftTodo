@@ -927,3 +927,21 @@ msgstr ""
 
 msgid "No tasks match the filter."
 msgstr ""
+
+msgid "Send Feedback"
+msgstr ""
+
+msgid "Feedback on GitHub"
+msgstr ""
+
+msgid "Feedback by Email"
+msgstr ""
+
+msgid "Email"
+msgstr ""
+
+msgid "Report a problem or suggest an idea – on GitHub or by email. Version and system details are filled in; nothing is sent until you send it yourself."
+msgstr ""
+
+msgid "Report a problem or suggest an idea – on GitHub or by email:"
+msgstr ""

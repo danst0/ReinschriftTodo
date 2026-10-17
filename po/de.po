@@ -930,3 +930,21 @@ msgstr "Filter zurücksetzen"
 
 msgid "No tasks match the filter."
 msgstr "Keine Aufgabe passt zum Filter."
+
+msgid "Send Feedback"
+msgstr "Feedback senden"
+
+msgid "Feedback on GitHub"
+msgstr "Feedback auf GitHub"
+
+msgid "Feedback by Email"
+msgstr "Feedback per E-Mail"
+
+msgid "Email"
+msgstr "E-Mail"
+
+msgid "Report a problem or suggest an idea – on GitHub or by email. Version and system details are filled in; nothing is sent until you send it yourself."
+msgstr "Melde ein Problem oder schlage eine Idee vor – auf GitHub oder per E-Mail. Version und Systemangaben sind schon eingetragen; verschickt wird erst, wenn du selbst absendest."
+
+msgid "Report a problem or suggest an idea – on GitHub or by email:"
+msgstr "Melde ein Problem oder schlage eine Idee vor – auf GitHub oder per E-Mail:"

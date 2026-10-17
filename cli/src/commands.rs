@@ -5,6 +5,7 @@ use reinschrift_core::{
     add_todo_full, get_backend_config, test_webdav_connection,
     TodoItem, TodoKey, SortMode, sort_items, t, TodoFilter,
 };
+use reinschrift_core::feedback;
 use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
 use std::io::{self, Write};
 
@@ -349,6 +350,22 @@ pub fn search(ctx: &OutputContext, query: &str, show_all: bool) -> Result<()> {
 
     ctx.info(&format!("Found {} results for '{}':", items.len(), query));
     ctx.print_todos(&items);
+    Ok(())
+}
+
+pub fn feedback(ctx: &OutputContext) -> Result<()> {
+    let info = feedback::system_info("CLI", &[]);
+    let github = feedback::github_url(&info);
+    let email = feedback::mailto_url(&info);
+    if ctx.json {
+        println!("{}", serde_json::json!({ "github": github, "email": email, "address": feedback::FEEDBACK_EMAIL }));
+    } else {
+        println!("{}", t("Report a problem or suggest an idea – on GitHub or by email:"));
+        println!();
+        println!("  GitHub: {github}");
+        println!("  {}: {}", t("Email"), feedback::FEEDBACK_EMAIL);
+        println!("    {email}");
+    }
     Ok(())
 }
 

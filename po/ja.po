@@ -930,3 +930,21 @@ msgstr "フィルターをリセット"
 
 msgid "No tasks match the filter."
 msgstr "フィルターに一致するタスクはありません。"
+
+msgid "Send Feedback"
+msgstr "フィードバックを送信"
+
+msgid "Feedback on GitHub"
+msgstr "GitHub でフィードバック"
+
+msgid "Feedback by Email"
+msgstr "メールでフィードバック"
+
+msgid "Email"
+msgstr "メール"
+
+msgid "Report a problem or suggest an idea – on GitHub or by email. Version and system details are filled in; nothing is sent until you send it yourself."
+msgstr "問題の報告やアイデアの提案は GitHub またはメールで。バージョンとシステム情報は入力済みです。ご自身で送信するまで何も送られません。"
+
+msgid "Report a problem or suggest an idea – on GitHub or by email:"
+msgstr "問題の報告やアイデアの提案は GitHub またはメールで:"

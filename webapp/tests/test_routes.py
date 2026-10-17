@@ -89,6 +89,27 @@ class TestFontSetting:
         assert 'data-font=' not in html
 
 
+class TestFeedbackLinks:
+    """Settings offer GitHub and email feedback with prefilled details."""
+
+    def test_settings_show_both_links(self, app, tmp_path):
+        todo_path = tmp_path / 'todos.md'
+        todo_path.write_text('- [ ] Task ^abc123\n', encoding='utf-8')
+        app.config.update({
+            'TODO_PATH': str(todo_path),
+            'CONFIG_PATH': str(tmp_path / 'settings.json'),
+            'USE_WEBDAV': False,
+        })
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        html = client.get('/', headers={'User-Agent': 'TestBrowser/1.0'}).get_data(as_text=True)
+        assert 'href="https://github.com/danst0/ReinschriftTodo/issues/new?body=' in html
+        assert 'href="mailto:reinschrift-feedback@dumke.me?subject=Reinschrift%20Feedback&amp;body=' in html
+        assert 'Client%3A%20Web' in html
+        assert 'Browser%3A%20TestBrowser%2F1.0' in html
+
+
 class TestApiRoutes:
     """Tests for API routes."""
 

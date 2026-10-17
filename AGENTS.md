@@ -32,6 +32,7 @@ reinschrift/
 │       ├── i18n.rs         # Internationalization (gettext, domain "reinschrift")
 │       ├── sorting.rs      # Sorting functions
 │       ├── filter.rs       # List filters (due range, projects, places)
+│       ├── feedback.rs     # "Send feedback" links (GitHub issue, mailto) with system info
 │       └── preferences.rs  # User preferences
 ├── po/                     # gettext translations (.pot template + .po files)
 ├── gui/                    # GTK application (reinschrift-gui)
@@ -109,6 +110,7 @@ COMMANDS:
     today           Set due date to today
     tomorrow        Set due date to tomorrow
     search          Search todos
+    feedback        Print prefilled GitHub-issue and email links for feedback
     config          WebDAV and AI configuration
 ```
 
@@ -220,6 +222,7 @@ webapp/
 │   │   └── api.py           # JSON API endpoints
 │   └── utils/
 │       ├── markers.py       # generate_marker
+│       ├── feedback.py      # Feedback links (mirror of core/src/feedback.rs)
 │       ├── escaping.py      # escape/unescape_note
 │       └── helpers.py       # parse_flag, format helpers
 ├── static/

@@ -27,6 +27,7 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use reinschrift_core::embeddings;
+use reinschrift_core::feedback;
 use reinschrift_core::parser::parse_line;
 use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
 use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, tc, Preferences, load_preferences, write_preferences};
@@ -249,6 +250,21 @@ fn ensure_default_database() -> Option<PathBuf> {
 /// vorlesen kann (Tooltips allein sind für Screenreader nicht verlässlich).
 fn set_a11y_label(widget: &impl IsA<gtk::Accessible>, label: &str) {
     widget.update_property(&[gtk::accessible::Property::Label(label)]);
+}
+
+fn launch_uri(uri: &str) {
+    gtk::UriLauncher::new(uri).launch(gtk::Window::NONE, gio::Cancellable::NONE, |_| {});
+}
+
+/// Systemangaben für den Feedback-Text, ergänzt um GTK und libadwaita.
+fn feedback_system_info() -> String {
+    feedback::system_info(
+        "Desktop",
+        &[
+            ("GTK", format!("{}.{}.{}", gtk::major_version(), gtk::minor_version(), gtk::micro_version())),
+            ("libadwaita", format!("{}.{}.{}", adw::major_version(), adw::minor_version(), adw::micro_version())),
+        ],
+    )
 }
 
 /// Übersetzte Strings für das Einbetten in Builder-UI-XML escapen.
@@ -830,6 +846,7 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     let menu_model = gio::Menu::new();
     menu_model.append(Some(&t("Settings")), Some("app.open-settings"));
     menu_model.append(Some(&t("Keyboard Shortcuts")), Some("app.shortcuts"));
+    menu_model.append(Some(&t("Send Feedback")), Some("app.feedback"));
 
     let menu_btn = gtk::MenuButton::builder()
         .icon_name("open-menu-symbolic")
@@ -1385,6 +1402,13 @@ pub fn build_ui(app: &Application, debug_mode: bool) -> Result<()> {
     });
     app.add_action(&shortcuts_action);
     app.set_accels_for_action("app.shortcuts", &["<Primary>question", "F1"]);
+
+    let feedback_action = gio::SimpleAction::new("feedback", None);
+    let state_for_feedback_action = Rc::clone(&state);
+    feedback_action.connect_activate(move |_, _| {
+        state_for_feedback_action.show_feedback_dialog();
+    });
+    app.add_action(&feedback_action);
 
     let close_action = gio::SimpleAction::new("close-window", None);
     let window_for_close = window.clone();
@@ -3212,6 +3236,31 @@ impl AppState {
     /// Tastenkürzel-Fenster (GtkShortcutsWindow), gruppiert nach Bereich.
     /// Mit gtk4 v4_12 gibt es noch keine programmatische Add-API
     /// (`add_section` kam erst mit 4.14), daher Aufbau über Builder-XML.
+    /// GitHub und E-Mail gleichrangig nebeneinander; beide öffnen nur
+    /// Browser bzw. Mailprogramm mit vorausgefülltem Text.
+    fn show_feedback_dialog(self: &Rc<Self>) {
+        let Some(parent) = self.window.upgrade() else {
+            self.show_error(&t("No window available"));
+            return;
+        };
+
+        let dialog = AlertDialog::builder().modal(true).build();
+        dialog.set_message(&t("Send Feedback"));
+        dialog.set_detail(&t(
+            "Report a problem or suggest an idea – on GitHub or by email. \
+             Version and system details are filled in; nothing is sent until you send it yourself.",
+        ));
+        dialog.set_buttons(&["GitHub", &t("Email"), &t("Cancel")]);
+        dialog.set_cancel_button(2);
+        dialog.choose(Some(&parent), gio::Cancellable::NONE, |result| {
+            match result {
+                Ok(0) => launch_uri(&feedback::github_url(&feedback_system_info())),
+                Ok(1) => launch_uri(&feedback::mailto_url(&feedback_system_info())),
+                _ => {}
+            }
+        });
+    }
+
     fn show_shortcuts_window(self: &Rc<Self>) {
         let Some(parent) = self.window.upgrade() else {
             self.show_error(&t("No window available"));
@@ -4004,6 +4053,22 @@ impl AppState {
             launcher.launch(None::<&gtk::Window>, gio::Cancellable::NONE, |_| {});
         });
         info_group.add(&site_row);
+
+        let github_row = adw::ActionRow::builder()
+            .title(t("Feedback on GitHub"))
+            .subtitle("github.com/danst0/ReinschriftTodo/issues")
+            .activatable(true)
+            .build();
+        github_row.connect_activated(|_| launch_uri(&feedback::github_url(&feedback_system_info())));
+        info_group.add(&github_row);
+
+        let mail_row = adw::ActionRow::builder()
+            .title(t("Feedback by Email"))
+            .subtitle(feedback::FEEDBACK_EMAIL)
+            .activatable(true)
+            .build();
+        mail_row.connect_activated(|_| launch_uri(&feedback::mailto_url(&feedback_system_info())));
+        info_group.add(&mail_row);
 
         let license_row = adw::ActionRow::builder()
             .title(t("License"))

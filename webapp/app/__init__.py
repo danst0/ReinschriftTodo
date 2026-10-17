@@ -210,16 +210,22 @@ def register_context_processors(app: Flask) -> None:
         from datetime import datetime
         from app.utils.due_view import describe_due
         from app.services.storage import load_settings
+        from app.utils import feedback
 
         lang = get_locale()
         t = TRANSLATIONS.get(lang, TRANSLATIONS['de'])
         # One clock reading per render, so all rows agree on "today".
         now = datetime.now()
+        feedback_info = feedback.system_info(
+            app_version, lang, request.headers.get('User-Agent', ''))
         return {
             't': t,
             'current_lang': lang,
             'app_version': app_version,
             'due_view': lambda todo: describe_due(todo, t, now),
+            'feedback_github_url': feedback.github_url(feedback_info),
+            'feedback_mailto_url': feedback.mailto_url(feedback_info),
+            'feedback_email': feedback.FEEDBACK_EMAIL,
             # Typeface setting: 'inter' (default) or 'hanken' (classic).
             'font': 'hanken' if load_settings().get('font') == 'hanken' else 'inter',
         }
