@@ -70,6 +70,8 @@ def index():
     title_autocomplete_vals = request.args.getlist('title_autocomplete')
     title_autocomplete_raw = title_autocomplete_vals[-1] if title_autocomplete_vals else None
     ai_timeout_secs_val = request.args.get('ai_timeout_secs')
+    font_vals = request.args.getlist('font')
+    font_val = font_vals[-1] if font_vals else None
 
     new_settings = settings.copy()
     changed = False
@@ -145,6 +147,10 @@ def index():
         changed = True
     else:
         parsed_ai_timeout = clamp_timeout_secs(settings.get('ai_timeout_secs', DEFAULT_AI_TIMEOUT_SECS))
+
+    if font_val is not None:
+        new_settings['font'] = 'hanken' if font_val == 'hanken' else 'inter'
+        changed = True
 
     if changed:
         save_settings(new_settings)

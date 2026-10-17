@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ current_lang or 'en' }}">
+<html lang="{{ current_lang or 'en' }}"{% if font == 'hanken' %} data-font="hanken"{% endif %}>
 <head>
     <meta charset="utf-8">
     <title>{% block title %}{{ t.todos }}{% endblock %}</title>
@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="Reinschrift">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <link rel="preload" href="{{ url_for('static', filename='fonts/inter-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ url_for('static', filename='fonts/hanken-grotesk-latin.woff2' if font == 'hanken' else 'fonts/inter-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v=app_version) }}">
     {% block head %}{% endblock %}
 </head>

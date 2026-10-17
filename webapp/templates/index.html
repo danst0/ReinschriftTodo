@@ -1,5 +1,5 @@
 {% from '_icons.html' import icon %}<!DOCTYPE html>
-<html lang="{{ current_lang or 'en' }}">
+<html lang="{{ current_lang or 'en' }}"{% if font == 'hanken' %} data-font="hanken"{% endif %}>
 <head>
     <meta charset="utf-8">
     <title>{{ t.todos }}</title>
@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="Reinschrift">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <link rel="preload" href="{{ url_for('static', filename='fonts/inter-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ url_for('static', filename='fonts/hanken-grotesk-latin.woff2' if font == 'hanken' else 'fonts/inter-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v=app_version) }}">
     <script type="module" src="{{ url_for('static', filename='js/app.js', v=app_version) }}"></script>
 </head>
@@ -291,6 +291,13 @@
                     <input type="checkbox" name="title_autocomplete" value="1" {% if title_autocomplete %}checked{% endif %}>
                     <span class="check-label">{{ t.title_autocomplete_label }}</span>
                     <span class="help">{{ t.title_autocomplete_help }}</span>
+                </label>
+
+                <label class="check-row">
+                    <input type="hidden" name="font" value="inter">
+                    <input type="checkbox" name="font" value="hanken" {% if font == 'hanken' %}checked{% endif %}>
+                    <span class="check-label">{{ t.classic_font_label }}</span>
+                    <span class="help">{{ t.classic_font_help }}</span>
                 </label>
 
                 <div class="form-group">

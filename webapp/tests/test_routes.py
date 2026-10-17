@@ -54,6 +54,41 @@ class TestMainRoutes:
             assert sess.get('lang') == 'de'
 
 
+class TestFontSetting:
+    """Tests for the classic typeface (Hanken Grotesk) setting."""
+
+    @pytest.fixture
+    def font_client(self, app, tmp_path):
+        todo_path = tmp_path / 'todos.md'
+        todo_path.write_text('- [ ] Task ^abc123\n', encoding='utf-8')
+        app.config.update({
+            'TODO_PATH': str(todo_path),
+            'CONFIG_PATH': str(tmp_path / 'settings.json'),
+            'USE_WEBDAV': False,
+        })
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        return client
+
+    def test_default_is_inter(self, font_client):
+        html = font_client.get('/').get_data(as_text=True)
+        assert 'data-font=' not in html
+        assert 'fonts/inter-latin.woff2' in html
+
+    def test_switch_to_hanken_and_back(self, font_client):
+        html = font_client.get('/?font=inter&font=hanken').get_data(as_text=True)
+        assert 'data-font="hanken"' in html
+        assert 'fonts/hanken-grotesk-latin.woff2' in html
+
+        # Persisted: also applies to pages without the settings form.
+        assert 'data-font="hanken"' in font_client.get('/').get_data(as_text=True)
+        assert 'data-font="hanken"' in font_client.get('/login').get_data(as_text=True)
+
+        html = font_client.get('/?font=inter').get_data(as_text=True)
+        assert 'data-font=' not in html
+
+
 class TestApiRoutes:
     """Tests for API routes."""
 

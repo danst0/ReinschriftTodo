@@ -209,6 +209,7 @@ def register_context_processors(app: Flask) -> None:
         """Inject translation dictionary and version into templates."""
         from datetime import datetime
         from app.utils.due_view import describe_due
+        from app.services.storage import load_settings
 
         lang = get_locale()
         t = TRANSLATIONS.get(lang, TRANSLATIONS['de'])
@@ -219,6 +220,8 @@ def register_context_processors(app: Flask) -> None:
             'current_lang': lang,
             'app_version': app_version,
             'due_view': lambda todo: describe_due(todo, t, now),
+            # Typeface setting: 'inter' (default) or 'hanken' (classic).
+            'font': 'hanken' if load_settings().get('font') == 'hanken' else 'inter',
         }
 
     def get_locale() -> str:

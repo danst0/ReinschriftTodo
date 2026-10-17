@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.8" date="2026-10-17" type="development">
+      <description>
+        <ul>
+          <li>Web app: setting to switch back to the classic Hanken Grotesk typeface</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.7" date="2026-10-16" type="development">
       <description>
         <ul>
