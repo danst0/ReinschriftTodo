@@ -31,7 +31,7 @@ use reinschrift_core::feedback;
 use reinschrift_core::parser::parse_line;
 use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
 use reinschrift_core::{data, TodoItem, SortMode, sort_items, t, tc, Preferences, load_preferences, write_preferences};
-use reinschrift_core::{DueRange, TodoFilter, NO_TAG};
+use reinschrift_core::{DueRange, SearchMatch, SearchQuery, TodoFilter, NO_TAG};
 
 enum VoiceMsg {
     Error(String),
@@ -4749,7 +4749,7 @@ impl AppState {
                             }
                 }
 
-        let search_term = self.search_term.borrow().to_lowercase();
+        let query = SearchQuery::parse(&self.search_term.borrow());
         let mut items = self.cached_items.borrow().clone();
         self.sort_items(&mut items);
         let mut out: Vec<ListEntry> = Vec::new();
@@ -4759,7 +4759,7 @@ impl AppState {
         let myday_only = self.myday_view();
         let today = Local::now().date_naive();
 
-        if search_term.is_empty() {
+        if query.is_empty() {
             if myday_only {
                 self.populate_myday_view(&mut out, items, today);
             } else {
@@ -4782,11 +4782,13 @@ impl AppState {
                 }
             }
         } else {
+            let is_primary = |todo: &TodoItem| query.matches(todo) == Some(SearchMatch::Primary);
+
             // 1. Suchergebnisse in aktueller Liste
             let current_list_results: Vec<_> = items.iter().filter(|todo| {
                 (include_done || !todo.done)
                     && filter.matches(todo, today)
-                    && todo.title.to_lowercase().contains(&search_term)
+                    && is_primary(todo)
             }).cloned().collect();
 
             if !current_list_results.is_empty() {
@@ -4798,7 +4800,7 @@ impl AppState {
 
             // 2. Suchergebnisse bei allen offenen Todos
             let open_results: Vec<_> = items.iter().filter(|todo| {
-                !todo.done && todo.title.to_lowercase().contains(&search_term)
+                !todo.done && is_primary(todo)
             }).cloned().collect();
             
             let open_results_filtered: Vec<_> = open_results.into_iter().filter(|todo| {
@@ -4814,7 +4816,7 @@ impl AppState {
 
             // 3. Suchergebnisse bei den abgeschlossenen Todos
             let done_results: Vec<_> = items.iter().filter(|todo| {
-                todo.done && todo.title.to_lowercase().contains(&search_term)
+                todo.done && is_primary(todo)
             }).cloned().collect();
 
             let done_results_filtered: Vec<_> = done_results.into_iter().filter(|todo| {
@@ -4824,6 +4826,20 @@ impl AppState {
             if !done_results_filtered.is_empty() {
                 out.push(ListEntry::Header(t("Search results in completed To-dos")));
                 for item in done_results_filtered {
+                    out.push(ListEntry::Item(item));
+                }
+            }
+
+            // 4. Sekundäre Treffer: Text nur in Projekt, Ort oder Notiz
+            //    (offene zuerst, dann abgeschlossene)
+            let mut secondary_results: Vec<_> = items.iter().filter(|todo| {
+                query.matches(todo) == Some(SearchMatch::Secondary)
+            }).cloned().collect();
+            secondary_results.sort_by_key(|todo| todo.done);
+
+            if !secondary_results.is_empty() {
+                out.push(ListEntry::Header(t("Also found in project, place or note")));
+                for item in secondary_results {
                     out.push(ListEntry::Item(item));
                 }
             }

@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.11" date="2026-10-20" type="development">
+      <description>
+        <ul>
+          <li>Search also finds tasks by project, place and note: "+sec" or "@comp" search the project or place, and text found only in a project, place or note is listed below the title matches</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.10" date="2026-10-17" type="development">
       <description>
         <ul>

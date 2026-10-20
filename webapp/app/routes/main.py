@@ -11,6 +11,7 @@ from app.services import (
     sort_todos,
 )
 from app.services.filters import TodoFilter, filter_choices
+from app.services.search import PRIMARY, SECONDARY, SearchQuery
 from app.utils.due_view import HORIZONS, horizon_label, horizon_of, parse_due
 from app.utils.helpers import canonical_casing_map, canonicalize_token, parse_flag
 
@@ -182,14 +183,18 @@ def index():
     if q:
         # Search logic
         all_todos_dicts = [_todo_to_dict(t) for t in todos]
+        query = SearchQuery.parse(q)
+
+        def is_primary(todo):
+            return query.matches(todo) == PRIMARY
 
         # 1. Current list results
-        current_results = [t.copy() for t in todos_as_dicts if q in t['title'].lower()]
+        current_results = [t.copy() for t in todos_as_dicts if is_primary(t)]
         for t in current_results:
             t['section'] = None
 
         # 2. All open todos (excluding those already in current_results)
-        open_results = [t.copy() for t in all_todos_dicts if not t['done'] and q in t['title'].lower()]
+        open_results = [t.copy() for t in all_todos_dicts if not t['done'] and is_primary(t)]
         open_results = [t for t in open_results if not any(
             c['line_index'] == t['line_index'] and c['marker'] == t['marker']
             for c in current_results
@@ -198,7 +203,7 @@ def index():
             t['section'] = None
 
         # 3. All completed todos (excluding those already in current_results)
-        done_results = [t.copy() for t in all_todos_dicts if t['done'] and q in t['title'].lower()]
+        done_results = [t.copy() for t in all_todos_dicts if t['done'] and is_primary(t)]
         done_results = [t for t in done_results if not any(
             c['line_index'] == t['line_index'] and c['marker'] == t['marker']
             for c in current_results
@@ -206,7 +211,14 @@ def index():
         for t in done_results:
             t['section'] = None
 
-        # 4. Semantically similar todos (Ollama embeddings, optional) —
+        # 4. Secondary hits: text only in project, place or note
+        #    (open first, then completed)
+        secondary_results = [t.copy() for t in all_todos_dicts if query.matches(t) == SECONDARY]
+        secondary_results.sort(key=lambda t: t['done'])
+        for t in secondary_results:
+            t['section'] = None
+
+        # 5. Semantically similar todos (Ollama embeddings, optional) —
         #    deduped against the substring sections above. Empty when the
         #    feature is disabled or the backend is unavailable.
         from app.services.embedding_service import query_similar
@@ -215,7 +227,7 @@ def index():
         if semantic_hits:
             shown = {
                 (t['line_index'], t['marker'])
-                for t in current_results + open_results + done_results
+                for t in current_results + open_results + done_results + secondary_results
             }
             by_marker = {t['marker']: t for t in all_todos_dicts if t['marker']}
             for hit in semantic_hits:
@@ -233,6 +245,7 @@ def index():
                                   current_results=current_results,
                                   open_results=open_results,
                                   done_results=done_results,
+                                  secondary_results=secondary_results,
                                   semantic_results=semantic_results,
                                   q=q)
 
@@ -240,6 +253,7 @@ def index():
                               current_results=current_results,
                               open_results=open_results,
                               done_results=done_results,
+                              secondary_results=secondary_results,
                               semantic_results=semantic_results,
                               q=q,
                               show_done=show_done,

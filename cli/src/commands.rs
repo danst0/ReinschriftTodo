@@ -5,6 +5,7 @@ use reinschrift_core::{
     add_todo_full, get_backend_config, test_webdav_connection,
     TodoItem, TodoKey, SortMode, sort_items, t, TodoFilter,
 };
+use reinschrift_core::{SearchMatch, SearchQuery};
 use reinschrift_core::feedback;
 use reinschrift_core::util::{canonical_casing_map, canonicalize_token};
 use std::io::{self, Write};
@@ -327,16 +328,15 @@ pub fn undo(ctx: &OutputContext) -> Result<()> {
 }
 
 pub fn search(ctx: &OutputContext, query: &str, show_all: bool) -> Result<()> {
-    let mut items = load_todos()?;
-    let query_lower = query.to_lowercase();
+    let parsed = SearchQuery::parse(query);
 
-    // Filter by search query
-    items.retain(|item| {
-        item.title.to_lowercase().contains(&query_lower)
-            || item.projects.iter().any(|p| p.to_lowercase().contains(&query_lower))
-            || item.contexts.iter().any(|c| c.to_lowercase().contains(&query_lower))
-            || item.note.as_ref().map(|n| n.to_lowercase().contains(&query_lower)).unwrap_or(false)
-    });
+    // Title and +project/@place hits first, then hits only in tags or note
+    let mut items: Vec<_> = load_todos()?
+        .into_iter()
+        .filter_map(|item| parsed.matches(&item).map(|m| (m == SearchMatch::Secondary, item)))
+        .collect();
+    items.sort_by_key(|(secondary, _)| *secondary);
+    let mut items: Vec<_> = items.into_iter().map(|(_, item)| item).collect();
 
     // Filter completed unless show_all
     if !show_all {

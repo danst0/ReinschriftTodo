@@ -668,6 +668,9 @@ msgstr ""
 msgid "Similar tasks"
 msgstr ""
 
+msgid "Also found in project, place or note"
+msgstr ""
+
 #. ehemaliger JSON-Schlüssel: search_results_semantic
 msgid "Similar by meaning"
 msgstr ""

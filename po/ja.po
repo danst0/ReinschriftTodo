@@ -671,6 +671,9 @@ msgstr "Ollamaサーバーアドレス (例: http://localhost:11434)"
 msgid "Similar tasks"
 msgstr "類似のタスク"
 
+msgid "Also found in project, place or note"
+msgstr "プロジェクト・場所・メモでも見つかりました"
+
 #. ehemaliger JSON-Schlüssel: search_results_semantic
 msgid "Similar by meaning"
 msgstr "意味が似ているToDo"

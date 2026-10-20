@@ -9,6 +9,7 @@ pub mod parser;
 pub mod pending;
 pub mod preferences;
 pub mod reminders;
+pub mod search;
 pub mod renderer;
 pub mod sorting;
 pub mod storage;
@@ -22,6 +23,7 @@ pub use data::*;
 pub use filter::{DueRange, TodoFilter, NO_TAG};
 pub use i18n::{t, tc};
 pub use preferences::*;
+pub use search::{SearchMatch, SearchQuery};
 pub use sorting::*;
 
 #[cfg(test)]

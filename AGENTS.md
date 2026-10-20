@@ -37,6 +37,7 @@ reinschrift/
 │       ├── i18n.rs         # Internationalization (gettext, domain "reinschrift")
 │       ├── sorting.rs      # Sorting functions
 │       ├── filter.rs       # List filters (due range, projects, places)
+│       ├── search.rs       # Search query (+project/@place tokens, title vs. secondary hits)
 │       ├── feedback.rs     # "Send feedback" links (GitHub issue, mailto) with system info
 │       └── preferences.rs  # User preferences
 ├── po/                     # gettext translations (.pot template + .po files)
@@ -182,6 +183,9 @@ Modular design with focused responsibilities:
   - Environment-based language detection (LANGUAGE, LC_ALL, LANG)
 - **sorting.rs**: `SortMode` enum and sorting functions
   - Topic (+project), Location (@context), Date (due:)
+- **search.rs**: `SearchQuery` / `SearchMatch` — search shared by GUI and CLI, mirrored in `webapp/app/services/search.py`
+  - `+frag`/`@frag` words filter by project/place (substring, case-insensitive) and count as primary hits
+  - Remaining text in the title = primary; only in project, place or note = secondary (listed after the primary sections)
 - **filter.rs**: `TodoFilter` / `DueRange` — list filter shared by GUI and CLI, mirrored in `webapp/app/services/filters.py`
   - Ranges: any, overdue, today, tomorrow, week (7 days), month (30 days), undated; bounded ranges include overdue, never "sometime"
   - Projects/places: any-of, case-insensitive, `NO_TAG` ("") = without project/place
@@ -264,6 +268,7 @@ webapp/
 - **utils/due_view.py**: Relative due dates for the list ("Morgen, 10:00") and the time horizons of the date view (overdue … no date)
 - **storage.py**: Unified storage abstraction (local + WebDAV)
 - **todo_service.py**: load_todos, toggle_todo, add_todo, delete_todo
+- **search.py**: `SearchQuery` (mirror of core/src/search.rs)
 - **filters.py**: `TodoFilter` (mirror of core/src/filter.rs); persisted in settings.json as `filter_due`, `filter_undated`, `filter_projects`, `filter_contexts`
 - **ai_service.py**: Ollama/LLM integration for natural language parsing
 - **push_service.py**: Web Push reminders — VAPID key, subscriptions, background loop (one gunicorn worker sends, chosen by file lock)
