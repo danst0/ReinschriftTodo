@@ -519,6 +519,40 @@ export function nextDueDate(currentDue, rule) {
 }
 
 /**
+ * The next Saturday for the given day — mirrors core/src/todo.rs
+ * `weekend_date` (a week ahead when today already is Saturday).
+ */
+export function nextSaturday(now) {
+    const weekday = (now.getDay() + 6) % 7; // 0=Mon … 5=Sat, 6=Sun
+    const days = weekday === 5 ? 7 : weekday === 6 ? 6 : 5 - weekday;
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
+}
+
+/**
+ * Which postpone stage a button press stands for — mirrors core/src/todo.rs
+ * `resolve_target`: pressing "Tomorrow" on a task already due tomorrow, or
+ * "Weekend" on one already due the coming Saturday, moves one stage further;
+ * any other current date stays on the first stage. Resolving up front, before
+ * the write, keeps re-running the resolved target idempotent.
+ */
+export function resolveTarget(target, currentDue, now = new Date()) {
+    if (!currentDue)
+        return target;
+    const sameDay = (a, b) =>
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate();
+    if (target === 'tomorrow') {
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        if (sameDay(currentDue, tomorrow))
+            return 'day-after-tomorrow';
+    }
+    if (target === 'weekend' && sameDay(currentDue, nextSaturday(now)))
+        return 'weekend-after-next';
+    return target;
+}
+
+/**
  * Due date for a postpone target — mirrors core/src/todo.rs `due_for_target`
  * (tomorrow and weekend at noon, someday as 9999-12-31) and the app's
  * "in a week" shortcut, which keeps the current time of day.
@@ -529,11 +563,13 @@ export function dueForTarget(target, currentDue, now = new Date()) {
 
     if (target === 'tomorrow')
         return at(day(1), 12, 0);
-    if (target === 'weekend') {
-        // Next Saturday; a week ahead when today already is Saturday.
-        const weekday = (now.getDay() + 6) % 7; // 0=Mon … 5=Sat, 6=Sun
-        const days = weekday === 5 ? 7 : weekday === 6 ? 6 : 5 - weekday;
-        return at(day(days), 12, 0);
+    if (target === 'day-after-tomorrow')
+        return at(day(2), 12, 0);
+    if (target === 'weekend')
+        return at(nextSaturday(now), 12, 0);
+    if (target === 'weekend-after-next') {
+        const saturday = nextSaturday(now);
+        return at(new Date(saturday.getFullYear(), saturday.getMonth(), saturday.getDate() + 7), 12, 0);
     }
     if (target === 'nextweek') {
         return at(day(7), currentDue ? currentDue.getHours() : 0,
