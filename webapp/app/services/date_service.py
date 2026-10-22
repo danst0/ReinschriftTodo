@@ -1,6 +1,6 @@
 """Date calculation service."""
 
-from datetime import datetime, timedelta, time as dtime
+from datetime import date, datetime, timedelta, time as dtime
 from typing import Optional
 
 from app.models.todo import DEFAULT_DUE_TIME, SOMETIME_SENTINEL
@@ -54,11 +54,63 @@ def next_due_date(current_due: Optional[datetime], rule: str) -> Optional[dateti
     return datetime.combine(next_date, base_time)
 
 
+def next_saturday(today: date) -> date:
+    """The next Saturday for the given today (mirrors core `weekend_date`)."""
+    day_of_week = today.weekday()  # 0=Monday, 5=Saturday, 6=Sunday
+    if day_of_week == 5:
+        days_until_saturday = 7
+    elif day_of_week == 6:
+        days_until_saturday = 6
+    else:
+        days_until_saturday = 5 - day_of_week
+    return today + timedelta(days=days_until_saturday)
+
+
+def resolve_postpone_target(target: str, current_due: datetime | None) -> str:
+    """Resolve which postpone stage a button press stands for.
+
+    Pressing "Morgen" on a todo already due tomorrow, or "Nächstes Wochenende"
+    on one already due the coming Saturday, moves one stage further; any other
+    current date stays on the first stage. Mirrors core `resolve_target`.
+
+    Args:
+        target: Postpone target ('tomorrow', 'weekend').
+        current_due: The todo's current due datetime, if any.
+
+    Returns:
+        The resolved target ('day_after_tomorrow', 'weekend_after_next', or
+        the given target unchanged).
+    """
+    if current_due is None:
+        return target
+    today = datetime.now().date()
+    if target == 'tomorrow' and current_due.date() == today + timedelta(days=1):
+        return 'day_after_tomorrow'
+    if target == 'weekend' and current_due.date() == next_saturday(today):
+        return 'weekend_after_next'
+    return target
+
+
+def resolve_postpone_target_batch(target: str, current_dues: list[datetime | None]) -> str:
+    """Batch variant: bump the target only when *every* item already sits on
+    the first stage, so a mixed group lands on one date instead of two.
+
+    Mirrors core `resolve_target_batch`.
+    """
+    if not current_dues:
+        return target
+    if all(resolve_postpone_target(target, due) != target for due in current_dues):
+        # Every item sits on the first stage, so they all resolve alike.
+        return resolve_postpone_target(target, current_dues[0])
+    return target
+
+
 def calculate_postpone_date(target: str, current_due: datetime | None = None) -> tuple[datetime, dtime]:
     """Calculate the new date/time for a postpone operation.
 
     Args:
-        target: Postpone target ('today', 'tomorrow', 'weekend', 'sometime').
+        target: Postpone target ('today', 'tomorrow', 'day_after_tomorrow',
+            'weekend', 'weekend_after_next', 'sometime').
         current_due: The current due datetime of the todo, if any.
 
     Returns:
@@ -81,16 +133,15 @@ def calculate_postpone_date(target: str, current_due: datetime | None = None) ->
     elif target == 'tomorrow':
         new_date = today + timedelta(days=1)
         new_time = dtime(hour=12, minute=0)
+    elif target == 'day_after_tomorrow':
+        new_date = today + timedelta(days=2)
+        new_time = dtime(hour=12, minute=0)
     elif target == 'weekend':
         # Next Saturday
-        day_of_week = today.weekday()  # 0=Monday, 5=Saturday, 6=Sunday
-        if day_of_week == 5:  # Saturday
-            days_until_saturday = 7
-        elif day_of_week == 6:  # Sunday
-            days_until_saturday = 6
-        else:
-            days_until_saturday = 5 - day_of_week
-        new_date = today + timedelta(days=days_until_saturday)
+        new_date = next_saturday(today)
+        new_time = dtime(hour=12, minute=0)
+    elif target == 'weekend_after_next':
+        new_date = next_saturday(today) + timedelta(days=7)
         new_time = dtime(hour=12, minute=0)
     elif target == 'sometime':
         new_date = SOMETIME_SENTINEL.date()

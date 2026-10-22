@@ -22,7 +22,10 @@ from app.exceptions import StorageError
 from app.services.date_service import (
     current_date,
     next_due_date,
+    next_saturday,
     calculate_postpone_date,
+    resolve_postpone_target,
+    resolve_postpone_target_batch,
     recent_window_bounds,
 )
 
@@ -75,7 +78,10 @@ __all__ = [
     # Date
     'current_date',
     'next_due_date',
+    'next_saturday',
     'calculate_postpone_date',
+    'resolve_postpone_target',
+    'resolve_postpone_target_batch',
     'recent_window_bounds',
     # Sorting
     'sort_key_topic',

@@ -9,6 +9,8 @@ import {
     addMonths,
     addToLines,
     dueForTarget,
+    nextSaturday,
+    resolveTarget,
     removeMyday,
     updateInLines,
     applyCompletionMarker,
@@ -295,6 +297,44 @@ assertEq(extractTitle('Buy groceries myday:2026-06-04'),
         '2026-09-30T14:15', 'due_nextweek_keeps_time');
     assertEq(formatDue(dueForTarget('nextweek', null, wed)), '2026-09-30T00:00', 'due_nextweek_default_time');
     assertEq(formatDue(dueForTarget('someday', null, wed)), '9999-12-31T00:00', 'due_someday');
+}
+{
+    // Second stage of "Tomorrow"/"Weekend" — mirrors core resolve_target.
+    const wed = new Date(2026, 8, 23, 9, 30);
+    assertEq(formatDue(nextSaturday(wed)), '2026-09-26T00:00', 'next_saturday');
+    assertEq(formatDue(nextSaturday(new Date(2026, 8, 26, 9, 0))), '2026-10-03T00:00',
+        'next_saturday_from_saturday');
+    const thu = new Date(2026, 8, 24, 12, 0);
+    const sat = new Date(2026, 8, 26, 12, 0);
+    const nextSat = new Date(2026, 9, 3, 12, 0);
+
+    assertEq(resolveTarget('tomorrow', null, wed), 'tomorrow', 'resolve_tomorrow_no_due');
+    assertEq(resolveTarget('tomorrow', thu, wed), 'day-after-tomorrow', 'resolve_tomorrow_on_tomorrow');
+    assertEq(resolveTarget('tomorrow', new Date(2026, 8, 25, 12, 0), wed), 'tomorrow',
+        'resolve_tomorrow_on_day_after');
+    assertEq(resolveTarget('tomorrow', wed, wed), 'tomorrow', 'resolve_tomorrow_on_today');
+    assertEq(resolveTarget('tomorrow', new Date(2026, 8, 24, 23, 30), wed), 'day-after-tomorrow',
+        'resolve_tomorrow_time_of_day_ignored');
+
+    assertEq(resolveTarget('weekend', null, wed), 'weekend', 'resolve_weekend_no_due');
+    assertEq(resolveTarget('weekend', sat, wed), 'weekend-after-next', 'resolve_weekend_on_saturday');
+    assertEq(resolveTarget('weekend', nextSat, wed), 'weekend', 'resolve_weekend_on_after_next');
+    assertEq(resolveTarget('weekend', wed, wed), 'weekend', 'resolve_weekend_on_today');
+    assertEq(resolveTarget('nextweek', sat, wed), 'nextweek', 'resolve_other_targets_untouched');
+
+    assertEq(formatDue(dueForTarget('day-after-tomorrow', null, wed)), '2026-09-25T12:00',
+        'due_day_after_tomorrow');
+    assertEq(formatDue(dueForTarget('weekend-after-next', null, wed)), '2026-10-03T12:00',
+        'due_weekend_after_next');
+    assertEq(formatDue(dueForTarget('weekend-after-next', null, new Date(2026, 8, 26, 9, 0))),
+        '2026-10-10T12:00', 'due_weekend_after_next_from_saturday');
+
+    // Friday, 2026-09-25: the coming Saturday is the day after tomorrow.
+    const fri = new Date(2026, 8, 25, 9, 0);
+    assertEq(resolveTarget('tomorrow', new Date(2026, 8, 26, 12, 0), fri), 'day-after-tomorrow',
+        'resolve_friday_tomorrow_is_saturday');
+    assertEq(resolveTarget('weekend', new Date(2026, 8, 26, 12, 0), fri), 'weekend-after-next',
+        'resolve_friday_weekend_is_tomorrow');
 }
 {
     assertEq(removeMyday('- [ ] T due:2026-01-01T00:00 myday:2026-01-01 ^a1'),

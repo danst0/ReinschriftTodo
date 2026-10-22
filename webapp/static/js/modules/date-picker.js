@@ -18,7 +18,35 @@ export function timePart(inputEl) {
 }
 
 /**
+ * The date currently entered in a datetime input.
+ * @param {HTMLInputElement} dateInput - The datetime-local input
+ * @returns {Date|null} The entered date, or null when empty/invalid
+ */
+function inputDate(dateInput) {
+    const raw = (dateInput.value || '').split('T')[0];
+    if (!raw) return null;
+    const parsed = new Date(raw + 'T00:00');
+    return isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Compare the date in the input with a target date (time of day ignored).
+ * @param {HTMLInputElement} dateInput - The datetime-local input
+ * @param {Date} target - Date to compare with
+ * @returns {boolean}
+ */
+function isDate(dateInput, target) {
+    const current = inputDate(dateInput);
+    if (!current) return false;
+    return current.getFullYear() === target.getFullYear()
+        && current.getMonth() === target.getMonth()
+        && current.getDate() === target.getDate();
+}
+
+/**
  * Set a date input to today or a future date.
+ * A second press on "Morgen" (offset 1) moves to the day after tomorrow,
+ * a third press hops back — mirrored from calculate_postpone_date.
  * @param {HTMLInputElement} dateInput - The datetime-local input
  * @param {number} offset - Days offset (0 = today, 1 = tomorrow, etc.)
  */
@@ -26,6 +54,14 @@ export function setDate(dateInput, offset) {
     if (!dateInput) return;
 
     const now = new Date();
+    if (offset === 1) {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(now.getDate() + 1);
+        if (isDate(dateInput, tomorrow)) {
+            offset = 2;
+        }
+    }
+
     let targetDate = new Date();
     let targetTime;
 
@@ -52,6 +88,8 @@ export function setDate(dateInput, offset) {
 
 /**
  * Set a date input to the next weekend (Saturday).
+ * A second press moves to the Saturday after that, a third press hops
+ * back — mirrored from calculate_postpone_date.
  * @param {HTMLInputElement} dateInput - The datetime-local input
  */
 export function setNextWeekend(dateInput) {
@@ -74,6 +112,9 @@ export function setNextWeekend(dateInput) {
 
     const targetDate = new Date(now);
     targetDate.setDate(now.getDate() + daysUntilSaturday);
+    if (isDate(dateInput, targetDate)) {
+        targetDate.setDate(targetDate.getDate() + 7);
+    }
 
     const yyyy = targetDate.getFullYear();
     const mm = String(targetDate.getMonth() + 1).padStart(2, '0');

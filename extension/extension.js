@@ -1069,8 +1069,13 @@ export default class ReinschriftExtension extends Extension {
         this._scheduleRebuild();
     }
 
-    /** Move a task to a later day, off today's plan. */
+    /**
+     * Move a task to a later day, off today's plan. A second press on
+     * "Tomorrow"/"Weekend" goes one stage further, a third hops back;
+     * resolved here, up front, so the write below stays idempotent.
+     */
     async _postpone(item, target) {
+        target = Format.resolveTarget(target, item.due);
         const due = Format.dueForTarget(target, item.due);
         await this._editTask(item,
             line => Format.removeMyday(Format.rewriteDue(line, due)));

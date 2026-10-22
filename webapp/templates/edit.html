@@ -15,13 +15,37 @@
             return '00:00';
         }
 
+        // Date currently entered in the input, or null when empty/invalid.
+        function inputDate(dateInput) {
+            const raw = (dateInput.value || '').split('T')[0];
+            if (!raw) return null;
+            const parsed = new Date(raw + 'T00:00');
+            return isNaN(parsed) ? null : parsed;
+        }
+
+        function isDate(dateInput, target) {
+            const current = inputDate(dateInput);
+            if (!current) return false;
+            return current.getFullYear() === target.getFullYear()
+                && current.getMonth() === target.getMonth()
+                && current.getDate() === target.getDate();
+        }
+
         function setDate(offset) {
             const dateInput = document.getElementById('due');
             if (!dateInput) return;
             const now = new Date();
+            // A second press on "Morgen" goes one more day ahead, a third hops back.
+            if (offset === 1) {
+                const tomorrow = new Date(now);
+                tomorrow.setDate(now.getDate() + 1);
+                if (isDate(dateInput, tomorrow)) {
+                    offset = 2;
+                }
+            }
             let targetDate = new Date();
             let targetTime;
-            
+
             if (offset === 0) {
                 // Smart "Today" logic: at least 4 hours from now
                 const currentHour = now.getHours();
@@ -36,7 +60,7 @@
                 targetDate.setDate(now.getDate() + offset);
                 targetTime = '12:00';
             }
-            
+
             const yyyy = targetDate.getFullYear();
             const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
             const dd = String(targetDate.getDate()).padStart(2, '0');
@@ -49,7 +73,7 @@
             const now = new Date();
             const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
             let daysUntilSaturday;
-            
+
             if (dayOfWeek === 6) {
                 // Today is Saturday, go to next Saturday
                 daysUntilSaturday = 7;
@@ -60,10 +84,14 @@
                 // Monday-Friday: days until this Saturday
                 daysUntilSaturday = 6 - dayOfWeek;
             }
-            
+
             const targetDate = new Date(now);
             targetDate.setDate(now.getDate() + daysUntilSaturday);
-            
+            // A second press moves to the Saturday after that, a third hops back.
+            if (isDate(dateInput, targetDate)) {
+                targetDate.setDate(targetDate.getDate() + 7);
+            }
+
             const yyyy = targetDate.getFullYear();
             const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
             const dd = String(targetDate.getDate()).padStart(2, '0');

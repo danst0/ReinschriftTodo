@@ -163,6 +163,62 @@ class TestAssignTodosBatch:
         assert '+"Steuererklärung 2026"' in _line(storage, 'bbb222')
 
 
+class TestPostponeToggle:
+    """A second press on "Morgen"/"Nächstes Wochenende" moves one stage
+    further, a third press hops back (mirrors core resolve_target)."""
+
+    def test_tomorrow_toggles_to_day_after_tomorrow_and_back(self, storage):
+        from datetime import date, timedelta
+
+        tomorrow = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
+        day_after = (date.today() + timedelta(days=2)).strftime('%Y-%m-%d')
+
+        assert todo_service.postpone_todo(4, 'tomorrow', 'eee555') is True
+        assert f'due:{tomorrow}T12:00' in _line(storage, 'eee555')
+
+        # Second press: already due tomorrow → the day after tomorrow.
+        assert todo_service.postpone_todo(4, 'tomorrow', 'eee555') is True
+        assert f'due:{day_after}T12:00' in _line(storage, 'eee555')
+
+        # Third press: hops back to tomorrow.
+        assert todo_service.postpone_todo(4, 'tomorrow', 'eee555') is True
+        assert f'due:{tomorrow}T12:00' in _line(storage, 'eee555')
+
+    def test_weekend_toggles_from_the_coming_saturday(self, storage):
+        from datetime import date, timedelta
+
+        from app.services.date_service import next_saturday
+
+        coming = next_saturday(date.today()).strftime('%Y-%m-%d')
+        after_next = (next_saturday(date.today()) + timedelta(days=7)).strftime('%Y-%m-%d')
+
+        assert todo_service.postpone_todo(4, 'weekend', 'eee555') is True
+        assert f'due:{coming}T12:00' in _line(storage, 'eee555')
+
+        assert todo_service.postpone_todo(4, 'weekend', 'eee555') is True
+        assert f'due:{after_next}T12:00' in _line(storage, 'eee555')
+
+        assert todo_service.postpone_todo(4, 'weekend', 'eee555') is True
+        assert f'due:{coming}T12:00' in _line(storage, 'eee555')
+
+    def test_batch_bumps_only_when_all_sit_on_the_first_stage(self, storage):
+        from datetime import date, timedelta
+
+        # "Vier" has no due date, so a mixed batch stays on the first stage.
+        result = todo_service.postpone_todos_batch([0, 4], 'tomorrow')
+        assert result == {'updated': 2, 'failed': []}
+        tomorrow = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
+        day_after = (date.today() + timedelta(days=2)).strftime('%Y-%m-%d')
+        assert f'due:{tomorrow}T12:00' in _line(storage, 'aaa111')
+        assert f'due:{tomorrow}T12:00' in _line(storage, 'eee555')
+
+        # All on tomorrow now → the whole batch bumps together.
+        result = todo_service.postpone_todos_batch([0, 4], 'tomorrow')
+        assert result == {'updated': 2, 'failed': []}
+        assert f'due:{day_after}T12:00' in _line(storage, 'aaa111')
+        assert f'due:{day_after}T12:00' in _line(storage, 'eee555')
+
+
 class TestBulkRoutes:
     """Integration tests for the batch API endpoints."""
 
