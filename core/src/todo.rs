@@ -12,12 +12,77 @@ use crate::undo::push_undo;
 use crate::util::{generate_marker, normalize_token};
 
 /// Target for due-date operations, shared by single and batch variants.
+/// `DayAfterTomorrow` and `WeekendAfterNext` are the second stage of the
+/// "Morgen"/"Nächstes Wochenende" buttons: a target already sitting on the
+/// first stage is bumped to them by [`resolve_target`] before the write.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DueTarget {
     Today,
     Tomorrow,
+    DayAfterTomorrow,
     Weekend,
+    WeekendAfterNext,
     Sometime,
+}
+
+/// The [`DueTarget`] a button click stands for, given the item's current
+/// due date: pressing "Morgen" on an item already due tomorrow, or
+/// "Nächstes Wochenende" on one already due the coming Saturday, moves one
+/// stage further; any other current date stays on the first stage. Applying
+/// the resolved target repeatedly is idempotent.
+pub fn resolve_target(target: DueTarget, current_due: Option<NaiveDateTime>) -> DueTarget {
+    let Some(current_due) = current_due else {
+        return target;
+    };
+    let today = Local::now().date_naive();
+    match target {
+        DueTarget::Tomorrow if current_due.date() == today + chrono::Duration::days(1) => {
+            DueTarget::DayAfterTomorrow
+        }
+        DueTarget::Weekend if current_due.date() == weekend_date(today) => {
+            DueTarget::WeekendAfterNext
+        }
+        _ => target,
+    }
+}
+
+/// Batch variant: bump the target only when *every* item already sits on
+/// the first stage, so a mixed group lands on one date instead of two.
+pub fn resolve_target_batch(target: DueTarget, current_dues: &[Option<NaiveDateTime>]) -> DueTarget {
+    if current_dues.is_empty() {
+        return target;
+    }
+    let bump = |is_first: fn(NaiveDateTime, NaiveDate) -> bool| {
+        current_dues
+            .iter()
+            .all(|due| due.is_some_and(|d| is_first(d, Local::now().date_naive())))
+    };
+    match target {
+        DueTarget::Tomorrow
+            if bump(|due, today| due.date() == today + chrono::Duration::days(1)) =>
+        {
+            DueTarget::DayAfterTomorrow
+        }
+        DueTarget::Weekend if bump(|due, today| due.date() == weekend_date(today)) => {
+            DueTarget::WeekendAfterNext
+        }
+        _ => target,
+    }
+}
+
+/// The next Saturday for the given today.
+fn weekend_date(today: NaiveDate) -> NaiveDate {
+    let weekday = today.weekday().num_days_from_monday(); // 0=Mon, 5=Sat, 6=Sun
+
+    let days_until_saturday: i64 = if weekday == 5 {
+        7 // Today is Saturday, go to next Saturday
+    } else if weekday == 6 {
+        6 // Today is Sunday, go to next Saturday
+    } else {
+        (5 - weekday) as i64 // Monday-Friday: days until this Saturday
+    };
+
+    today + chrono::Duration::days(days_until_saturday)
 }
 
 /// Load all todos from the configured backend.
@@ -135,27 +200,15 @@ fn due_today_dt(current_due: Option<NaiveDateTime>) -> NaiveDateTime {
     NaiveDateTime::new(today, time)
 }
 
-/// Compute the due date for "tomorrow" (noon).
-fn due_tomorrow_dt() -> NaiveDateTime {
-    let tomorrow = Local::now().date_naive() + chrono::Duration::days(1);
-    NaiveDateTime::new(tomorrow, NaiveTime::from_hms_opt(12, 0, 0).unwrap())
+/// Compute the due date for "tomorrow" or "the day after tomorrow" (noon).
+fn due_days_ahead_dt(days: i64) -> NaiveDateTime {
+    let date = Local::now().date_naive() + chrono::Duration::days(days);
+    NaiveDateTime::new(date, NaiveTime::from_hms_opt(12, 0, 0).unwrap())
 }
 
-/// Compute the due date for the next Saturday (noon).
-fn due_weekend_dt() -> NaiveDateTime {
-    let today = Local::now().date_naive();
-    let weekday = today.weekday().num_days_from_monday(); // 0=Mon, 5=Sat, 6=Sun
-
-    let days_until_saturday: i64 = if weekday == 5 {
-        7 // Today is Saturday, go to next Saturday
-    } else if weekday == 6 {
-        6 // Today is Sunday, go to next Saturday
-    } else {
-        (5 - weekday) as i64 // Monday-Friday: days until this Saturday
-    };
-
-    let target_date = today + chrono::Duration::days(days_until_saturday);
-    NaiveDateTime::new(target_date, NaiveTime::from_hms_opt(12, 0, 0).unwrap())
+/// Compute the due date for a Saturday (noon).
+fn due_saturday_dt(saturday: NaiveDate) -> NaiveDateTime {
+    NaiveDateTime::new(saturday, NaiveTime::from_hms_opt(12, 0, 0).unwrap())
 }
 
 /// Compute the due date for "sometime" (far future).
@@ -168,8 +221,13 @@ fn due_sometime_dt() -> NaiveDateTime {
 pub fn due_for_target(target: DueTarget, current_due: Option<NaiveDateTime>) -> NaiveDateTime {
     match target {
         DueTarget::Today => due_today_dt(current_due),
-        DueTarget::Tomorrow => due_tomorrow_dt(),
-        DueTarget::Weekend => due_weekend_dt(),
+        DueTarget::Tomorrow => due_days_ahead_dt(1),
+        DueTarget::DayAfterTomorrow => due_days_ahead_dt(2),
+        DueTarget::Weekend => due_saturday_dt(weekend_date(Local::now().date_naive())),
+        DueTarget::WeekendAfterNext => {
+            let saturday = weekend_date(Local::now().date_naive()) + chrono::Duration::days(7);
+            due_saturday_dt(saturday)
+        }
         DueTarget::Sometime => due_sometime_dt(),
     }
 }
@@ -199,14 +257,14 @@ pub fn set_due_today(key: &TodoKey, current_due: Option<NaiveDateTime>) -> Resul
 
 /// Set a todo's due date to tomorrow at noon.
 pub fn set_due_tomorrow(key: &TodoKey) -> Result<NaiveDateTime> {
-    let due_dt = due_tomorrow_dt();
+    let due_dt = due_days_ahead_dt(1);
     update_line(key, "set due tomorrow", |line| postpone_line(line, due_dt))?;
     Ok(due_dt)
 }
 
 /// Set a todo's due date to the next Saturday.
 pub fn set_due_weekend(key: &TodoKey) -> Result<NaiveDateTime> {
-    let due_dt = due_weekend_dt();
+    let due_dt = due_saturday_dt(weekend_date(Local::now().date_naive()));
     update_line(key, "set due weekend", |line| postpone_line(line, due_dt))?;
     Ok(due_dt)
 }
@@ -1050,6 +1108,129 @@ pub(crate) mod tests {
         let count = set_due_batch(&[key("aaa1")], DueTarget::Sometime).expect("set due ok");
         assert_eq!(count, 1);
         assert!(read(&path).contains("due:9999-12-31T00:00"));
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn weekend_date_picks_the_next_saturday() {
+        // 2026-10-19 is a Monday, so the Fridays/Saturdays/Sundays below
+        // are pinned to known weekdays.
+        let monday = NaiveDate::from_ymd_opt(2026, 10, 19).unwrap();
+        let friday = NaiveDate::from_ymd_opt(2026, 10, 23).unwrap();
+        let saturday = NaiveDate::from_ymd_opt(2026, 10, 24).unwrap();
+        let sunday = NaiveDate::from_ymd_opt(2026, 10, 25).unwrap();
+
+        assert_eq!(weekend_date(monday), saturday);
+        assert_eq!(weekend_date(friday), saturday, "Friday looks at tomorrow");
+        assert_eq!(
+            weekend_date(saturday),
+            saturday + chrono::Duration::days(7),
+            "on Saturday the next one is a week out"
+        );
+        assert_eq!(weekend_date(sunday), saturday + chrono::Duration::days(7));
+    }
+
+    #[test]
+    fn resolve_target_bumps_a_first_stage_date_and_jumps_back() {
+        let today = Local::now().date_naive();
+        let noon = NaiveTime::from_hms_opt(12, 0, 0).unwrap();
+        let dt = |date: NaiveDate| NaiveDateTime::new(date, noon);
+
+        // First press: due tomorrow → the day after tomorrow.
+        assert_eq!(
+            resolve_target(DueTarget::Tomorrow, Some(dt(today + chrono::Duration::days(1)))),
+            DueTarget::DayAfterTomorrow
+        );
+        // Second press: already on the day after tomorrow → back to tomorrow.
+        assert_eq!(
+            resolve_target(DueTarget::Tomorrow, Some(dt(today + chrono::Duration::days(2)))),
+            DueTarget::Tomorrow
+        );
+        // Today, any other day and no due date at all stay on the first stage.
+        assert_eq!(resolve_target(DueTarget::Tomorrow, Some(dt(today))), DueTarget::Tomorrow);
+        assert_eq!(
+            resolve_target(DueTarget::Tomorrow, Some(dt(today + chrono::Duration::days(5)))),
+            DueTarget::Tomorrow
+        );
+        assert_eq!(resolve_target(DueTarget::Tomorrow, None), DueTarget::Tomorrow);
+
+        // The time of day does not matter, only the date.
+        let evening = NaiveDateTime::new(today + chrono::Duration::days(1), NaiveTime::from_hms_opt(23, 30, 0).unwrap());
+        assert_eq!(
+            resolve_target(DueTarget::Tomorrow, Some(evening)),
+            DueTarget::DayAfterTomorrow
+        );
+    }
+
+    #[test]
+    fn resolve_target_bumps_weekend_only_from_the_coming_saturday() {
+        let today = Local::now().date_naive();
+        let noon = NaiveTime::from_hms_opt(12, 0, 0).unwrap();
+        let coming = NaiveDateTime::new(weekend_date(today), noon);
+        let after_next = NaiveDateTime::new(
+            weekend_date(today) + chrono::Duration::days(7),
+            noon,
+        );
+
+        assert_eq!(resolve_target(DueTarget::Weekend, Some(coming)), DueTarget::WeekendAfterNext);
+        assert_eq!(resolve_target(DueTarget::Weekend, Some(after_next)), DueTarget::Weekend);
+        assert_eq!(
+            resolve_target(DueTarget::Weekend, Some(NaiveDateTime::new(today, noon))),
+            DueTarget::Weekend
+        );
+        assert_eq!(resolve_target(DueTarget::Weekend, None), DueTarget::Weekend);
+
+        // Other targets pass through untouched.
+        assert_eq!(resolve_target(DueTarget::Sometime, Some(coming)), DueTarget::Sometime);
+        assert_eq!(resolve_target(DueTarget::Today, Some(coming)), DueTarget::Today);
+    }
+
+    #[test]
+    fn resolve_target_batch_bumps_only_when_every_item_sits_on_the_first_stage() {
+        let today = Local::now().date_naive();
+        let noon = NaiveTime::from_hms_opt(12, 0, 0).unwrap();
+        let dt = |date: NaiveDate| NaiveDateTime::new(date, noon);
+        let tomorrow = Some(dt(today + chrono::Duration::days(1)));
+        let weekend = Some(dt(weekend_date(today)));
+
+        assert_eq!(
+            resolve_target_batch(DueTarget::Tomorrow, &[tomorrow, tomorrow]),
+            DueTarget::DayAfterTomorrow
+        );
+        assert_eq!(
+            resolve_target_batch(DueTarget::Tomorrow, &[tomorrow, None]),
+            DueTarget::Tomorrow,
+            "a mixed group lands on one date, not two"
+        );
+        assert_eq!(
+            resolve_target_batch(DueTarget::Weekend, &[weekend, weekend, weekend]),
+            DueTarget::WeekendAfterNext
+        );
+        assert_eq!(
+            resolve_target_batch(DueTarget::Weekend, &[weekend, tomorrow]),
+            DueTarget::Weekend
+        );
+        assert_eq!(resolve_target_batch(DueTarget::Tomorrow, &[]), DueTarget::Tomorrow);
+    }
+
+    #[test]
+    fn set_due_batch_with_a_resolved_target_is_idempotent() {
+        // The GUI resolves the button target once, up front, so that the
+        // journal can replay the op without hopping on to the next stage.
+        let _guard = file_lock();
+        let path = setup("- [ ] Eins ^aaa1\n");
+        let tomorrow = (Local::now().date_naive() + chrono::Duration::days(1))
+            .format("%Y-%m-%d")
+            .to_string();
+
+        set_due_batch(&[key("aaa1")], DueTarget::DayAfterTomorrow).expect("set due ok");
+        let once = read(&path);
+        assert!(!once.contains(&format!("due:{tomorrow}")), "{once}");
+
+        // Replaying the same op — a journal retry, a second click on the
+        // same resolved button — must not move the date again.
+        set_due_batch(&[key("aaa1")], DueTarget::DayAfterTomorrow).expect("set due ok");
+        assert_eq!(read(&path), once);
         std::fs::remove_file(&path).ok();
     }
 

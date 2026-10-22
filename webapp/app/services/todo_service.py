@@ -509,12 +509,15 @@ def postpone_todo(line_index: int, target: str,
     Args:
         line_index: Line index of the todo, as rendered on the page.
         target: Postpone target ('today', 'tomorrow', 'weekend', 'sometime').
+            "Morgen"/"Nächstes Wochenende" move one stage further when the
+            todo already sits on that first stage, and hop back on the press
+            after that.
         marker: Marker ID of the todo; wins over the index when present.
 
     Returns:
         True if updated, False if not found.
     """
-    from app.services.date_service import calculate_postpone_date
+    from app.services.date_service import calculate_postpone_date, resolve_postpone_target
 
     content = read_content()
     lines = content.splitlines()
@@ -526,6 +529,10 @@ def postpone_todo(line_index: int, target: str,
     if not item:
         return False
 
+    # A second press on "Morgen"/"Nächstes Wochenende" moves one stage
+    # further, a third hops back. Resolved here, up front, so the write
+    # below is idempotent.
+    target = resolve_postpone_target(target, item.due)
     new_datetime, new_time = calculate_postpone_date(target, item.due)
 
     lines[index] = _render_todo_line(_postponed(item, new_datetime), lines[index],
@@ -543,13 +550,16 @@ def postpone_todos_batch(line_indexes: list[int], target: str,
     Args:
         line_indexes: List of line indexes to postpone, as rendered on the page.
         target: Postpone target ('today', 'tomorrow', 'weekend', 'sometime').
+            "Morgen"/"Nächstes Wochenende" move one stage further only when
+            *every* selected todo already sits on that first stage, so a
+            mixed group lands on one date instead of two.
         markers: Marker IDs positionally matching line_indexes; each wins over
             its index when present.
 
     Returns:
         Dict with 'updated' count and 'failed' list of indexes that couldn't be updated.
     """
-    from app.services.date_service import calculate_postpone_date
+    from app.services.date_service import calculate_postpone_date, resolve_postpone_target_batch
 
     content = read_content()
     lines = content.splitlines()
@@ -557,9 +567,17 @@ def postpone_todos_batch(line_indexes: list[int], target: str,
     updated = 0
     resolved, failed = _resolve_batch(lines, line_indexes, markers)
 
-    for line_index, index in resolved:
-        line = lines[index]
-        item = parse_line(line, index)
+    items = [
+        (line_index, index, parse_line(lines[index], index))
+        for line_index, index in resolved
+    ]
+    # A second press on "Morgen"/"Nächstes Wochenende" moves one stage
+    # further — but only when *every* selected item already sits on the
+    # first stage, so a mixed group lands on one date instead of two.
+    target = resolve_postpone_target_batch(
+        target, [item.due for _, _, item in items if item is not None])
+
+    for line_index, index, item in items:
         if not item:
             failed.append(line_index)
             continue

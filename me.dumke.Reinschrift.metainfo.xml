@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.12" date="2026-10-22" type="development">
+      <description>
+        <ul>
+          <li>A second press on "Tomorrow" or "Next weekend" moves the task one stage further — the day after tomorrow or the weekend after next — and a third press hops back; works the same for a whole selection, which only moves on together when every task is already on the first stage</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.11" date="2026-10-20" type="development">
       <description>
         <ul>

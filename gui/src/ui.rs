@@ -3199,9 +3199,22 @@ impl AppState {
         self.show_undo_toast(&format!("{message}: {}", todo.title));
     }
 
-    /// Fälligkeit setzen; `label` ist der Toast-Text mit `{}` für das Datum.
-    fn set_due(self: &Rc<Self>, todo: &TodoItem, target: data::DueTarget, label: &str) {
+    /// Fälligkeit setzen; das Ziel wird beim Klick festgenagelt, nicht beim
+    /// Anwenden: ein zweiter Druck auf "Morgen"/"Nächstes Wochenende" geht
+    /// eine Stufe weiter, ein dritter springt zurück, und die eingereihte
+    /// Operation ergibt dasselbe Datum, egal wie oft Anzeige oder Journal
+    /// sie noch einmal anwenden.
+    fn set_due(self: &Rc<Self>, todo: &TodoItem, target: data::DueTarget) {
+        let target = data::resolve_target(target, todo.due);
         let due = data::due_for_target(target, todo.due);
+        let label = match target {
+            data::DueTarget::Today => "Fällig heute ({})",
+            data::DueTarget::Tomorrow => "Fällig morgen ({})",
+            data::DueTarget::DayAfterTomorrow => "Fällig übermorgen ({})",
+            data::DueTarget::Weekend => "Fällig am Wochenende ({})",
+            data::DueTarget::WeekendAfterNext => "Fällig am übernächsten Wochenende ({})",
+            data::DueTarget::Sometime => "Fällig irgendwann ({})",
+        };
         self.submit(data::PendingOp::SetDue {
             keys: vec![todo.key.clone()],
             target,
@@ -3210,15 +3223,15 @@ impl AppState {
     }
 
     fn set_due_today(self: &Rc<Self>, todo: &TodoItem) {
-        self.set_due(todo, data::DueTarget::Today, "Fällig heute ({})");
+        self.set_due(todo, data::DueTarget::Today);
     }
 
     fn set_due_tomorrow(self: &Rc<Self>, todo: &TodoItem) {
-        self.set_due(todo, data::DueTarget::Tomorrow, "Fällig morgen ({})");
+        self.set_due(todo, data::DueTarget::Tomorrow);
     }
 
     fn set_due_weekend(self: &Rc<Self>, todo: &TodoItem) {
-        self.set_due(todo, data::DueTarget::Weekend, "Fällig am Wochenende ({})");
+        self.set_due(todo, data::DueTarget::Weekend);
     }
 
     fn set_due_in_days(self: &Rc<Self>, todo: &TodoItem, days: i64) {
@@ -3230,7 +3243,7 @@ impl AppState {
     }
 
     fn set_due_sometimes(self: &Rc<Self>, todo: &TodoItem) {
-        self.set_due(todo, data::DueTarget::Sometime, "Fällig irgendwann ({})");
+        self.set_due(todo, data::DueTarget::Sometime);
     }
 
     /// Tastenkürzel-Fenster (GtkShortcutsWindow), gruppiert nach Bereich.
@@ -5568,7 +5581,7 @@ impl AppState {
     }
 
     /// Auswahl-Marker auf TodoKeys der aktuell geladenen Einträge abbilden.
-    fn selected_keys(&self) -> Vec<data::TodoKey> {
+    fn selected_items(&self) -> Vec<TodoItem> {
         let set = self.selected_markers.borrow();
         self.cached_items
             .borrow()
@@ -5580,8 +5593,12 @@ impl AppState {
                     .map(|m| set.contains(m))
                     .unwrap_or(false)
             })
-            .map(|item| item.key.clone())
+            .cloned()
             .collect()
+    }
+
+    fn selected_keys(&self) -> Vec<data::TodoKey> {
+        self.selected_items().into_iter().map(|item| item.key).collect()
     }
 
     /// Gemeinsamer Abschluss aller Massenaktionen: Modus verlassen,
@@ -5607,11 +5624,17 @@ impl AppState {
     }
 
     fn bulk_set_due(self: &Rc<Self>, target: data::DueTarget) {
-        let keys = self.selected_keys();
-        if keys.is_empty() {
+        let items = self.selected_items();
+        if items.is_empty() {
             return;
         }
-        let count = keys.len();
+        // "Morgen"/"Nächstes Wochenende" springt beim zweiten Druck eine Stufe
+        // weiter — aber nur, wenn *alle* ausgewählten Einträge schon auf der
+        // ersten Stufe stehen, damit die Gruppe auf einem Datum landet.
+        let dues: Vec<Option<NaiveDateTime>> = items.iter().map(|item| item.due).collect();
+        let target = data::resolve_target_batch(target, &dues);
+        let count = items.len();
+        let keys = items.into_iter().map(|item| item.key).collect();
         self.submit_bulk_action(
             data::PendingOp::SetDue { keys, target },
             count,
