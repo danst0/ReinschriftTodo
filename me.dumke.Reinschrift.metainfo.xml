@@ -120,6 +120,14 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.16" date="2026-10-31" type="development">
+      <description>
+        <ul>
+          <li>CalDAV: all tasks in one list "Reinschrift" instead of one list per project; projects and places appear in front of the title</li>
+          <li>CalDAV: tasks now carry DTSTAMP, without which iOS showed the lists empty</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.15" date="2026-10-31" type="development">
       <description>
         <ul>

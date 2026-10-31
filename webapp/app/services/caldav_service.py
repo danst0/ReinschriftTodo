@@ -1,16 +1,16 @@
-"""CalDAV service — project→list mapping, ETag/CTag, UID/marker store.
+"""CalDAV service — the task list, ETag/CTag, UID/marker store.
 
-Every ``+project`` is a list, tasks without a project are in "Inbox". A
-task's resource name (UID and ``<name>.ics``) is its ``^marker``; tasks
+All tasks are in one list, ``LIST``; projects and places appear in front of
+the title (``+Garten @Daheim …``). A task's resource name (UID and ``<name>.ics``) is its ``^marker``; tasks
 created on iOS keep the UID the device chose, mapped to the marker the
 server gave the line. Lines without a marker are served under a name
 derived from the line itself and only get a marker once iOS edits them —
 reading never writes the todo file.
 
 State lives in ``caldav.json`` next to ``CONFIG_PATH``: the UID↔marker
-mapping and gravestones for recently deleted tasks (iOS moves a task
-between lists as DELETE + PUT; the gravestone keeps the line's other
-fields across that gap).
+mapping and gravestones for recently deleted tasks (a DELETE + PUT of the
+same task — e.g. a move to another iOS list and back — keeps the line's
+other fields across that gap).
 
 Every mutation is one read-modify-write of the todo file, guarded by the
 fingerprint of that read (see ``storage.write_content``).
@@ -52,7 +52,8 @@ from app.services.todo_service import (
 )
 from app.utils.markers import generate_marker
 
-INBOX = "Inbox"
+#: The one list every task is in.
+LIST = "Reinschrift"
 
 #: Completed tasks stay visible on the device this long.
 DONE_VISIBLE_DAYS = 30
@@ -132,8 +133,6 @@ def _line_hash_name(line: str) -> str:
     return _HASH_PREFIX + hashlib.sha256(line.strip().encode("utf-8")).hexdigest()[:16]
 
 
-def list_of(item: TodoItem) -> str:
-    return item.projects[0] if item.projects else INBOX
 
 
 def _etag_for_ics(ics: bytes) -> str:
@@ -174,10 +173,8 @@ class Snapshot:
         if item is None:
             return None
         name = self.name_of(item, self.lines[idx])
-        list_name = list_of(item)
-        project = None if list_name == INBOX else list_name
-        ics = item_to_ics(item, name, project)
-        return Resource(name, idx, item, list_name, ics, _etag_for_ics(ics))
+        ics = item_to_ics(item, name)
+        return Resource(name, idx, item, LIST, ics, _etag_for_ics(ics))
 
     def resources(self, list_name: str | None = None) -> list[Resource]:
         now = datetime.now()
@@ -204,10 +201,8 @@ class Snapshot:
 # Read API
 # ----------------------------------------------------------------
 def list_calendars(snapshot: Snapshot | None = None) -> list[str]:
-    """Inbox first (iOS needs a default list), then the projects, sorted."""
-    snap = snapshot or Snapshot()
-    projects = {r.list_name for r in snap.resources()} - {INBOX}
-    return [INBOX] + sorted(projects, key=str.lower)
+    """The lists offered to the device: just the one."""
+    return [LIST]
 
 
 def calendar_ctag(list_name: str, snapshot: Snapshot | None = None) -> str:
@@ -230,12 +225,6 @@ def _write_lines(lines: list[str]) -> None:
     write_content("\n".join(lines) + "\n")
 
 
-def _projects_for_list(item: TodoItem, list_name: str) -> list[str]:
-    """Projects after the task was moved into ``list_name`` on iOS."""
-    rest = [p for p in item.projects[1:] if p != list_name]
-    return rest if list_name == INBOX else [list_name] + rest
-
-
 def put_item(list_name: str, name: str, ics_bytes: bytes,
              if_match: str | None = None,
              if_none_match: str | None = None) -> tuple[int, str | None]:
@@ -246,6 +235,8 @@ def put_item(list_name: str, name: str, ics_bytes: bytes,
     vtodo = parse_vtodo_from_ics(ics_bytes)
     if vtodo is None:
         return 400, "No VTODO in request body"
+    if list_name != LIST:
+        return 404, "Unknown list"
 
     with _locked_state() as state:
         _purge_gravestones(state)
@@ -289,7 +280,6 @@ def _insert_new(lines: list[str], list_name: str, name: str, vtodo: Any,
         line_index=0,
         marker=marker,
         title=clean_title(str(vtodo.get("summary", ""))) or "(no title)",
-        projects=[] if list_name == INBOX else [list_name],
         due=parse_due(vtodo),
         recurrence=parse_recurrence(vtodo),
         note=parse_note(vtodo),
@@ -309,8 +299,6 @@ def _apply_put(lines: list[str], current: Resource, list_name: str, name: str,
     done = updates.pop("done", None)
 
     merged = replace(item, **updates)
-    if list_name != current.list_name:
-        merged.projects = _projects_for_list(item, list_name)
     if not merged.marker:
         # First edit of a line without a marker: give it one, keep the name.
         merged.marker = generate_marker()

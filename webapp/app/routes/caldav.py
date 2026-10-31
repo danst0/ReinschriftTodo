@@ -23,7 +23,6 @@ from flask import Blueprint, Flask, Response, current_app, g, redirect, request,
 from app.exceptions import ConflictError, StorageError
 from app.extensions import csrf
 from app.services.caldav_service import (
-    INBOX,
     Resource,
     Snapshot,
     calendar_ctag,
@@ -88,6 +87,14 @@ def require_caldav_auth(f: Callable[..., Response]) -> Callable[..., Response]:
         return f(*args, **kwargs)
 
     return decorated
+
+
+@caldav_bp.after_request
+def _log_request(resp: Response) -> Response:
+    # gunicorn writes no access log; this is how to see what a device asks for.
+    logger.info("CalDAV %s %s Depth=%s -> %s", request.method, request.path,
+                request.headers.get("Depth", "-"), resp.status_code)
+    return resp
 
 
 @caldav_bp.errorhandler(ConflictError)
@@ -240,7 +247,7 @@ def _resource_props(res: Resource, with_data: bool) -> list[str]:
 
 
 def _known_list(list_name: str, snap: Snapshot) -> bool:
-    return list_name == INBOX or list_name in list_calendars(snap)
+    return list_name in list_calendars(snap)
 
 
 @caldav_bp.route("/calendars/<username>/<list_name>/", methods=["OPTIONS", "PROPFIND", "REPORT"])

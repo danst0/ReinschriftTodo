@@ -110,18 +110,18 @@ class TestPropfind:
             "<D:prop><D:displayname/><D:getetag/><D:resourcetype/><CS:getctag/></D:prop>"
             "</D:propfind>"
         )
-        resp = _propfind(client, "/caldav/calendars/testuser/shopping/", body)
+        resp = _propfind(client, "/caldav/calendars/testuser/Reinschrift/", body)
         assert resp.status_code == 207
 
 
 class TestGet:
     def test_get_item(self, client):
-        resp = client.get("/caldav/calendars/testuser/shopping/abc123.ics", headers=_auth())
+        resp = client.get("/caldav/calendars/testuser/Reinschrift/abc123.ics", headers=_auth())
         assert resp.status_code == 200
         assert b"Buy groceries" in resp.data
 
     def test_get_nonexistent(self, client):
-        resp = client.get("/caldav/calendars/testuser/shopping/nonexistent.ics", headers=_auth())
+        resp = client.get("/caldav/calendars/testuser/Reinschrift/nonexistent.ics", headers=_auth())
         assert resp.status_code == 404
 
 
@@ -139,7 +139,7 @@ class TestPut:
             "END:VCALENDAR\r\n"
         )
         resp = client.put(
-            "/caldav/calendars/testuser/shopping/abc123.ics",
+            "/caldav/calendars/testuser/Reinschrift/abc123.ics",
             data=ics, content_type="text/calendar", headers=_auth(),
         )
         assert resp.status_code in (200, 201)
@@ -148,12 +148,12 @@ class TestPut:
 class TestDelete:
     def test_delete_nonexistent(self, client):
         resp = client.delete(
-            "/caldav/calendars/testuser/shopping/nonexistent.ics", headers=_auth(),
+            "/caldav/calendars/testuser/Reinschrift/nonexistent.ics", headers=_auth(),
         )
         assert resp.status_code == 404
 
     def test_delete_existing(self, client):
-        resp = client.delete("/caldav/calendars/testuser/shopping/abc123.ics", headers=_auth())
+        resp = client.delete("/caldav/calendars/testuser/Reinschrift/abc123.ics", headers=_auth())
         assert resp.status_code == 204
 
 
@@ -164,18 +164,26 @@ class TestSafety:
 
     def test_list_names_are_escaped(self, client, temp_todo_file):
         with open(temp_todo_file, "w") as f:
-            f.write("- [ ] Task +R&D<x> ^m1\n")
-        resp = client.open("/caldav/calendars/testuser/", method="PROPFIND",
-                           headers={**_auth(), "Depth": "1"})
+            f.write("- [ ] Task & <more> +R&D<x> ^m1\n")
+        resp = client.open("/caldav/calendars/testuser/Reinschrift/", method="REPORT",
+                           data='<C:calendar-query xmlns:D="DAV:" '
+                                'xmlns:C="urn:ietf:params:xml:ns:caldav">'
+                                "<D:prop><C:calendar-data/></D:prop></C:calendar-query>",
+                           headers=_auth())
         assert resp.status_code == 207
         root = et_fromstring(resp.data)  # well-formed XML
+        [data] = [el.text for el in root.iter("{urn:ietf:params:xml:ns:caldav}calendar-data")]
+        assert "SUMMARY:+R&D<x> Task & <more>" in data
+
+    def test_only_one_list(self, client):
+        resp = client.open("/caldav/calendars/testuser/", method="PROPFIND",
+                           headers={**_auth(), "Depth": "1"})
+        root = et_fromstring(resp.data)
         names = [el.text for el in root.iter("{DAV:}displayname")]
-        assert "R&D<x>" in names
-        hrefs = [el.text for el in root.iter("{DAV:}href")]
-        assert "/caldav/calendars/testuser/R%26D%3Cx%3E/" in hrefs
+        assert names == ["Reinschrift"]
 
     def test_content_length_is_real(self, client):
-        resp = client.open("/caldav/calendars/testuser/shopping/", method="PROPFIND",
+        resp = client.open("/caldav/calendars/testuser/Reinschrift/", method="PROPFIND",
                            headers={**_auth(), "Depth": "1"})
         root = et_fromstring(resp.data)
         lengths = [int(el.text) for el in root.iter("{DAV:}getcontentlength")]
@@ -196,10 +204,10 @@ class TestReport:
             '<?xml version="1.0" encoding="UTF-8"?>'
             '<C:calendar-multiget xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">'
             "<D:prop><D:getetag/><C:calendar-data/></D:prop>"
-            "<D:href>/caldav/calendars/testuser/shopping/abc123.ics</D:href>"
+            "<D:href>/caldav/calendars/testuser/Reinschrift/abc123.ics</D:href>"
             "</C:calendar-multiget>"
         )
-        resp = _report(client, "/caldav/calendars/testuser/shopping/", body)
+        resp = _report(client, "/caldav/calendars/testuser/Reinschrift/", body)
         assert resp.status_code == 207
         assert b"Buy groceries" in resp.data
 
@@ -208,10 +216,10 @@ class TestReport:
             '<?xml version="1.0" encoding="UTF-8"?>'
             '<C:calendar-multiget xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">'
             "<D:prop><D:getetag/></D:prop>"
-            "<D:href>/caldav/calendars/testuser/shopping/gone.ics</D:href>"
+            "<D:href>/caldav/calendars/testuser/Reinschrift/gone.ics</D:href>"
             "</C:calendar-multiget>"
         )
-        resp = _report(client, "/caldav/calendars/testuser/shopping/", body)
+        resp = _report(client, "/caldav/calendars/testuser/Reinschrift/", body)
         assert resp.status_code == 207
         assert b"404 Not Found" in resp.data
 
@@ -227,7 +235,7 @@ class TestReport:
             "</C:filter>"
             "</C:calendar-query>"
         )
-        resp = _report(client, "/caldav/calendars/testuser/shopping/", body)
+        resp = _report(client, "/caldav/calendars/testuser/Reinschrift/", body)
         assert resp.status_code == 207
         assert b"Buy groceries" in resp.data
 

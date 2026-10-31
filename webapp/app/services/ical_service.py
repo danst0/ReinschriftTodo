@@ -23,6 +23,8 @@ from app.models.todo import DEFAULT_DUE_TIME, TodoItem
 #: How long gravestones survive after a DELETE (seconds).
 GRAVESTONE_TTL = 600
 
+_DTSTAMP = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
 _RECUR_TO_FREQ = {"daily": "DAILY", "weekly": "WEEKLY", "monthly": "MONTHLY"}
 _FREQ_TO_RECUR = {v: k for k, v in _RECUR_TO_FREQ.items()}
 
@@ -43,6 +45,9 @@ def item_to_vtodo(item: TodoItem, uid: str, list_project: str | None = None) -> 
     """Convert a Markdown todo item to an iCalendar VTODO."""
     vtodo = Todo()
     vtodo.add("uid", uid)
+    # Required by RFC 5545 (iOS drops a VTODO without it). Fixed, so the ETag
+    # only changes when the task does.
+    vtodo.add("dtstamp", _DTSTAMP)
 
     title = item.title.strip() or "(no title)"
     tags = _summary_tags(item, list_project)
