@@ -81,7 +81,9 @@ Each device subscribes itself: *Settings → Push reminders on this device* in t
 
 Setup on the iPhone: *Settings → Apps → Reminders → Accounts → Add Account → Other → Add CalDAV Account*, server `https://your-domain/caldav/`, then user name and password. The web app's settings page shows server and user once CalDAV is on.
 
-How it maps: all tasks are in one list, "Reinschrift"; projects and places appear after the title (`Mow the lawn +Garden @Home`) and can be edited there. New tasks from the device get no project unless you type one. Completing, editing, deleting and adding sync both ways; completing a recurring task creates its next occurrence. Completed tasks from the last 30 days stay visible on the device, older ones only in the file.
+How it maps: all tasks are in one list, "Reinschrift"; projects appear as hashtags and places with `@` after the title (`Mow the lawn #Garden @Home`). Edit them right there: type `#Garden` (or `+Garden`) to add a project, `@Home` for a place, delete a tag to remove it; names with spaces are quoted (`#"Big Project"`). iOS keeps real tags to iCloud lists, so in this list they are plain text — no tag browser or smart lists.
+
+Reminders you set on the iPhone (at a time or at a location) are kept on the server and come back on every sync. A location reminder also sets the task's place when the title has none: arriving at "Home" gives `@Home`. When a recurring task is completed, its location reminders and those relative to the due date move on to the next occurrence. Completing, editing, deleting and adding sync both ways; completing a recurring task creates its next occurrence. Completed tasks from the last 30 days stay visible on the device, older ones only in the file.
 
 ## Using the web app
 

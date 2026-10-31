@@ -11,7 +11,8 @@ from app.services.ical_service import (
     item_to_vtodo,
     parse_due,
     parse_vtodo_from_ics,
-    strip_summary_tags,
+    location_name,
+    split_summary,
     vtodo_to_updates,
     vtodo_uid,
 )
@@ -34,10 +35,10 @@ class TestItemToVtodo:
     def test_uid_is_the_given_name(self):
         assert vtodo_uid(item_to_vtodo(make_item(), "IOS-UID-1")) == "IOS-UID-1"
 
-    def test_list_project_is_not_repeated_in_the_title(self):
+    def test_tags_follow_the_title(self):
         item = make_item(projects=["shopping", "home"], contexts=["errands"])
-        summary = str(item_to_vtodo(item, "x", "shopping")["summary"])
-        assert summary == "Test item +home @errands"
+        summary = str(item_to_vtodo(item, "x")["summary"])
+        assert summary == "Test item #shopping #home @errands"
 
     def test_all_day_due_is_a_date(self):
         vtodo = item_to_vtodo(make_item(due=datetime(2026, 2, 1, 0, 0)), "x")
@@ -84,12 +85,12 @@ class TestVtodoToUpdates:
     def test_unchanged_item_gives_no_updates(self):
         item = make_item(projects=["shopping"], contexts=["errands"],
                          due=datetime(2026, 7, 1, 9, 30), note="n", recurrence="daily")
-        assert vtodo_to_updates(item_to_vtodo(item, "x", "shopping"), item) == {}
+        assert vtodo_to_updates(item_to_vtodo(item, "x"), item) == {}
 
     def test_title_change_strips_tags(self):
         item = make_item(contexts=["errands"])
-        vtodo = make_vtodo(summary="@errands New title", status="NEEDS-ACTION")
-        assert vtodo_to_updates(vtodo, item)["title"] == "New title"
+        vtodo = make_vtodo(summary="New title @errands", status="NEEDS-ACTION")
+        assert vtodo_to_updates(vtodo, item) == {"title": "New title"}
 
     def test_completion(self):
         vtodo = make_vtodo(summary="Test item", status="COMPLETED")
@@ -115,9 +116,41 @@ class TestTitles:
     def test_clean_title_removes_line_breaks(self):
         assert clean_title("Buy\nmilk\r\n  now ") == "Buy milk now"
 
-    def test_strip_summary_tags(self):
-        item = make_item(projects=["a"], contexts=["b"])
-        assert strip_summary_tags("+a @b Title", item) == "Title"
+    def test_split_summary(self):
+        assert split_summary("Title #a +b @c") == ("Title", ["a", "b"], ["c"])
+
+    def test_split_summary_quoted(self):
+        assert split_summary('Plan #"Big Project" @"Bei Oma"') == (
+            "Plan", ["Big Project"], ["Bei Oma"])
+
+    def test_text_that_only_looks_like_a_tag_stays(self):
+        assert split_summary("Call +49 30 1234, issue #12, C++ via a@b.de") == (
+            "Call +49 30 1234, issue #12, C++ via a@b.de", [], [])
+
+    def test_duplicate_tags_count_once(self):
+        assert split_summary("X #Garten +garten") == ("X", ["Garten"], [])
+
+
+class TestLocation:
+    def _vtodo_with(self, prop_line: str) -> Todo:
+        ics = ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VTODO\r\nUID:u\r\n"
+               "SUMMARY:S\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\n"
+               "TRIGGER;VALUE=DATE-TIME:19760401T005545Z\r\n"
+               f"{prop_line}\r\nEND:VALARM\r\nEND:VTODO\r\nEND:VCALENDAR\r\n")
+        return parse_vtodo_from_ics(ics.encode())
+
+    def test_structured_location_title(self):
+        vtodo = self._vtodo_with("X-APPLE-STRUCTURED-LOCATION;VALUE=URI;"
+                                 "X-TITLE=Büro:geo:52.5,13.4")
+        assert location_name(vtodo) == "Büro"
+
+    def test_address_gives_its_first_part(self):
+        vtodo = self._vtodo_with('X-APPLE-STRUCTURED-LOCATION;VALUE=URI;'
+                                 'X-TITLE="Hauptstraße 5, 10115 Berlin":geo:52.5,13.4')
+        assert location_name(vtodo) == "Hauptstraße 5"
+
+    def test_no_location(self):
+        assert location_name(make_vtodo(summary="S")) is None
 
 
 class TestParseIcs:

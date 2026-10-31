@@ -1,14 +1,16 @@
 """CalDAV service — the task list, ETag/CTag, UID/marker store.
 
 All tasks are in one list, ``LIST``; projects and places are appended to
-the title (``… +Garten @Daheim``). A task's resource name (UID and ``<name>.ics``) is its ``^marker``; tasks
+the title (``… #Garten @Daheim``). A task's resource name (UID and ``<name>.ics``) is its ``^marker``; tasks
 created on iOS keep the UID the device chose, mapped to the marker the
 server gave the line. Lines without a marker are served under a name
 derived from the line itself and only get a marker once iOS edits them —
 reading never writes the todo file.
 
 State lives in ``caldav.json`` next to ``CONFIG_PATH``: the UID↔marker
-mapping and gravestones for recently deleted tasks (a DELETE + PUT of the
+mapping, the alarms a device set per marker (the line has no field for
+them, and without them iOS would drop every reminder on the next sync) and
+gravestones for recently deleted tasks (a DELETE + PUT of the
 same task — e.g. a move to another iOS list and back — keeps the line's
 other fields across that gap).
 
@@ -32,15 +34,17 @@ from typing import Any
 from app.models.todo import TodoItem
 from app.services.ical_service import (
     GRAVESTONE_TTL,
-    clean_title,
+    alarms_of,
+    carried_alarms,
     is_completed,
     item_to_ics,
+    log_alarms,
     parse_due,
     parse_note,
     parse_recurrence,
     parse_vtodo_from_ics,
+    tags_from_device,
     vtodo_to_updates,
-    vtodo_uid,
 )
 from app.services.parser import find_line_by_marker, parse_line
 from app.services.storage import read_content, write_content
@@ -70,7 +74,7 @@ def _caldav_path() -> str:
 
 
 def _empty_state() -> dict[str, Any]:
-    return {"uid_to_marker": {}, "gravestones": {}}
+    return {"uid_to_marker": {}, "alarms": {}, "gravestones": {}}
 
 
 def _read_state() -> dict[str, Any]:
@@ -154,6 +158,7 @@ class Snapshot:
         uid_to_marker: dict[str, str] = self.state["uid_to_marker"]
         self.uid_to_marker = uid_to_marker
         self.marker_to_uid = {m: u for u, m in uid_to_marker.items()}
+        self.alarms: dict[str, list[str]] = self.state.setdefault("alarms", {})
 
     def name_of(self, item: TodoItem, line: str) -> str:
         if item.marker:
@@ -173,7 +178,7 @@ class Snapshot:
         if item is None:
             return None
         name = self.name_of(item, self.lines[idx])
-        ics = item_to_ics(item, name)
+        ics = item_to_ics(item, name, alarms=self.alarms.get(item.marker or ""))
         return Resource(name, idx, item, LIST, ics, _etag_for_ics(ics))
 
     def resources(self, list_name: str | None = None) -> list[Resource]:
@@ -238,6 +243,8 @@ def put_item(list_name: str, name: str, ics_bytes: bytes,
     if list_name != LIST:
         return 404, "Unknown list"
 
+    log_alarms(vtodo, name)
+
     with _locked_state() as state:
         _purge_gravestones(state)
         snap = Snapshot(state=state)
@@ -257,10 +264,24 @@ def put_item(list_name: str, name: str, ics_bytes: bytes,
         if if_match and if_match != "*" and (current is None or current.etag != if_match):
             return 412, "ETag mismatch"
 
+        before = _markers(lines)
         if current is None:
-            idx = _insert_new(lines, list_name, name, vtodo, state)
+            marker = _insert_new(lines, list_name, name, vtodo, state)
         else:
-            _apply_put(lines, current, list_name, name, vtodo, state)
+            marker = _apply_put(lines, current, list_name, name, vtodo, state)
+
+        alarms = alarms_of(vtodo)
+        if alarms:
+            snap.alarms[marker] = alarms
+        else:
+            snap.alarms.pop(marker, None)
+        # Completing a recurring task added its next occurrence: the
+        # location and due-relative alarms move on to it.
+        carried = carried_alarms(alarms) if current is not None else []
+        for new_marker in _markers(lines) - before - {marker}:
+            if carried:
+                snap.alarms[new_marker] = carried
+        _forget_alarms_of_missing_lines(lines, snap)
 
         _write_lines(lines)
         state["gravestones"].pop(name, None)
@@ -271,15 +292,29 @@ def put_item(list_name: str, name: str, ics_bytes: bytes,
         return (201 if current is None else 200), (res.etag if res else None)
 
 
+def _markers(lines: list[str]) -> set[str]:
+    return {item.marker for idx, line in enumerate(lines)
+            if (item := parse_line(line, idx)) is not None and item.marker}
+
+
+def _forget_alarms_of_missing_lines(lines: list[str], snap: Snapshot) -> None:
+    present = _markers(lines)
+    for marker in [m for m in snap.alarms if m not in present]:
+        snap.alarms.pop(marker, None)
+
+
 def _insert_new(lines: list[str], list_name: str, name: str, vtodo: Any,
-                state: dict[str, Any]) -> int:
+                state: dict[str, Any]) -> str:
     marker = generate_marker()
     if name != marker:
         state["uid_to_marker"][name] = marker
+    title, projects, places = tags_from_device(vtodo)
     item = TodoItem(
         line_index=0,
         marker=marker,
-        title=clean_title(str(vtodo.get("summary", ""))) or "(no title)",
+        title=title or "(no title)",
+        projects=projects,
+        contexts=places,
         due=parse_due(vtodo),
         recurrence=parse_recurrence(vtodo),
         note=parse_note(vtodo),
@@ -287,13 +322,12 @@ def _insert_new(lines: list[str], list_name: str, name: str, vtodo: Any,
     line = _render_todo_line(item, "")
     if is_completed(vtodo):
         line = rewrite_line(line, True)
-    idx = _separator_index(lines)
-    lines.insert(idx, line)
-    return idx
+    lines.insert(_separator_index(lines), line)
+    return marker
 
 
 def _apply_put(lines: list[str], current: Resource, list_name: str, name: str,
-               vtodo: Any, state: dict[str, Any]) -> None:
+               vtodo: Any, state: dict[str, Any]) -> str:
     item = current.item
     updates = vtodo_to_updates(vtodo, item)
     done = updates.pop("done", None)
@@ -311,6 +345,7 @@ def _apply_put(lines: list[str], current: Resource, list_name: str, name: str,
         # The same path as a click in the web app: completion date, and the
         # next occurrence for a recurring task.
         toggle_lines(lines, current.index, merged.marker)
+    return merged.marker
 
 
 def delete_item(list_name: str, name: str, if_match: str | None = None) -> int:

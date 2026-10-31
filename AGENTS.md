@@ -310,7 +310,7 @@ webapp/
 - **ai_service.py**: Ollama/LLM integration for natural language parsing
 - **push_service.py**: Web Push reminders — VAPID key, subscriptions, background loop (one gunicorn worker sends, chosen by file lock)
 - **ical_service.py**: iCalendar VTODO ↔ Markdown line conversion (icalendar)
-- **caldav_service.py**: CalDAV tasks: one list `Reinschrift` (projects/places as `+x @y` after the title), CTag/ETag, UID↦marker mapping (caldav.json + flock), gravestones for DELETE+PUT moves; reads never write the todo file, each PUT/DELETE is one fingerprint-guarded write
+- **caldav_service.py**: CalDAV tasks: one list `Reinschrift` (projects/places as `#x @y` after the title; `#x`/`+x` from the device = project, a removed tag is removed; device VALARMs kept per marker in caldav.json, a location alarm's `X-TITLE` fills an empty place), CTag/ETag, UID↦marker mapping (caldav.json + flock), gravestones for DELETE+PUT moves; reads never write the todo file, each PUT/DELETE is one fingerprint-guarded write
 
 **Routes (Blueprints):**
 - `main_bp`: Index view, language selection
@@ -381,4 +381,4 @@ Desktop/CLI: `TODOS_DB_PATH` (only used while no database path is saved in the p
 
 Web (full table in `webapp/README.md`): `TODOS_DB_PATH`, `CONFIG_PATH`, `SECRET_KEY`, `APP_USER`, `APP_PASSWORD`, `OIDC_*`, `WEBDAV_*`, `OLLAMA_URL`, `OLLAMA_MODEL`, `AI_TIMEOUT_SECS`, `SEMANTIC_ENABLED`, `EMBEDDING_MODEL`, `TZ` (due dates are local time), `PUSH_ENABLED`, `PUSH_LEAD_MINUTES`, `PUSH_ALL_DAY_TIME`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
 
-CalDAV (iOS Reminders sync): `CALDAV_ENABLED` (default ``false``), `CALDAV_USER`, `CALDAV_PASSWORD` (fall back to `APP_USER`/`APP_PASSWORD`). Persists uid↦marker mappings and gravestones in ``caldav.json`` next to ``CONFIG_PATH``. All tasks are in one list, "Reinschrift"; projects and places are appended to the title (``… +Garten @Daheim``), new tasks from the device get no project. Completed tasks from the last 30 days appear on the device; older ones stay in the file only. The settings page shows server and user, never the password. iOS must reach the server via HTTPS; the reverse proxy must forward ``PROPFIND`` and ``REPORT``.
+CalDAV (iOS Reminders sync): `CALDAV_ENABLED` (default ``false``), `CALDAV_USER`, `CALDAV_PASSWORD` (fall back to `APP_USER`/`APP_PASSWORD`). Persists uid↦marker mappings, device alarms and gravestones in ``caldav.json`` next to ``CONFIG_PATH``. All tasks are in one list, "Reinschrift"; projects and places are appended to the title (``… #Garten @Daheim``); iOS has no real tags for CalDAV lists, so they are plain text there. Every incoming VALARM is logged (`CalDAV alarm from device for …`). Completed tasks from the last 30 days appear on the device; older ones stay in the file only. The settings page shows server and user, never the password. iOS must reach the server via HTTPS; the reverse proxy must forward ``PROPFIND`` and ``REPORT``.

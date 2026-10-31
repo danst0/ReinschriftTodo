@@ -446,11 +446,11 @@ def toggle_lines(lines: list[str], index: int,
             for project in item.projects:
                 project_clean = normalize_prefix(project, '+')
                 if project_clean:
-                    new_line += f" +{project_clean}"
+                    new_line += f" {render_tagged('+', project_clean)}"
             for context in item.contexts:
                 context_clean = normalize_prefix(context, '@')
                 if context_clean:
-                    new_line += f" @{context_clean}"
+                    new_line += f" {render_tagged('@', context_clean)}"
             new_line += f" due:{format_due(next_due)}"
             new_line += f" rec:{item.recurrence}"
             if item.reference:

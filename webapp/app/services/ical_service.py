@@ -5,6 +5,16 @@ line's ``^marker``, or the UID an iOS device picked for a task it created).
 iOS edits only a subset of the fields; the rest is preserved from the
 existing line during a merge.
 
+Tags: iOS shows neither CATEGORIES nor real tags for CalDAV lists, so
+projects and places travel in the title — ``Mow the lawn #Garden @Home``.
+``#x`` and ``+x`` typed on the device both mean a project; removing a tag
+from the title removes it from the line.
+
+Alarms: the Markdown line has no field for them, so the VALARMs a device
+sends are kept by the caller (``caldav.json``) and handed back to
+:func:`item_to_vtodo`. A location alarm (``X-APPLE-STRUCTURED-LOCATION``)
+also names the task's place when it has none.
+
 Times: due dates in the Markdown file are naive local time (the server's
 ``TZ``). ``datetime.astimezone()`` on a naive value interprets it as system
 local time, DST included, which is exactly that.
@@ -12,13 +22,24 @@ local time, DST included, which is exactly that.
 
 from __future__ import annotations
 
+import logging
+import re
 from datetime import date as dt_date
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from icalendar import Calendar, Todo  # type: ignore[import-untyped]
+from icalendar import Alarm, Calendar, Todo  # type: ignore[import-untyped]
 
 from app.models.todo import DEFAULT_DUE_TIME, TodoItem
+from app.utils.escaping import escape_note, unescape_note
+
+logger = logging.getLogger(__name__)
+
+#: A tag in an iOS title: ``#x`` / ``+x`` (project), ``@x`` (place), each
+#: also quoted (``#"Big Project"``). Only at a word start, so "C++" or an
+#: e-mail address stay text; an unquoted tag must start with a letter, so
+#: "#1" or a phone number "+49 …" stay text too.
+_TAG_RE = re.compile(r'(?<!\S)([#+@])(?:"((?:\\.|[^"])*)"|(\S+))')
 
 #: How long gravestones survive after a DELETE (seconds).
 GRAVESTONE_TTL = 600
@@ -29,19 +50,43 @@ _RECUR_TO_FREQ = {"daily": "DAILY", "weekly": "WEEKLY", "monthly": "MONTHLY"}
 _FREQ_TO_RECUR = {v: k for k, v in _RECUR_TO_FREQ.items()}
 
 
-def _summary_tags(item: TodoItem, list_project: str | None) -> list[str]:
-    """Tags shown after the title on iOS.
+def _tag(prefix: str, name: str) -> str:
+    if any(ch.isspace() or ch in '"\\' for ch in name):
+        return f'{prefix}"{escape_note(name)}"'
+    return prefix + name
 
-    iOS does not show CATEGORIES for reminders, so places and any further
-    projects go into SUMMARY. The project the list is named after is left
-    out — the list already says it.
-    """
-    tags = [f"+{p}" for p in item.projects if p != list_project]
-    tags += [f"@{c}" for c in item.contexts]
+
+def _summary_tags(item: TodoItem) -> list[str]:
+    """Tags shown after the title on iOS: ``#project``, ``@place``."""
+    tags = [_tag("#", p) for p in item.projects]
+    tags += [_tag("@", c) for c in item.contexts]
     return tags
 
 
-def item_to_vtodo(item: TodoItem, uid: str, list_project: str | None = None) -> Todo:
+def split_summary(summary: str) -> tuple[str, list[str], list[str]]:
+    """An iOS title as ``(title, projects, places)``."""
+    projects: list[str] = []
+    places: list[str] = []
+
+    def take(match: re.Match[str]) -> str:
+        sign, quoted, plain = match.group(1), match.group(2), match.group(3)
+        name = unescape_note(quoted) if quoted is not None else plain
+        if not name or (quoted is None and not name[0].isalpha()):
+            return match.group(0)
+        target = places if sign == "@" else projects
+        if name.casefold() not in (t.casefold() for t in target):
+            target.append(name)
+        return ""
+
+    title = _TAG_RE.sub(take, summary)
+    return clean_title(title), projects, places
+
+
+def _same_tags(a: list[str], b: list[str]) -> bool:
+    return sorted(x.casefold() for x in a) == sorted(x.casefold() for x in b)
+
+
+def item_to_vtodo(item: TodoItem, uid: str, alarms: list[str] | None = None) -> Todo:
     """Convert a Markdown todo item to an iCalendar VTODO."""
     vtodo = Todo()
     vtodo.add("uid", uid)
@@ -50,7 +95,7 @@ def item_to_vtodo(item: TodoItem, uid: str, list_project: str | None = None) -> 
     vtodo.add("dtstamp", _DTSTAMP)
 
     title = item.title.strip() or "(no title)"
-    tags = _summary_tags(item, list_project)
+    tags = _summary_tags(item)
     if tags:
         title = title + " " + " ".join(tags)
     vtodo.add("summary", title)
@@ -75,15 +120,21 @@ def item_to_vtodo(item: TodoItem, uid: str, list_project: str | None = None) -> 
     if item.projects or item.contexts:
         vtodo.add("categories", item.projects + item.contexts)
 
+    for text in alarms or ():
+        try:
+            vtodo.add_component(Alarm.from_ical(text))
+        except Exception:  # a stored alarm that no longer parses is dropped
+            logger.warning("CalDAV: skipping unreadable stored alarm for %s", uid)
+
     return vtodo
 
 
-def item_to_ics(item: TodoItem, uid: str, list_project: str | None = None) -> bytes:
+def item_to_ics(item: TodoItem, uid: str, alarms: list[str] | None = None) -> bytes:
     """Serialize a todo item as a full iCalendar object (single VTODO)."""
     cal = Calendar()
     cal.add("version", "2.0")
     cal.add("prodid", "-//Reinschrift//CalDAV//EN")
-    cal.add_component(item_to_vtodo(item, uid, list_project))
+    cal.add_component(item_to_vtodo(item, uid, alarms))
     ics: bytes = cal.to_ical()
     return ics
 
@@ -113,14 +164,75 @@ def clean_title(text: str) -> str:
     return " ".join(text.split())
 
 
-def strip_summary_tags(summary: str, item: TodoItem) -> str:
-    """Remove the tags :func:`item_to_vtodo` appended to the title."""
-    cleaned = summary
-    for p in item.projects:
-        cleaned = cleaned.replace(f"+{p}", "", 1)
-    for c in item.contexts:
-        cleaned = cleaned.replace(f"@{c}", "", 1)
-    return clean_title(cleaned)
+def alarms_of(vtodo: Todo) -> list[str]:
+    """The VALARMs of a VTODO, serialized for storage."""
+    return [alarm.to_ical().decode("utf-8") for alarm in vtodo.walk("VALARM")]
+
+
+def carried_alarms(alarms: list[str]) -> list[str]:
+    """The alarms that still fit the next occurrence of a recurring task.
+
+    Location alarms and alarms relative to the due date move along; an
+    alarm at a fixed time belonged to this occurrence only.
+    """
+    kept = []
+    for text in alarms:
+        try:
+            alarm = Alarm.from_ical(text)
+        except Exception:
+            continue
+        trigger = alarm.get("trigger")
+        if alarm.get("x-apple-proximity") is not None or (
+                trigger is not None and isinstance(trigger.dt, timedelta)):
+            kept.append(text)
+    return kept
+
+
+def _location_title(prop: Any) -> str | None:
+    """The place name of an X-APPLE-STRUCTURED-LOCATION or LOCATION value."""
+    if prop is None:
+        return None
+    title = prop.params.get("X-TITLE") if hasattr(prop, "params") else None
+    text = str(title if title else prop)
+    if text.startswith("geo:"):
+        return None
+    # A street address arrives as one title; the first line names the place.
+    name = re.split(r"[,\n]", text, maxsplit=1)[0]
+    return clean_title(name) or None
+
+
+def location_name(vtodo: Todo) -> str | None:
+    """The place a location alarm of the task is tied to, if any."""
+    for alarm in vtodo.walk("VALARM"):
+        for key in ("x-apple-structured-location", "location"):
+            name = _location_title(alarm.get(key))
+            if name:
+                return name
+    for key in ("x-apple-structured-location", "location"):
+        name = _location_title(vtodo.get(key))
+        if name:
+            return name
+    return None
+
+
+def log_alarms(vtodo: Todo, name: str) -> None:
+    """Log the alarms a device sent, so new iOS formats can be checked."""
+    for alarm in vtodo.walk("VALARM"):
+        logger.info("CalDAV alarm from device for %s: %s", name,
+                    alarm.to_ical().decode("utf-8", "replace").replace("\r\n", " | "))
+
+
+def tags_from_device(vtodo: Todo) -> tuple[str, list[str], list[str]]:
+    """Title, projects and places of a VTODO as the device sent it.
+
+    A location alarm names the place when the title carries none.
+    """
+    title, projects, places = split_summary(str(vtodo.get("summary", "")))
+    if not places:
+        place = location_name(vtodo)
+        if place:
+            places = [place]
+    return title, projects, places
 
 
 def parse_due(vtodo: Todo) -> datetime | None:
@@ -158,15 +270,19 @@ def is_completed(vtodo: Todo) -> bool:
 def vtodo_to_updates(vtodo: Todo, existing_item: TodoItem) -> dict[str, Any]:
     """Fields of an iOS VTODO that differ from the Markdown line.
 
-    Only fields iOS actually edits are returned (``title``, ``due``,
-    ``recurrence``, ``note``, ``done``). Projects, places, "my day",
+    Only fields iOS actually edits are returned (``title``, ``projects``,
+    ``contexts``, ``due``, ``recurrence``, ``note``, ``done``). "My day",
     references etc. stay as they are in the line.
     """
     updates: dict[str, Any] = {}
 
-    title = strip_summary_tags(str(vtodo.get("summary", "")), existing_item)
+    title, projects, places = tags_from_device(vtodo)
     if title and title != existing_item.title:
         updates["title"] = title
+    if not _same_tags(projects, existing_item.projects):
+        updates["projects"] = projects
+    if not _same_tags(places, existing_item.contexts):
+        updates["contexts"] = places
 
     # A "sometime" date is not exported, so iOS sends none back — keep it.
     if not existing_item.due_is_sometime or vtodo.get("due") is not None:

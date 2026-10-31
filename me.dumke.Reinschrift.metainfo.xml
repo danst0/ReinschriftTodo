@@ -120,6 +120,15 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.4-dev.1" date="2026-10-31" type="development">
+      <description>
+        <ul>
+          <li>iOS Reminders (CalDAV): projects appear as #hashtags after the title; typing #tag or +tag adds a project, deleting a tag removes it</li>
+          <li>iOS Reminders: reminders set on the iPhone, at a time or at a location, are kept instead of disappearing on the next sync; a location reminder sets the task's place, and recurring tasks pass location reminders on to the next occurrence</li>
+          <li>Completing a recurring task keeps multi-word projects and places quoted in the next occurrence</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.3" date="2026-10-31">
       <description>
         <ul>

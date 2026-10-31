@@ -142,7 +142,7 @@ docker compose up -d                               # zieht ghcr.io/danst0/reinsc
 
 ### iOS-Erinnerungen (CalDAV)
 
-Die Web-App kann deine Aufgaben an die Erinnerungen-App des iPhones ausliefern. Setze `CALDAV_ENABLED=true` (optional `CALDAV_USER`/`CALDAV_PASSWORD`), mach die Web-App per HTTPS erreichbar und gehe auf dem iPhone zu *Einstellungen → Apps → Erinnerungen → Accounts → Account hinzufügen → Andere → CalDAV-Account hinzufügen*; Server `https://deine-domain/caldav/`, dazu Benutzer und Passwort. Die Einstellungsseite der Web-App zeigt die genauen Werte. Alle Aufgaben stehen in einer Liste „Reinschrift“, Projekte und Orte hinter dem Titel. Siehe [webapp/README.md](webapp/README.md#ios-reminders-caldav).
+Die Web-App kann deine Aufgaben an die Erinnerungen-App des iPhones ausliefern. Setze `CALDAV_ENABLED=true` (optional `CALDAV_USER`/`CALDAV_PASSWORD`), mach die Web-App per HTTPS erreichbar und gehe auf dem iPhone zu *Einstellungen → Apps → Erinnerungen → Accounts → Account hinzufügen → Andere → CalDAV-Account hinzufügen*; Server `https://deine-domain/caldav/`, dazu Benutzer und Passwort. Die Einstellungsseite der Web-App zeigt die genauen Werte. Alle Aufgaben stehen in einer Liste „Reinschrift“, Projekte als Hashtags und Orte hinter dem Titel (`Rasen mähen #Garten @Daheim`); eine ortsbezogene Erinnerung vom iPhone wird zum Ort der Aufgabe. Siehe [webapp/README.md](webapp/README.md#ios-reminders-caldav).
 
 ### Aus den Quellen bauen
 

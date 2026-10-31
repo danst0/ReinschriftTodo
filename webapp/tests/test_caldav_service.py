@@ -6,7 +6,7 @@ import tempfile
 from datetime import date, datetime, timedelta
 
 import pytest
-from icalendar import Calendar, Todo
+from icalendar import Alarm, Calendar, Todo
 
 from app import create_app
 from app.services import caldav_service
@@ -47,7 +47,7 @@ def _fresh_request(fn, *args, **kwargs):
         return fn(*args, **kwargs)
 
 
-def _ics(uid, title, status="NEEDS-ACTION", due=None, freq=None):
+def _ics(uid, title, status="NEEDS-ACTION", due=None, freq=None, alarms=()):
     cal = Calendar()
     cal.add("version", "2.0")
     cal.add("prodid", "-//Test//EN")
@@ -59,6 +59,8 @@ def _ics(uid, title, status="NEEDS-ACTION", due=None, freq=None):
         vtodo.add("due", due)
     if freq is not None:
         vtodo.add("rrule", {"freq": [freq]})
+    for alarm in alarms:
+        vtodo.add_component(Alarm.from_ical(alarm))
     cal.add_component(vtodo)
     return cal.to_ical()
 
@@ -83,9 +85,9 @@ class TestResources:
         assert titles == ["Buy groceries", "Call doctor", "Review PR", "Plan vacation",
                           "Meeting notes"]
 
-    def test_projects_and_places_lead_the_title(self):
+    def test_projects_and_places_follow_the_title_as_tags(self):
         res = get_resource(LIST, "abc123")
-        assert b"SUMMARY:Buy groceries +shopping @errands" in res.ics
+        assert b"SUMMARY:Buy groceries #shopping @errands" in res.ics
         assert b"DTSTAMP:" in res.ics
 
     def test_done_older_than_30_days_is_hidden(self):
@@ -118,7 +120,7 @@ class TestResources:
 
 class TestPutItem:
     def test_update_title_keeps_other_fields(self, temp_todo_file):
-        status, etag = _put(LIST, "abc123", _ics("abc123", "Buy milk @errands",
+        status, etag = _put(LIST, "abc123", _ics("abc123", "Buy milk #shopping @errands",
                                                        due=datetime(2026, 1, 20, 12, 0)))
         assert status == 200 and etag
         line = next(l for l in _file(temp_todo_file).splitlines() if "^abc123" in l)
@@ -135,7 +137,7 @@ class TestPutItem:
         assert _put(LIST, "abc123", _ics("abc123", "X"), if_none_match="*")[0] == 412
 
     def test_completion_keeps_due_and_adds_date(self, temp_todo_file):
-        _put(LIST, "def456", _ics("def456", "@phone Call doctor", "COMPLETED",
+        _put(LIST, "def456", _ics("def456", "Call doctor #health @phone", "COMPLETED",
                                       due=datetime(2026, 1, 21, 9, 0)))
         line = next(l for l in _file(temp_todo_file).splitlines() if "^def456" in l)
         assert line.startswith("- [x] Call doctor")
@@ -143,7 +145,7 @@ class TestPutItem:
         assert f"✅ {date.today().isoformat()}" in line
 
     def test_recurring_completion_spawns_next(self, temp_todo_file):
-        _put(LIST, "jkl012", _ics("jkl012", "@computer Review PR", "COMPLETED",
+        _put(LIST, "jkl012", _ics("jkl012", "Review PR #dev @computer", "COMPLETED",
                                    due=datetime(2026, 1, 22, 10, 0), freq="DAILY"))
         lines = [l for l in _file(temp_todo_file).splitlines() if "Review PR" in l]
         assert len(lines) == 2
@@ -171,6 +173,101 @@ class TestPutItem:
 
     def test_bad_body(self):
         assert _put(LIST, "abc123", b"nope")[0] == 400
+
+
+LOCATION_ALARM = (
+    "BEGIN:VALARM\r\n"
+    "UID:ALARM-1\r\n"
+    "ACTION:DISPLAY\r\n"
+    "DESCRIPTION:Reminder\r\n"
+    "TRIGGER;VALUE=DATE-TIME:19760401T005545Z\r\n"
+    "X-APPLE-PROXIMITY:ARRIVE\r\n"
+    "X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-APPLE-RADIUS=100;"
+    "X-TITLE=Zuhause:geo:52.520008,13.404954\r\n"
+    "END:VALARM\r\n"
+)
+
+TIME_ALARM = (
+    "BEGIN:VALARM\r\n"
+    "ACTION:DISPLAY\r\n"
+    "DESCRIPTION:Reminder\r\n"
+    "TRIGGER;VALUE=DATE-TIME:20260120T080000Z\r\n"
+    "END:VALARM\r\n"
+)
+
+
+def _line(path, marker):
+    return next(l for l in _file(path).splitlines() if f"^{marker}" in l)
+
+
+class TestTags:
+    def test_hashtag_from_the_device_becomes_a_project(self, temp_todo_file):
+        _put(LIST, "abc123", _ics("abc123", "Buy groceries #shopping #home @errands"))
+        assert _line(temp_todo_file, "abc123").startswith(
+            "- [ ] Buy groceries +shopping +home @errands")
+
+    def test_removing_a_tag_on_the_device_removes_it(self, temp_todo_file):
+        _put(LIST, "abc123", _ics("abc123", "Buy groceries @errands"))
+        assert "+shopping" not in _line(temp_todo_file, "abc123")
+
+    def test_new_task_with_tags(self, temp_todo_file):
+        _put(LIST, "IOS-T", _ics("IOS-T", "Mow the lawn #Garten @Daheim"))
+        res = get_resource(LIST, "IOS-T")
+        assert (res.item.title, res.item.projects, res.item.contexts) == (
+            "Mow the lawn", ["Garten"], ["Daheim"])
+
+    def test_multi_word_project_round_trip(self, temp_todo_file):
+        with open(temp_todo_file, "w") as f:
+            f.write('- [ ] Plan +"Big Project" ^big1\n')
+        res = get_resource(LIST, "big1")
+        assert 'SUMMARY:Plan #"Big Project"' in res.ics.decode()
+        _put(LIST, "big1", _ics("big1", 'Plan it #"Big Project"'))
+        assert _line(temp_todo_file, "big1") == '- [ ] Plan it +"Big Project" ^big1'
+
+
+class TestAlarms:
+    def test_alarm_from_the_device_survives_the_next_sync(self):
+        _, etag = _put(LIST, "abc123", _ics("abc123", "Buy groceries #shopping @errands",
+                                            alarms=[TIME_ALARM]))
+        res = get_resource(LIST, "abc123")
+        assert b"BEGIN:VALARM" in res.ics and b"TRIGGER" in res.ics
+        assert res.etag == etag
+
+    def test_alarm_removed_on_the_device_is_gone(self):
+        _put(LIST, "abc123", _ics("abc123", "Buy groceries", alarms=[TIME_ALARM]))
+        _put(LIST, "abc123", _ics("abc123", "Buy groceries"))
+        assert b"VALARM" not in get_resource(LIST, "abc123").ics
+
+    def test_location_names_the_place(self, temp_todo_file):
+        _put(LIST, "IOS-L", _ics("IOS-L", "Take out the bins", alarms=[LOCATION_ALARM]))
+        res = get_resource(LIST, "IOS-L")
+        assert res.item.contexts == ["Zuhause"]
+        assert b"X-APPLE-PROXIMITY:ARRIVE" in res.ics
+        assert b"SUMMARY:Take out the bins @Zuhause" in res.ics
+
+    def test_a_place_in_the_title_wins_over_the_location(self):
+        _put(LIST, "abc123", _ics("abc123", "Buy groceries @errands",
+                                  alarms=[LOCATION_ALARM]))
+        assert get_resource(LIST, "abc123").item.contexts == ["errands"]
+
+    def test_next_occurrence_keeps_the_location_alarm(self, temp_todo_file):
+        _put(LIST, "jkl012", _ics("jkl012", "Review PR #dev @computer",
+                                  due=datetime(2026, 1, 22, 10, 0), freq="DAILY",
+                                  alarms=[LOCATION_ALARM, TIME_ALARM]))
+        _put(LIST, "jkl012", _ics("jkl012", "Review PR #dev @computer", "COMPLETED",
+                                  due=datetime(2026, 1, 22, 10, 0), freq="DAILY",
+                                  alarms=[LOCATION_ALARM, TIME_ALARM]))
+        [nxt] = [r for r in Snapshot().resources(LIST)
+                 if r.item.title == "Review PR" and not r.item.done]
+        assert b"X-APPLE-PROXIMITY" in nxt.ics
+        assert b"20260120T080000Z" not in nxt.ics
+
+    def test_alarms_of_deleted_lines_are_forgotten(self, temp_todo_file):
+        _put(LIST, "abc123", _ics("abc123", "Buy groceries", alarms=[TIME_ALARM]))
+        with open(temp_todo_file, "w") as f:
+            f.write("- [ ] Other ^oth1\n")
+        _put(LIST, "oth1", _ics("oth1", "Other"))
+        assert "abc123" not in Snapshot().alarms
 
 
 class TestDeleteItem:
