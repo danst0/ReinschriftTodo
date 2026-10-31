@@ -8,10 +8,13 @@ services:
     ports:
       - "5000:5000"
     volumes:
+      # The file must exist before the first start (touch ../TodosDatenbank.md)
       - ../TodosDatenbank.md:/data/TodosDatenbank.md
       - todo_config:/config
     environment:
       - TODOS_DB_PATH=/data/TodosDatenbank.md
+      # Signs sessions; set a long random value, e.g. python3 -c 'import secrets; print(secrets.token_hex(32))'
+      - SECRET_KEY=change-me
       - CONFIG_PATH=/config/settings.json
       - APP_USER=admin
       - APP_PASSWORD=secret

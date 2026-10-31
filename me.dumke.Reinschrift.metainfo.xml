@@ -120,124 +120,19 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
-    <release version="1.2.2-dev.17" date="2026-10-31" type="development">
-      <description>
-        <ul>
-          <li>CalDAV: projects and places now follow the title instead of preceding it</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.16" date="2026-10-31" type="development">
-      <description>
-        <ul>
-          <li>CalDAV: all tasks in one list "Reinschrift" instead of one list per project; projects and places appear in front of the title</li>
-          <li>CalDAV: tasks now carry DTSTAMP, without which iOS showed the lists empty</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.15" date="2026-10-31" type="development">
-      <description>
-        <ul>
-          <li>Web app: optional CalDAV server for iOS Reminders (CALDAV_ENABLED). Each +project becomes a list, tasks without a project are in Inbox; edits, completion (including the next occurrence of a recurring task), new tasks and moves between lists sync both ways, completed tasks stay visible for 30 days</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.14" date="2026-10-31" type="development">
-      <description>
-        <ul>
-          <li>Desktop app: the edit dialog now offers the quick dates Today, Tomorrow, Next weekend, In a week and Sometime, like the web app and the GNOME Shell extension; the task menu gained "In a week", and the "l" shortcut now takes the task off My Day like the other postpone actions</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.13" date="2026-10-22" type="development">
-      <description>
-        <ul>
-          <li>GNOME Shell extension: a second press on "Tomorrow" or "Next weekend" in the task details moves the task one stage further, a third press hops back, like in the app</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.12" date="2026-10-22" type="development">
-      <description>
-        <ul>
-          <li>A second press on "Tomorrow" or "Next weekend" moves the task one stage further — the day after tomorrow or the weekend after next — and a third press hops back; works the same for a whole selection, which only moves on together when every task is already on the first stage</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.11" date="2026-10-20" type="development">
+    <release version="1.2.3" date="2026-10-31">
       <description>
         <ul>
           <li>Search also finds tasks by project, place and note: "+sec" or "@comp" search the project or place, and text found only in a project, place or note is listed below the title matches</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.10" date="2026-10-17" type="development">
-      <description>
-        <ul>
-          <li>Internal: AGENTS.md now asks agents to git pull at the start of a session and to commit and push regularly</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.9" date="2026-10-17" type="development">
-      <description>
-        <ul>
-          <li>Send feedback from the app: main menu, About page, web app settings and "reinschrift feedback" open a GitHub issue or an email to reinschrift-feedback@dumke.me, prefilled with version and system details</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.8" date="2026-10-17" type="development">
-      <description>
-        <ul>
-          <li>Web app: setting to switch back to the classic Hanken Grotesk typeface</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.7" date="2026-10-16" type="development">
-      <description>
-        <ul>
-          <li>Web app: Inter for text and Inter Tight for headings</li>
-          <li>Shell extension: uses the system font</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.6" date="2026-10-16" type="development">
-      <description>
-        <ul>
-          <li>Shell extension: the postpone buttons of an opened task are shown again</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.5" date="2026-10-16" type="development">
-      <description>
-        <ul>
-          <li>Shell extension: support for GNOME 51 (GNOME 47 is no longer supported)</li>
-          <li>Shell extension: clicking anywhere on the add line puts the cursor in it</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.4" date="2026-10-10" type="development">
-      <description>
-        <ul>
-          <li>Local development builds no longer offer an older build as an update</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.3" date="2026-10-09" type="development">
-      <description>
-        <ul>
+          <li>A second press on "Tomorrow" or "Next weekend" moves the task one stage further — the day after tomorrow or the weekend after next — and a third press hops back; works for a whole selection and in the GNOME Shell extension too</li>
+          <li>The edit dialog offers the quick dates Today, Tomorrow, Next weekend, In a week and Sometime; the task menu gained "In a week", and the "l" shortcut takes the task off My Day like the other postpone actions</li>
           <li>Postponing a task to a later day takes it off My Day, in every app</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.2" date="2026-10-09" type="development">
-      <description>
-        <ul>
+          <li>Send feedback from the app: main menu, About page, web app settings and "reinschrift feedback" open a GitHub issue or an email, prefilled with version and system details</li>
           <li>Command line: --database again opens a different task file for a single call, without changing the saved settings</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.2.2-dev.1" date="2026-10-09" type="development">
-      <description>
-        <ul>
+          <li>Web app: optional CalDAV server for iOS Reminders — all tasks in one list "Reinschrift" with projects and places after the title; edits, completion (including the next occurrence of a recurring task) and new tasks sync both ways</li>
+          <li>Web app: Inter for text and Inter Tight for headings, with a setting to switch back to Hanken Grotesk</li>
+          <li>GNOME Shell extension: support for GNOME 51 (GNOME 47 is no longer supported), uses the system font, postpone buttons are visible again, and clicking anywhere on the add line focuses it</li>
+          <li>Setup instructions for every app — desktop, Shell extension, command line, web app and iOS Reminders — in the README</li>
           <li>Built on the GNOME 51 platform</li>
         </ul>
       </description>

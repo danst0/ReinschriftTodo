@@ -11,8 +11,11 @@ This file provides guidance to coding agents (Claude Code, Codex, …) when work
 
 Reinschrift is a multi-platform todo application:
 - **Desktop GUI**: Native Rust + libadwaita (GTK4) application for GNOME
+- **GNOME Shell extension**: "My Day" in the top bar (GJS, `extension/`)
 - **CLI**: Command-line interface for terminal workflows
-- **Web**: Python Flask application with Docker support
+- **Web**: Python Flask application with Docker support (PWA, push, share links, CalDAV for iOS Reminders)
+
+User-facing docs: `README.md` / `README.de.md` (keep both in sync; they carry the onboarding for every app), `webapp/README.md` (all web env vars), `extension/README.md`, `po/README.md`. Update them together with the feature.
 
 Todos are stored as plain Markdown files, making them version-controllable and editor-agnostic. Supports WebDAV/Nextcloud synchronization.
 
@@ -39,7 +42,12 @@ reinschrift/
 │       ├── filter.rs       # List filters (due range, projects, places)
 │       ├── search.rs       # Search query (+project/@place tokens, title vs. secondary hits)
 │       ├── feedback.rs     # "Send feedback" links (GitHub issue, mailto) with system info
-│       └── preferences.rs  # User preferences
+│       ├── undo.rs         # Undo stack for destructive operations
+│       ├── pending.rs      # Write journal: changes shown in the GUI but not yet stored
+│       ├── conflict.rs     # Conflict detection for concurrent file access
+│       ├── reminders.rs    # Due date reminder logic
+│       ├── embeddings.rs   # Semantic embeddings via Ollama /api/embed
+│       └── preferences.rs  # User preferences (~/.config/reinschrift_todo/preferences.json)
 ├── po/                     # gettext translations (.pot template + .po files)
 ├── gui/                    # GTK application (reinschrift-gui)
 │   ├── Cargo.toml
@@ -52,6 +60,13 @@ reinschrift/
 │       ├── main.rs         # CLI entry point (clap)
 │       ├── commands.rs     # Command implementations
 │       └── output.rs       # Colored terminal output
+├── extension/              # GNOME Shell extension (GJS, uuid reinschrift@dumke.me)
+│   ├── extension.js        # Top-bar menu: My Day, details, postpone, add
+│   ├── prefs.js            # Preferences window (to-do file choice)
+│   ├── lib/format.js       # Line format (mirror of core parser/renderer; tests/run.js checks parity)
+│   ├── lib/paths.js        # Finds the app's file (Flatpak/native prefs, Nextcloud mirror for WebDAV)
+│   ├── po/                 # gettext domain "reinschrift-shell"
+│   └── install.sh          # Build + install (--pack: ZIP for extensions.gnome.org)
 └── webapp/                 # Web application (Python Flask)
 ```
 
@@ -115,10 +130,13 @@ COMMANDS:
     undone          Mark as incomplete
     today           Set due date to today
     tomorrow        Set due date to tomorrow
+    undo            Undo the last destructive action
     search          Search todos
     feedback        Print prefilled GitHub-issue and email links for feedback
-    config          WebDAV and AI configuration
+    config          show / webdav-test (`config set` is not implemented; settings come from the GUI's preferences.json)
 ```
+
+Installed binaries: the GUI is `reinschrift`, the CLI `reinschrift-cli` (Flatpak: `flatpak run --command=reinschrift-cli me.dumke.Reinschrift`, AUR: `/usr/bin/reinschrift-cli`); only cargo builds name them `reinschrift_todo` / `reinschrift`.
 
 ### Web Application (Flask)
 ```bash
@@ -194,7 +212,7 @@ Modular design with focused responsibilities:
 ### GUI App (gui/)
 
 - **main.rs**: Entry point, argument parsing (--database, --language)
-- **ui.rs**: GTK4/libadwaita UI (~2800 lines)
+- **ui.rs**: GTK4/libadwaita UI (~7000 lines)
   - Features: search, voice transcription (Whisper), AI task parsing
   - Preferences: WebDAV config, AI settings, display preferences
 
@@ -223,13 +241,24 @@ webapp/
 │   │   ├── todo_service.py  # CRUD operations
 │   │   ├── date_service.py  # Date calculations, next_due_date
 │   │   ├── sorting.py       # Sort key functions
-│   │   └── ai_service.py    # AI parsing, context building
+│   │   ├── ai_service.py    # AI parsing, context building
+│   │   ├── search.py        # SearchQuery (mirror of core/src/search.rs)
+│   │   ├── filters.py       # TodoFilter (mirror of core/src/filter.rs)
+│   │   ├── undo_service.py  # Session-based undo
+│   │   ├── share_service.py # Public share links scoped to one +project/@context
+│   │   ├── push_service.py  # Web Push reminders
+│   │   ├── ical_service.py  # VTODO ↔ Markdown line
+│   │   ├── caldav_service.py # CalDAV task store
+│   │   └── embedding_service.py # Semantic embeddings (mirror of core/src/embeddings.rs)
 │   ├── routes/
 │   │   ├── main.py          # Index, language
 │   │   ├── auth.py          # Login, OIDC
 │   │   ├── todo.py          # Toggle, postpone, edit, delete
-│   │   └── api.py           # JSON API endpoints
+│   │   ├── api.py           # JSON API endpoints
+│   │   ├── share.py         # Public share pages /s/<token> (no login)
+│   │   └── caldav.py        # CalDAV protocol under /caldav/
 │   └── utils/
+│       ├── due_view.py      # Relative due labels, date-view horizons
 │       ├── markers.py       # generate_marker
 │       ├── feedback.py      # Feedback links (mirror of core/src/feedback.rs)
 │       ├── escaping.py      # escape/unescape_note
@@ -241,6 +270,8 @@ webapp/
 │       └── modules/         # ES6 modules (api, modal, drag-drop, etc.)
 ├── templates/               # Jinja2 templates
 ├── tests/                   # pytest test suite
+├── README.md                # Setup and all environment variables
+├── docker-compose.example.yml
 ├── run.py                   # Entry point
 ├── app.py                   # Legacy entry point (deprecated)
 ├── requirements.txt
@@ -262,6 +293,12 @@ webapp/
 - **push.js**: Settings toggle for Web Push reminders (subscribes via /static/sw.js)
 - **menus.js**: `<details class="menu">` popups (group actions, filters) and expandable todo rows (note, postpone, edit); keeps the open row across partial reloads
 - **add-preview.js**: Live preview under the add line of the +project/@place/due:/rec: tokens the server will recognize
+- **autocomplete.js**: Title autocomplete for the add and edit inputs
+- **bulk-select.js**: Multi-select mode with bulk actions
+- **date-picker.js**: Date picker shared by modal and edit page
+- **myday.js**: "My Day" planning actions
+- **share.js** / **shared-view.js**: Share-link dialog / the public shared page
+- **undo-toast.js**: Undo toast after destructive actions
 
 **Key Services:**
 - **parser.py**: Regex patterns matching Rust core, parse_line, extract_title
@@ -279,7 +316,8 @@ webapp/
 - `main_bp`: Index view, language selection
 - `auth_bp`: Login (form + OIDC), logout
 - `todo_bp`: Toggle, postpone, edit, delete, add
-- `api_bp`: JSON endpoints (/api/todo, /api/parse, /api/add, /api/move-to-section)
+- `api_bp`: JSON endpoints (/api/todo, /api/parse, /api/add, /api/move-to-section, /api/shares/<name>)
+- `share_bp`: Public share pages `/s/<token>` (view, toggle, add) — the token is the capability
 - `caldav_bp`: CalDAV protocol (PROPFIND, REPORT, GET, PUT, DELETE); Basic auth, CSRF-exempt, registered under `/caldav/` when CALDAV_ENABLED; logs every request as `CalDAV <method> <path> Depth=… -> <status>` (gunicorn has no access log)
 
 ## Markdown Todo Format
@@ -341,6 +379,6 @@ repo's manifest because it only comes into existence with the release commit.
 
 Desktop/CLI: `TODOS_DB_PATH` (only used while no database path is saved in the preferences; `--database` always wins)
 
-Web: `TODOS_DB_PATH`, `SECRET_KEY`, `APP_USER`, `APP_PASSWORD`, `OIDC_*`, `WEBDAV_*`, `AI_TIMEOUT_SECS`, `TZ` (due dates are local time), `PUSH_ENABLED`, `PUSH_LEAD_MINUTES`, `PUSH_ALL_DAY_TIME`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+Web (full table in `webapp/README.md`): `TODOS_DB_PATH`, `CONFIG_PATH`, `SECRET_KEY`, `APP_USER`, `APP_PASSWORD`, `OIDC_*`, `WEBDAV_*`, `OLLAMA_URL`, `OLLAMA_MODEL`, `AI_TIMEOUT_SECS`, `SEMANTIC_ENABLED`, `EMBEDDING_MODEL`, `TZ` (due dates are local time), `PUSH_ENABLED`, `PUSH_LEAD_MINUTES`, `PUSH_ALL_DAY_TIME`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
 
 CalDAV (iOS Reminders sync): `CALDAV_ENABLED` (default ``false``), `CALDAV_USER`, `CALDAV_PASSWORD` (fall back to `APP_USER`/`APP_PASSWORD`). Persists uid↦marker mappings and gravestones in ``caldav.json`` next to ``CONFIG_PATH``. All tasks are in one list, "Reinschrift"; projects and places are appended to the title (``… +Garten @Daheim``), new tasks from the device get no project. Completed tasks from the last 30 days appear on the device; older ones stay in the file only. The settings page shows server and user, never the password. iOS must reach the server via HTTPS; the reverse proxy must forward ``PROPFIND`` and ``REPORT``.
