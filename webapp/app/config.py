@@ -56,6 +56,9 @@ class Config:
     OIDC_REDIRECT_URI = os.environ.get('OIDC_REDIRECT_URI')
     OIDC_ALLOWED_USER = os.environ.get('OIDC_ALLOWED_USER', '').lower()
 
+    # CalDAV configuration (iOS Reminders sync)
+    CALDAV_ENABLED = os.environ.get('CALDAV_ENABLED', 'false').lower() == 'true'
+
     # App authentication
     APP_USER = os.environ.get('APP_USER')
     APP_PASSWORD = os.environ.get('APP_PASSWORD')
@@ -112,6 +115,7 @@ class TestingConfig(Config):
     TESTING = True
     WTF_CSRF_ENABLED = False
     PUSH_ENABLED = False
+    CALDAV_ENABLED = True
     SESSION_COOKIE_SECURE = False
     SESSION_DIR = os.path.join(tempfile.gettempdir(), 'reinschrift_test_sessions')
 
