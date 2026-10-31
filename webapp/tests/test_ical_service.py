@@ -37,7 +37,7 @@ class TestItemToVtodo:
     def test_list_project_is_not_repeated_in_the_title(self):
         item = make_item(projects=["shopping", "home"], contexts=["errands"])
         summary = str(item_to_vtodo(item, "x", "shopping")["summary"])
-        assert summary == "+home @errands Test item"
+        assert summary == "Test item +home @errands"
 
     def test_all_day_due_is_a_date(self):
         vtodo = item_to_vtodo(make_item(due=datetime(2026, 2, 1, 0, 0)), "x")

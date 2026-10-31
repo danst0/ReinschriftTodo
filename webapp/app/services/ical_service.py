@@ -30,7 +30,7 @@ _FREQ_TO_RECUR = {v: k for k, v in _RECUR_TO_FREQ.items()}
 
 
 def _summary_tags(item: TodoItem, list_project: str | None) -> list[str]:
-    """Tags shown in front of the title on iOS.
+    """Tags shown after the title on iOS.
 
     iOS does not show CATEGORIES for reminders, so places and any further
     projects go into SUMMARY. The project the list is named after is left
@@ -52,7 +52,7 @@ def item_to_vtodo(item: TodoItem, uid: str, list_project: str | None = None) -> 
     title = item.title.strip() or "(no title)"
     tags = _summary_tags(item, list_project)
     if tags:
-        title = " ".join(tags) + " " + title
+        title = title + " " + " ".join(tags)
     vtodo.add("summary", title)
 
     if item.note:
@@ -114,7 +114,7 @@ def clean_title(text: str) -> str:
 
 
 def strip_summary_tags(summary: str, item: TodoItem) -> str:
-    """Remove the tags :func:`item_to_vtodo` put in front of the title."""
+    """Remove the tags :func:`item_to_vtodo` appended to the title."""
     cleaned = summary
     for p in item.projects:
         cleaned = cleaned.replace(f"+{p}", "", 1)

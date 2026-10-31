@@ -1,7 +1,7 @@
 """CalDAV service — the task list, ETag/CTag, UID/marker store.
 
-All tasks are in one list, ``LIST``; projects and places appear in front of
-the title (``+Garten @Daheim …``). A task's resource name (UID and ``<name>.ics``) is its ``^marker``; tasks
+All tasks are in one list, ``LIST``; projects and places are appended to
+the title (``… +Garten @Daheim``). A task's resource name (UID and ``<name>.ics``) is its ``^marker``; tasks
 created on iOS keep the UID the device chose, mapped to the marker the
 server gave the line. Lines without a marker are served under a name
 derived from the line itself and only get a marker once iOS edits them —

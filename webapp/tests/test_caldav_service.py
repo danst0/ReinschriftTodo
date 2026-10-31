@@ -85,7 +85,7 @@ class TestResources:
 
     def test_projects_and_places_lead_the_title(self):
         res = get_resource(LIST, "abc123")
-        assert b"SUMMARY:+shopping @errands Buy groceries" in res.ics
+        assert b"SUMMARY:Buy groceries +shopping @errands" in res.ics
         assert b"DTSTAMP:" in res.ics
 
     def test_done_older_than_30_days_is_hidden(self):
@@ -118,7 +118,7 @@ class TestResources:
 
 class TestPutItem:
     def test_update_title_keeps_other_fields(self, temp_todo_file):
-        status, etag = _put(LIST, "abc123", _ics("abc123", "@errands Buy milk",
+        status, etag = _put(LIST, "abc123", _ics("abc123", "Buy milk @errands",
                                                        due=datetime(2026, 1, 20, 12, 0)))
         assert status == 200 and etag
         line = next(l for l in _file(temp_todo_file).splitlines() if "^abc123" in l)
@@ -186,7 +186,7 @@ class TestDeleteItem:
 
     def test_move_as_delete_then_put_keeps_fields(self, temp_todo_file):
         _fresh_request(delete_item, LIST, "abc123")
-        assert _put(LIST, "abc123", _ics("abc123", "+shopping @errands Buy groceries",
+        assert _put(LIST, "abc123", _ics("abc123", "Buy groceries +shopping @errands",
                                          due=datetime(2026, 1, 20, 12, 0)))[0] == 200
         line = next(l for l in _file(temp_todo_file).splitlines() if "^abc123" in l)
         assert line == "- [ ] Buy groceries +shopping @errands due:2026-01-20T12:00 ^abc123"

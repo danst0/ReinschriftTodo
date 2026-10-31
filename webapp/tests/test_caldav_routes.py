@@ -173,7 +173,7 @@ class TestSafety:
         assert resp.status_code == 207
         root = et_fromstring(resp.data)  # well-formed XML
         [data] = [el.text for el in root.iter("{urn:ietf:params:xml:ns:caldav}calendar-data")]
-        assert "SUMMARY:+R&D<x> Task & <more>" in data
+        assert "SUMMARY:Task & <more> +R&D<x>" in data
 
     def test_only_one_list(self, client):
         resp = client.open("/caldav/calendars/testuser/", method="PROPFIND",
