@@ -22,6 +22,7 @@ pub enum DueTarget {
     DayAfterTomorrow,
     Weekend,
     WeekendAfterNext,
+    InAWeek,
     Sometime,
 }
 
@@ -206,6 +207,13 @@ fn due_days_ahead_dt(days: i64) -> NaiveDateTime {
     NaiveDateTime::new(date, NaiveTime::from_hms_opt(12, 0, 0).unwrap())
 }
 
+/// Compute the due date for "in a week" (a week out, keeping the time of day).
+fn due_week_ahead_dt(current_due: Option<NaiveDateTime>) -> NaiveDateTime {
+    let date = Local::now().date_naive() + chrono::Duration::days(7);
+    let time = current_due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
+    NaiveDateTime::new(date, time)
+}
+
 /// Compute the due date for a Saturday (noon).
 fn due_saturday_dt(saturday: NaiveDate) -> NaiveDateTime {
     NaiveDateTime::new(saturday, NaiveTime::from_hms_opt(12, 0, 0).unwrap())
@@ -228,6 +236,7 @@ pub fn due_for_target(target: DueTarget, current_due: Option<NaiveDateTime>) -> 
             let saturday = weekend_date(Local::now().date_naive()) + chrono::Duration::days(7);
             due_saturday_dt(saturday)
         }
+        DueTarget::InAWeek => due_week_ahead_dt(current_due),
         DueTarget::Sometime => due_sometime_dt(),
     }
 }
@@ -1183,6 +1192,24 @@ pub(crate) mod tests {
         // Other targets pass through untouched.
         assert_eq!(resolve_target(DueTarget::Sometime, Some(coming)), DueTarget::Sometime);
         assert_eq!(resolve_target(DueTarget::Today, Some(coming)), DueTarget::Today);
+    }
+
+    #[test]
+    fn in_a_week_keeps_the_time_of_day_and_has_no_second_stage() {
+        let today = Local::now().date_naive();
+        let nine_thirty = NaiveTime::from_hms_opt(9, 30, 0).unwrap();
+        let evening = NaiveDateTime::new(today - chrono::Duration::days(3), nine_thirty);
+
+        assert_eq!(
+            due_for_target(DueTarget::InAWeek, Some(evening)),
+            NaiveDateTime::new(today + chrono::Duration::days(7), nine_thirty)
+        );
+        assert_eq!(
+            due_for_target(DueTarget::InAWeek, None),
+            NaiveDateTime::new(today + chrono::Duration::days(7), DEFAULT_DUE_TIME)
+        );
+        // Repeated presses land on the same date, no stage to bump to.
+        assert_eq!(resolve_target(DueTarget::InAWeek, Some(evening)), DueTarget::InAWeek);
     }
 
     #[test]

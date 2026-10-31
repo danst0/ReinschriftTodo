@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.14" date="2026-10-31" type="development">
+      <description>
+        <ul>
+          <li>Desktop app: the edit dialog now offers the quick dates Today, Tomorrow, Next weekend, In a week and Sometime, like the web app and the GNOME Shell extension; the task menu gained "In a week", and the "l" shortcut now takes the task off My Day like the other postpone actions</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.13" date="2026-10-22" type="development">
       <description>
         <ul>

@@ -159,6 +159,10 @@ msgstr "Reporter à demain"
 msgid "Postpone to weekend"
 msgstr "Reporter au week-end"
 
+#. Schnellaktion im Zeilenmenü: Fälligkeit eine Woche nach heute
+msgid "Postpone to next week"
+msgstr "Reporter à la semaine prochaine"
+
 #. ehemaliger JSON-Schlüssel: postpone_sometimes
 msgid "Postpone to 'sometimes'"
 msgstr "Reporter à 'un jour'"
@@ -314,6 +318,18 @@ msgstr "Date d'échéance"
 #. ehemaliger JSON-Schlüssel: today
 msgid "Today"
 msgstr "Aujourd'hui"
+
+#. Schnellwahlen im Bearbeiten-Dialog für das Fälligkeitsdatum
+msgid "Tomorrow"
+msgstr "Demain"
+
+#. Schnellwahlen im Bearbeiten-Dialog für das Fälligkeitsdatum
+msgid "Next weekend"
+msgstr "Prochain week-end"
+
+#. Schnellwahlen im Bearbeiten-Dialog für das Fälligkeitsdatum
+msgid "In a week"
+msgstr "Dans une semaine"
 
 #. ehemaliger JSON-Schlüssel: recurrence
 msgid "Recurrence"
