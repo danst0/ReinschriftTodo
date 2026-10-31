@@ -36,5 +36,10 @@ services:
       - WEBDAV_USERNAME=your_username
       - WEBDAV_PASSWORD=your_password
 
+      # CalDAV Server (iOS Reminders sync, Optional)
+      # - CALDAV_ENABLED=true
+      # - CALDAV_USER=caldavuser
+      # - CALDAV_PASSWORD=caldavsecret
+
 volumes:
   todo_config:

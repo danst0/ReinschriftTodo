@@ -7,3 +7,5 @@ Flask-Session<1.0.0
 Authlib<2.0.0
 gunicorn
 pywebpush<3.0.0
+icalendar<7.0.0
+defusedxml<1.0.0

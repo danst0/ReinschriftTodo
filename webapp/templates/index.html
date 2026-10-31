@@ -319,6 +319,12 @@
                 <button type="button" id="push-test" class="btn-secondary" hidden>{{ t.push_test }}</button>
             </div>
             {% endif %}
+            {% if caldav_enabled %}
+            <div class="settings-section">
+                <h3>{{ t.caldav_heading }}</h3>
+                <p class="app-info">{{ caldav_help_text }}</p>
+            </div>
+            {% endif %}
             <div class="settings-section">
                 <div class="form-group">
                     <span class="field-label">{{ t.language }}</span>

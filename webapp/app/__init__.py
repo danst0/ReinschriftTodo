@@ -163,6 +163,7 @@ def register_blueprints(app: Flask) -> None:
     from app.routes.todo import todo_bp
     from app.routes.api import api_bp
     from app.routes.share import share_bp
+    from app.routes.caldav import caldav_bp, register_wellknown
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -173,6 +174,10 @@ def register_blueprints(app: Flask) -> None:
     # Share routes use the URL token as bearer auth; CSRF would only protect
     # against attackers who already have the token.
     csrf.exempt(share_bp)
+
+    if app.config.get("CALDAV_ENABLED"):
+        app.register_blueprint(caldav_bp)
+        register_wellknown(app)
 
 
 def _get_version() -> str:
@@ -195,6 +200,14 @@ def _get_version() -> str:
             return match.group(1)
 
     return 'unknown'
+
+
+def _format_caldav_help(t: dict, url_root: str) -> str:
+    """CalDAV setup hint for the settings page (never shows the password)."""
+    from app.routes.caldav import caldav_credentials
+
+    user = caldav_credentials()[0] or '?'
+    return str(t['caldav_help']).format(URL=url_root.rstrip('/') + '/caldav/', user=user)
 
 
 def register_context_processors(app: Flask) -> None:
@@ -228,6 +241,9 @@ def register_context_processors(app: Flask) -> None:
             'feedback_email': feedback.FEEDBACK_EMAIL,
             # Typeface setting: 'inter' (default) or 'hanken' (classic).
             'font': 'hanken' if load_settings().get('font') == 'hanken' else 'inter',
+            'caldav_enabled': app.config.get('CALDAV_ENABLED', False),
+            'caldav_help_text': (_format_caldav_help(t, request.url_root)
+                                 if app.config.get('CALDAV_ENABLED') else ''),
         }
 
     def get_locale() -> str:

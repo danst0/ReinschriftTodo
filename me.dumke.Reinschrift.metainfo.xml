@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.2-dev.15" date="2026-10-31" type="development">
+      <description>
+        <ul>
+          <li>Web app: optional CalDAV server for iOS Reminders (CALDAV_ENABLED). Each +project becomes a list, tasks without a project are in Inbox; edits, completion (including the next occurrence of a recurring task), new tasks and moves between lists sync both ways, completed tasks stay visible for 30 days</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.2-dev.14" date="2026-10-31" type="development">
       <description>
         <ul>

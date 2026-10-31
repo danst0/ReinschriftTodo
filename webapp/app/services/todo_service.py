@@ -407,7 +407,18 @@ def handle_toggle_with_recurrence(line_index: int,
     lines = content.splitlines()
 
     index = _resolve_or_raise(lines, line_index, marker)
+    toggle_lines(lines, index, marker)
 
+    write_content('\n'.join(lines) + '\n')
+
+
+def toggle_lines(lines: list[str], index: int,
+                 marker: Optional[str] = None) -> None:
+    """Toggle the todo at ``index`` in place, spawning the next occurrence.
+
+    The pure part of :func:`handle_toggle_with_recurrence`, for callers that
+    batch it with other edits into a single write (CalDAV).
+    """
     line = lines[index]
     is_done = "- [x]" in line or "- [X]" in line
     item = parse_line(line, index)
@@ -449,8 +460,6 @@ def handle_toggle_with_recurrence(line_index: int,
             # Fresh marker: the completed occurrence keeps the old one.
             new_line += f" ^{generate_marker()}"
             lines.insert(_separator_index(lines), new_line)
-
-    write_content('\n'.join(lines) + '\n')
 
 
 def set_myday(marker: str, on: bool) -> bool:
