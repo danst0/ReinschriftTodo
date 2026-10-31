@@ -272,12 +272,15 @@ webapp/
 - **filters.py**: `TodoFilter` (mirror of core/src/filter.rs); persisted in settings.json as `filter_due`, `filter_undated`, `filter_projects`, `filter_contexts`
 - **ai_service.py**: Ollama/LLM integration for natural language parsing
 - **push_service.py**: Web Push reminders — VAPID key, subscriptions, background loop (one gunicorn worker sends, chosen by file lock)
+- **ical_service.py**: iCalendar VTODO ↔ Markdown line conversion (icalendar)
+- **caldav_service.py**: CalDAV collection management: project→list mapping, CTag/ETag, UID↦marker mapping (caldav.json + flock), gravestones for deleted items
 
 **Routes (Blueprints):**
 - `main_bp`: Index view, language selection
 - `auth_bp`: Login (form + OIDC), logout
 - `todo_bp`: Toggle, postpone, edit, delete, add
 - `api_bp`: JSON endpoints (/api/todo, /api/parse, /api/add, /api/move-to-section)
+- `caldav_bp`: CalDAV protocol (PROPFIND, REPORT, GET, PUT, DELETE); Basic auth, CSRF-exempt, registered under `/caldav/` when CALDAV_ENABLED
 
 ## Markdown Todo Format
 
@@ -339,3 +342,5 @@ repo's manifest because it only comes into existence with the release commit.
 Desktop/CLI: `TODOS_DB_PATH` (only used while no database path is saved in the preferences; `--database` always wins)
 
 Web: `TODOS_DB_PATH`, `SECRET_KEY`, `APP_USER`, `APP_PASSWORD`, `OIDC_*`, `WEBDAV_*`, `AI_TIMEOUT_SECS`, `TZ` (due dates are local time), `PUSH_ENABLED`, `PUSH_LEAD_MINUTES`, `PUSH_ALL_DAY_TIME`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+
+CalDAV (iOS Reminders sync): `CALDAV_ENABLED` (default ``false``), `CALDAV_USER`, `CALDAV_PASSWORD` (fall back to `APP_USER`/`APP_PASSWORD`). Persists uid↦marker mappings and gravestones in ``caldav.json`` next to ``CONFIG_PATH``. Each ``+project`` becomes a CalDAV collection; tasks without a project land in "Inbox". Completed tasks from the last 30 days appear on the device; older ones stay in the file only. iOS must reach the server via HTTPS; the reverse proxy must forward ``PROPFIND``, ``REPORT`` and ``PROPPATCH``.
