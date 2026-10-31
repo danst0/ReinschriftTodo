@@ -159,6 +159,10 @@ msgstr "明日に延期"
 msgid "Postpone to weekend"
 msgstr "週末に延期"
 
+#. Schnellaktion im Zeilenmenü: Fälligkeit eine Woche nach heute
+msgid "Postpone to next week"
+msgstr "来週に延期"
+
 #. ehemaliger JSON-Schlüssel: postpone_sometimes
 msgid "Postpone to 'sometimes'"
 msgstr "「いつか」に延期"
@@ -314,6 +318,18 @@ msgstr "期限"
 #. ehemaliger JSON-Schlüssel: today
 msgid "Today"
 msgstr "今日"
+
+#. Schnellwahlen im Bearbeiten-Dialog für das Fälligkeitsdatum
+msgid "Tomorrow"
+msgstr "明日"
+
+#. Schnellwahlen im Bearbeiten-Dialog für das Fälligkeitsdatum
+msgid "Next weekend"
+msgstr "次の週末"
+
+#. Schnellwahlen im Bearbeiten-Dialog für das Fälligkeitsdatum
+msgid "In a week"
+msgstr "1週間後"
 
 #. ehemaliger JSON-Schlüssel: recurrence
 msgid "Recurrence"

@@ -159,6 +159,10 @@ msgstr "Posponer para mañana"
 msgid "Postpone to weekend"
 msgstr "Posponer para el fin de semana"
 
+#. Schnellaktion im Zeilenmenü: Fälligkeit eine Woche nach heute
+msgid "Postpone to next week"
+msgstr "Posponer para la próxima semana"
+
 #. ehemaliger JSON-Schlüssel: postpone_sometimes
 msgid "Postpone to 'sometimes'"
 msgstr "Posponer para 'algún momento'"
@@ -314,6 +318,18 @@ msgstr "Fecha de vencimiento"
 #. ehemaliger JSON-Schlüssel: today
 msgid "Today"
 msgstr "Hoy"
+
+#. Schnellwahlen im Bearbeiten-Dialog für das Fälligkeitsdatum
+msgid "Tomorrow"
+msgstr "Mañana"
+
+#. Schnellwahlen im Bearbeiten-Dialog für das Fälligkeitsdatum
+msgid "Next weekend"
+msgstr "Próximo fin de semana"
+
+#. Schnellwahlen im Bearbeiten-Dialog für das Fälligkeitsdatum
+msgid "In a week"
+msgstr "En una semana"
 
 #. ehemaliger JSON-Schlüssel: recurrence
 msgid "Recurrence"

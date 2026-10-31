@@ -11,7 +11,7 @@ use std::time::Duration as StdDuration;
 use adw::prelude::*;
 use adw::{self, Application};
 use anyhow::{anyhow, Result};
-use chrono::{Datelike, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use glib::{clone, BoxedAnyObject};
 use gtk::gdk;
@@ -1717,12 +1717,14 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         let menu_today_btn = gtk::Button::with_label(&t("Set due date to today"));
         let menu_tomorrow_btn = gtk::Button::with_label(&t("Postpone to tomorrow"));
         let menu_weekend_btn = gtk::Button::with_label(&t("Postpone to weekend"));
+        let menu_nextweek_btn = gtk::Button::with_label(&t("Postpone to next week"));
         let menu_sometimes_btn = gtk::Button::with_label(&t("Postpone to 'sometimes'"));
         for btn in [
             &menu_myday_btn,
             &menu_today_btn,
             &menu_tomorrow_btn,
             &menu_weekend_btn,
+            &menu_nextweek_btn,
             &menu_sometimes_btn,
         ] {
             btn.add_css_class("flat");
@@ -1827,7 +1829,7 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('l') || unicode == Some('L') => {
-                    state.set_due_in_days(&todo, 7);
+                    state.set_due_next_week(&todo);
                     glib::Propagation::Stop
                 }
                 _ if unicode == Some('s') || unicode == Some('S') => {
@@ -2059,6 +2061,9 @@ fn create_list_view(state: &Rc<AppState>) -> gtk::ListView {
         });
         wire_row_action(&menu_weekend_btn, list_item, &factory_state, |state, todo| {
             state.set_due_weekend(todo);
+        });
+        wire_row_action(&menu_nextweek_btn, list_item, &factory_state, |state, todo| {
+            state.set_due_next_week(todo);
         });
         wire_row_action(&menu_sometimes_btn, list_item, &factory_state, |state, todo| {
             state.set_due_sometimes(todo);
@@ -3213,6 +3218,7 @@ impl AppState {
             data::DueTarget::DayAfterTomorrow => "Fällig übermorgen ({})",
             data::DueTarget::Weekend => "Fällig am Wochenende ({})",
             data::DueTarget::WeekendAfterNext => "Fällig am übernächsten Wochenende ({})",
+            data::DueTarget::InAWeek => "Fällig in einer Woche ({})",
             data::DueTarget::Sometime => "Fällig irgendwann ({})",
         };
         self.submit(data::PendingOp::SetDue {
@@ -3234,12 +3240,8 @@ impl AppState {
         self.set_due(todo, data::DueTarget::Weekend);
     }
 
-    fn set_due_in_days(self: &Rc<Self>, todo: &TodoItem, days: i64) {
-        let mut updated = todo.clone();
-        let base_time = todo.due.map(|d| d.time()).unwrap_or(DEFAULT_DUE_TIME);
-        let target_date = Local::now().date_naive() + Duration::days(days);
-        updated.due = Some(NaiveDateTime::new(target_date, base_time));
-        self.save_item(&updated)
+    fn set_due_next_week(self: &Rc<Self>, todo: &TodoItem) {
+        self.set_due(todo, data::DueTarget::InAWeek);
     }
 
     fn set_due_sometimes(self: &Rc<Self>, todo: &TodoItem) {
@@ -5894,14 +5896,35 @@ impl AppState {
         }
         let due_row = gtk::Box::new(gtk::Orientation::Vertical, 4);
         due_row.append(&gtk::Label::builder().label(t("Due date")).xalign(0.0).build());
-        let due_inputs = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         due_entry.set_activates_default(true);
         due_entry.set_hexpand(true);
-        due_inputs.append(&due_entry);
-        let due_today_btn = gtk::Button::with_label(&t("Today"));
-        due_today_btn.add_css_class("flat");
-        due_inputs.append(&due_today_btn);
-        due_row.append(&due_inputs);
+        due_row.append(&due_entry);
+        let quick_dates = gtk::FlowBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .max_children_per_line(5)
+            .min_children_per_line(1)
+            .row_spacing(6)
+            .column_spacing(6)
+            .build();
+        for (target, label) in [
+            (data::DueTarget::Today, t("Today")),
+            (data::DueTarget::Tomorrow, t("Tomorrow")),
+            (data::DueTarget::Weekend, t("Next weekend")),
+            (data::DueTarget::InAWeek, t("In a week")),
+            (data::DueTarget::Sometime, t("Sometimes")),
+        ] {
+            let btn = gtk::Button::with_label(&label);
+            btn.add_css_class("flat");
+            let entry = due_entry.clone();
+            btn.connect_clicked(move |_| {
+                let current =
+                    NaiveDateTime::parse_from_str(entry.text().as_str(), "%Y-%m-%dT%H:%M").ok();
+                let due = data::due_for_target(data::resolve_target(target, current), current);
+                entry.set_text(&due.format("%Y-%m-%dT%H:%M").to_string());
+            });
+            quick_dates.append(&btn);
+        }
+        due_row.append(&quick_dates);
         content.append(&due_row);
 
         let recurrence_values = ["", "daily", "weekly", "monthly"];
@@ -6025,12 +6048,6 @@ impl AppState {
             } else {
                 perform_delete();
             }
-        });
-
-        let due_entry_for_button = due_entry.clone();
-        due_today_btn.connect_clicked(move |_| {
-            let now = Local::now().naive_local().format("%Y-%m-%dT%H:%M").to_string();
-            due_entry_for_button.set_text(&now);
         });
 
         let dialog_save = dialog.clone();
