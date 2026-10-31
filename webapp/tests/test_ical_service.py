@@ -11,7 +11,6 @@ from app.services.ical_service import (
     item_to_vtodo,
     parse_due,
     parse_vtodo_from_ics,
-    location_name,
     split_summary,
     vtodo_to_updates,
     vtodo_uid,
@@ -129,28 +128,6 @@ class TestTitles:
 
     def test_duplicate_tags_count_once(self):
         assert split_summary("X #Garten +garten") == ("X", ["Garten"], [])
-
-
-class TestLocation:
-    def _vtodo_with(self, prop_line: str) -> Todo:
-        ics = ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VTODO\r\nUID:u\r\n"
-               "SUMMARY:S\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\n"
-               "TRIGGER;VALUE=DATE-TIME:19760401T005545Z\r\n"
-               f"{prop_line}\r\nEND:VALARM\r\nEND:VTODO\r\nEND:VCALENDAR\r\n")
-        return parse_vtodo_from_ics(ics.encode())
-
-    def test_structured_location_title(self):
-        vtodo = self._vtodo_with("X-APPLE-STRUCTURED-LOCATION;VALUE=URI;"
-                                 "X-TITLE=Büro:geo:52.5,13.4")
-        assert location_name(vtodo) == "Büro"
-
-    def test_address_gives_its_first_part(self):
-        vtodo = self._vtodo_with('X-APPLE-STRUCTURED-LOCATION;VALUE=URI;'
-                                 'X-TITLE="Hauptstraße 5, 10115 Berlin":geo:52.5,13.4')
-        assert location_name(vtodo) == "Hauptstraße 5"
-
-    def test_no_location(self):
-        assert location_name(make_vtodo(summary="S")) is None
 
 
 class TestParseIcs:

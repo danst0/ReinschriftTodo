@@ -120,6 +120,13 @@
   </provides>
   <content_rating type="oars-1.1" />
   <releases>
+    <release version="1.2.4-dev.2" date="2026-10-31" type="development">
+      <description>
+        <ul>
+          <li>iOS Reminders: a location reminder no longer sets the task's place; it is only kept</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.4-dev.1" date="2026-10-31" type="development">
       <description>
         <ul>

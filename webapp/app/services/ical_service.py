@@ -11,9 +11,8 @@ projects and places travel in the title — ``Mow the lawn #Garden @Home``.
 from the title removes it from the line.
 
 Alarms: the Markdown line has no field for them, so the VALARMs a device
-sends are kept by the caller (``caldav.json``) and handed back to
-:func:`item_to_vtodo`. A location alarm (``X-APPLE-STRUCTURED-LOCATION``)
-also names the task's place when it has none.
+sends (at a time or, ``X-APPLE-PROXIMITY``, at a location) are kept by the
+caller (``caldav.json``) and handed back to :func:`item_to_vtodo` unchanged.
 
 Times: due dates in the Markdown file are naive local time (the server's
 ``TZ``). ``datetime.astimezone()`` on a naive value interprets it as system
@@ -188,33 +187,6 @@ def carried_alarms(alarms: list[str]) -> list[str]:
     return kept
 
 
-def _location_title(prop: Any) -> str | None:
-    """The place name of an X-APPLE-STRUCTURED-LOCATION or LOCATION value."""
-    if prop is None:
-        return None
-    title = prop.params.get("X-TITLE") if hasattr(prop, "params") else None
-    text = str(title if title else prop)
-    if text.startswith("geo:"):
-        return None
-    # A street address arrives as one title; the first line names the place.
-    name = re.split(r"[,\n]", text, maxsplit=1)[0]
-    return clean_title(name) or None
-
-
-def location_name(vtodo: Todo) -> str | None:
-    """The place a location alarm of the task is tied to, if any."""
-    for alarm in vtodo.walk("VALARM"):
-        for key in ("x-apple-structured-location", "location"):
-            name = _location_title(alarm.get(key))
-            if name:
-                return name
-    for key in ("x-apple-structured-location", "location"):
-        name = _location_title(vtodo.get(key))
-        if name:
-            return name
-    return None
-
-
 def log_alarms(vtodo: Todo, name: str) -> None:
     """Log the alarms a device sent, so new iOS formats can be checked."""
     for alarm in vtodo.walk("VALARM"):
@@ -223,16 +195,8 @@ def log_alarms(vtodo: Todo, name: str) -> None:
 
 
 def tags_from_device(vtodo: Todo) -> tuple[str, list[str], list[str]]:
-    """Title, projects and places of a VTODO as the device sent it.
-
-    A location alarm names the place when the title carries none.
-    """
-    title, projects, places = split_summary(str(vtodo.get("summary", "")))
-    if not places:
-        place = location_name(vtodo)
-        if place:
-            places = [place]
-    return title, projects, places
+    """Title, projects and places of a VTODO as the device sent it."""
+    return split_summary(str(vtodo.get("summary", "")))
 
 
 def parse_due(vtodo: Todo) -> datetime | None:

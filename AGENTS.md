@@ -310,7 +310,7 @@ webapp/
 - **ai_service.py**: Ollama/LLM integration for natural language parsing
 - **push_service.py**: Web Push reminders — VAPID key, subscriptions, background loop (one gunicorn worker sends, chosen by file lock)
 - **ical_service.py**: iCalendar VTODO ↔ Markdown line conversion (icalendar)
-- **caldav_service.py**: CalDAV tasks: one list `Reinschrift` (projects/places as `#x @y` after the title; `#x`/`+x` from the device = project, a removed tag is removed; device VALARMs kept per marker in caldav.json, a location alarm's `X-TITLE` fills an empty place), CTag/ETag, UID↦marker mapping (caldav.json + flock), gravestones for DELETE+PUT moves; reads never write the todo file, each PUT/DELETE is one fingerprint-guarded write
+- **caldav_service.py**: CalDAV tasks: one list `Reinschrift` (projects/places as `#x @y` after the title; `#x`/`+x` from the device = project, a removed tag is removed; device VALARMs — time and location — kept per marker in caldav.json and served back unchanged), CTag/ETag, UID↦marker mapping (caldav.json + flock), gravestones for DELETE+PUT moves; reads never write the todo file, each PUT/DELETE is one fingerprint-guarded write
 
 **Routes (Blueprints):**
 - `main_bp`: Index view, language selection

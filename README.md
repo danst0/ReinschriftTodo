@@ -142,7 +142,7 @@ Open `http://localhost:5000` and log in with `APP_USER`/`APP_PASSWORD` (or via O
 
 ### iOS Reminders (CalDAV)
 
-The web app can serve your tasks to the iPhone's Reminders app. Set `CALDAV_ENABLED=true` (optionally `CALDAV_USER`/`CALDAV_PASSWORD`), make the web app reachable via HTTPS, then on the iPhone go to *Settings → Apps → Reminders → Accounts → Add Account → Other → Add CalDAV Account* and enter the server `https://your-domain/caldav/` plus user and password. The web app's settings page shows the exact values. All tasks appear in one list, "Reinschrift", with projects as hashtags and places after the title (`Mow the lawn #Garden @Home`); a location reminder set on the iPhone becomes the task's place. See [webapp/README.md](webapp/README.md#ios-reminders-caldav).
+The web app can serve your tasks to the iPhone's Reminders app. Set `CALDAV_ENABLED=true` (optionally `CALDAV_USER`/`CALDAV_PASSWORD`), make the web app reachable via HTTPS, then on the iPhone go to *Settings → Apps → Reminders → Accounts → Add Account → Other → Add CalDAV Account* and enter the server `https://your-domain/caldav/` plus user and password. The web app's settings page shows the exact values. All tasks appear in one list, "Reinschrift", with projects as hashtags and places after the title (`Mow the lawn #Garden @Home`). See [webapp/README.md](webapp/README.md#ios-reminders-caldav).
 
 ### Build from source
 

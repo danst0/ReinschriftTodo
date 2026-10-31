@@ -238,17 +238,12 @@ class TestAlarms:
         _put(LIST, "abc123", _ics("abc123", "Buy groceries"))
         assert b"VALARM" not in get_resource(LIST, "abc123").ics
 
-    def test_location_names_the_place(self, temp_todo_file):
+    def test_location_alarm_is_kept_and_leaves_the_place_alone(self, temp_todo_file):
         _put(LIST, "IOS-L", _ics("IOS-L", "Take out the bins", alarms=[LOCATION_ALARM]))
         res = get_resource(LIST, "IOS-L")
-        assert res.item.contexts == ["Zuhause"]
+        assert res.item.contexts == []
         assert b"X-APPLE-PROXIMITY:ARRIVE" in res.ics
-        assert b"SUMMARY:Take out the bins @Zuhause" in res.ics
-
-    def test_a_place_in_the_title_wins_over_the_location(self):
-        _put(LIST, "abc123", _ics("abc123", "Buy groceries @errands",
-                                  alarms=[LOCATION_ALARM]))
-        assert get_resource(LIST, "abc123").item.contexts == ["errands"]
+        assert b"Zuhause" in res.ics and b"geo:52.520008" in res.ics
 
     def test_next_occurrence_keeps_the_location_alarm(self, temp_todo_file):
         _put(LIST, "jkl012", _ics("jkl012", "Review PR #dev @computer",
