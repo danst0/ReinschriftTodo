@@ -6,12 +6,13 @@
  */
 
 import { setCsrfToken, getCsrfToken, fetchWithCsrf } from './modules/api.js';
-import { setDate, setNextWeekend, setSometime, focusRelative } from './modules/date-picker.js';
+import { setDate, setNextWeekend, setSometime, setInOneWeek, focusRelative } from './modules/date-picker.js';
 import {
     initModal, openEditModal, closeModal, showCommentField,
     submitWithComment, deleteTodoFromModal,
-    setModalDate, setModalNextWeekend, setModalSometime
+    setModalDate, setModalNextWeekend, setModalSometime, setModalInOneWeek
 } from './modules/modal.js';
+import { initDuePicker } from './modules/calendar-picker.js';
 import {
     setReloadCallback as setTodoReloadCallback,
     configureTodoActions,
@@ -77,6 +78,16 @@ function initApp(config = {}) {
     if (modal) {
         initModal(modal, handleReload);
     }
+
+    // Set up calendar date pickers
+    const pickerConfig = {
+        locale: appConfig.language || 'de',
+        translations: appConfig.translations || {}
+    };
+    const editDue = document.getElementById('edit-due');
+    if (editDue) initDuePicker(editDue, pickerConfig);
+    const pageDue = document.getElementById('due');
+    if (pageDue) initDuePicker(pageDue, pickerConfig);
 
     // Set up todo actions reload callback
     setTodoReloadCallback(handleReload);
@@ -443,6 +454,7 @@ window.ReinschriftApp = {
     setModalDate,
     setModalNextWeekend,
     setModalSometime,
+    setModalInOneWeek,
     handleSmartAdd: (btn) => handleSmartAdd(btn, {
         timeoutMessage: appConfig.translations.aiTimeoutNotice,
         errorMessage: appConfig.translations.aiParseFailed
@@ -479,6 +491,7 @@ window.deleteTodoFromModal = window.ReinschriftApp.deleteTodoFromModal;
 window.setModalDate = window.ReinschriftApp.setModalDate;
 window.setModalNextWeekend = window.ReinschriftApp.setModalNextWeekend;
 window.setModalSometime = window.ReinschriftApp.setModalSometime;
+window.setModalInOneWeek = window.ReinschriftApp.setModalInOneWeek;
 window.handleSmartAdd = window.ReinschriftApp.handleSmartAdd;
 window.toggleSearch = window.ReinschriftApp.toggleSearch;
 window.toggleAdd = window.ReinschriftApp.toggleAdd;
