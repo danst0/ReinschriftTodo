@@ -104,6 +104,21 @@
             dateInput.value = `9999-12-31T00:00`;
         }
 
+        function setInOneWeek() {
+            const dateInput = document.getElementById('due');
+            if (!dateInput) return;
+            const now = new Date();
+            const target = new Date(now);
+            target.setDate(now.getDate() + 7);
+            if (isDate(dateInput, target)) {
+                target.setDate(target.getDate() + 7);
+            }
+            const yyyy = target.getFullYear();
+            const mm = String(target.getMonth() + 1).padStart(2, '0');
+            const dd = String(target.getDate()).padStart(2, '0');
+            dateInput.value = `${yyyy}-${mm}-${dd}T12:00`;
+        }
+
         function focusRelative(form, current, backwards) {
             const focusables = Array.from(form.querySelectorAll('input, select, textarea, button'));
             const idx = focusables.indexOf(current);
@@ -165,6 +180,7 @@
                 <button type="button" class="chip" onclick="setDate(0)">{{ t.today }}</button>
                 <button type="button" class="chip" onclick="setDate(1)">{{ t.tomorrow }}</button>
                 <button type="button" class="chip" onclick="setNextWeekend()">{{ t.next_weekend }}</button>
+                <button type="button" class="chip" onclick="setInOneWeek()">{{ t.in_a_week }}</button>
                 <button type="button" class="chip" onclick="setSometime()">{{ t.sometime }}</button>
             </div>
         </div>
@@ -213,6 +229,18 @@
             if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
                 e.preventDefault();
                 this.requestSubmit();
+            }
+        });
+    </script>
+    <script type="module">
+        import { initDuePicker } from '{{ url_for('static', filename='js/modules/calendar-picker.js') }}';
+        document.addEventListener('DOMContentLoaded', () => {
+            const dueInput = document.getElementById('due');
+            if (dueInput) {
+                initDuePicker(dueInput, {
+                    locale: '{{ current_lang or "de" }}',
+                    translations: {{ t | tojson }}
+                });
             }
         });
     </script>

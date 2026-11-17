@@ -3,7 +3,7 @@
  */
 
 import { getCsrfToken, fetchWithCsrf } from './api.js';
-import { setDate, setNextWeekend, setSometime, focusRelative } from './date-picker.js';
+import { setDate, setNextWeekend, setSometime, setInOneWeek, focusRelative } from './date-picker.js';
 
 let modal = null;
 let onReloadCallback = null;
@@ -159,6 +159,10 @@ export function setModalNextWeekend() {
 
 export function setModalSometime() {
     setSometime(document.getElementById('edit-due'));
+}
+
+export function setModalInOneWeek() {
+    setInOneWeek(document.getElementById('edit-due'));
 }
 
 // Private handlers

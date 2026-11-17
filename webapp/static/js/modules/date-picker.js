@@ -132,6 +132,27 @@ export function setSometime(dateInput) {
 }
 
 /**
+ * Set a date input to one week from now.
+ * A second press moves to two weeks out, a third hops back.
+ * @param {HTMLInputElement} dateInput - The datetime-local input
+ */
+export function setInOneWeek(dateInput) {
+    if (!dateInput) return;
+
+    const now = new Date();
+    const target = new Date(now);
+    target.setDate(now.getDate() + 7);
+    if (isDate(dateInput, target)) {
+        target.setDate(target.getDate() + 7);
+    }
+
+    const yyyy = target.getFullYear();
+    const mm = String(target.getMonth() + 1).padStart(2, '0');
+    const dd = String(target.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}T12:00`;
+}
+
+/**
  * Navigate focus between form elements.
  * @param {HTMLFormElement} form - Parent form
  * @param {HTMLElement} current - Currently focused element
